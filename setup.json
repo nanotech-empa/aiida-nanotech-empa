@@ -21,7 +21,10 @@
             "nanotech_empa = aiida_nanotech_empa.calculations:DiffCalculation"
         ],
         "aiida.parsers": [
-            "nanotech_empa = aiida_nanotech_empa.parsers:DiffParser"
+            "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser"
+        ],
+        "aiida.workflows": [
+            "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain"
         ],
         "aiida.cmdline.data": [
             "nanotech_empa = aiida_nanotech_empa.cli:data_cli"
@@ -31,7 +34,7 @@
     "setup_requires": ["reentry"],
     "reentry_register": true,
     "install_requires": [
-        "aiida-core>=1.3.0,<2.0.0",
+        "aiida-core>=1.2.1,<2.0.0"
     ],
     "extras_require": {
         "testing": [
