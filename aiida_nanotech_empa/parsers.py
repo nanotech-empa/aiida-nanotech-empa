@@ -1,57 +1,91 @@
-"""
-Parsers provided by aiida_nanotech_empa.
+"""Parsers provided by aiida_nanotech_empa.
 
 Register parsers via the "aiida.parsers" entry point in setup.json.
 """
-from aiida.engine import ExitCode
-from aiida.parsers.parser import Parser
-from aiida.plugins import CalculationFactory
+import numpy as np
+from .utils import clip_data, crop_cube, read_cube_file, write_cube_file
 
-DiffCalculation = CalculationFactory('nanotech_empa')
+from aiida import orm
+from aiida.plugins import ParserFactory
+
+BasePpParser = ParserFactory('quantumespresso.pp')
 
 
-class DiffParser(Parser):
+class PpParser(BasePpParser):
+    """Reduce and parse Gaussian Cube formatted output.
+        :param data_file_str: the data file read in as a single string
     """
-    Parser class for parsing output of calculation.
-    """
+    def parse_gaussian(self, data_file_str):
+        numbers, positions, cell, origin, data = read_cube_file(
+            data_file_str.splitlines())
+        new_data, new_cell, new_pos = crop_cube(data,
+                                                positions,
+                                                cell,
+                                                origin,
+                                                x_crop=None,
+                                                y_crop=3.5,
+                                                z_crop=3.5)
+        clip_data(new_data, absmin=1e-4)
+        cropped_data_file_str = write_cube_file(numbers, new_pos, new_cell,
+                                                new_data)
+        return self.parse_gaussian2(cropped_data_file_str)
 
-    def __init__(self, node):
+    def parse_gaussian2(self, data_file_str):
+        """Parse Gaussian Cube formatted output.
+        :param data_file_str: the data file read in as a single string
         """
-        Initialize Parser instance
+        lines = data_file_str.splitlines()
 
-        Checks that the ProcessNode being passed was produced by a DiffCalculation.
+        title = lines[0]
+        comment = lines[1]
 
-        :param node: ProcessNode of calculation
-        :param type node: :class:`aiida.orm.ProcessNode`
-        """
-        from aiida.common import exceptions
-        super(DiffParser, self).__init__(node)
-        if not issubclass(node.process_class, DiffCalculation):
-            raise exceptions.ParsingError("Can only parse DiffCalculation")
+        atoms_line = lines[2].split()
+        natoms = int(atoms_line[0])  # The number of atoms listed in the file
+        origin = np.array(atoms_line[1:], dtype=float)
 
-    def parse(self, **kwargs):
-        """
-        Parse outputs, store results in database.
+        header = lines[:6 +
+                       natoms]  # Header of the file: comments, the voxel, and the number of atoms and datapoints
+        data_lines = lines[
+            6 + natoms:]  # The actual data: atoms and volumetric data
 
-        :returns: an exit code, if parsing fails (or nothing if parsing succeeds)
-        """
-        from aiida.orm import SinglefileData
+        # Parse the declared dimensions of the volumetric data
+        x_line = header[3].split()
+        xdim = int(x_line[0])
+        y_line = header[4].split()
+        ydim = int(y_line[0])
+        z_line = header[5].split()
+        zdim = int(z_line[0])
 
-        output_filename = self.node.get_option('output_filename')
+        # Get the vectors describing the basis voxel
+        voxel_array = np.array([[x_line[1], x_line[2], x_line[3]],
+                                [y_line[1], y_line[2], y_line[3]],
+                                [z_line[1], z_line[2], z_line[3]]],
+                               dtype=np.float64)
+        atomic_numbers = np.empty(natoms, int)
+        coordinates = np.empty((natoms, 3))
+        for i in range(natoms):
+            line = header[6 + i].split()
+            atomic_numbers[i] = int(line[0])
+            coordinates[i] = [float(s) for s in line[2:]]
 
-        # Check that folder content is as expected
-        files_retrieved = self.retrieved.list_object_names()
-        files_expected = [output_filename]
-        # Note: set(A) <= set(B) checks whether A is a subset of B
-        if not set(files_expected) <= set(files_retrieved):
-            self.logger.error("Found files '{}', expected to find '{}'".format(
-                files_retrieved, files_expected))
-            return self.exit_codes.ERROR_MISSING_OUTPUT_FILES
+        # Get the volumetric data
+        data_array = np.empty(xdim * ydim * zdim, dtype=float)
+        cursor = 0
+        for line in data_lines:
+            ls = line.split()
+            data_array[cursor:cursor + len(ls)] = ls
+            cursor += len(ls)
+        data_array = data_array.reshape((xdim, ydim, zdim))
 
-        # add output file
-        self.logger.info("Parsing '{}'".format(output_filename))
-        with self.retrieved.open(output_filename, 'rb') as handle:
-            output_node = SinglefileData(file=handle)
-        self.out('nanotech_empa', output_node)
+        coordinates_units = 'bohr'
+        data_units = self.units_dict[self.output_parameters['plot_num']]
 
-        return ExitCode(0)
+        arraydata = orm.ArrayData()
+        arraydata.set_array('voxel', voxel_array)
+        arraydata.set_array('data', data_array)
+        arraydata.set_array('data_units', np.array(data_units))
+        arraydata.set_array('coordinates_units', np.array(coordinates_units))
+        arraydata.set_array('coordinates', coordinates)
+        arraydata.set_array('atomic_numbers', atomic_numbers)
+
+        return arraydata
