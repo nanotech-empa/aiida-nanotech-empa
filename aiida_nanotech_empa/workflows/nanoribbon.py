@@ -383,9 +383,10 @@ class NanoribbonWorkChain(WorkChain):
             1 + int(nkpoints * 2.4 /
                     builder.code.computer.get_default_mpiprocs_per_machine()),
             int(5))
-        nnodes = (1 + int(
-            natoms * 0.2 /
-            builder.code.computer.get_default_mpiprocs_per_machine())) * npools
+        #nnodes = (1 + int(
+        #    natoms * 0.2 /
+        #    builder.code.computer.get_default_mpiprocs_per_machine())) * npools
+        nnodes = (1 + natoms/60) * npools
 
         builder.metadata.label = label
         builder.metadata.options = {
