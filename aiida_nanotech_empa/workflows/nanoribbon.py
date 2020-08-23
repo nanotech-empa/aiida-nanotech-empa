@@ -217,7 +217,7 @@ class NanoribbonWorkChain(WorkChain):
             builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})
             running = self.submit(builder)
             label = 'export_orbitals_{}'.format(inb)
-            self.to_context(**{label: running})
+            ToContext(**{label: running})
 
     # =========================================================================
     def run_export_spinden(self):
