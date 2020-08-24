@@ -6,7 +6,6 @@ from aiida.manage.tests.unittest_classes import PluginTestCase
 
 class TestDataCli(PluginTestCase):
     """Test verdi data cli plugin."""
-
     def setUp(self):
         from click.testing import CliRunner
         from aiida.plugins import DataFactory
