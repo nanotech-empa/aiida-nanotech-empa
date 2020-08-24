@@ -17,8 +17,6 @@ from aiida.cmdline.params.types import DataParamType
 @verdi_data.group('nanotech_empa')
 def data_cli():
     """Command line interface for aiida-nanotech-empa"""
-
-
 @data_cli.command('list')
 @decorators.with_dbenv()
 def list_():  # pylint: disable=redefined-builtin

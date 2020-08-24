@@ -1,8 +1,10 @@
+# pylint: disable=too-many-locals,inconsistent-return-statements
+
 import numpy as np
 
 # AiiDA imports
-from aiida.orm import Code, Dict, Int, Float, KpointsData, Str, StructureData, SinglefileData
-from aiida.engine import WorkChain, ToContext, run, submit
+from aiida.orm import Code, Dict, Float, KpointsData, Str, StructureData
+from aiida.engine import WorkChain, ToContext
 #from aiida.orm.nodes.data.upf import get_pseudos_dict, get_pseudos_from_structure
 
 # aiida_quantumespresso imports
@@ -343,14 +345,15 @@ class NanoribbonWorkChain(WorkChain):
             return ExitCode(450)
 
     # =========================================================================
-    def _submit_pw_calc(self,
-                        structure,
-                        label,
-                        runtype,
-                        precision,
-                        min_kpoints,
-                        wallhours=24,
-                        parent_folder=None):
+    def _submit_pw_calc(  # pylint: disable=too-many-arguments
+            self,
+            structure,
+            label,
+            runtype,
+            precision,
+            min_kpoints,
+            wallhours=24,
+            parent_folder=None):
         self.report("Running pw.x for " + label)
         builder = PwCalculation.get_builder()
 
@@ -386,7 +389,7 @@ class NanoribbonWorkChain(WorkChain):
         #nnodes = (1 + int(
         #    natoms * 0.2 /
         #    builder.code.computer.get_default_mpiprocs_per_machine())) * npools
-        nnodes = (1 + natoms/60) * npools
+        nnodes = (1 + natoms / 60) * npools
 
         builder.metadata.label = label
         builder.metadata.options = {
