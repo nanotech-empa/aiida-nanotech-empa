@@ -4,7 +4,7 @@ import numpy as np
 
 # AiiDA imports
 from aiida.orm import Code, Dict, Float, KpointsData, Str, StructureData
-from aiida.engine import WorkChain, ToContext
+from aiida.engine import WorkChain, ToContext, while_
 #from aiida.orm.nodes.data.upf import get_pseudos_dict, get_pseudos_from_structure
 
 # aiida_quantumespresso imports
@@ -46,7 +46,8 @@ class NanoribbonWorkChain(WorkChain):
             cls.run_bands,
             cls.run_export_pdos,
             cls.run_bands_lowres,
-            cls.run_export_orbitals,
+            cls.prepare_export_orbitals,
+            while_(cls.should_run_export_orbitals)(cls.run_export_orbitals, ),
             cls.run_export_spinden,
         )
         spec.outputs.dynamic = True
@@ -164,62 +165,86 @@ class NanoribbonWorkChain(WorkChain):
                                     wallhours=2)
 
     # =========================================================================
+    def prepare_export_orbitals(self):
+        self.report("Getting ready to export KS orbitals.")
+
+        # Getting and checking the previous calculation.
+        prev_calc = self.ctx.bands_lowres
+        self._check_prev_calc(prev_calc)
+
+        self.ctx.export_orbitals_parameters = {
+            'INPUTPP': {
+                # contribution of a selected wavefunction
+                # to charge density
+                'plot_num':
+                7,
+                'kpoint(1)':
+                int(1),
+                'kpoint(2)':
+                int(prev_calc.res.number_of_k_points *
+                    prev_calc.res.number_of_spin_components),
+                'kband(1)':
+                0,
+                'kband(2)':
+                0,
+            },
+            'PLOT': {
+                'iflag': 3,  # 3D plot
+            },
+        }
+
+        nhours = int(2 + min(22, 2 * int(prev_calc.res.volume / 1500)))
+        self.ctx.export_orbitals_options = {
+            "resources": {
+                "num_machines":
+                int(prev_calc.attributes['resources']['num_machines']),
+                "num_mpiprocs_per_machine":
+                self.inputs.pp_code.computer.get_default_mpiprocs_per_machine(
+                ),
+            },
+            "max_wallclock_seconds": nhours * 60 * 60,  # 6 hours
+            # Add the post-processing python scripts
+            "withmpi": True,
+            "parser_name": "nanotech_empa.pp",
+        }
+        npools = int(prev_calc.inputs.settings['cmdline'][1])
+        self.ctx.export_orbitals_settings = Dict(
+            dict={'cmdline': ["-npools", str(npools)]})
+
+        kband1 = max(
+            int(prev_calc.res.number_of_electrons / 2) - int(1), int(1))
+        self.ctx.export_orbitals_band_number = kband1
+
+    def should_run_export_orbitals(self):
+        prev_calc = self.ctx.bands_lowres
+        kband2 = min(
+            int(prev_calc.res.number_of_electrons / 2) + int(2),
+            int(prev_calc.res.number_of_bands))
+        return self.ctx.export_orbitals_band_number <= kband2
+
     def run_export_orbitals(self):
         self.report("Running pp.x to export KS orbitals")
         builder = PpCalculation.get_builder()
         builder.code = self.inputs.pp_code
-        nproc_mach = builder.code.computer.get_default_mpiprocs_per_machine()
-
         prev_calc = self.ctx.bands_lowres
-        self._check_prev_calc(prev_calc)
         builder.parent_folder = prev_calc.outputs.remote_folder
+        builder.metadata.label = "export_orbitals"
+        builder.metadata.options = self.ctx.export_orbitals_options
+        builder.settings = self.ctx.export_orbitals_settings
 
-        nel = prev_calc.res.number_of_electrons
-        nkpt = prev_calc.res.number_of_k_points
-        nbnd = prev_calc.res.number_of_bands
-        nspin = prev_calc.res.number_of_spin_components
-        volume = prev_calc.res.volume
-        kband1 = max(int(nel / 2) - int(1), int(1))
-        kband2 = min(int(nel / 2) + int(2), int(nbnd))
-        kpoint1 = int(1)
-        kpoint2 = int(nkpt * nspin)
-        nhours = int(2 + min(22, 2 * int(volume / 1500)))
+        # Modifying the band number.
+        self.ctx.export_orbitals_parameters['INPUTPP'][
+            'kband(1)'] = self.ctx.export_orbitals_band_number
+        self.ctx.export_orbitals_parameters['INPUTPP'][
+            'kband(2)'] = self.ctx.export_orbitals_band_number
+        builder.parameters = Dict(dict=self.ctx.export_orbitals_parameters)
 
-        nnodes = int(prev_calc.attributes['resources']['num_machines'])
-        npools = int(prev_calc.inputs.settings['cmdline'][1])
-        for inb in range(kband1, kband2 + 1):
-            builder.parameters = Dict(
-                dict={
-                    'INPUTPP': {
-                        # contribution of a selected wavefunction
-                        # to charge density
-                        'plot_num': 7,
-                        'kpoint(1)': kpoint1,
-                        'kpoint(2)': kpoint2,
-                        'kband(1)': inb,
-                        'kband(2)': inb,
-                    },
-                    'PLOT': {
-                        'iflag': 3,  # 3D plot
-                    },
-                })
-
-            builder.metadata.label = "export_orbitals"
-            builder.metadata.options = {
-                "resources": {
-                    "num_machines": nnodes,
-                    "num_mpiprocs_per_machine": nproc_mach,
-                },
-                "max_wallclock_seconds": nhours * 60 * 60,  # 6 hours
-                # Add the post-processing python scripts
-                "withmpi": True,
-                "parser_name": "nanotech_empa.pp",
-            }
-
-            builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})
-            running = self.submit(builder)
-            label = 'export_orbitals_{}'.format(inb)
-            ToContext(**{label: running})
+        # Running the calculation.
+        running = self.submit(builder)
+        label = 'export_orbitals_{}'.format(
+            self.ctx.export_orbitals_band_number)
+        self.ctx.export_orbitals_band_number += 1
+        return ToContext(**{label: running})
 
     # =========================================================================
     def run_export_spinden(self):
