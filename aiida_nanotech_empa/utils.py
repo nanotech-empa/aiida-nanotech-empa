@@ -7,6 +7,11 @@ ang_2_bohr = 1.889725989
 def read_cube_file(file_lines):
 
     fit = iter(file_lines)
+
+    # Title and comment:
+    _ = next(fit)  # noqa
+    _ = next(fit)  # noqa
+
     line = next(fit).split()
     natoms = int(line[0])
 
