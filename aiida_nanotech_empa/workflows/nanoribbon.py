@@ -19,8 +19,11 @@ class NanoribbonWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(NanoribbonWorkChain, cls).define(spec)
-        spec.input("max_nodes", valid_type=Int, default=Int(24))
-        spec.input("mem_node", valid_type=Int, default=Int(64))
+        spec.input("max_nodes",
+                   valid_type=Int,
+                   default=Int(24),
+                   required=False)
+        spec.input("mem_node", valid_type=Int, default=Int(64), required=False)
         spec.input("pw_code", valid_type=Code)
         spec.input("pp_code", valid_type=Code)
         spec.input("projwfc_code", valid_type=Code)
@@ -63,8 +66,7 @@ class NanoribbonWorkChain(WorkChain):
                                     precision=0.5,
                                     min_kpoints=int(1),
                                     max_nodes=self.inputs.max_nodes,
-                                    mem_node=self.inputs.mem_node
-                                   )
+                                    mem_node=self.inputs.mem_node)
 
     # =========================================================================
     def run_cell_opt2(self):
@@ -77,8 +79,7 @@ class NanoribbonWorkChain(WorkChain):
                                     precision=1.0,
                                     min_kpoints=int(1),
                                     max_nodes=self.inputs.max_nodes,
-                                    mem_node=self.inputs.mem_node
-                                   )
+                                    mem_node=self.inputs.mem_node)
 
     # =========================================================================
     def run_scf(self):
@@ -137,9 +138,9 @@ class NanoribbonWorkChain(WorkChain):
         nnodes = int(prev_calc.attributes['resources']['num_machines'])
         npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
         nproc_mach = builder.code.computer.get_default_mpiprocs_per_machine()
-        
+
         builder.metadata.label = label
-        
+
         builder.metadata.options = {
             "resources": {
                 "num_machines": nnodes,
@@ -147,16 +148,16 @@ class NanoribbonWorkChain(WorkChain):
             },
             "max_wallclock_seconds": 1200,  # 30 minutes
             "withmpi": True,
-        }   
-        builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})        
-        
-#        builder.metadata.options = {
-#            "resources": {
-#                "num_machines": int(1),
-#            },
-#            "max_wallclock_seconds": 1200,
-#            "withmpi": True,
-#        }
+        }
+        builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})
+
+        #        builder.metadata.options = {
+        #            "resources": {
+        #                "num_machines": int(1),
+        #            },
+        #            "max_wallclock_seconds": 1200,
+        #            "withmpi": True,
+        #        }
 
         running = self.submit(builder)
         return ToContext(**{label: running})
@@ -331,20 +332,23 @@ class NanoribbonWorkChain(WorkChain):
         self._check_prev_calc(prev_calc)
 
         natoms = len(prev_calc.inputs.structure.attributes['sites'])
-        nproc_mach = min(4,builder.code.computer.get_default_mpiprocs_per_machine())
+        nproc_mach = min(
+            4, builder.code.computer.get_default_mpiprocs_per_machine())
 
         previous_nodes = int(prev_calc.attributes['resources']['num_machines'])
-        previous_pools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
+        previous_pools = int(
+            prev_calc.inputs.settings.get_dict()['cmdline'][1])
         if natoms < 60:
-            nnodes = min(int(2),previous_nodes)
-            npools = min(int(2),previous_pools)
+            nnodes = min(int(2), previous_nodes)
+            npools = min(int(2), previous_pools)
         elif natoms < int(120):
-            nnodes = min(int(4),previous_nodes)
-            npools = min(int(4),previous_pools)
+            nnodes = min(int(4), previous_nodes)
+            npools = min(int(4), previous_pools)
         else:
             nnodes = previous_nodes
             npools = previous_pools
-            nproc_mach = builder.code.computer.get_default_mpiprocs_per_machine()
+            nproc_mach = builder.code.computer.get_default_mpiprocs_per_machine(
+            )
 
         nhours = 24
         builder.parent_folder = prev_calc.outputs.remote_folder
@@ -439,17 +443,17 @@ class NanoribbonWorkChain(WorkChain):
             spinpools = int(2)
 
         natoms = len(structure.sites)
-#        npools = spinpools * min(
-#            1 + int(nkpoints * 2.4 /
-#                    builder.code.computer.get_default_mpiprocs_per_machine()),
-#            int(5))
-        max_npools = spinpools * min(1 + int(nkpoints/2),int(6))
-        nnodes_base = min(max_nodes,(1 + int(natoms / mem_node)) )
+        #        npools = spinpools * min(
+        #            1 + int(nkpoints * 2.4 /
+        #                    builder.code.computer.get_default_mpiprocs_per_machine()),
+        #            int(5))
+        max_npools = spinpools * min(1 + int(nkpoints / 2), int(6))
+        nnodes_base = min(max_nodes, (1 + int(natoms / mem_node)))
         #nnodes = (1 + int(
         #    natoms * 0.2 /
         #    builder.code.computer.get_default_mpiprocs_per_machine())) * npools
         #nnodes = (1 + int(natoms / 60)) * npools
-        
+
         guess_nnodes = max_npools * nnodes_base
         if guess_nnodes <= max_nodes:
             nnodes = guess_nnodes
@@ -457,10 +461,11 @@ class NanoribbonWorkChain(WorkChain):
         else:
             nnodes = max_nodes
             npools = 1
-            cpus_per_node = builder.code.computer.get_default_mpiprocs_per_machine()
-            for i in range (max_npools):
-                if nnodes*cpus_per_node % (i+1) == 0:
-                    npools = i + 1        
+            cpus_per_node = builder.code.computer.get_default_mpiprocs_per_machine(
+            )
+            for i in range(max_npools):
+                if nnodes * cpus_per_node % (i + 1) == 0:
+                    npools = i + 1
 
         builder.metadata.label = label
         builder.metadata.options = {
