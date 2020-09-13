@@ -135,8 +135,12 @@ class NanoribbonWorkChain(WorkChain):
                 },
             })
 
-        nnodes = int(prev_calc.attributes['resources']['num_machines'])
-        npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
+        natoms = len(prev_calc.inputs.structure.attributes['sites'])
+        nnodes = min(self.inputs.max_nodes,
+                     (1 + int(natoms / self.inputs.mem_node)))
+        npools = 1
+        #nnodes = int(prev_calc.attributes['resources']['num_machines'])
+        #npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
         nproc_mach = builder.code.computer.get_default_mpiprocs_per_machine()
 
         builder.metadata.label = label
@@ -224,10 +228,15 @@ class NanoribbonWorkChain(WorkChain):
         }
 
         nhours = int(2 + min(22, 2 * int(prev_calc.res.volume / 1500)))
+        natoms = len(prev_calc.inputs.structure.attributes['sites'])
+        nnodes = min(self.inputs.max_nodes,
+                     (1 + int(natoms / self.inputs.mem_node)))
+        npools = 1
         self.ctx.export_orbitals_options = {
             "resources": {
                 "num_machines":
-                int(prev_calc.attributes['resources']['num_machines']),
+                nnodes,
+                #int(prev_calc.attributes['resources']['num_machines']),
                 "num_mpiprocs_per_machine":
                 self.inputs.pp_code.computer.get_default_mpiprocs_per_machine(
                 ),
@@ -237,7 +246,7 @@ class NanoribbonWorkChain(WorkChain):
             "withmpi": True,
             "parser_name": "nanotech_empa.pp",
         }
-        npools = int(prev_calc.inputs.settings['cmdline'][1])
+        #npools = int(prev_calc.inputs.settings['cmdline'][1])
         self.ctx.export_orbitals_settings = Dict(
             dict={'cmdline': ["-npools", str(npools)]})
 
@@ -289,8 +298,12 @@ class NanoribbonWorkChain(WorkChain):
         builder.parent_folder = prev_calc.outputs.remote_folder
 
         nspin = prev_calc.res.number_of_spin_components
-        nnodes = int(prev_calc.attributes['resources']['num_machines'])
-        npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
+        natoms = len(prev_calc.inputs.structure.attributes['sites'])
+        nnodes = min(self.inputs.max_nodes,
+                     (1 + int(natoms / self.inputs.mem_node)))
+        npools = 1
+        #nnodes = int(prev_calc.attributes['resources']['num_machines'])
+        #npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
         if nspin == 1:
             self.report("Skipping, got only one spin channel")
             return
@@ -447,7 +460,7 @@ class NanoribbonWorkChain(WorkChain):
         #            1 + int(nkpoints * 2.4 /
         #                    builder.code.computer.get_default_mpiprocs_per_machine()),
         #            int(5))
-        max_npools = spinpools * min(1 + int(nkpoints / 2), int(6))
+        max_npools = spinpools * min(1 + int(nkpoints / 4), int(6))
         nnodes_base = min(max_nodes, (1 + int(natoms / mem_node)))
         #nnodes = (1 + int(
         #    natoms * 0.2 /
