@@ -12,14 +12,8 @@
         "Natural Language :: English",
         "Framework :: AiiDA"
     ],
-    "version": "0.1.0a2",
+    "version": "0.1.0a3",
     "entry_points": {
-        "aiida.data": [
-            "nanotech_empa = aiida_nanotech_empa.data:DiffParameters"
-        ],
-        "aiida.calculations": [
-            "nanotech_empa = aiida_nanotech_empa.calculations:DiffCalculation"
-        ],
         "aiida.parsers": [
             "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser"
         ],

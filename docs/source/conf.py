@@ -411,4 +411,5 @@ nitpick_ignore = [
     ('py:obj', 'float'),
     ('py:obj', 'bool'),
     ('py:obj', 'Mapping'),
+    ('py:class', 'aiida_quantumespresso.parsers.pp.PpParser'),
 ]

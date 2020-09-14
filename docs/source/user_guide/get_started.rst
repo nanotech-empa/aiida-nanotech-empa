@@ -35,8 +35,3 @@ If you have already set up your own aiida_nanotech_empa code using
 
     nanotech_empa-submit  # uses aiida_nanotech_empa.cli
 
-Available calculations
-++++++++++++++++++++++
-
-.. aiida-calcjob:: DiffCalculation
-    :module: aiida_nanotech_empa.calculations

@@ -30,18 +30,14 @@ class PpParser(BasePpParser):
                                                 new_data)
         return self.parse_gaussian2(cropped_data_file_str)
 
-    def parse_gaussian2(self, data_file_str):
+    def parse_gaussian2(self, data_file_str):  # pylint: disable=too-many-locals
         """Parse Gaussian Cube formatted output.
         :param data_file_str: the data file read in as a single string
         """
         lines = data_file_str.splitlines()
 
-        title = lines[0]
-        comment = lines[1]
-
         atoms_line = lines[2].split()
         natoms = int(atoms_line[0])  # The number of atoms listed in the file
-        origin = np.array(atoms_line[1:], dtype=float)
 
         header = lines[:6 +
                        natoms]  # Header of the file: comments, the voxel, and the number of atoms and datapoints
