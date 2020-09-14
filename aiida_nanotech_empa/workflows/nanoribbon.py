@@ -8,7 +8,6 @@ from aiida.engine import WorkChain, ToContext, while_
 #from aiida.orm.nodes.data.upf import get_pseudos_dict, get_pseudos_from_structure
 
 # aiida_quantumespresso imports
-from aiida.engine import ExitCode
 from aiida_quantumespresso.calculations.pw import PwCalculation
 from aiida_quantumespresso.calculations.pp import PpCalculation
 from aiida_quantumespresso.calculations.projwfc import ProjwfcCalculation
@@ -57,6 +56,8 @@ class NanoribbonWorkChain(WorkChain):
         )
         spec.outputs.dynamic = True
 
+        spec.exit_code(300, 'CALC_FAILED', message='The calculation failed.')
+
     # =========================================================================
     def run_cell_opt1(self):
         structure = self.inputs.structure
@@ -71,7 +72,12 @@ class NanoribbonWorkChain(WorkChain):
     # =========================================================================
     def run_cell_opt2(self):
         prev_calc = self.ctx.cell_opt1
-        self._check_prev_calc(prev_calc)
+        # ---
+        # check if previous calc was okay
+        error_msg = self._check_prev_calc(prev_calc)
+        if error_msg is not None:
+            return self.exit_codes.CALC_FAILED
+        # ---
         structure = prev_calc.outputs.output_structure
         return self._submit_pw_calc(structure,
                                     label="cell_opt2",
@@ -84,7 +90,12 @@ class NanoribbonWorkChain(WorkChain):
     # =========================================================================
     def run_scf(self):
         prev_calc = self.ctx.cell_opt2
-        self._check_prev_calc(prev_calc)
+        # ---
+        # check if previous calc was okay
+        error_msg = self._check_prev_calc(prev_calc)
+        if error_msg is not None:
+            return self.exit_codes.CALC_FAILED
+        # ---
         structure = prev_calc.outputs.output_structure
         return self._submit_pw_calc(structure,
                                     label="scf",
@@ -104,7 +115,12 @@ class NanoribbonWorkChain(WorkChain):
         builder.code = self.inputs.pp_code
 
         prev_calc = self.ctx.scf
-        self._check_prev_calc(prev_calc)
+        # ---
+        # check if previous calc was okay
+        error_msg = self._check_prev_calc(prev_calc)
+        if error_msg is not None:
+            return self.exit_codes.CALC_FAILED
+        # ---
         builder.parent_folder = prev_calc.outputs.remote_folder
 
         structure = prev_calc.inputs.structure
@@ -164,8 +180,13 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_bands(self):
+        # ---
+        # check if previous calc was okay
+        error_msg = self._check_prev_calc(self.ctx.export_hartree)
+        if error_msg is not None:
+            return self.exit_codes.CALC_FAILED
+        # ---
         prev_calc = self.ctx.scf
-        self._check_prev_calc(prev_calc)
         structure = prev_calc.inputs.structure
         parent_folder = prev_calc.outputs.remote_folder
         return self._submit_pw_calc(structure,
@@ -179,153 +200,15 @@ class NanoribbonWorkChain(WorkChain):
                                     wallhours=6)
 
     # =========================================================================
-    def run_bands_lowres(self):
-        prev_calc = self.ctx.scf
-        self._check_prev_calc(prev_calc)
-        structure = prev_calc.inputs.structure
-        parent_folder = prev_calc.outputs.remote_folder
-        return self._submit_pw_calc(structure,
-                                    label="bands_lowres",
-                                    parent_folder=parent_folder,
-                                    runtype='bands',
-                                    precision=0.0,
-                                    min_kpoints=int(12),
-                                    max_nodes=self.inputs.max_nodes,
-                                    mem_node=self.inputs.mem_node,
-                                    wallhours=2)
-
-    # =========================================================================
-    def prepare_export_orbitals(self):
-        self.report("Getting ready to export KS orbitals.")
-
-        # Getting and checking the previous calculation.
-        prev_calc = self.ctx.bands_lowres
-        self._check_prev_calc(prev_calc)
-
-        self.ctx.export_orbitals_parameters = {
-            'INPUTPP': {
-                # contribution of a selected wavefunction
-                # to charge density
-                'plot_num':
-                7,
-                'kpoint(1)':
-                int(1),
-                'kpoint(2)':
-                int(prev_calc.res.number_of_k_points *
-                    prev_calc.res.number_of_spin_components),
-                'kband(1)':
-                0,
-                'kband(2)':
-                0,
-            },
-            'PLOT': {
-                'iflag': 3,  # 3D plot
-            },
-        }
-
-        nhours = int(2 + min(22, 2 * int(prev_calc.res.volume / 1500)))
-        self.ctx.export_orbitals_options = {
-            "resources": {
-                "num_machines":
-                int(prev_calc.attributes['resources']['num_machines']),
-                "num_mpiprocs_per_machine":
-                self.inputs.pp_code.computer.get_default_mpiprocs_per_machine(
-                ),
-            },
-            "max_wallclock_seconds": nhours * 60 * 60,  # 6 hours
-            # Add the post-processing python scripts
-            "withmpi": True,
-            "parser_name": "nanotech_empa.pp",
-        }
-        npools = int(prev_calc.inputs.settings['cmdline'][1])
-        self.ctx.export_orbitals_settings = Dict(
-            dict={'cmdline': ["-npools", str(npools)]})
-
-        kband1 = max(
-            int(prev_calc.res.number_of_electrons / 2) - int(1), int(1))
-        self.ctx.export_orbitals_band_number = kband1
-
-    def should_run_export_orbitals(self):
-        prev_calc = self.ctx.bands_lowres
-        kband2 = min(
-            int(prev_calc.res.number_of_electrons / 2) + int(2),
-            int(prev_calc.res.number_of_bands))
-        return self.ctx.export_orbitals_band_number <= kband2
-
-    def run_export_orbitals(self):
-        self.report("Running pp.x to export KS orbitals")
-        builder = PpCalculation.get_builder()
-        builder.code = self.inputs.pp_code
-        prev_calc = self.ctx.bands_lowres
-        builder.parent_folder = prev_calc.outputs.remote_folder
-        builder.metadata.label = "export_orbitals"
-        builder.metadata.options = self.ctx.export_orbitals_options
-        builder.settings = self.ctx.export_orbitals_settings
-
-        # Modifying the band number.
-        self.ctx.export_orbitals_parameters['INPUTPP'][
-            'kband(1)'] = self.ctx.export_orbitals_band_number
-        self.ctx.export_orbitals_parameters['INPUTPP'][
-            'kband(2)'] = self.ctx.export_orbitals_band_number
-        builder.parameters = Dict(dict=self.ctx.export_orbitals_parameters)
-
-        # Running the calculation.
-        running = self.submit(builder)
-        label = 'export_orbitals_{}'.format(
-            self.ctx.export_orbitals_band_number)
-        self.ctx.export_orbitals_band_number += 1
-        return ToContext(**{label: running})
-
-    # =========================================================================
-    def run_export_spinden(self):
-        self.report("Running pp.x to compute spinden")
-        label = "export_spinden"
-
-        builder = PpCalculation.get_builder()
-        builder.code = self.inputs.pp_code
-        nproc_mach = builder.code.computer.get_default_mpiprocs_per_machine()
-        prev_calc = self.ctx.scf
-        self._check_prev_calc(prev_calc)
-        builder.parent_folder = prev_calc.outputs.remote_folder
-
-        nspin = prev_calc.res.number_of_spin_components
-        nnodes = int(prev_calc.attributes['resources']['num_machines'])
-        npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
-        if nspin == 1:
-            self.report("Skipping, got only one spin channel")
-            return
-
-        builder.parameters = Dict(
-            dict={
-                'INPUTPP': {
-                    'plot_num': 6,  # spin polarization (rho(up)-rho(down))
-                },
-                'PLOT': {
-                    'iflag': 3,  # 3D plot
-                },
-            })
-
-        builder.metadata.label = label
-        builder.metadata.options = {
-            "resources": {
-                "num_machines": nnodes,
-                "num_mpiprocs_per_machine": nproc_mach,
-            },
-            "max_wallclock_seconds": 30 * 60,  # 30 minutes
-            "withmpi": True,
-            "parser_name": "nanotech_empa.pp",
-        }
-
-        builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})
-
-        future = self.submit(builder)
-        return ToContext(**{label: future})
-
-    # =========================================================================
     def run_export_pdos(self):
         self.report("Running projwfc.x to export PDOS")
         label = "export_pdos"
-
+        # ---
+        # check if previous calc was okay
+        error_msg = self._check_prev_calc(self.ctx.bands)
+        if error_msg is not None:
+            return self.exit_codes.CALC_FAILED
+        # ---
         builder = ProjwfcCalculation.get_builder()
         builder.code = self.inputs.projwfc_code
         prev_calc = self.ctx.bands
@@ -385,23 +268,189 @@ class NanoribbonWorkChain(WorkChain):
         return ToContext(**{label: future})
 
     # =========================================================================
-    def _check_prev_calc(self, prev_calc):
-        error = None
-        output_fname = prev_calc.attributes['output_filename']
-        if not prev_calc.is_finished_ok:
-            error = "Previous calculation failed"  #in state: "+prev_calc.get_state()
-        elif output_fname not in prev_calc.outputs.retrieved.list_object_names(
-        ):
-            error = "Previous calculation did not retrive {}".format(
-                output_fname)
+    def run_bands_lowres(self):
+        self.report("Running bands with fewer kpt to export KS")
+        # ---
+        # check if previous calc was okay
+        error_msg = self._check_prev_calc(self.ctx.export_pdos)
+        if error_msg is not None:
+            return self.exit_codes.CALC_FAILED
+        # ---
+        prev_calc = self.ctx.scf
+        structure = prev_calc.inputs.structure
+        parent_folder = prev_calc.outputs.remote_folder
+        return self._submit_pw_calc(structure,
+                                    label="bands_lowres",
+                                    parent_folder=parent_folder,
+                                    runtype='bands',
+                                    precision=0.0,
+                                    min_kpoints=int(12),
+                                    max_nodes=self.inputs.max_nodes,
+                                    mem_node=self.inputs.mem_node,
+                                    wallhours=2)
+
+    # =========================================================================
+    def prepare_export_orbitals(self):
+        self.report("Getting ready to export KS orbitals.")
+
+        # Getting and checking the previous calculation.
+        prev_calc = self.ctx.bands_lowres
+        # ---
+        # check if previous calc was okay
+        error_msg = self._check_prev_calc(prev_calc)
+        if error_msg is not None:
+            return self.exit_codes.CALC_FAILED
+        # ---
+        self.ctx.export_orbitals_parameters = {
+            'INPUTPP': {
+                # contribution of a selected wavefunction
+                # to charge density
+                'plot_num':
+                7,
+                'kpoint(1)':
+                int(1),
+                'kpoint(2)':
+                int(prev_calc.res.number_of_k_points *
+                    prev_calc.res.number_of_spin_components),
+                'kband(1)':
+                0,
+                'kband(2)':
+                0,
+            },
+            'PLOT': {
+                'iflag': 3,  # 3D plot
+            },
+        }
+
+        nhours = int(2 + min(22, 2 * int(prev_calc.res.volume / 1500)))
+        self.ctx.export_orbitals_options = {
+            "resources": {
+                "num_machines":
+                int(prev_calc.attributes['resources']['num_machines']),
+                "num_mpiprocs_per_machine":
+                self.inputs.pp_code.computer.get_default_mpiprocs_per_machine(
+                ),
+            },
+            "max_wallclock_seconds": nhours * 60 * 60,  # 6 hours
+            # Add the post-processing python scripts
+            "withmpi": True,
+            "parser_name": "nanotech_empa.pp",
+        }
+        npools = int(prev_calc.inputs.settings['cmdline'][1])
+        self.ctx.export_orbitals_settings = Dict(
+            dict={'cmdline': ["-npools", str(npools)]})
+
+        kband1 = max(
+            int(prev_calc.res.number_of_electrons / 2) - int(1), int(1))
+        self.ctx.first_band = kband1
+        self.ctx.export_orbitals_band_number = kband1
+
+    def should_run_export_orbitals(self):
+        prev_calc = self.ctx.bands_lowres
+        kband2 = min(
+            int(prev_calc.res.number_of_electrons / 2) + int(2),
+            int(prev_calc.res.number_of_bands))
+        return self.ctx.export_orbitals_band_number <= kband2
+
+    def run_export_orbitals(self):
+        self.report("Running pp.x to export KS orbitals")
+        # ---
+        # check if previous calc was okay
+        if self.ctx.export_orbitals_band_number == self.ctx.first_band:
+            to_check = 'bands_lowres'
         else:
-            content = prev_calc.outputs.retrieved.get_object_content(
-                output_fname)
-            if "JOB DONE." not in content:
-                error = "Previous calculation not DONE."
-        if error:
-            self.report("ERROR: " + error)
-            return ExitCode(450)
+            to_check = 'export_orbitals_{}'.format(
+                self.ctx.export_orbitals_band_number - 1)
+
+        error_msg = self._check_prev_calc(getattr(self.ctx, to_check))
+        if error_msg is not None:
+            return self.exit_codes.CALC_FAILED
+        # ---
+        builder = PpCalculation.get_builder()
+        builder.code = self.inputs.pp_code
+        prev_calc = self.ctx.bands_lowres
+        builder.parent_folder = prev_calc.outputs.remote_folder
+        builder.metadata.label = "export_orbitals"
+        builder.metadata.options = self.ctx.export_orbitals_options
+        builder.settings = self.ctx.export_orbitals_settings
+
+        # Modifying the band number.
+        self.ctx.export_orbitals_parameters['INPUTPP'][
+            'kband(1)'] = self.ctx.export_orbitals_band_number
+        self.ctx.export_orbitals_parameters['INPUTPP'][
+            'kband(2)'] = self.ctx.export_orbitals_band_number
+        builder.parameters = Dict(dict=self.ctx.export_orbitals_parameters)
+
+        # Running the calculation.
+        running = self.submit(builder)
+        label = 'export_orbitals_{}'.format(
+            self.ctx.export_orbitals_band_number)
+        self.ctx.export_orbitals_band_number += 1
+        return ToContext(**{label: running})
+
+    # =========================================================================
+    def run_export_spinden(self):
+        self.report("Running pp.x to compute spinden")
+        label = "export_spinden"
+        last_ks = 'export_orbitals_{}'.format(
+            self.ctx.export_orbitals_band_number - 1)
+        # ---
+        # check if previous calc was okay
+        error_msg = self._check_prev_calc(getattr(self.ctx, last_ks))
+        if error_msg is not None:
+            return self.exit_codes.CALC_FAILED
+        # ---
+        builder = PpCalculation.get_builder()
+        builder.code = self.inputs.pp_code
+        nproc_mach = builder.code.computer.get_default_mpiprocs_per_machine()
+        prev_calc = self.ctx.scf
+        builder.parent_folder = prev_calc.outputs.remote_folder
+
+        nspin = prev_calc.res.number_of_spin_components
+        nnodes = int(prev_calc.attributes['resources']['num_machines'])
+        npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
+        if nspin == 1:
+            self.report("Skipping, got only one spin channel")
+            return
+
+        builder.parameters = Dict(
+            dict={
+                'INPUTPP': {
+                    'plot_num': 6,  # spin polarization (rho(up)-rho(down))
+                },
+                'PLOT': {
+                    'iflag': 3,  # 3D plot
+                },
+            })
+
+        builder.metadata.label = label
+        builder.metadata.options = {
+            "resources": {
+                "num_machines": nnodes,
+                "num_mpiprocs_per_machine": nproc_mach,
+            },
+            "max_wallclock_seconds": 30 * 60,  # 30 minutes
+            "withmpi": True,
+            "parser_name": "nanotech_empa.pp",
+        }
+
+        builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})
+
+        future = self.submit(builder)
+        return ToContext(**{label: future})
+
+    # =========================================================================
+
+    def _check_prev_calc(self, prev_calc):
+        #error = None
+        #output_fname = prev_calc.attributes['output_filename']
+        if not prev_calc.is_finished_ok:
+            if prev_calc.exit_status >= 500:
+                self.report("Warning: previous step: " +
+                            prev_calc.exit_message)
+            else:
+                self.report("ERROR: previous step: " + prev_calc.exit_message)
+                return self.exit_codes.CALC_FAILED
 
     # =========================================================================
     def _submit_pw_calc(  # pylint: disable=too-many-arguments
