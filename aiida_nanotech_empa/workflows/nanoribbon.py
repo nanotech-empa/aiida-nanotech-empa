@@ -138,6 +138,7 @@ class NanoribbonWorkChain(WorkChain):
         natoms = len(prev_calc.inputs.structure.attributes['sites'])
         nnodes = min(self.inputs.max_nodes,
                      (1 + int(natoms / self.inputs.mem_node)))
+        # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
         npools = 1
         #nnodes = int(prev_calc.attributes['resources']['num_machines'])
         #npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
@@ -228,6 +229,7 @@ class NanoribbonWorkChain(WorkChain):
         }
 
         nhours = int(2 + min(22, 2 * int(prev_calc.res.volume / 1500)))
+        # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
         natoms = len(prev_calc.inputs.structure.attributes['sites'])
         nnodes = min(self.inputs.max_nodes,
                      (1 + int(natoms / self.inputs.mem_node)))
@@ -301,6 +303,7 @@ class NanoribbonWorkChain(WorkChain):
         natoms = len(prev_calc.inputs.structure.attributes['sites'])
         nnodes = min(self.inputs.max_nodes,
                      (1 + int(natoms / self.inputs.mem_node)))
+        # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
         npools = 1
         #nnodes = int(prev_calc.attributes['resources']['num_machines'])
         #npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
