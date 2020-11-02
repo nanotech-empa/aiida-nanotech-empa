@@ -470,7 +470,6 @@ class NanoribbonWorkChain(WorkChain):
 
     def run_closing(self):
         self.report("Running final check")
-        label = "final_check"
         # Getting and checking the previous calculation.
         nspin = self.ctx.scf.res.number_of_spin_components
 
