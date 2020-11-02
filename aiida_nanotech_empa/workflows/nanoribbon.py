@@ -18,10 +18,10 @@ class NanoribbonWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(NanoribbonWorkChain, cls).define(spec)
-        spec.input("testing",
+        spec.input("max_kpoints",
                    valid_type=Int,
-                   default=lambda: Int(0),
-                   required=False)        
+                   default=lambda: Int(120),
+                   required=False)
         spec.input("max_nodes",
                    valid_type=Int,
                    default=lambda: Int(24),
@@ -105,8 +105,7 @@ class NanoribbonWorkChain(WorkChain):
             return self.exit_codes.CALC_FAILED
         # ---
         structure = prev_calc.outputs.output_structure
-        min_kpoints=int(10)
-        if self.inputs.testing.value > 0 : min_kpoints=int(2)
+        min_kpoints = min(int(10), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
                                     label="scf",
                                     runtype='scf',
@@ -204,8 +203,7 @@ class NanoribbonWorkChain(WorkChain):
         prev_calc = self.ctx.scf
         structure = prev_calc.inputs.structure
         parent_folder = prev_calc.outputs.remote_folder
-        min_kpoints=int(20)
-        if self.inputs.testing.value > 0 : min_kpoints=int(2)        
+        min_kpoints = min(int(20), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
                                     label="bands",
                                     parent_folder=parent_folder,
@@ -296,8 +294,7 @@ class NanoribbonWorkChain(WorkChain):
         prev_calc = self.ctx.scf
         structure = prev_calc.inputs.structure
         parent_folder = prev_calc.outputs.remote_folder
-        min_kpoints=int(12)
-        if self.inputs.testing.value > 0 : min_kpoints=int(2)        
+        min_kpoints = min(int(12), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
                                     label="bands_lowres",
                                     parent_folder=parent_folder,
@@ -349,7 +346,8 @@ class NanoribbonWorkChain(WorkChain):
         npools = 1
         self.ctx.export_orbitals_options = {
             "resources": {
-                "num_machines": int(nnodes),
+                "num_machines":
+                int(nnodes),
                 #int(prev_calc.attributes['resources']['num_machines']),
                 "num_mpiprocs_per_machine":
                 self.inputs.pp_code.computer.get_default_mpiprocs_per_machine(
@@ -474,20 +472,19 @@ class NanoribbonWorkChain(WorkChain):
         self.report("Running final check")
         label = "final_check"
         # Getting and checking the previous calculation.
-        nspin=self.ctx.scf.res.number_of_spin_components
+        nspin = self.ctx.scf.res.number_of_spin_components
 
-        
         # ---
         # check if previous calc was okay
-        if nspin >1 :
+        if nspin > 1:
             prev_calc = self.ctx.export_spinden
             error_msg = self._check_prev_calc(prev_calc)
             if error_msg is not None:
                 return self.exit_codes.CALC_FAILED
-        
+
         self.report("END of workchain")
-        return    
-    
+        return
+
     def _check_prev_calc(self, prev_calc):
         #error = None
         #output_fname = prev_calc.attributes['output_filename']
@@ -525,13 +522,14 @@ class NanoribbonWorkChain(WorkChain):
 
         # kpoints
         cell_a = builder.structure.cell[0][0]
-        precision *= self.inputs.precision.value        
+        precision *= self.inputs.precision.value
         nkpoints = max(min_kpoints, int(30 * 2.5 / cell_a * precision))
-        
-        if self.inputs.testing.value >0: 
-            self.report("testing run, instead of  " + str(nkpoints) +" k-points, using " + str(min_kpoints))
-            nkpoints = min_kpoints ## for test runs minimal memory
-        
+
+        if self.inputs.max_kpoints.value < nkpoints:
+            self.report("max kpoints exceeded, instead of  " + str(nkpoints) +
+                        " k-points, using " + str(min_kpoints))
+            nkpoints = self.inputs.max_kpoints.value  ## for test runs minimal memory
+
         use_symmetry = runtype != "bands"
         kpoints = self._get_kpoints(nkpoints, use_symmetry=use_symmetry)
         builder.kpoints = kpoints
@@ -567,7 +565,8 @@ class NanoribbonWorkChain(WorkChain):
             for i in range(max_npools):
                 if nnodes * cpus_per_node % (i + 1) == 0:
                     npools = i + 1
-        if nnodes ==1 and builder.code.computer.get_default_mpiprocs_per_machine() == 1:
+        if nnodes == 1 and builder.code.computer.get_default_mpiprocs_per_machine(
+        ) == 1:
             npools = 1
         builder.metadata.label = label
         #nnodes.store
@@ -580,10 +579,7 @@ class NanoribbonWorkChain(WorkChain):
         }
 
         builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})
-        
-        
-        if self.inputs.testing.value >0: self.report("testing run, builder: " + str(builder))
-        
+
         future = self.submit(builder)
         return ToContext(**{label: future})
 
