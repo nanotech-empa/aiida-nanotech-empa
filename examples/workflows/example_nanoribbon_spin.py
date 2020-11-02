@@ -1,5 +1,6 @@
 from ase.io import read
-from aiida.orm import Code
+from aiida.orm import Code, Float, Int, Str
+from aiida.plugins import DataFactory, WorkflowFactory
 from aiida.engine import run
 
 # AiiDA classes.
