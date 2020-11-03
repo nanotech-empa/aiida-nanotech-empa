@@ -18,18 +18,25 @@ class NanoribbonWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(NanoribbonWorkChain, cls).define(spec)
+        spec.input("max_kpoints",
+                   valid_type=Int,
+                   default=lambda: Int(120),
+                   required=False)
         spec.input("max_nodes",
                    valid_type=Int,
-                   default=Int(24),
+                   default=lambda: Int(24),
                    required=False)
-        spec.input("mem_node", valid_type=Int, default=Int(64), required=False)
+        spec.input("mem_node",
+                   valid_type=Int,
+                   default=lambda: Int(64),
+                   required=False)
         spec.input("pw_code", valid_type=Code)
         spec.input("pp_code", valid_type=Code)
         spec.input("projwfc_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
         spec.input("precision",
                    valid_type=Float,
-                   default=Float(1.0),
+                   default=lambda: Float(1.0),
                    required=False)
         spec.input(
             'pseudo_family',
@@ -53,6 +60,7 @@ class NanoribbonWorkChain(WorkChain):
             cls.prepare_export_orbitals,
             while_(cls.should_run_export_orbitals)(cls.run_export_orbitals, ),
             cls.run_export_spinden,
+            cls.run_closing,
         )
         spec.outputs.dynamic = True
 
@@ -66,8 +74,8 @@ class NanoribbonWorkChain(WorkChain):
                                     runtype='vc-relax',
                                     precision=0.5,
                                     min_kpoints=int(1),
-                                    max_nodes=self.inputs.max_nodes,
-                                    mem_node=self.inputs.mem_node)
+                                    max_nodes=self.inputs.max_nodes.value,
+                                    mem_node=self.inputs.mem_node.value)
 
     # =========================================================================
     def run_cell_opt2(self):
@@ -84,8 +92,8 @@ class NanoribbonWorkChain(WorkChain):
                                     runtype='vc-relax',
                                     precision=1.0,
                                     min_kpoints=int(1),
-                                    max_nodes=self.inputs.max_nodes,
-                                    mem_node=self.inputs.mem_node)
+                                    max_nodes=self.inputs.max_nodes.value,
+                                    mem_node=self.inputs.mem_node.value)
 
     # =========================================================================
     def run_scf(self):
@@ -97,13 +105,14 @@ class NanoribbonWorkChain(WorkChain):
             return self.exit_codes.CALC_FAILED
         # ---
         structure = prev_calc.outputs.output_structure
+        min_kpoints = min(int(10), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
                                     label="scf",
                                     runtype='scf',
                                     precision=3.0,
-                                    min_kpoints=int(10),
-                                    max_nodes=self.inputs.max_nodes,
-                                    mem_node=self.inputs.mem_node,
+                                    min_kpoints=min_kpoints,
+                                    max_nodes=self.inputs.max_nodes.value,
+                                    mem_node=self.inputs.mem_node.value,
                                     wallhours=4)
 
     # =========================================================================
@@ -152,8 +161,8 @@ class NanoribbonWorkChain(WorkChain):
             })
 
         natoms = len(prev_calc.inputs.structure.attributes['sites'])
-        nnodes = min(self.inputs.max_nodes,
-                     (1 + int(natoms / self.inputs.mem_node)))
+        nnodes = min(self.inputs.max_nodes.value,
+                     (1 + int(natoms / self.inputs.mem_node.value)))
         # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
         npools = 1
         #nnodes = int(prev_calc.attributes['resources']['num_machines'])
@@ -164,7 +173,7 @@ class NanoribbonWorkChain(WorkChain):
 
         builder.metadata.options = {
             "resources": {
-                "num_machines": nnodes,
+                "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": nproc_mach,
             },
             "max_wallclock_seconds": 1200,  # 30 minutes
@@ -194,14 +203,15 @@ class NanoribbonWorkChain(WorkChain):
         prev_calc = self.ctx.scf
         structure = prev_calc.inputs.structure
         parent_folder = prev_calc.outputs.remote_folder
+        min_kpoints = min(int(20), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
                                     label="bands",
                                     parent_folder=parent_folder,
                                     runtype='bands',
                                     precision=4.0,
-                                    min_kpoints=int(20),
-                                    max_nodes=self.inputs.max_nodes,
-                                    mem_node=self.inputs.mem_node,
+                                    min_kpoints=min_kpoints,
+                                    max_nodes=self.inputs.max_nodes.value,
+                                    mem_node=self.inputs.mem_node.value,
                                     wallhours=6)
 
     # =========================================================================
@@ -255,7 +265,7 @@ class NanoribbonWorkChain(WorkChain):
         builder.metadata.label = label
         builder.metadata.options = {
             "resources": {
-                "num_machines": nnodes,
+                "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": nproc_mach,
             },
             "max_wallclock_seconds": nhours * 60 * 60,  # hours
@@ -284,14 +294,15 @@ class NanoribbonWorkChain(WorkChain):
         prev_calc = self.ctx.scf
         structure = prev_calc.inputs.structure
         parent_folder = prev_calc.outputs.remote_folder
+        min_kpoints = min(int(12), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
                                     label="bands_lowres",
                                     parent_folder=parent_folder,
                                     runtype='bands',
                                     precision=0.0,
-                                    min_kpoints=int(12),
-                                    max_nodes=self.inputs.max_nodes,
-                                    mem_node=self.inputs.mem_node,
+                                    min_kpoints=min_kpoints,
+                                    max_nodes=self.inputs.max_nodes.value,
+                                    mem_node=self.inputs.mem_node.value,
                                     wallhours=2)
 
     # =========================================================================
@@ -330,13 +341,13 @@ class NanoribbonWorkChain(WorkChain):
         nhours = int(2 + min(22, 2 * int(prev_calc.res.volume / 1500)))
         # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
         natoms = len(prev_calc.inputs.structure.attributes['sites'])
-        nnodes = min(self.inputs.max_nodes,
-                     (1 + int(natoms / self.inputs.mem_node)))
+        nnodes = min(self.inputs.max_nodes.value,
+                     (1 + int(natoms / self.inputs.mem_node.value)))
         npools = 1
         self.ctx.export_orbitals_options = {
             "resources": {
                 "num_machines":
-                nnodes,
+                int(nnodes),
                 #int(prev_calc.attributes['resources']['num_machines']),
                 "num_mpiprocs_per_machine":
                 self.inputs.pp_code.computer.get_default_mpiprocs_per_machine(
@@ -419,8 +430,8 @@ class NanoribbonWorkChain(WorkChain):
 
         nspin = prev_calc.res.number_of_spin_components
         natoms = len(prev_calc.inputs.structure.attributes['sites'])
-        nnodes = min(self.inputs.max_nodes,
-                     (1 + int(natoms / self.inputs.mem_node)))
+        nnodes = min(self.inputs.max_nodes.value,
+                     (1 + int(natoms / self.inputs.mem_node.value)))
         # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
         npools = 1
         #nnodes = int(prev_calc.attributes['resources']['num_machines'])
@@ -442,7 +453,7 @@ class NanoribbonWorkChain(WorkChain):
         builder.metadata.label = label
         builder.metadata.options = {
             "resources": {
-                "num_machines": nnodes,
+                "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": nproc_mach,
             },
             "max_wallclock_seconds": 30 * 60,  # 30 minutes
@@ -456,6 +467,22 @@ class NanoribbonWorkChain(WorkChain):
         return ToContext(**{label: future})
 
     # =========================================================================
+
+    def run_closing(self):
+        self.report("Running final check")
+        # Getting and checking the previous calculation.
+        nspin = self.ctx.scf.res.number_of_spin_components
+
+        # ---
+        # check if previous calc was okay
+        if nspin > 1:
+            prev_calc = self.ctx.export_spinden
+            error_msg = self._check_prev_calc(prev_calc)
+            if error_msg is not None:
+                return self.exit_codes.CALC_FAILED
+
+        self.report("END of workchain")
+        return
 
     def _check_prev_calc(self, prev_calc):
         #error = None
@@ -496,6 +523,12 @@ class NanoribbonWorkChain(WorkChain):
         cell_a = builder.structure.cell[0][0]
         precision *= self.inputs.precision.value
         nkpoints = max(min_kpoints, int(30 * 2.5 / cell_a * precision))
+
+        if self.inputs.max_kpoints.value < nkpoints:
+            self.report("max kpoints exceeded, instead of  " + str(nkpoints) +
+                        " k-points, using " + str(min_kpoints))
+            nkpoints = self.inputs.max_kpoints.value  ## for test runs minimal memory
+
         use_symmetry = runtype != "bands"
         kpoints = self._get_kpoints(nkpoints, use_symmetry=use_symmetry)
         builder.kpoints = kpoints
@@ -531,11 +564,14 @@ class NanoribbonWorkChain(WorkChain):
             for i in range(max_npools):
                 if nnodes * cpus_per_node % (i + 1) == 0:
                     npools = i + 1
-
+        if nnodes == 1 and builder.code.computer.get_default_mpiprocs_per_machine(
+        ) == 1:
+            npools = 1
         builder.metadata.label = label
+        #nnodes.store
         builder.metadata.options = {
             "resources": {
-                "num_machines": nnodes
+                "num_machines": int(nnodes)
             },
             "withmpi": True,
             "max_wallclock_seconds": wallhours * 60 * 60,
