@@ -367,14 +367,16 @@ class NanoribbonWorkChain(WorkChain):
             dict={'cmdline': ["-npools", str(npools)]})
 
         kband1 = max(
-            int(prev_calc.res.number_of_electrons / 2) - int(self.inputs.num_export_bands.value / 2) + 1, 1)
+            int(prev_calc.res.number_of_electrons / 2) -
+            int(self.inputs.num_export_bands.value / 2) + 1, 1)
         self.ctx.first_band = kband1
         self.ctx.export_orbitals_band_number = kband1
 
     def should_run_export_orbitals(self):
         prev_calc = self.ctx.bands_lowres
         kband2 = min(
-            int(prev_calc.res.number_of_electrons / 2) + int(self.inputs.num_export_bands.value / 2),
+            int(prev_calc.res.number_of_electrons / 2) +
+            int(self.inputs.num_export_bands.value / 2),
             int(prev_calc.res.number_of_bands))
         return self.ctx.export_orbitals_band_number <= kband2
 
