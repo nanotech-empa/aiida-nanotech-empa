@@ -38,6 +38,10 @@ class NanoribbonWorkChain(WorkChain):
                    valid_type=Float,
                    default=lambda: Float(1.0),
                    required=False)
+        spec.input("num_export_bands",
+                   valid_type=Int,
+                   default=lambda: Int(8),
+                   required=False)
         spec.input(
             'pseudo_family',
             valid_type=Str,
@@ -363,14 +367,14 @@ class NanoribbonWorkChain(WorkChain):
             dict={'cmdline': ["-npools", str(npools)]})
 
         kband1 = max(
-            int(prev_calc.res.number_of_electrons / 2) - int(1), int(1))
+            int(prev_calc.res.number_of_electrons / 2) - int(self.inputs.num_export_bands.value / 2) + 1, 1)
         self.ctx.first_band = kband1
         self.ctx.export_orbitals_band_number = kband1
 
     def should_run_export_orbitals(self):
         prev_calc = self.ctx.bands_lowres
         kband2 = min(
-            int(prev_calc.res.number_of_electrons / 2) + int(2),
+            int(prev_calc.res.number_of_electrons / 2) + int(self.inputs.num_export_bands.value / 2),
             int(prev_calc.res.number_of_bands))
         return self.ctx.export_orbitals_band_number <= kband2
 
