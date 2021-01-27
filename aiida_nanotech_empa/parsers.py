@@ -3,7 +3,7 @@
 Register parsers via the "aiida.parsers" entry point in setup.json.
 """
 import numpy as np
-from .utils import clip_data, crop_cube, read_cube_file, write_cube_file
+from .utils import crop_cube, read_cube_file, write_cube_file
 
 from aiida import orm
 from aiida.plugins import ParserFactory
