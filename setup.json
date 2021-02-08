@@ -1,4 +1,5 @@
 {
+    "version": "0.2.0",
     "name": "aiida-nanotech-empa",
     "author": "nanotech@surfaces",
     "author_email": "",
@@ -12,7 +13,6 @@
         "Natural Language :: English",
         "Framework :: AiiDA"
     ],
-    "version": "0.1.0b1",
     "entry_points": {
         "aiida.parsers": [
             "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser"

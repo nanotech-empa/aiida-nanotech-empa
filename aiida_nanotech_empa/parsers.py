@@ -3,7 +3,7 @@
 Register parsers via the "aiida.parsers" entry point in setup.json.
 """
 import numpy as np
-from .utils import clip_data, crop_cube, read_cube_file, write_cube_file
+from .utils import crop_cube, read_cube_file, write_cube_file
 
 from aiida import orm
 from aiida.plugins import ParserFactory
@@ -24,8 +24,9 @@ class PpParser(BasePpParser):
                                                 origin,
                                                 x_crop=None,
                                                 y_crop=3.5,
-                                                z_crop=3.5)
-        clip_data(new_data, absmin=1e-4)
+                                                z_crop=6.2)
+        # NB! No point in clipping if the file is not compressed!
+        #clip_data(new_data, absmin=1e-8)
         cropped_data_file_str = write_cube_file(numbers, new_pos, new_cell,
                                                 new_data)
         return self.parse_gaussian2(cropped_data_file_str)
