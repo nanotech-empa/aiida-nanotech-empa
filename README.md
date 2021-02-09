@@ -7,7 +7,7 @@ AiiDA library containing plugins/workflows developed at nanotech@surfaces group 
 
 Contents:
 
-* `nanoribbon`: Quantum Espresso based work chain to characterize 1D periodic systems
+* `nanoribbon`: work chain to characterize 1D periodic systems based on Quantum Espresso
 
 ## Installation
 
