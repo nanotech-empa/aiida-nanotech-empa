@@ -9,7 +9,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    if: github.repository == 'yakutovicha/aiida-nanotech-empa' && startsWith(github.ref, 'refs/tags/v')
+    if: github.repository == 'nanotech-empa/aiida-nanotech-empa' && startsWith(github.ref, 'refs/tags/v')
 
     steps:
     - name: Checkout repository

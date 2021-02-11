@@ -3,7 +3,7 @@
     "name": "aiida-nanotech-empa",
     "author": "nanotech@surfaces",
     "author_email": "",
-    "description": "AiiDA plugins and work chains developed at nanotech@surfaces group from Empa.",
+    "description": "AiiDA plugins and workflows developed at nanotech@surfaces group from Empa.",
     "url": "https://github.com/nanotech-empa/aiida-nanotech-empa",
     "license": "MIT",
     "classifiers": [
@@ -19,9 +19,6 @@
         ],
         "aiida.workflows": [
             "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain"
-        ],
-        "aiida.cmdline.data": [
-            "nanotech_empa = aiida_nanotech_empa.cli:data_cli"
         ]
     },
     "include_package_data": true,
@@ -45,12 +42,6 @@
             "pre-commit==1.20.0",
             "prospector==1.1.7",
             "pylint==2.3.1"
-        ],
-        "docs": [
-            "sphinx",
-            "sphinxcontrib-contentui",
-            "sphinxcontrib-details-directive; python_version>='3.0'",
-            "sphinx-rtd-theme"
         ]
     }
 }
