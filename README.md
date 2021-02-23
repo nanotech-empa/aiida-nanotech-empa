@@ -14,7 +14,7 @@ Contents:
   * Different spin states are optimized and ground state is found
   * Ground state properties are calculated: ionization potential and electron affinity with Δ-SCF, natural orbital analysis in case of open-shell singlet
   * Vertical excitation energies for other multiplicities
-  * Orbitals and densities are rendered with PyMOL (needs to be installed separately)
+  * Orbitals and densities are rendered with PyMOL (needs to be installed separately as a python library, e.g. from [pymol-open-source](https://github.com/schrodinger/pymol-open-source/tree/v2.4.0))
 
 ## Installation
 
