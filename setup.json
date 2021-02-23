@@ -15,10 +15,16 @@
     ],
     "entry_points": {
         "aiida.parsers": [
-            "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser"
+            "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser",
+            "nanotech_empa.gaussian.cubegen_pymol = aiida_nanotech_empa.gaussian.parsers.cubegen_pymol_parser:CubegenPymolParser"
         ],
         "aiida.workflows": [
-            "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain"
+            "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain",
+            "nanotech_empa.gaussian.scf_cubes = aiida_nanotech_empa.gaussian.workflows:GaussianScfCubesWorkChain",
+            "nanotech_empa.gaussian.spin_opt = aiida_nanotech_empa.gaussian.workflows:GaussianSpinOptWorkChain",
+            "nanotech_empa.gaussian.delta_scf = aiida_nanotech_empa.gaussian.workflows:GaussianDeltaScfWorkChain",
+            "nanotech_empa.gaussian.radical = aiida_nanotech_empa.gaussian.workflows:GaussianRadicalWorkChain",
+            "nanotech_empa.gaussian.spin = aiida_nanotech_empa.gaussian.workflows:GaussianSpinWorkChain"
         ]
     },
     "include_package_data": true,
@@ -27,7 +33,9 @@
     "install_requires": [
         "aiida-core>=1.2.1,<2.0.0",
         "aiida-quantumespresso>=3.1.0",
-	"ase>=3.0"
+        "ase>=3.0",
+        "aiida-gaussian>=1.0.0",
+        "Pillow>=8.0.0"
     ],
     "extras_require": {
         "testing": [
