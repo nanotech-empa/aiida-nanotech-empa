@@ -52,7 +52,7 @@ def print_orb_energies(prop_dict, n_orb=4):
 
 def print_out_params(out_params):
 
-    if len(out_params["spin_expectation_values"]) > 0:
+    if out_params["spin_expectation_values"]:
         spin_dict = out_params["spin_expectation_values"][-1]
         s_ideal = (out_params['mult'] - 1) / 2
         print("S**2: {0:.3f}, ideal: {1:.1f}".format(spin_dict['S**2'],

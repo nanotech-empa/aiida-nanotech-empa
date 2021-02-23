@@ -8,7 +8,7 @@ import tempfile
 
 from PIL import Image, ImageOps
 
-from pymol import cmd
+from pymol import cmd  # pylint: disable=import-error
 
 
 def load_cube_atoms(cube_file):
