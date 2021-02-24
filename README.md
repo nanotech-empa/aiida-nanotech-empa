@@ -11,9 +11,9 @@ Contents:
 
 * `nanotech_empa.gaussian.spin`: Work chain to characterize spin properties of molecular systems with Gaussian. Calls multiple child work chains. Steps:
   * Wavefunction stability is tested for each spin multiplicity
-  * Different spin states are optimized and ground state is found
-  * Ground state properties are calculated: ionization potential and electron affinity with Δ-SCF, natural orbital analysis in case of open-shell singlet
-  * Vertical excitation energies for other multiplicities
+  * Geometry is relaxed for the different spin states and ground state is found
+  * Property calcuation on the ground state: ionization potential and electron affinity with Δ-SCF, natural orbital analysis in case of open-shell singlet
+  * Vertical excitation energies for non-ground state multiplicities
   * Orbitals and densities are rendered with PyMOL (needs to be installed separately as a python library, e.g. from [pymol-open-source](https://github.com/schrodinger/pymol-open-source/tree/v2.4.0))
 
 ## Installation
