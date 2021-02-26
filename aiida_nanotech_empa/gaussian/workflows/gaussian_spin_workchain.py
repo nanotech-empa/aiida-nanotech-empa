@@ -69,7 +69,7 @@ class GaussianSpinWorkChain(WorkChain):
 
         for mult in self.inputs.multiplicity_list:
 
-            label = "m%d_opt" % mult
+            label = f"m{mult}_opt"
 
             submitted_node = self.submit(
                 GaussianSpinOptWorkChain,
@@ -90,7 +90,7 @@ class GaussianSpinWorkChain(WorkChain):
         opt_energies = []
 
         for mult in self.inputs.multiplicity_list:
-            label = "m%d_opt" % mult
+            label = f"m{mult}_opt"
 
             # check if everything finished nicely
             if not common.check_if_previous_calc_ok(self, self.ctx[label]):
@@ -98,12 +98,12 @@ class GaussianSpinWorkChain(WorkChain):
 
             opt_energy = self.ctx[label].outputs.scf_energy
             opt_energies.append(opt_energy)
-            self.out("m%d_opt_energy" % mult, opt_energy)
-            self.out("m%d_opt_structure" % mult,
+            self.out(f"m{mult}_opt_energy", opt_energy)
+            self.out(f"m{mult}_opt_structure",
                      self.ctx[label].outputs.opt_structure)
-            self.out("m%d_opt_out_params" % mult,
+            self.out(f"m{mult}_opt_out_params",
                      self.ctx[label].outputs.scf_out_params)
-            self.out("m%d_opt_cube_images" % mult,
+            self.out(f"m{mult}_opt_cube_images",
                      self.ctx[label].outputs.cube_image_folder)
 
         gs_i = np.argmin(opt_energies)
@@ -119,16 +119,16 @@ class GaussianSpinWorkChain(WorkChain):
         self.ctx.gs_mult = Int(self.inputs.multiplicity_list[gs_i]).store()
         self.ctx.gs_energy = opt_energies[gs_i]
         self.ctx.gs_structure = self.ctx[
-            "m%d_opt" % self.ctx.gs_mult].outputs.opt_structure
+            f"m{self.ctx.gs_mult}_opt"].outputs.opt_structure
 
         self.out("gs_multiplicity", self.ctx.gs_mult)
         self.out("gs_energy", self.ctx.gs_energy)
         self.out("gs_structure", self.ctx.gs_structure)
         self.out("gs_out_params",
-                 self.ctx["m%d_opt" % self.ctx.gs_mult].outputs.scf_out_params)
+                 self.ctx[f"m{self.ctx.gs_mult}_opt"].outputs.scf_out_params)
 
-        self.ctx.gs_scf_calcnode = self.ctx[
-            "m%d_opt" % self.ctx.gs_mult].called[0].called[-1]
+        self.ctx.gs_scf_calcnode = self.ctx[f"m{self.ctx.gs_mult}_opt"].called[
+            0].called[-1]
 
         return ExitCode(0)
 
@@ -200,8 +200,8 @@ class GaussianSpinWorkChain(WorkChain):
 
         for mult in self.inputs.multiplicity_list:
 
-            label = "m%d_vert" % mult
-            opt_label = "m%d_opt" % mult
+            label = f"m{mult}_vert"
+            opt_label = f"m{mult}_opt"
 
             if mult == self.ctx.gs_mult:
                 continue
@@ -253,7 +253,7 @@ class GaussianSpinWorkChain(WorkChain):
         # ------------------------------------------------------
         for mult in self.inputs.multiplicity_list:
 
-            label = "m%d_vert" % mult
+            label = f"m{mult}_vert"
 
             if mult == self.ctx.gs_mult:
                 continue
@@ -263,10 +263,10 @@ class GaussianSpinWorkChain(WorkChain):
                 return self.exit_codes.ERROR_TERMINATION
 
             vert_energy = self.ctx[label].outputs.scf_energy
-            self.out("m%d_vert_energy" % mult, vert_energy)
-            self.out("m%d_vert_out_params" % mult,
+            self.out(f"m{mult}_vert_energy", vert_energy)
+            self.out(f"m{mult}_vert_out_params",
                      self.ctx[label].outputs.scf_out_params)
-            self.out("m%d_vert_cube_images" % mult,
+            self.out(f"m{mult}_vert_cube_images",
                      self.ctx[label].outputs.cube_image_folder)
 
         return ExitCode(0)
