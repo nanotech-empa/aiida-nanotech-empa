@@ -31,7 +31,7 @@ class CubegenPymolParser(CubegenBaseParser):
                     for iv in isovalues:
                         pr.make_pymol_png(filepath,
                                           isov=iv,
-                                          colors=['tv_red', 'marine'],
+                                          colors=['tv_red', (0.0, 0.4, 1.0)],
                                           output_folder=image_folder.name)
 
         image_folder_node = FolderData(tree=image_folder.name)
