@@ -18,7 +18,9 @@
             "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser"
         ],
         "aiida.workflows": [
-            "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain"
+            "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain",
+            "nanotech_empa.cp2k_molecule_opt = aiida_nanotech_empa.cp2k.workflows.molecule_opt_workchain:Cp2kMoleculeOptWorkChain",
+            "nanotech_empa.cp2k_molecule_gw =  aiida_nanotech_empa.cp2k.workflows.molecule_gw_workchain:Cp2kMoleculeGwWorkChain"
         ]
     },
     "include_package_data": true,
@@ -27,7 +29,7 @@
     "install_requires": [
         "aiida-core>=1.2.1,<2.0.0",
         "aiida-quantumespresso>=3.1.0",
-	"ase>=3.0"
+        "ase>=3.0"
     ],
     "extras_require": {
         "testing": [

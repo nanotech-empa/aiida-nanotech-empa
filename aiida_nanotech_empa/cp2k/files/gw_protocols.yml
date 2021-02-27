@@ -1,0 +1,270 @@
+gw_first_step:
+  FORCE_EVAL:
+    METHOD: Quickstep
+    DFT:
+      RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+      BASIS_SET_FILE_NAME: GW_BASIS_SET
+      POTENTIAL_FILE_NAME: ALL_POTENTIALS
+      UKS: '.FALSE.'
+      MULTIPLICITY: '0'
+      MGRID:
+        CUTOFF: '600'
+        REL_CUTOFF: '50'
+      QS:
+        METHOD: GAPW
+        EPS_PGF_ORB: '1.0E-80'
+        EPS_FILTER_MATRIX: '1.0E-80'
+      POISSON:
+        PERIODIC: NONE
+        PSOLVER: MT
+      SCF:
+        EPS_SCF: '1.0E-6'
+        SCF_GUESS: ATOMIC
+        MAX_SCF: '80'
+        LEVEL_SHIFT: '0.1'
+        CHOLESKY: 'OFF'
+      XC:
+        XC_FUNCTIONAL:
+          _: PBE
+    SUBSYS:
+      CELL:
+        PERIODIC: NONE
+  GLOBAL:
+    RUN_TYPE: ENERGY
+    PRINT_LEVEL: MEDIUM
+    EXTENDED_FFT_LENGTHS: ''
+gw_second_step:
+  FORCE_EVAL:
+    METHOD: Quickstep
+    DFT:
+      RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+      BASIS_SET_FILE_NAME: GW_BASIS_SET
+      POTENTIAL_FILE_NAME: ALL_POTENTIALS
+      UKS: ''
+      MULTIPLICITY: '0'
+      MGRID:
+        CUTOFF: '600'
+        REL_CUTOFF: '50'
+      QS:
+        METHOD: GAPW
+        EPS_PGF_ORB: '1.0E-80'
+        EPS_FILTER_MATRIX: '1.0E-80'
+      POISSON:
+        PERIODIC: NONE
+        PSOLVER: MT
+      SCF:
+        EPS_SCF: '1.0E-6'
+        SCF_GUESS: RESTART
+        MAX_SCF: '50'
+        OT:
+          PRECONDITIONER: FULL_ALL
+          MINIMIZER: BROYDEN
+        OUTER_SCF:
+          MAX_SCF: '20'
+          EPS_SCF: '1.0E-6'
+        CHOLESKY: 'OFF'
+        EPS_EIGVAL: '1.0E-6'
+      XC:
+        XC_FUNCTIONAL:
+          _: PBE
+        WF_CORRELATION:
+          RI_RPA:
+            RPA_NUM_QUAD_POINTS: '120'
+            GW:
+              CORR_MOS_OCC: '1'
+              CORR_MOS_VIRT: '1'
+              EV_GW_ITER: '1'
+              RI_SIGMA_X: ''
+    SUBSYS:
+      CELL:
+        PERIODIC: NONE
+  GLOBAL:
+    RUN_TYPE: ENERGY
+    PRINT_LEVEL: MEDIUM
+    EXTENDED_FFT_LENGTHS: ''
+gw_ic_second_step:
+  FORCE_EVAL:
+    METHOD: Quickstep
+    DFT:
+      RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+      BASIS_SET_FILE_NAME: GW_BASIS_SET
+      POTENTIAL_FILE_NAME: ALL_POTENTIALS
+      UKS: ''
+      MULTIPLICITY: '0'
+      MGRID:
+        CUTOFF: '600'
+        REL_CUTOFF: '50'
+      QS:
+        METHOD: GAPW
+        EPS_PGF_ORB: '1.0E-80'
+        EPS_FILTER_MATRIX: '1.0E-80'
+      POISSON:
+        PERIODIC: NONE
+        PSOLVER: MT
+      SCF:
+        EPS_SCF: '1.0E-6'
+        SCF_GUESS: RESTART
+        MAX_SCF: '50'
+        OT:
+          PRECONDITIONER: FULL_ALL
+          MINIMIZER: BROYDEN
+        OUTER_SCF:
+          MAX_SCF: '20'
+          EPS_SCF: '1.0E-6'
+        CHOLESKY: 'OFF'
+        EPS_EIGVAL: '1.0E-6'
+      XC:
+        XC_FUNCTIONAL:
+          _: PBE
+        WF_CORRELATION:
+          RI:
+            RI_METRIC:
+              POTENTIAL_TYPE: IDENTITY
+          LOW_SCALING: {}
+          RI_RPA:
+            GW:
+              CORR_MOS_OCC: '1'
+              CORR_MOS_VIRT: '1'
+              IC:
+              - ''
+              - {}
+    SUBSYS:
+      CELL:
+        PERIODIC: NONE
+  GLOBAL:
+    RUN_TYPE: ENERGY
+    PRINT_LEVEL: MEDIUM
+    EXTENDED_FFT_LENGTHS: ''
+gw_hq_first_step:
+  FORCE_EVAL:
+    METHOD: Quickstep
+    DFT:
+      RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+      BASIS_SET_FILE_NAME: GW_BASIS_SET
+      POTENTIAL_FILE_NAME: ALL_POTENTIALS
+      UKS: ''
+      MULTIPLICITY: '0'
+      MGRID:
+        CUTOFF: '600'
+        REL_CUTOFF: '50'
+      QS:
+        METHOD: GAPW
+        EPS_PGF_ORB: '1.0E-80'
+        EPS_FILTER_MATRIX: '1.0E-80'
+      POISSON:
+        PERIODIC: NONE
+        PSOLVER: MT
+      SCF:
+        EPS_SCF: '1.0E-6'
+        SCF_GUESS: ATOMIC
+        MAX_SCF: '40'
+        LEVEL_SHIFT: '0.2'
+        CHOLESKY: 'OFF'
+      XC:
+        XC_FUNCTIONAL:
+          _: PBE
+    SUBSYS:
+      CELL:
+        PERIODIC: NONE
+  GLOBAL:
+    RUN_TYPE: ENERGY
+    PRINT_LEVEL: MEDIUM
+    EXTENDED_FFT_LENGTHS: ''
+gw_hq_second_step:
+  FORCE_EVAL:
+    METHOD: Quickstep
+    DFT:
+      RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+      BASIS_SET_FILE_NAME: GW_BASIS_SET
+      POTENTIAL_FILE_NAME: ALL_POTENTIALS
+      UKS: ''
+      MULTIPLICITY: '0'
+      MGRID:
+        CUTOFF: '600'
+        REL_CUTOFF: '50'
+      QS:
+        METHOD: GAPW
+        EPS_PGF_ORB: '1.0E-80'
+        EPS_FILTER_MATRIX: '1.0E-80'
+      POISSON:
+        PERIODIC: NONE
+        PSOLVER: MT
+      SCF:
+        EPS_SCF: '1.0E-6'
+        SCF_GUESS: RESTART
+        MAX_SCF: '30'
+        OT:
+          PRECONDITIONER: FULL_SINGLE_INVERSE
+          MINIMIZER: CG
+        OUTER_SCF:
+          MAX_SCF: '30'
+          EPS_SCF: '1.0E-6'
+      XC:
+        XC_FUNCTIONAL:
+          _: PBE
+        WF_CORRELATION:
+          RI_RPA:
+            RPA_NUM_QUAD_POINTS: '120'
+            GW:
+              CORR_MOS_OCC: '1'
+              CORR_MOS_VIRT: '1'
+              EV_GW_ITER: '1'
+              RI_SIGMA_X: ''
+    SUBSYS:
+      CELL:
+        PERIODIC: NONE
+  GLOBAL:
+    RUN_TYPE: ENERGY
+    PRINT_LEVEL: MEDIUM
+    EXTENDED_FFT_LENGTHS: ''
+gw_ic_hq_second_step:
+  FORCE_EVAL:
+    METHOD: Quickstep
+    DFT:
+      RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+      BASIS_SET_FILE_NAME: GW_BASIS_SET
+      POTENTIAL_FILE_NAME: ALL_POTENTIALS
+      UKS: ''
+      MULTIPLICITY: '0'
+      MGRID:
+        CUTOFF: '600'
+        REL_CUTOFF: '50'
+      QS:
+        METHOD: GAPW
+        EPS_PGF_ORB: '1.0E-80'
+        EPS_FILTER_MATRIX: '1.0E-80'
+      POISSON:
+        PERIODIC: NONE
+        PSOLVER: MT
+      SCF:
+        EPS_SCF: '1.0E-6'
+        SCF_GUESS: RESTART
+        MAX_SCF: '30'
+        OT:
+          PRECONDITIONER: FULL_SINGLE_INVERSE
+          MINIMIZER: CG
+        OUTER_SCF:
+          MAX_SCF: '30'
+          EPS_SCF: '1.0E-6'
+      XC:
+        XC_FUNCTIONAL:
+          _: PBE
+        WF_CORRELATION:
+          RI:
+            RI_METRIC:
+              POTENTIAL_TYPE: IDENTITY
+          LOW_SCALING: {}
+          RI_RPA:
+            GW:
+              CORR_MOS_OCC: '1'
+              CORR_MOS_VIRT: '1'
+              IC:
+              - ''
+              - {}
+    SUBSYS:
+      CELL:
+        PERIODIC: NONE
+  GLOBAL:
+    RUN_TYPE: ENERGY
+    PRINT_LEVEL: MEDIUM
+    EXTENDED_FFT_LENGTHS: ''
