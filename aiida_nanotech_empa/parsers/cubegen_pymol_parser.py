@@ -7,7 +7,7 @@ import tempfile
 
 from aiida.orm import FolderData
 
-import aiida_nanotech_empa.gaussian.utils.pymol_render as pr
+import aiida_nanotech_empa.utils.pymol_render as pr
 
 from aiida_gaussian.parsers import CubegenBaseParser
 
@@ -31,7 +31,8 @@ class CubegenPymolParser(CubegenBaseParser):
                     for iv in isovalues:
                         pr.make_pymol_png(filepath,
                                           isov=iv,
-                                          colors=['tv_red', (0.0, 0.4, 1.0)],
+                                          colors=[(0.9, 0.15, 0.15),
+                                                  (0.0, 0.35, 0.9)],
                                           output_folder=image_folder.name)
 
         image_folder_node = FolderData(tree=image_folder.name)

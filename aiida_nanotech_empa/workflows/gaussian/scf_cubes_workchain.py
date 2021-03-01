@@ -1,4 +1,4 @@
-from aiida_nanotech_empa.gaussian.workflows import common
+from aiida_nanotech_empa.workflows.gaussian import common
 
 from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Str, Bool, Code, Dict, List

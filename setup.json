@@ -15,16 +15,17 @@
     ],
     "entry_points": {
         "aiida.parsers": [
-            "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser",
-            "nanotech_empa.gaussian.cubegen_pymol = aiida_nanotech_empa.gaussian.parsers.cubegen_pymol_parser:CubegenPymolParser"
+            "nanotech_empa.pp = aiida_nanotech_empa.parsers.pp_parser:PpParser",
+            "nanotech_empa.gaussian.cubegen_pymol = aiida_nanotech_empa.parsers.cubegen_pymol_parser:CubegenPymolParser"
         ],
         "aiida.workflows": [
-            "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain",
-            "nanotech_empa.gaussian.scf_cubes = aiida_nanotech_empa.gaussian.workflows:GaussianScfCubesWorkChain",
-            "nanotech_empa.gaussian.spin_opt = aiida_nanotech_empa.gaussian.workflows:GaussianSpinOptWorkChain",
-            "nanotech_empa.gaussian.delta_scf = aiida_nanotech_empa.gaussian.workflows:GaussianDeltaScfWorkChain",
-            "nanotech_empa.gaussian.radical = aiida_nanotech_empa.gaussian.workflows:GaussianRadicalWorkChain",
-            "nanotech_empa.gaussian.spin = aiida_nanotech_empa.gaussian.workflows:GaussianSpinWorkChain"
+            "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.qe.nanoribbon:NanoribbonWorkChain",
+            "nanotech_empa.gaussian.relax = aiida_nanotech_empa.workflows.gaussian:GaussianRelaxWorkChain",
+            "nanotech_empa.gaussian.scf_cubes = aiida_nanotech_empa.workflows.gaussian:GaussianScfCubesWorkChain",
+            "nanotech_empa.gaussian.spin_opt = aiida_nanotech_empa.workflows.gaussian:GaussianSpinOptWorkChain",
+            "nanotech_empa.gaussian.delta_scf = aiida_nanotech_empa.workflows.gaussian:GaussianDeltaScfWorkChain",
+            "nanotech_empa.gaussian.natorb = aiida_nanotech_empa.workflows.gaussian:GaussianNatOrbWorkChain",
+            "nanotech_empa.gaussian.spin = aiida_nanotech_empa.workflows.gaussian:GaussianSpinWorkChain"
         ]
     },
     "include_package_data": true,

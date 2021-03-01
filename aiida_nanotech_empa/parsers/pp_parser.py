@@ -3,7 +3,8 @@
 Register parsers via the "aiida.parsers" entry point in setup.json.
 """
 import numpy as np
-from .utils import crop_cube, read_cube_file, write_cube_file
+
+from aiida_nanotech_empa.utils.pp_cube_utils import crop_cube, read_cube_file, write_cube_file
 
 from aiida import orm
 from aiida.plugins import ParserFactory

@@ -1,4 +1,4 @@
-from aiida_nanotech_empa.gaussian.workflows import common
+from aiida_nanotech_empa.workflows.gaussian import common
 
 import numpy as np
 
@@ -14,7 +14,7 @@ GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
 GaussianScfCubesWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf_cubes')
 GaussianSpinOptWorkChain = WorkflowFactory('nanotech_empa.gaussian.spin_opt')
 GaussianDeltaScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.delta_scf')
-GaussianRadicalWorkChain = WorkflowFactory('nanotech_empa.gaussian.radical')
+GaussianNatOrbWorkChain = WorkflowFactory('nanotech_empa.gaussian.natorb')
 
 
 class GaussianSpinWorkChain(WorkChain):
@@ -118,17 +118,16 @@ class GaussianSpinWorkChain(WorkChain):
 
         self.ctx.gs_mult = Int(self.inputs.multiplicity_list[gs_i]).store()
         self.ctx.gs_energy = opt_energies[gs_i]
-        self.ctx.gs_structure = self.ctx[
-            f"m{self.ctx.gs_mult}_opt"].outputs.opt_structure
+        gs_opt_label = "m{}_opt".format(self.ctx.gs_mult.value)
+        self.ctx.gs_structure = self.ctx[gs_opt_label].outputs.opt_structure
 
         self.out("gs_multiplicity", self.ctx.gs_mult)
         self.out("gs_energy", self.ctx.gs_energy)
         self.out("gs_structure", self.ctx.gs_structure)
         self.out("gs_out_params",
-                 self.ctx[f"m{self.ctx.gs_mult}_opt"].outputs.scf_out_params)
+                 self.ctx[gs_opt_label].outputs.scf_out_params)
 
-        self.ctx.gs_scf_calcnode = self.ctx[f"m{self.ctx.gs_mult}_opt"].called[
-            0].called[-1]
+        self.ctx.gs_scf_calcnode = self.ctx[gs_opt_label].called[0].called[-1]
 
         return ExitCode(0)
 
@@ -280,7 +279,7 @@ class GaussianSpinWorkChain(WorkChain):
         self.report("Submitting natural pop analysis")
 
         submitted_node = self.submit(
-            GaussianRadicalWorkChain,
+            GaussianNatOrbWorkChain,
             gaussian_code=self.inputs.gaussian_code,
             parent_calc_folder=self.ctx.gs_scf_calcnode.outputs.remote_folder,
             parent_calc_params=self.ctx.gs_scf_calcnode.outputs.
@@ -290,7 +289,7 @@ class GaussianSpinWorkChain(WorkChain):
         self.to_context(natorb=submitted_node)
 
         submitted_node = self.submit(
-            GaussianRadicalWorkChain,
+            GaussianNatOrbWorkChain,
             gaussian_code=self.inputs.gaussian_code,
             parent_calc_folder=self.ctx.gs_hf.outputs.remote_folder,
             parent_calc_params=self.ctx.gs_hf.outputs.scf_out_params,

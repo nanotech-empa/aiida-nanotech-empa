@@ -1,4 +1,4 @@
-from aiida_nanotech_empa.gaussian.workflows import common
+from aiida_nanotech_empa.workflows.gaussian import common
 
 import numpy as np
 
@@ -98,7 +98,7 @@ def process_natural_orb_occupations(natorb_parameters):
 ## --------------------------------------------------------------------
 
 
-class GaussianRadicalWorkChain(WorkChain):
+class GaussianNatOrbWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
