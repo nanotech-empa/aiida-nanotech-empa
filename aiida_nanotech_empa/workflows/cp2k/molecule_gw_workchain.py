@@ -10,7 +10,7 @@ from aiida.engine import WorkChain, ToContext, if_
 from aiida.orm import Int, Float, Str, Bool, Code, Dict, List,SinglefileData
 from aiida.orm import SinglefileData, StructureData, RemoteData
 from aiida.plugins import CalculationFactory, WorkflowFactory
-from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section_gw, tags_and_magnetization, dict_merge
+from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section_gw, tags_and_magnetization, dict_merge,get_nodes,get_cutoff
 from aiida_cp2k.calculations import Cp2kCalculation
 
 
@@ -87,11 +87,12 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
     def submit_first_step(self):
         
         #load input template
-        with open(pathlib.Path(__file__).parent / '../../files/gw_protocols.yml') as handle:
+        with open(pathlib.Path(__file__).parent / '../../files/cp2k/gw_protocols.yml') as handle:
             self.ctx.protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(self.ctx.protocols[PROTOCOLS[self.inputs.gw_type.value][0]])
 
         structure = self.inputs.structure
+        self.ctx.cutoff = get_cutoff(structure=structure)
         magnetization_per_site = copy.deepcopy(self.inputs.magnetization_per_site)
         #add ghost atoms in case of gw-ic
         if 'ic' in self.inputs.gw_type.value:
@@ -114,8 +115,8 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         builder.code = self.inputs.code
         builder.structure = StructureData(ase=atoms)
         builder.file = {
-            'basis': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files", "GW_BASIS_SET")),
-            'pseudo': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files", "ALL_POTENTIALS")),
+            'basis': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files/cp2k", "GW_BASIS_SET")),
+            'pseudo': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files/cp2k", "ALL_POTENTIALS")),
         }
 
         #UKS
@@ -128,12 +129,19 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         
         #computational resources
         nodes,tasks_per_node,threads = get_nodes(atoms=atoms,calctype='default',computer=self.inputs.code.computer,max_nodes=20,uks=self.inputs.multiplicity.value>0)
-        builder.parameters = Dict(dict=input_dict)
+        calctype='gw'
+        if 'ic' in self.inputs.gw_type.value:
+            calctype = 'gw_ic'
+        self.ctx.resources_step2 = get_nodes(atoms=atoms,calctype=calctype,computer=self.inputs.code.computer,max_nodes=4096,uks=self.inputs.multiplicity.value>0)        
+        
         builder.metadata.options.resources = {
             'num_machines': nodes,
             'num_mpiprocs_per_machine': tasks_per_node,
             'num_cores_per_mpiproc' : threads
         }
+        #walltime
+        input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value
+        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF']=self.ctx.cutoff
         builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
         
         #parser
@@ -141,7 +149,8 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         
         #handlers
         
-        #description section
+        #cp2k input dictionary
+        builder.parameters = Dict(dict=input_dict)
         
         submitted_node = self.submit(builder)
         return ToContext(first_step=submitted_node)
@@ -149,38 +158,40 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
     def submit_second_step(self):
         
         #load input template
-        input_dict = copy.deepcopy(self.ctx.protocols[PROTOCOLS[self.inputs.gw_type.value][1]])
-
-        structure = self.ctx.first_step.inputs.structure           
+        input_dict = copy.deepcopy(self.ctx.protocols[PROTOCOLS[self.inputs.gw_type.value][1]])           
         
         builder = Cp2kCalculation.get_builder()
+        builder.code = self.inputs.code
+        builder.structure = self.ctx.first_step.inputs.structure
+        builder.file = {
+            'basis': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../", "files/cp2k", "GW_BASIS_SET")),
+            'pseudo': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files/cp2k", "ALL_POTENTIALS")),
+        }
+
         #restart from wfn of step1
         builder.parent_calc_folder = self.ctx.first_step.outputs.remote_folder
-        builder.code = self.inputs.code
-        builder.structure = structure
-        builder.file = {
-            'basis': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../", "files", "GW_BASIS_SET")),
-            'pseudo': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files", "ALL_POTENTIALS")),
-        }
 
         #UKS
         if  self.inputs.multiplicity.value>0:
             input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'  
             input_dict['FORCE_EVAL']['DFT']['MULTIPLICITY'] = self.inputs.multiplicity.value     
         # KINDS section
-        dict_merge(input_dict, dict_merge(input_dict, self.ctx.kinds_section))
+        dict_merge(input_dict, self.ctx.kinds_section)
         
         #computational resources
         calctype='gw'
-        if 'ic' in self.inputs.gw_type:
+        if 'ic' in self.inputs.gw_type.value:
             calctype = 'gw_ic'
-        nodes,tasks_per_node,threads = get_nodes(atoms=atoms,calctype=calctype,computer=self.inputs.code.computer,max_nodes=4096,uks=self.inputs.multiplicity.value>0)
-        builder.parameters = Dict(dict=input_dict)
+        nodes,tasks_per_node,threads = self.ctx.resources_step2
         builder.metadata.options.resources = {
             'num_machines': nodes,
             'num_mpiprocs_per_machine': tasks_per_node,
             'num_cores_per_mpiproc' : threads
         }
+
+        #walltime
+        input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value     
+        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF']=self.ctx.cutoff   
         builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
         
         #parser
@@ -188,7 +199,8 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         
         #handlers
         
-        #description section
+        #cp2k input dictionary
+        builder.parameters = Dict(dict=input_dict)
         
         submitted_node = self.submit(builder)
         return ToContext(second_step=submitted_node)        

@@ -77,7 +77,7 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
     def submit_calc(self):
         
         #load input template
-        with open(pathlib.Path(__file__).parent / '../../files/molecule_opt_protocol.yml') as handle:
+        with open(pathlib.Path(__file__).parent / '../../files/cp2k/molecule_opt_protocol.yml') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols['default'])
             
@@ -93,8 +93,8 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         builder.cp2k.code = self.inputs.code
         builder.cp2k.structure = StructureData(ase=atoms)
         builder.cp2k.file = {
-            'basis': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files", "BASIS_MOLOPT")),
-            'pseudo': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files", "POTENTIAL")),
+            'basis': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files/cp2k", "BASIS_MOLOPT")),
+            'pseudo': SinglefileData(file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "files/cp2k", "POTENTIAL")),
         }
 
         
@@ -109,9 +109,11 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         # KINDS section
         dict_merge(input_dict, get_kinds_section(structure, magnetization_tags))
         
+        #walltime
+        input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value
         #computational resources
         #nodes,tasks,threads = get_nodes(atoms=atoms,computer=self.inputs.code.computer)
-        builder.cp2k.parameters = Dict(dict=input_dict)
+
         builder.cp2k.metadata.options.resources = {
             'num_machines': 1,
             'num_mpiprocs_per_machine': 1,
@@ -124,7 +126,8 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         #handlers
         builder.handler_overrides = Dict(dict={'resubmit_unconverged_geometry':True})
         
-        #description section
+        #cp2k input dictionary
+        builder.cp2k.parameters = Dict(dict=input_dict)
         
         submitted_node = self.submit(builder)
         return ToContext(opt=submitted_node)

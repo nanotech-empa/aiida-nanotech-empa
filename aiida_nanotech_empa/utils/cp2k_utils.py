@@ -12,7 +12,7 @@ ang_2_bohr = 1.889725989
 def get_kinds_section(structure: StructureData, magnetization_tags=None):
     """ Write the &KIND sections given the structure and the settings_dict"""
     kinds = []
-    with open(pathlib.Path(__file__).parent / '../files/atomic_kinds.yml') as fhandle:
+    with open(pathlib.Path(__file__).parent / '../files/cp2k/atomic_kinds.yml') as fhandle:
         atom_data = yaml.safe_load(fhandle)
     ase_structure = structure.get_ase()
     symbol_tag = {
@@ -39,7 +39,7 @@ def get_kinds_section_gw(structure: StructureData, magnetization_tags=None,accur
         bset = 'gw_hq_basis_set'
         bsetaux = 'gw_hq_basis_set_aux'
     kinds = []
-    with open(pathlib.Path(__file__).parent / '../files/atomic_kinds.yml') as fhandle:
+    with open(pathlib.Path(__file__).parent / '../files/cp2k/atomic_kinds.yml') as fhandle:
         atom_data = yaml.safe_load(fhandle)
     ase_structure = structure.get_ase()
     symbol_tag_mass = {
@@ -103,6 +103,16 @@ def dict_merge(dct, merge_dct):
         else:
             dct[k] = merge_dct[k]
 
+def get_cutoff(structure=None):
+    cutoff = 600
+    if structure is None:
+        return int(600)
+    with open(pathlib.Path(__file__).parent / '../files/cp2k/atomic_kinds.yml') as fhandle:
+        atom_data = yaml.safe_load(fhandle)    
+    elements=structure.get_symbols_set()
+    return max([atom_data['cutoff'][element] for element in elements])
+
+
 def compute_cost(element_list):
     cost={'H':1,'C':4,'Si':4,'N':5,'O':6,'Au':11,'Cu':11,'Ag':11,'Pt':18,'Co':11,'Zn':10,'Pd':18,'Ga':10}
     the_cost=0
@@ -130,9 +140,9 @@ def get_nodes(atoms=None,calctype='default',computer=None,max_nodes=1,uks=False)
     cost=compute_cost(atoms.get_chemical_symbols())
     if uks:
         cost = cost*2
-    nodes_cell = int(GB_cell / GB_per_node)
+    nodes_cell = max(1,int(GB_cell / GB_per_node))
     if calctype == 'default':
-        nodes = min(nodes_cell,max_nodes)
+        nodes = nodes_cell
         tasks = max_tasks_per_node
 
     elif calctype == 'slab':  
@@ -145,8 +155,7 @@ def get_nodes(atoms=None,calctype='default',computer=None,max_nodes=1,uks=False)
         nodes = ideal
         if ratio > 1.3 or ratio < 0.7:
             nodes = int(tasks/max_tasks_per_node)      
-        tasks = max_tasks_per_node 
-        nodes = min(nodes,max_nodes)
+        tasks = max_tasks_per_node
     elif calctype == 'gw':
         use_tasks_per_node =  min(1,max_tasks_per_node)
         nodes = (max(int(cost/585),1))**3
@@ -157,8 +166,7 @@ def get_nodes(atoms=None,calctype='default',computer=None,max_nodes=1,uks=False)
         list_squares=[i*use_tasks_per_node  for i in range(1,4096) 
                     if int(np.sqrt(i*use_tasks_per_node)) * int(np.sqrt(i*use_tasks_per_node)) == i*use_tasks_per_node ]
         takeClosest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
-        ideal = int(takeClosest(tasks,list_squares) / use_tasks_per_node )
-        nodes = min(ideal,max_nodes)    
+        nodes = int(takeClosest(tasks,list_squares) / use_tasks_per_node )   
         tasks = use_tasks_per_node
     elif calctype == 'gw_ic':
         use_tasks_per_node =  min(1,max_tasks_per_node)
@@ -170,9 +178,7 @@ def get_nodes(atoms=None,calctype='default',computer=None,max_nodes=1,uks=False)
         list_squares=[i*use_tasks_per_node  for i in range(1,4096) 
                     if int(np.sqrt(i*use_tasks_per_node)) * int(np.sqrt(i*use_tasks_per_node)) == i*use_tasks_per_node ]
         takeClosest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
-        ideal = int(takeClosest(tasks,list_squares) / use_tasks_per_node )
-        nodes = min(ideal,max_nodes)    
+        nodes = int(takeClosest(tasks,list_squares) / use_tasks_per_node )    
         tasks = use_tasks_per_node    
 
-    nodes = min(nodes,max_nodes)
-    return nodes,tasks,threads
+    return min(nodes,max_nodes),tasks,threads

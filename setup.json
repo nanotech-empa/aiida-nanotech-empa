@@ -19,8 +19,8 @@
         ],
         "aiida.workflows": [
             "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain",
-            "nanotech_empa.cp2k_molecule_opt = aiida_nanotech_empa.cp2k.workflows.molecule_opt_workchain:Cp2kMoleculeOptWorkChain",
-            "nanotech_empa.cp2k_molecule_gw =  aiida_nanotech_empa.cp2k.workflows.molecule_gw_workchain:Cp2kMoleculeGwWorkChain"
+            "nanotech_empa.cp2k_molecule_opt = aiida_nanotech_empa.workflows.cp2k.molecule_opt_workchain:Cp2kMoleculeOptWorkChain",
+            "nanotech_empa.cp2k_molecule_gw =  aiida_nanotech_empa.workflows.cp2k.molecule_gw_workchain:Cp2kMoleculeGwWorkChain"
         ]
     },
     "include_package_data": true,
