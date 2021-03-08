@@ -71,33 +71,10 @@ class GaussianSpinOptWorkChain(WorkChain):
     def setup(self):
         self.report("Inspecting input and setting up things")
 
-        pymatgen_structure = self.inputs.structure.get_pymatgen_molecule()
-        self.ctx.n_atoms = pymatgen_structure.num_sites
-        n_electrons = pymatgen_structure.nelectrons
+        common.setup_context_variables(self)
 
-        if self.is_uks():
-            self.ctx.functional = 'u' + self.inputs.functional.value
-            self.ctx.mult = self.inputs.multiplicity.value
-        else:
-            self.ctx.functional = self.inputs.functional.value
-            self.ctx.mult = 1
-
-        if self.ctx.mult % 2 == n_electrons % 2:
+        if self.ctx.mult % 2 == self.ctx.n_electrons % 2:
             return self.exit_codes.ERROR_MULTIPLICITY
-
-        num_cores, memory_mb = common.determine_comp_resources(
-            self.ctx.n_atoms, self.inputs.basis_set_scf.value)
-
-        self.ctx.num_cores = num_cores
-        self.ctx.memory_mb = memory_mb
-
-        self.ctx.link0 = {
-            '%chk': 'aiida.chk',
-            '%mem': "%dMB" % memory_mb,
-            '%nprocshared': str(num_cores),
-        }
-
-        self.ctx.comp = self.inputs.gaussian_code.computer
 
         return ExitCode(0)
 

@@ -63,9 +63,9 @@ def print_out_params(out_params):
     if out_params["spin_expectation_values"]:
         spin_dict = out_params["spin_expectation_values"][-1]
         s_ideal = (out_params['mult'] - 1) / 2
-        print("S**2: {0:.3f}, ideal: {1:.1f}".format(spin_dict['S**2'],
+        print("S**2: {0:.3f}, ideal: {1:.2f}".format(spin_dict['S**2'],
                                                      s_ideal * (s_ideal + 1)))
-        print("S:    {0:.3f}, ideal: {1:.1f}".format(spin_dict['S'], s_ideal))
+        print("S:    {0:.3f}, ideal: {1:.2f}".format(spin_dict['S'], s_ideal))
     print()
 
     if "moenergies" in out_params:
