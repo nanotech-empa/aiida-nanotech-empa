@@ -7,7 +7,7 @@ AiiDA library containing plugins/workflows developed at nanotech@surfaces group 
 
 Contents:
 
-* `nanotech_empa.nanoribbon`: work chain to characterize 1D periodic systems based on Quantum Espresso
+* `nanotech_empa.nanoribbon`: work chain to characterize 1D periodic systems based on Quantum Espresso.
 
 * `nanotech_empa.gaussian.spin`: Work chain to characterize spin properties of molecular systems with Gaussian. Calls multiple child work chains. Steps:
   * Wavefunction stability is tested for each spin multiplicity
