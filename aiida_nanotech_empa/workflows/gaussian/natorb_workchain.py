@@ -132,9 +132,10 @@ class GaussianNatOrbWorkChain(WorkChain):
     def submit_calc(self):
 
         self.ctx.n_atoms = self.inputs.parent_calc_params['natom']
+        basis_set = self.inputs.parent_calc_params['metadata']['basis_set']
 
         num_cores, memory_mb = common.determine_comp_resources(
-            self.ctx.n_atoms)
+            self.ctx.n_atoms, basis_set)
 
         builder = GaussianBaseWorkChain.get_builder()
         builder.gaussian.code = self.inputs.gaussian_code

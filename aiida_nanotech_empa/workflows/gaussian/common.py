@@ -1,15 +1,17 @@
-def determine_comp_resources(num_atoms):
-    num_cores = 2
-    memory_mb = 500
-    if num_atoms > 60:
-        num_cores = 4
-        memory_mb = 8192
-    if num_atoms > 100:
-        num_cores = 2 * 4
-        memory_mb = 2 * 8192
-    elif num_atoms > 200:
-        num_cores = 4 * 4
-        memory_mb = 4 * 8192
+import numpy as np
+
+
+def determine_comp_resources(num_atoms, basis_set=""):
+
+    factor = int(np.round(num_atoms / 20))
+    factor = max(1, factor)
+    factor = min(24, factor)
+
+    num_cores = factor * 1
+    if basis_set.lower() in ("sto-3g", "sv", "svp", "def2sv", "def2svp"):
+        memory_mb = factor * 512
+    else:
+        memory_mb = factor * 2048
 
     return num_cores, memory_mb
 

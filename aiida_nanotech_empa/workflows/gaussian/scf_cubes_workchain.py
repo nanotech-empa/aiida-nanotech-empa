@@ -112,7 +112,7 @@ class GaussianScfCubesWorkChain(WorkChain):
             return self.exit_codes.ERROR_MULTIPLICITY
 
         num_cores, memory_mb = common.determine_comp_resources(
-            self.ctx.n_atoms)
+            self.ctx.n_atoms, self.inputs.basis_set.value)
 
         self.ctx.num_cores = num_cores
         self.ctx.memory_mb = memory_mb
