@@ -69,7 +69,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
         return True
 
     def setup(self):
-        self.report("Inspecting input and setting up things")
+        self.report("Inspecting input and setting up things.")
 
         common.setup_context_variables(self)
 
