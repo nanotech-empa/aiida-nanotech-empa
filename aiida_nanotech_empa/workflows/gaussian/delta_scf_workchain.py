@@ -69,7 +69,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
         return True
 
     def setup(self):
-        self.report("Inspecting input and setting up things")
+        self.report("Inspecting input and setting up things.")
 
         pymatgen_structure = self.inputs.structure.get_pymatgen_molecule()
         self.ctx.n_atoms = pymatgen_structure.num_sites
