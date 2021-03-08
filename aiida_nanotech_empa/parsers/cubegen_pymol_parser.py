@@ -13,7 +13,7 @@ from aiida_gaussian.parsers import CubegenBaseParser
 
 
 class CubegenPymolParser(CubegenBaseParser):
-    """Cubegen parser based on pymol"""
+    """Cubegen parser based on pymol."""
     def _parse_folders(self, retrieved_folder_paths, parser_params):
 
         if 'isovalues' in parser_params:
