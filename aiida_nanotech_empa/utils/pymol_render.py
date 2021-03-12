@@ -10,29 +10,7 @@ from PIL import Image, ImageOps
 
 from pymol import cmd  # pylint: disable=import-error
 
-
-def load_cube_atoms(cube_file):
-
-    ase_atoms = ase.Atoms()
-
-    with open(cube_file, 'r') as cubef:
-
-        cubef.readline()  # title
-        cubef.readline()  # comment
-
-        orig_line = cubef.readline()
-
-        n_atom = abs(int(orig_line.split()[0]))
-
-        for _i in range(3):
-            cubef.readline()
-        for _i in range(n_atom):
-
-            line = [float(x) for x in cubef.readline().split()]
-            pos = np.array(line[2:]) * 0.529177
-
-            ase_atoms.append(ase.Atom(int(line[0]), position=pos))
-    return ase_atoms
+from .cube_utils import load_cube_atoms
 
 
 def crop_image_bbox(filename):
