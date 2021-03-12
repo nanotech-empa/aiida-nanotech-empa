@@ -11,97 +11,148 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 
-def print_orb_energies(prop_dict, n_orb=4):
+def select_frontier_orbital_energies(out_params, n_orb=4):
 
-    nspin = len(prop_dict['homos'])
-    mo_e = np.array(prop_dict['moenergies'])
+    nspin = len(out_params['homos'])
+    mo_e = np.array(out_params['moenergies'])
+
+    indexes = []
+    energies = [[]]
+    occs = [[]]
 
     if nspin == 1:
 
-        homo_s0 = prop_dict['homos'][0]
+        homo_s0 = out_params['homos'][0]
 
         i_start = homo_s0 - n_orb
         i_end = homo_s0 + n_orb
 
-        print("{:>10} {:>16} {:>6}".format("i_orb", "E (eV)", "occ"))
-
         for i_orb in range(i_end, i_start, -1):
-            occ = 2 if i_orb <= homo_s0 else 0
-            print("{:>10} {:16.4f} {:6}".format(i_orb, mo_e[0][i_orb], occ))
-
-        print("GAP: {:.4f} eV".format(mo_e[0][homo_s0 + 1] - mo_e[0][homo_s0]))
+            indexes.append(i_orb)
+            energies[0].append(mo_e[0][i_orb])
+            occs[0].append(2 if i_orb <= homo_s0 else 0)
 
     elif nspin == 2:
 
-        homo_s0 = prop_dict['homos'][0]
-        homo_s1 = prop_dict['homos'][1]
+        energies.append([])
+        occs.append([])
 
-        i_start = (homo_s0 + homo_s1) // 2 - n_orb
-        i_end = (homo_s0 + homo_s1) // 2 + n_orb
+        homo_s0 = out_params['homos'][0]
+        homo_s1 = out_params['homos'][1]
 
-        print("{:>10} {:>16} {:>6} {:>16} {:>6}".format(
-            "i_orb", "E(up) (eV)", "occ(up)", "E(down) (eV)", "occ(down)"))
+        central_i = int(np.round((homo_s0 + homo_s1) / 2))
 
-        max_homo = np.max([mo_e[0, homo_s0], mo_e[1, homo_s1]])
-        min_lumo = np.min([mo_e[0, homo_s0 + 1], mo_e[1, homo_s1 + 1]])
+        i_start = central_i - n_orb
+        i_end = central_i + n_orb
 
         for i_orb in range(i_end, i_start, -1):
-            occ0 = 1 if i_orb <= homo_s0 else 0
-            occ1 = 1 if i_orb <= homo_s1 else 0
-            print("{:10d} {:16.4f} {:6d} {:16.4f} {:6d}".format(
-                i_orb, mo_e[0, i_orb], occ0, mo_e[1, i_orb], occ1))
+            indexes.append(i_orb)
+            energies[0].append(mo_e[0][i_orb])
+            energies[1].append(mo_e[1][i_orb])
+            occs[0].append(1 if i_orb <= homo_s0 else 0)
+            occs[1].append(1 if i_orb <= homo_s1 else 0)
 
-        print("GAP alpha: {:.4f} eV".format(mo_e[0, homo_s0 + 1] -
-                                            mo_e[0, homo_s0]))
-        print("GAP beta:  {:.4f} eV".format(mo_e[1, homo_s1 + 1] -
-                                            mo_e[1, homo_s1]))
-        print("GAP eff:   {:.4f} eV".format(min_lumo - max_homo))
+    return {"indexes": indexes, "energies": energies, "occs": occs}
 
 
-def print_out_params(out_params):
+def _get_orb_energies_str(out_params, n_orb=4):
 
-    if out_params["spin_expectation_values"]:
-        spin_dict = out_params["spin_expectation_values"][-1]
-        s_ideal = (out_params['mult'] - 1) / 2
-        print("S**2: {0:.3f}, ideal: {1:.2f}".format(spin_dict['S**2'],
-                                                     s_ideal * (s_ideal + 1)))
-        print("S:    {0:.3f}, ideal: {1:.2f}".format(spin_dict['S'], s_ideal))
-    print()
+    orb_dict = select_frontier_orbital_energies(out_params, n_orb)
 
-    if "moenergies" in out_params:
-        print("MO energies:")
-        print_orb_energies(out_params)
+    inds = orb_dict['indexes']
+    ens = orb_dict['energies']
+    occs = orb_dict['occs']
+
+    nspin = len(orb_dict['energies'])
+
+    if nspin == 1:
+        header = "{:>10} {:>16} {:>6}".format("i_orb", "E (eV)", "occ")
+        lines = [header]
+
+        for z in zip(inds, ens[0], occs[0]):
+            lines.append("{:>10} {:>16.4f} {:>6}".format(*z))
+
+    elif nspin == 2:
+
+        header = "{:>10} {:>16} {:>9} {:>16} {:>9}".format(
+            "i_orb", "E(up) (eV)", "occ(up)", "E(down) (eV)", "occ(down)")
+        lines = [header]
+
+        for z in zip(inds, ens[0], occs[0], ens[1], occs[1]):
+            lines.append("{:>10} {:>16.4f} {:>9} {:>16.4f} {:>9}".format(*z))
+    return "\n".join(lines)
 
 
-def print_no_analysis(natorb_dict, prop_dict, n_orb=4):
+def get_spin_exp_values(out_params):
+    spin_dict = out_params["spin_expectation_values"][-1]
+    s_ideal = (out_params['mult'] - 1) / 2
+    s2_ideal = s_ideal * (s_ideal + 1)
+    return {
+        'S**2': spin_dict['S**2'],
+        'S': spin_dict['S'],
+        'S**2_ideal': s2_ideal,
+        'S_ideal': s_ideal
+    }
 
-    no_occs = natorb_dict['no_occs']
-    no_occs_sp = natorb_dict['no_occs_sp']
 
-    i_start = prop_dict['homos'][0] - n_orb
-    i_end = prop_dict['homos'][0] + n_orb
+def _get_spin_exp_values_str(out_params):
+    s = ""
+    if "spin_expectation_values" in out_params:
+        s_e = get_spin_exp_values(out_params)
+        s += "S**2: {0:.3f}, ideal: {1:.2f}\n".format(s_e['S**2'],
+                                                      s_e['S**2_ideal'])
+        s += "S:    {0:.3f}, ideal: {1:.2f}".format(s_e['S'], s_e['S_ideal'])
+    return s
 
-    print("{:>20} {:>16} {:>16}".format("i_no", "occ", "sp. proj. occ"))
+
+def _get_out_params_str(out_params):
+    s = _get_spin_exp_values_str(out_params)
+    s += "\n\n"
+    s += "MO energies:\n"
+    s += _get_orb_energies_str(out_params, 4)
+    s += "\n"
+    s += "GAP:       {:.4f} eV\n".format(out_params['gap'])
+    if 'gap_a' in dict(out_params):
+        s += "GAP alpha: {:.4f} eV\n".format(out_params['gap_a'])
+        s += "GAP beta:  {:.4f} eV\n".format(out_params['gap_b'])
+    return s
+
+
+def _get_natorb_analysis_str(natorb_params, out_params, n_orb=4):
+
+    no_occs = natorb_params['no_occs']
+    no_occs_sp = natorb_params['no_occs_sp']
+
+    i_start = out_params['homos'][0] - n_orb
+    i_end = out_params['homos'][0] + n_orb
+
+    lines = ["{:>20} {:>16} {:>16}".format("i_no", "occ", "sp. proj. occ")]
 
     for i_no in range(i_end, i_start, -1):
-        print("{:>20} {:16.4f} {:16.4f}".format(i_no, no_occs[i_no],
-                                                no_occs_sp[i_no]))
-    print("---------------------------------------------------------")
-    print("{:>20} {:16.4f} {:16.4f}".format("Standard num odd:",
-                                            natorb_dict['std_num_odd'],
-                                            natorb_dict['std_num_odd_sp']))
-    print("{:>20} {:16.4f} {:16.4f}".format("HG num odd:",
-                                            natorb_dict['hg_num_odd'],
-                                            natorb_dict['hg_num_odd_sp']))
+        lines.append("{:>20} {:16.4f} {:16.4f}".format(i_no, no_occs[i_no],
+                                                       no_occs_sp[i_no]))
+    lines.append("---------------------------------------------------------")
+    lines.append("{:>20} {:16.4f} {:16.4f}".format(
+        "Standard num odd:", natorb_params['std_num_odd'],
+        natorb_params['std_num_odd_sp']))
+    lines.append("{:>20} {:16.4f} {:16.4f}".format(
+        "HG num odd:", natorb_params['hg_num_odd'],
+        natorb_params['hg_num_odd_sp']))
+    return "\n".join(lines)
 
 
-def plot_spin_wc(cube_image_folder):
-    #pylint: disable=protected-access
-    folder_path = cube_image_folder._repository._get_base_folder().abspath
+def get_pil_image(cube_image_folder, name):
+    with cube_image_folder.open(name, 'rb') as f:
+        pil_image = Image.open(f)
+        pil_image.load()
+    return pil_image
+
+
+def _show_spin_density(cube_image_folder):
     image_names = cube_image_folder.list_object_names()
     for imag_name in image_names:
         if "spin" in imag_name and "z+" in imag_name and "iv0.010" in imag_name:
-            pil_image = Image.open(folder_path + "/" + imag_name)
+            pil_image = get_pil_image(cube_image_folder, imag_name)
             plt.imshow(pil_image)
             plt.title(imag_name)
             plt.axis('off')
@@ -109,6 +160,7 @@ def plot_spin_wc(cube_image_folder):
 
 
 def make_report(wc_node):
+    """ Function that generates a report for a gaussian spin workchain run"""
     #pylint: disable=too-many-locals
     print("Functional:", wc_node.inputs.functional.value)
     print("Basis set OPT:", wc_node.inputs.basis_set_opt.value)
@@ -127,21 +179,21 @@ def make_report(wc_node):
     print("#### GROUND STATE: MULTIPLICITY {}".format(gs_multiplicity))
     print("############################################################")
 
-    plot_spin_wc(wc_node.outputs.gs_cube_images)
+    _show_spin_density(wc_node.outputs.gs_cube_images)
 
     print(f"Energy (eV): {gs_energy:10.4f}")
     print()
     print(f"IP (eV): {gs_ip:8.4f}")
     print(f"EA (eV): {gs_ea:8.4f} (accurate only with a diffuse basis)")
     print()
-    print_out_params(gs_out_params)
+    print(_get_out_params_str(gs_out_params))
 
     if 'gs_natorb_params' in wc_node.outputs:
         print()
         print("Natural orbital occupation analysis:")
-        print_no_analysis(dict(wc_node.outputs.gs_natorb_params),
-                          gs_out_params,
-                          n_orb=4)
+        print(
+            _get_natorb_analysis_str(dict(wc_node.outputs.gs_natorb_params),
+                                     gs_out_params))
     print()
 
     if 'gs_hf_out_params' in wc_node.outputs:
@@ -153,17 +205,18 @@ def make_report(wc_node):
         print("############################################################")
 
         if "gs_hf_cube_images" in wc_node.outputs:
-            plot_spin_wc(wc_node.outputs.gs_hf_cube_images)
+            _show_spin_density(wc_node.outputs.gs_hf_cube_images)
 
         print()
-        print_out_params(gs_hf_out_params)
+        print(_get_out_params_str(gs_hf_out_params))
 
         if 'gs_hf_natorb_params' in wc_node.outputs:
             print()
             print("Natural orbital occupation analysis:")
-            print_no_analysis(dict(wc_node.outputs.gs_hf_natorb_params),
-                              gs_hf_out_params,
-                              n_orb=4)
+            print(
+                _get_natorb_analysis_str(
+                    dict(wc_node.outputs.gs_hf_natorb_params),
+                    gs_hf_out_params))
         print()
 
     for mult in list(wc_node.inputs.multiplicity_list):
@@ -176,7 +229,7 @@ def make_report(wc_node):
         print("############################################################")
 
         cube_label = f"m{mult}_opt_cube_images"
-        plot_spin_wc(wc_node.outputs[cube_label])
+        _show_spin_density(wc_node.outputs[cube_label])
 
         adia_label = f"m{mult}_opt_energy"
         vert_label = f"m{mult}_vert_energy"
@@ -192,5 +245,5 @@ def make_report(wc_node):
         print(f"adia. exc (meV): {adia_ex*1000:8.1f}")
         print(f"vert. exc (meV): {vert_ex*1000:8.1f}")
         print()
-        print_out_params(vert_out_params)
+        print(_get_out_params_str(vert_out_params))
         print()
