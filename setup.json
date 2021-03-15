@@ -15,7 +15,8 @@
     ],
     "entry_points": {
         "aiida.parsers": [
-            "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser"
+            "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser",
+            "nanotech_empa.cp2k_gw_parser = aiida_nanotech_empa.parsers.cp2k_gw_parser:Cp2kGWParser"
         ],
         "aiida.workflows": [
             "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain",
@@ -24,7 +25,9 @@
         ]
     },
     "include_package_data": true,
-    "setup_requires": ["reentry"],
+    "setup_requires": [
+        "reentry"
+    ],
     "reentry_register": true,
     "install_requires": [
         "aiida-core>=1.2.1,<2.0.0",

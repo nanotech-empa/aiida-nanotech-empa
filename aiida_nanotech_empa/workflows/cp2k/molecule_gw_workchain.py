@@ -243,7 +243,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
 
         #parser
-        builder.metadata.options.parser_name = "cp2k_advanced_parser"
+        builder.metadata.options.parser_name = "nanotech_empa.cp2k_gw_parser"
 
         #handlers
 
@@ -255,4 +255,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
     def finalize(self):
         self.report("Finalizing...")
-        #self.out('opt_structure',self.ctx.opt.outputs.output_structure)
+        self.out('std_output_parameters',
+                 self.ctx.second_step.outputs.std_output_parameters)
+        self.out('gw_output_parameters',
+                 self.ctx.second_step.outputs.gw_output_parameters)
