@@ -32,18 +32,19 @@ def get_kinds_section(structure: StructureData, magnetization_tags=None):
     return {'FORCE_EVAL': {'SUBSYS': {'KIND': kinds}}}
 
 
-def get_kinds_section_gw(ase_structure=None, accuracy='lq'):
+def get_kinds_section_gw(kinds_dict, protocol='gapw_std'):
     """ Write the &KIND sections in gw calculations given the structure and the settings_dict"""
-    bset = 'gw_basis_set'
-    bsetaux = 'gw_basis_set_aux'
+
+    bset = 'gapw_std_gw_basis_set'
+    bsetaux = 'gapw_std_gw_basis_set_aux'
     potential = 'all'
-    if accuracy == 'hq':
-        bset = 'gw_hq_basis_set'
-        bsetaux = 'gw_hq_basis_set_aux'
+    if protocol == 'gapw_hq':
+        bset = 'gapw_hq_gw_basis_set'
+        bsetaux = 'gapw_hq_gw_basis_set_aux'
         potential = 'all'
-    elif accuracy == 'st':
-        bset = 'gw_st_basis_set'
-        bsetaux = 'gw_st_basis_set_aux'
+    elif protocol == 'gpw_std':
+        bset = 'gpw_std_gw_basis_set'
+        bsetaux = 'gpw_std_gw_basis_set_aux'
         potential = 'pseudopotential'
     kinds = []
     with open(
@@ -51,21 +52,24 @@ def get_kinds_section_gw(ase_structure=None, accuracy='lq'):
             '../files/cp2k/atomic_kinds.yml') as fhandle:
         atom_data = yaml.safe_load(fhandle)
 
-    for atom in ase_structure:
-        new_atom = {
+    for kind_name in kinds_dict:
+        element = ''.join([c for c in kind_name if not c.isdigit()])
+        magnetization = kinds_dict[kind_name]['mag']
+        is_ghost = kinds_dict[kind_name]['ghost']
+        new_section = {
             '_':
-            atom.symbol if atom.tag == '0' else atom.symbol + str(atom.tag),
-            'BASIS_SET': atom_data[bset][atom.symbol],
-            'BASIS_SET RI_AUX': atom_data[bsetaux][atom.symbol],
-            'POTENTIAL': atom_data[potential][atom.symbol],
+            kind_name,
+            'BASIS_SET': atom_data[bset][element],
+            'BASIS_SET RI_AUX': atom_data[bsetaux][element],
+            'POTENTIAL': atom_data[potential][element],
+            'ELEMENT': element,
         }
-        if atom.tag != '0':
-            new_atom['ELEMENT'] = atom.symbol
-        if atom.tag == 9999:
-            new_atom['GHOST'] = 'TRUE'
-        if atom.tag > 0 and atom.tag < 9999:
-            new_atom['MAGNETIZATION'] = atom.tag
-        kinds.append(new_atom)
+        if is_ghost:
+            new_section['GHOST'] = 'TRUE'
+        if magnetization != 0.0:
+            new_section['MAGNETIZATION'] = magnetization
+        kinds.append(new_section)
+        
     return {'FORCE_EVAL': {'SUBSYS': {'KIND': kinds}}}
 
 
@@ -111,53 +115,56 @@ def determine_kinds(structure,
                     ghost_per_site=None):
     """Gather the same atoms with the same magnetization into one atomic kind."""
     ase_structure = structure.get_ase()
-    if magnetization_per_site:
-        if len(magnetization_per_site) != len(ase_structure.numbers):
-            raise ValueError(
-                'The size of `magnetization_per_site` is different from the number of atoms.'
-            )
 
-        # Combine atom type with magnetizations.
-        complex_symbols = [
-            f'{symbol}_{magn}' for symbol, magn in zip(
-                ase_structure.get_chemical_symbols(), magnetization_per_site)
-        ]
-        # Assign a unique tag for every atom kind. do not use set in enumerate to avoid random order...!
-        combined = {
-            symbol: tag + 1
-            for tag, symbol in enumerate(
-                list(dict.fromkeys(complex_symbols).keys()))
-        }
-        # Assigning correct tags to every atom.
-        tags = [combined[key] for key in complex_symbols]
-        ase_structure.set_tags(tags)
-        # Tag-magnetization correspondance.
-        tags_correspondance = {
-            str(value): float(key.split('_')[1])
-            for key, value in combined.items()
-        }
-        return StructureData(ase=ase_structure), Dict(dict=tags_correspondance)
+    if magnetization_per_site is None or len(magnetization_per_site) == 0:
+        magnetization_per_site = [0 for i in range(len(ase_structure))]
+    if ghost_per_site is None:
+        ghost_per_site = [0 for i in range(len(ase_structure))]
+    
+    if len(magnetization_per_site) != len(ase_structure.numbers):
+        raise ValueError(
+            'The size of `magnetization_per_site` is different from the number of atoms.'
+        )
+    if len(ghost_per_site) != len(ase_structure.numbers):
+        raise ValueError(
+            'The size of `ghost_per_site` is different from the number of atoms.'
+        )
+    
+    # Combine atom type with magnetizations and ghost_type
+    complex_symbols = [
+        f'{symbol}_{magn}_{ghost}' for symbol, magn, ghost in zip(
+            ase_structure.get_chemical_symbols(), magnetization_per_site, ghost_per_site)
+    ]
 
-    # we force tags to be 0 if magnetization vector is not provided, this ensures we do not get a structure with unnecessary labels
+    # Assign a unique tag for every atom kind. Use OrderedDict for order
+    unique_complex_symbols = list(collections.OrderedDict().fromkeys(complex_symbols).keys())
+    combined = collections.OrderedDict()
 
-    tags = [0 for i in range(len(ase_structure))]
-    ase_structure.set_tags(tags)
-    return StructureData(ase=ase_structure), None
-
-
-def tags_and_magnetization_gw(structure, magnetization_per_site, ghosts):
-    """Assigne to an atom a tag accordign to magnetization or ghost type. Magnetization = 2 means 1 imbalance in alpha/beta"""
-    ase_structure = structure.get_ase()
-    tags = [0 for a in ase_structure]
-    if magnetization_per_site:
-        tags = [int(m) for m in magnetization_per_site]
-    if ghosts:
-        for i in range(len(ghosts)):
-            if ghosts[i]:
-                tags[i] = 9999
+    element_tag_counter = {}
+    for c_symbol in unique_complex_symbols:
+        element = c_symbol.split('_')[0]
+        if element not in element_tag_counter:
+            element_tag_counter[element] = 1
+        else:
+            element_tag_counter[element] += 1
+        combined[c_symbol] = element_tag_counter[element]
+    
+    # Assigning correct tags to every atom.
+    tags = [combined[key] for key in complex_symbols]
     ase_structure.set_tags(tags)
 
-    return StructureData(ase=ase_structure)
+    kinds_dict = collections.OrderedDict()
+
+    for c_symbol, tag in combined.items():
+        element = c_symbol.split('_')[0]
+        mag = float(c_symbol.split('_')[1])
+        ghost = int(c_symbol.split('_')[2])
+
+        kind_name = element + str(tag)
+        info_dict = {'mag': mag, 'ghost': ghost}
+        kinds_dict[kind_name] = info_dict
+
+    return StructureData(ase=ase_structure), kinds_dict
 
 
 def dict_merge(dct, merge_dct):
@@ -223,6 +230,7 @@ def get_nodes(atoms=None,
               max_nodes=1,
               uks=False):
     """"Determine the resources needed for the calculation."""
+    #pylint: disable=too-many-branches
     threads = 1
     max_tasks_per_node = computer.get_default_mpiprocs_per_machine()
     if max_tasks_per_node is None:

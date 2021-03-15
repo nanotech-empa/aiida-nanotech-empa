@@ -5,30 +5,32 @@ import copy
 import numpy as np
 
 from aiida.engine import WorkChain, ToContext
-from aiida.orm import Int, Float, Str, Code, Dict, List
+from aiida.orm import Int, Float, Str, Code, Dict, List, Bool
 from aiida.orm import SinglefileData, StructureData
-from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section_gw, tags_and_magnetization_gw, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section_gw, determine_kinds, dict_merge, get_nodes, get_cutoff
 from aiida_cp2k.calculations import Cp2kCalculation
 
-PROTOCOLS = {
-    'gw_st': ['gw_st_first_step', 'gw_st_second_step'],
-    'gw_st_ic': ['gw_st_first_step', 'gw_st_second_step'],
-    'gw': ['gw_first_step', 'gw_second_step'],
-    'gw_ic': ['gw_first_step', 'gw_ic_second_step'],
-    'gw_hq': ['gw_hq_first_step', 'gw_hq_second_step'],
-    'gw_hq_ic': ['gw_hq_first_step', 'gw_ic_hq_second_step']
-}
 
+ALLOWED_PROTOCOLS = ['gapw_std', 'gapw_hq', 'gpw_std']
 
 class Cp2kMoleculeGwWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
         spec.input("code", valid_type=Code)
-        spec.input("gw_type",
+
+        spec.input("protocol",
                    valid_type=Str,
-                   default=lambda: Str('gw'),
-                   required=False)
+                   default=lambda: Str('gapw_std'),
+                   required=False,
+                   help="Either 'gapw_std', 'gapw_hq', 'gpw_std'")
+
+        spec.input("image_charge",
+                   valid_type=Bool,
+                   default=lambda: Bool(False),
+                   required=False,
+                   help="Run the image charge correction calculation.")
+                
         spec.input("z_ic_plane",
                    valid_type=Float,
                    default=lambda: Float(8.22),
@@ -52,6 +54,12 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    required=False)
         spec.input("structure", valid_type=StructureData)
 
+        spec.input("debug",
+            valid_type=Bool,
+            default=lambda: Bool(False),
+            required=False,
+            help="Run with fast parameters for debugging.")
+
         spec.outline(cls.setup, cls.submit_first_step, cls.submit_second_step,
                      cls.finalize)
         spec.outputs.dynamic = True
@@ -69,50 +77,64 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
     def submit_first_step(self):
         """Function to submit the first step of the workchain."""
+        #pylint: disable=too-many-locals
+
+        if self.inputs.protocol not in ALLOWED_PROTOCOLS:
+            return self.exit_codes.ERROR_TERMINATION
+
+        protocol = self.inputs.protocol.value
+
+        protocol_full = protocol + "_scf_step"
+
         #load input template
         with open(
                 pathlib.Path(__file__).parent /
                 '../../files/cp2k/gw_protocols.yml') as handle:
             self.ctx.protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(
-                self.ctx.protocols[PROTOCOLS[self.inputs.gw_type.value][0]])
+                self.ctx.protocols[protocol_full])
 
         structure = self.inputs.structure
         self.ctx.cutoff = get_cutoff(structure=structure)
         magnetization_per_site = copy.deepcopy(
             self.inputs.magnetization_per_site)
-        ghosts = []
+        ghost_per_site = None
+
         #add ghost atoms in case of gw-ic
-        if 'ic' in self.inputs.gw_type.value:
+        if self.inputs.image_charge.value:
             atoms = self.inputs.structure.get_ase()
             image = atoms.copy()
-            image.set_masses([int(999) for a in range(len(image))])
             image.positions[:, 2] = (2 * self.inputs.z_ic_plane.value -
                                      atoms.positions[:, 2])
-            ghosts = [0 for a in atoms] + [1 for a in image]
+            ghost_per_site = [0 for a in atoms] + [1 for a in image]
             if (magnetization_per_site):
-                magnetization_per_site += [int(0) for i in range(len(image))]
+                magnetization_per_site += [0 for i in range(len(image))]
             structure = StructureData(ase=atoms + image)
 
-        #get initial magnetization
-        structure_with_tags = tags_and_magnetization_gw(
-            structure, magnetization_per_site, ghosts)
+        structure_with_tags, kinds_dict = determine_kinds(
+            structure, magnetization_per_site, ghost_per_site)
+
 
         #make sure cell is big enough for MT poisson solver
-        atoms = structure_with_tags.get_ase()
-        atoms.cell = 2 * (np.ptp(atoms.positions, axis=0) + 7.5)
-        atoms.center()
+        if self.inputs.debug:
+            extra_cell = 5.0
+        else:
+            extra_cell = 15.0
+        self.ctx.atoms = structure_with_tags.get_ase()
+        self.ctx.atoms.cell = 2 * (np.ptp(self.ctx.atoms.positions, axis=0)) + extra_cell
+        self.ctx.atoms.center()
 
         builder = Cp2kCalculation.get_builder()
         builder.code = self.inputs.code
-        builder.structure = StructureData(ase=atoms)
-        accuracy = 'lq'
-        self.ctx.basis = "GW_BASIS_SET"
-        self.ctx.potential = "ALL_POTENTIALS"
-        if 'st' in self.inputs.gw_type.value:
+        builder.structure = StructureData(ase=self.ctx.atoms)
+
+        if protocol in ['gapw_std', 'gapw_hq']:
+            self.ctx.basis = "GW_BASIS_SET"
+            self.ctx.potential = "ALL_POTENTIALS"
+        elif protocol == 'gpw_std':
             self.ctx.basis = "K_GW_BASIS"
             self.ctx.potential = "POTENTIAL"
-            accuracy = 'st'
+
         builder.file = {
             'basis':
             SinglefileData(
@@ -129,29 +151,19 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
             input_dict['FORCE_EVAL']['DFT'][
                 'MULTIPLICITY'] = self.inputs.multiplicity.value
+        
         # KINDS section
-        if 'hq' in self.inputs.gw_type.value:
-            accuracy = 'hq'
-        self.ctx.kinds_section = get_kinds_section_gw(ase_structure=atoms,
-                                                      accuracy=accuracy)
+        self.ctx.kinds_section = get_kinds_section_gw(kinds_dict, protocol=protocol)
         dict_merge(input_dict, self.ctx.kinds_section)
 
         #computational resources
         nodes, tasks_per_node, threads = get_nodes(
-            atoms=atoms,
+            atoms=self.ctx.atoms,
             calctype='default',
             computer=self.inputs.code.computer,
             max_nodes=48,
             uks=self.inputs.multiplicity.value > 0)
-        calctype = 'gw'
-        if 'ic' in self.inputs.gw_type.value:
-            calctype = 'gw_ic'
-        self.ctx.resources_step2 = get_nodes(
-            atoms=atoms,
-            calctype=calctype,
-            computer=self.inputs.code.computer,
-            max_nodes=2048,
-            uks=self.inputs.multiplicity.value > 0)
+            
         builder.metadata.options.resources = {
             'num_machines': nodes,
             'num_mpiprocs_per_machine': tasks_per_node,
@@ -175,9 +187,16 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
     def submit_second_step(self):
         """Function to submit the second step of the workchain."""
+
+        protocol = self.inputs.protocol.value
+
+        if self.inputs.image_charge.value:
+            protocol_full = protocol + "_ic_step"
+        else:
+            protocol_full = protocol + "_gw_step"
+
         #load input template
-        input_dict = copy.deepcopy(
-            self.ctx.protocols[PROTOCOLS[self.inputs.gw_type.value][1]])
+        input_dict = copy.deepcopy(self.ctx.protocols[protocol_full])
 
         builder = Cp2kCalculation.get_builder()
         builder.code = self.inputs.code
@@ -204,8 +223,14 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         # KINDS section
         dict_merge(input_dict, self.ctx.kinds_section)
 
-        #computational resources
-        nodes, tasks_per_node, threads = self.ctx.resources_step2
+        #computational resources        
+        nodes, tasks_per_node, threads = get_nodes(
+            atoms=self.ctx.atoms,
+            calctype='gw_ic' if self.inputs.image_charge.value else 'gw',
+            computer=self.inputs.code.computer,
+            max_nodes=2048,
+            uks=self.inputs.multiplicity.value > 0)
+
         builder.metadata.options.resources = {
             'num_machines': nodes,
             'num_mpiprocs_per_machine': tasks_per_node,

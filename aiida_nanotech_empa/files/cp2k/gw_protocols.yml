@@ -1,4 +1,7 @@
-gw_st_first_step:
+# -------------------------------------------------------------
+# GPW SCF STEP
+# -------------------------------------------------------------
+gpw_std_scf_step:
   FORCE_EVAL:
     METHOD: Quickstep
     DFT:
@@ -43,7 +46,7 @@ gw_st_first_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: 4 4 4
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -51,7 +54,10 @@ gw_st_first_step:
     RUN_TYPE: ENERGY
     PRINT_LEVEL: MEDIUM
     EXTENDED_FFT_LENGTHS: ''
-gw_st_second_step:
+# -------------------------------------------------------------
+# GPW GW STEP
+# -------------------------------------------------------------
+gpw_std_gw_step:
   FORCE_EVAL:
     METHOD: Quickstep
     DFT:
@@ -102,6 +108,11 @@ gw_st_second_step:
               EV_GW_ITER: '5'
               NPARAM_PADE: '16'
               RI_SIGMA_X: ''
+      PRINT:
+        MO_CUBES:
+          NHOMO: '4'
+          NLUMO: '1'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -109,7 +120,79 @@ gw_st_second_step:
     RUN_TYPE: ENERGY
     PRINT_LEVEL: MEDIUM
     EXTENDED_FFT_LENGTHS: ''
-gw_first_step:
+# -------------------------------------------------------------
+# GPW IC STEP
+# -------------------------------------------------------------
+gpw_std_ic_step:
+  FORCE_EVAL:
+    METHOD: Quickstep
+    DFT:
+      RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+      BASIS_SET_FILE_NAME: K_GW_BASIS
+      POTENTIAL_FILE_NAME: POTENTIAL
+      UKS: '.FALSE.'
+      MULTIPLICITY: '0'
+      MGRID:
+        CUTOFF: '600'
+        REL_CUTOFF: '50'
+      QS:
+        METHOD: GPW
+        EPS_PGF_ORB: '1.0E-80'
+        EPS_FILTER_MATRIX: '1.0E-80'
+      POISSON:
+        PERIODIC: NONE
+        PSOLVER: MT
+      SCF:
+        SCF_GUESS: RESTART
+        EPS_SCF: '1.0E-6'
+        MAX_SCF: '500'
+        CHOLESKY: INVERSE
+        ADDED_MOS: '50'
+        SMEAR:
+          _: 'ON'
+          METHOD: FERMI_DIRAC
+          ELECTRONIC_TEMPERATURE: '300'
+        MIXING:
+          METHOD: BROYDEN_MIXING
+          ALPHA: '0.1'
+          BETA: '1.5'
+          NBUFFER: '8'
+        DIAGONALIZATION:
+          ALGORITHM: STANDARD
+        OUTER_SCF:
+          MAX_SCF: '50'
+          EPS_SCF: '1.0E-6'
+      XC:
+        XC_FUNCTIONAL:
+          _: PBE
+        WF_CORRELATION:
+          RI:
+            RI_METRIC:
+              POTENTIAL_TYPE: IDENTITY
+          LOW_SCALING: {}
+          RI_RPA:
+            GW:
+              CORR_MOS_OCC: '10'
+              CORR_MOS_VIRT: '10'
+              IC:
+              - ''
+              - {}
+      PRINT:
+        MO_CUBES:
+          NHOMO: '4'
+          NLUMO: '1'
+          STRIDE: '4 4 4'
+    SUBSYS:
+      CELL:
+        PERIODIC: NONE
+  GLOBAL:
+    RUN_TYPE: ENERGY
+    PRINT_LEVEL: MEDIUM
+    EXTENDED_FFT_LENGTHS: ''
+# -------------------------------------------------------------
+# GAPW standard SCF STEP
+# -------------------------------------------------------------
+gapw_std_scf_step:
   FORCE_EVAL:
     METHOD: Quickstep
     DFT:
@@ -119,12 +202,7 @@ gw_first_step:
       MULTIPLICITY: '0'
       MGRID:
         CUTOFF: '600'
-        REL_CUTOFF: '50'
-      PRINT:
-        MO_CUBES:
-          NHOMO: 4
-          NLUMO: 1
-          STRIDE: '4 4 4'       
+        REL_CUTOFF: '50'    
       QS:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
@@ -141,6 +219,11 @@ gw_first_step:
       XC:
         XC_FUNCTIONAL:
           _: PBE
+      PRINT:
+        MO_CUBES:
+          NHOMO: '4'
+          NLUMO: '1'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -148,7 +231,10 @@ gw_first_step:
     RUN_TYPE: ENERGY
     PRINT_LEVEL: MEDIUM
     EXTENDED_FFT_LENGTHS: ''
-gw_second_step:
+# -------------------------------------------------------------
+# GAPW standard GW STEP
+# -------------------------------------------------------------
+gapw_std_gw_step:
   FORCE_EVAL:
     METHOD: Quickstep
     DFT:
@@ -160,11 +246,6 @@ gw_second_step:
       MGRID:
         CUTOFF: '600'
         REL_CUTOFF: '50'
-      PRINT:
-        MO_CUBES:
-          NHOMO: 4
-          NLUMO: 1
-          STRIDE: '4 4 4'        
       QS:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
@@ -195,6 +276,11 @@ gw_second_step:
               CORR_MOS_VIRT: '10'
               EV_GW_ITER: '5'
               RI_SIGMA_X: ''
+      PRINT:
+        MO_CUBES:
+          NHOMO: '4'
+          NLUMO: '1'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -202,7 +288,10 @@ gw_second_step:
     RUN_TYPE: ENERGY
     PRINT_LEVEL: MEDIUM
     EXTENDED_FFT_LENGTHS: ''
-gw_ic_second_step:
+# -------------------------------------------------------------
+# GAPW standard IC STEP
+# -------------------------------------------------------------
+gapw_std_ic_step:
   FORCE_EVAL:
     METHOD: Quickstep
     DFT:
@@ -248,6 +337,11 @@ gw_ic_second_step:
               IC:
               - ''
               - {}
+      PRINT:
+        MO_CUBES:
+          NHOMO: '4'
+          NLUMO: '1'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -255,7 +349,10 @@ gw_ic_second_step:
     RUN_TYPE: ENERGY
     PRINT_LEVEL: MEDIUM
     EXTENDED_FFT_LENGTHS: ''
-gw_hq_first_step:
+# -------------------------------------------------------------
+# GAPW high-quality SCF STEP
+# -------------------------------------------------------------
+gapw_hq_scf_step:
   FORCE_EVAL:
     METHOD: Quickstep
     DFT:
@@ -287,6 +384,11 @@ gw_hq_first_step:
       XC:
         XC_FUNCTIONAL:
           _: PBE
+      PRINT:
+        MO_CUBES:
+          NHOMO: '4'
+          NLUMO: '1'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -294,7 +396,10 @@ gw_hq_first_step:
     RUN_TYPE: ENERGY
     PRINT_LEVEL: MEDIUM
     EXTENDED_FFT_LENGTHS: ''
-gw_hq_second_step:
+# -------------------------------------------------------------
+# GAPW high-quality GW STEP
+# -------------------------------------------------------------
+gapw_hq_gw_step:
   FORCE_EVAL:
     METHOD: Quickstep
     DFT:
@@ -306,11 +411,6 @@ gw_hq_second_step:
       MGRID:
         CUTOFF: '600'
         REL_CUTOFF: '50'
-      PRINT:
-        MO_CUBES:
-          NHOMO: 4
-          NLUMO: 1
-          STRIDE: '4 4 4'
       QS:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
@@ -341,6 +441,11 @@ gw_hq_second_step:
               CORR_MOS_VIRT: '10'
               EV_GW_ITER: '5'
               RI_SIGMA_X: ''
+      PRINT:
+        MO_CUBES:
+          NHOMO: '4'
+          NLUMO: '1'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -348,7 +453,10 @@ gw_hq_second_step:
     RUN_TYPE: ENERGY
     PRINT_LEVEL: MEDIUM
     EXTENDED_FFT_LENGTHS: ''
-gw_ic_hq_second_step:
+# -------------------------------------------------------------
+# GAPW high-quality IC STEP
+# -------------------------------------------------------------
+gapw_hq_ic_step:
   FORCE_EVAL:
     METHOD: Quickstep
     DFT:
@@ -392,6 +500,11 @@ gw_ic_hq_second_step:
               IC:
               - ''
               - {}
+      PRINT:
+        MO_CUBES:
+          NHOMO: '4'
+          NLUMO: '1'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE

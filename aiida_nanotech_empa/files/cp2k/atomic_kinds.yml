@@ -138,21 +138,25 @@ basis_set:
   At: DZVP-MOLOPT-SR-GTH-q7
   Rn: DZVP-MOLOPT-SR-GTH-q8
 
-gw_st_basis_set:
+
+# -------------------------------------------------------------
+# Basis sets for the GW workchain
+# -------------------------------------------------------------
+gpw_std_gw_basis_set:
   H:  aug-cc-pVDZ-GTH
   B:  K-aug-DZVP-GTH-3
   C:  aug-cc-pVDZ-GTH
   N:  aug-DZVP-GTH
   O:  aug-DZVP-GTH
 
-gw_st_basis_set_aux:
+gpw_std_gw_basis_set_aux:
   H:  aug-cc-pVDZ-RIFIT
   B:  K-RI_aug_DZ
   C:  aug-cc-pVDZ-RIFIT
   N:  RI_aug_DZ
   O:  RI_DZVP-own  
 
-gw_basis_set:
+gapw_std_gw_basis_set:
   H:  aug-cc-pVDZ-up
   B:  aug-cc-pVDZ-up
   C:  aug-cc-pVDZ-up
@@ -161,7 +165,7 @@ gw_basis_set:
   S:  aug-cc-pVDZ-up
   Zn: aug-cc-pVDZ-up
 
-gw_basis_set_aux:
+gapw_std_gw_basis_set_aux:
   H:  aug-cc-pVDZ-RIFIT
   B:  aug-cc-pVDZ-RIFIT
   C:  aug-cc-pVDZ-RIFIT
@@ -170,7 +174,7 @@ gw_basis_set_aux:
   S:  aug-cc-pVDZ-RIFIT
   Zn: aug-cc-pVDZ-RIFIT 
 
-gw_hq_basis_set:
+gapw_hq_gw_basis_set:
   H:  aug-cc-pVTZ
   B:  aug-cc-pVQZ
   C:  aug-cc-pVTZ
@@ -179,7 +183,7 @@ gw_hq_basis_set:
   S:  aug-cc-pVQZ
   Zn: aug-cc-pVQZ
 
-gw_hq_basis_set_aux:
+gapw_hq_gw_basis_set_aux:
   H:  aug-cc-pVTZ-RIFIT
   B:  aug-cc-pVQZ-RIFIT
   C:  aug-cc-pVTZ-RIFIT
@@ -188,6 +192,9 @@ gw_hq_basis_set_aux:
   S:  aug-cc-pVQZ-RIFIT
   Zn: aug-cc-pVQZ-RIFIT  
 
+# -------------------------------------------------------------
+# Pseudopotentials
+# -------------------------------------------------------------
 pseudopotential:
    H:  GTH-PBE-q1
    He: GTH-PBE-q2
