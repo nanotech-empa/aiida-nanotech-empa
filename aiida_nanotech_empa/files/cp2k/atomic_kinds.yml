@@ -138,6 +138,20 @@ basis_set:
   At: DZVP-MOLOPT-SR-GTH-q7
   Rn: DZVP-MOLOPT-SR-GTH-q8
 
+gw_st_basis_set:
+  H:  aug-cc-pVDZ-GTH
+  B:  K-aug-DZVP-GTH-3
+  C:  aug-cc-pVDZ-GTH
+  N:  aug-DZVP-GTH
+  O:  aug-DZVP-GTH
+
+gw_st_basis_set_aux:
+  H:  aug-cc-pVDZ-RIFIT
+  B:  K-RI_aug_DZ
+  C:  aug-cc-pVDZ-RIFIT
+  N:  RI_aug_DZ
+  O:  RI_DZVP-own  
+
 gw_basis_set:
   H:  aug-cc-pVDZ-up
   B:  aug-cc-pVDZ-up
@@ -262,6 +276,94 @@ pseudopotential:
    At: GTH-PBE-q7
    Rn: GTH-PBE-q8
 
+all:
+   H:  ALL 
+   He: ALL 
+   Li: ALL 
+   Be: ALL 
+   B:  ALL 
+   C:  ALL 
+   N:  ALL 
+   O:  ALL 
+   F:  ALL 
+   Ne: ALL 
+   Na: ALL 
+   Mg: ALL 
+   Al: ALL 
+   Si: ALL 
+   P:  ALL 
+   S:  ALL 
+   Cl: ALL 
+   Ar: ALL 
+   K:  ALL 
+   Ca: ALL 
+   Sc: ALL 
+   Ti: ALL 
+   V:  ALL 
+   Cr: ALL 
+   Mn: ALL 
+   Fe: ALL 
+   Co: ALL 
+   Ni: ALL 
+   Cu: ALL 
+   Zn: ALL 
+   Ga: ALL 
+   Ge: ALL 
+   As: ALL 
+   Se: ALL 
+   Br: ALL 
+   Kr: ALL 
+   Rb: ALL 
+   Sr: ALL 
+   Y:  ALL 
+   Zr: ALL 
+   Nb: ALL 
+   Mo: ALL 
+   Tc: ALL 
+   Ru: ALL 
+   Rh: ALL 
+   Pd: ALL 
+   Ag: ALL 
+   Cd: ALL 
+   In: ALL 
+   Sn: ALL 
+   Sb: ALL 
+   Te: ALL 
+   I:  ALL 
+   Xe: ALL 
+   Cs: ALL 
+   Ba: ALL 
+   La: ALL 
+   Ce: ALL 
+   Pr: ALL 
+   Nd: ALL 
+   Pm: ALL 
+   Sm: ALL 
+   Eu: ALL 
+   Gd: ALL 
+   Tb: ALL 
+   Dy: ALL 
+   Ho: ALL 
+   Er: ALL 
+   Tm: ALL 
+   Yb: ALL 
+   Lu: ALL 
+   Hf: ALL 
+   Ta: ALL 
+   W:  ALL 
+   Re: ALL 
+   Os: ALL 
+   Ir: ALL 
+   Pt: ALL 
+   Au: ALL 
+   Hg: ALL 
+   Tl: ALL 
+   Pb: ALL 
+   Bi: ALL 
+   Po: ALL 
+   At: ALL 
+   Rn: ALL 
+   
 cutoff:
    H:  600 
    He: 600 

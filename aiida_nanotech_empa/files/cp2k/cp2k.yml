@@ -1,0 +1,101 @@
+FORCE_EVAL:
+  METHOD: Quickstep
+  DFT:
+    BASIS_SET_FILE_NAME: ./K_GW_BASIS
+    POTENTIAL_FILE_NAME: POTENTIAL
+    RESTART_FILE_NAME: ./PROJ-RESTART.wfn
+    UKS: ''
+    MULTIPLICITY: '1'
+    MGRID:
+      CUTOFF: '600'
+      REL_CUTOFF: '50'
+    QS:
+      METHOD: GPW
+      EPS_PGF_ORB: '1.0E-80'
+      EPS_FILTER_MATRIX: '1.0E-80'
+    POISSON:
+      PERIODIC: NONE
+      PSOLVER: MT
+    SCF:
+      SCF_GUESS: RESTART
+      EPS_SCF: '1.0E-6'
+      MAX_SCF: '500'
+      CHOLESKY: INVERSE
+      ADDED_MOS: '50'
+      SMEAR:
+        _: 'ON'
+        METHOD: FERMI_DIRAC
+        ELECTRONIC_TEMPERATURE: '300'
+      MIXING:
+        METHOD: BROYDEN_MIXING
+        ALPHA: '0.1'
+        BETA: '1.5'
+        NBUFFER: '8'
+      DIAGONALIZATION:
+        ALGORITHM: STANDARD
+      OUTER_SCF:
+        MAX_SCF: '50'
+        EPS_SCF: '1.0E-6'
+    XC:
+      XC_FUNCTIONAL:
+        _: PBE
+      WF_CORRELATION:
+        RI_RPA:
+          RPA_NUM_QUAD_POINTS: '120'
+          GW:
+            CORR_MOS_OCC: '100'
+            CORR_MOS_VIRT: '100'
+            EV_GW_ITER: '10'
+            NPARAM_PADE: '16'
+            RI_SIGMA_X: ''
+    PRINT:
+      MO_CUBES:
+        NHOMO: '4'
+        NLUMO: '1'
+        STRIDE: 4 4 4
+  SUBSYS:
+    CELL:
+      ABC: 71 25 15
+      PERIODIC: NONE
+    TOPOLOGY:
+      COORD_FILE_NAME: b3lyp-rks-opt.xyz
+      COORD_FILE_FORMAT: xyz
+      CENTER_COORDINATES: {}
+    KIND:
+    - _: H
+      BASIS_SET: aug-cc-pVDZ-GTH
+      'BASIS_SET ': RI_AUX aug-cc-pVDZ-RIFIT
+      POTENTIAL: GTH-PBE
+    - _: C
+      BASIS_SET: aug-cc-pVDZ-GTH
+      'BASIS_SET ': RI_AUX aug-cc-pVDZ-RIFIT
+      POTENTIAL: GTH-PBE
+    - _: C1
+      BASIS_SET: aug-cc-pVDZ-GTH
+      'BASIS_SET ': RI_AUX aug-cc-pVDZ-RIFIT
+      POTENTIAL: GTH-PBE
+      ELEMENT: C
+      MAGNETIZATION: '2'
+    - _: C2
+      BASIS_SET: aug-cc-pVDZ-GTH
+      'BASIS_SET ': RI_AUX aug-cc-pVDZ-RIFIT
+      POTENTIAL: GTH-PBE
+      ELEMENT: C
+      MAGNETIZATION: '-2'
+    - _: N
+      BASIS_SET: aug-DZVP-GTH
+      'BASIS_SET ': RI_AUX RI_aug_DZ
+      POTENTIAL: GTH-PBE
+    - _: B
+      BASIS_SET: K-aug-DZVP-GTH-3
+      'BASIS_SET ': RI_AUX K-RI_aug_DZ
+      POTENTIAL: GTH-PBE
+    - _: O
+      BASIS_SET: aug-DZVP-GTH
+      'BASIS_SET ': RI_AUX RI_DZVP-own
+      POTENTIAL: GTH-PBE
+GLOBAL:
+  RUN_TYPE: ENERGY
+  PROJECT: PROJ
+  PRINT_LEVEL: MEDIUM
+  EXTENDED_FFT_LENGTHS: ''
