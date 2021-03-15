@@ -10,8 +10,8 @@ from aiida.orm import SinglefileData, StructureData
 from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section_gw, determine_kinds, dict_merge, get_nodes, get_cutoff
 from aiida_cp2k.calculations import Cp2kCalculation
 
-
 ALLOWED_PROTOCOLS = ['gapw_std', 'gapw_hq', 'gpw_std']
+
 
 class Cp2kMoleculeGwWorkChain(WorkChain):
     @classmethod
@@ -30,7 +30,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    default=lambda: Bool(False),
                    required=False,
                    help="Run the image charge correction calculation.")
-                
+
         spec.input("z_ic_plane",
                    valid_type=Float,
                    default=lambda: Float(8.22),
@@ -55,10 +55,10 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         spec.input("structure", valid_type=StructureData)
 
         spec.input("debug",
-            valid_type=Bool,
-            default=lambda: Bool(False),
-            required=False,
-            help="Run with fast parameters for debugging.")
+                   valid_type=Bool,
+                   default=lambda: Bool(False),
+                   required=False,
+                   help="Run with fast parameters for debugging.")
 
         spec.outline(cls.setup, cls.submit_first_step, cls.submit_second_step,
                      cls.finalize)
@@ -91,8 +91,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                 pathlib.Path(__file__).parent /
                 '../../files/cp2k/gw_protocols.yml') as handle:
             self.ctx.protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(
-                self.ctx.protocols[protocol_full])
+            input_dict = copy.deepcopy(self.ctx.protocols[protocol_full])
 
         structure = self.inputs.structure
         self.ctx.cutoff = get_cutoff(structure=structure)
@@ -114,14 +113,14 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         structure_with_tags, kinds_dict = determine_kinds(
             structure, magnetization_per_site, ghost_per_site)
 
-
         #make sure cell is big enough for MT poisson solver
         if self.inputs.debug:
             extra_cell = 5.0
         else:
             extra_cell = 15.0
         self.ctx.atoms = structure_with_tags.get_ase()
-        self.ctx.atoms.cell = 2 * (np.ptp(self.ctx.atoms.positions, axis=0)) + extra_cell
+        self.ctx.atoms.cell = 2 * (np.ptp(self.ctx.atoms.positions,
+                                          axis=0)) + extra_cell
         self.ctx.atoms.center()
 
         builder = Cp2kCalculation.get_builder()
@@ -151,9 +150,10 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
             input_dict['FORCE_EVAL']['DFT'][
                 'MULTIPLICITY'] = self.inputs.multiplicity.value
-        
+
         # KINDS section
-        self.ctx.kinds_section = get_kinds_section_gw(kinds_dict, protocol=protocol)
+        self.ctx.kinds_section = get_kinds_section_gw(kinds_dict,
+                                                      protocol=protocol)
         dict_merge(input_dict, self.ctx.kinds_section)
 
         #computational resources
@@ -163,7 +163,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             computer=self.inputs.code.computer,
             max_nodes=48,
             uks=self.inputs.multiplicity.value > 0)
-            
+
         builder.metadata.options.resources = {
             'num_machines': nodes,
             'num_mpiprocs_per_machine': tasks_per_node,
@@ -223,7 +223,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         # KINDS section
         dict_merge(input_dict, self.ctx.kinds_section)
 
-        #computational resources        
+        #computational resources
         nodes, tasks_per_node, threads = get_nodes(
             atoms=self.ctx.atoms,
             calctype='gw_ic' if self.inputs.image_charge.value else 'gw',

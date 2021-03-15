@@ -57,8 +57,7 @@ def get_kinds_section_gw(kinds_dict, protocol='gapw_std'):
         magnetization = kinds_dict[kind_name]['mag']
         is_ghost = kinds_dict[kind_name]['ghost']
         new_section = {
-            '_':
-            kind_name,
+            '_': kind_name,
             'BASIS_SET': atom_data[bset][element],
             'BASIS_SET RI_AUX': atom_data[bsetaux][element],
             'POTENTIAL': atom_data[potential][element],
@@ -69,7 +68,7 @@ def get_kinds_section_gw(kinds_dict, protocol='gapw_std'):
         if magnetization != 0.0:
             new_section['MAGNETIZATION'] = magnetization
         kinds.append(new_section)
-        
+
     return {'FORCE_EVAL': {'SUBSYS': {'KIND': kinds}}}
 
 
@@ -120,7 +119,7 @@ def determine_kinds(structure,
         magnetization_per_site = [0 for i in range(len(ase_structure))]
     if ghost_per_site is None:
         ghost_per_site = [0 for i in range(len(ase_structure))]
-    
+
     if len(magnetization_per_site) != len(ase_structure.numbers):
         raise ValueError(
             'The size of `magnetization_per_site` is different from the number of atoms.'
@@ -129,15 +128,17 @@ def determine_kinds(structure,
         raise ValueError(
             'The size of `ghost_per_site` is different from the number of atoms.'
         )
-    
+
     # Combine atom type with magnetizations and ghost_type
     complex_symbols = [
-        f'{symbol}_{magn}_{ghost}' for symbol, magn, ghost in zip(
-            ase_structure.get_chemical_symbols(), magnetization_per_site, ghost_per_site)
+        f'{symbol}_{magn}_{ghost}'
+        for symbol, magn, ghost in zip(ase_structure.get_chemical_symbols(),
+                                       magnetization_per_site, ghost_per_site)
     ]
 
     # Assign a unique tag for every atom kind. Use OrderedDict for order
-    unique_complex_symbols = list(collections.OrderedDict().fromkeys(complex_symbols).keys())
+    unique_complex_symbols = list(
+        collections.OrderedDict().fromkeys(complex_symbols).keys())
     combined = collections.OrderedDict()
 
     element_tag_counter = {}
@@ -148,7 +149,7 @@ def determine_kinds(structure,
         else:
             element_tag_counter[element] += 1
         combined[c_symbol] = element_tag_counter[element]
-    
+
     # Assigning correct tags to every atom.
     tags = [combined[key] for key in complex_symbols]
     ase_structure.set_tags(tags)
