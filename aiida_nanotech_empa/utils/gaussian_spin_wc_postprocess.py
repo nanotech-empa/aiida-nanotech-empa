@@ -97,7 +97,8 @@ def get_spin_exp_values(out_params):
 
 def _get_spin_exp_values_str(out_params):
     s = ""
-    if "spin_expectation_values" in out_params:
+    if ("spin_expectation_values" in out_params
+            and len(out_params["spin_expectation_values"]) > 0):
         s_e = get_spin_exp_values(out_params)
         s += "S**2: {0:.3f}, ideal: {1:.2f}\n".format(s_e['S**2'],
                                                       s_e['S**2_ideal'])
