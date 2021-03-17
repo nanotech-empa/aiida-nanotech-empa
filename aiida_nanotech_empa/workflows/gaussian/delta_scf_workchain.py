@@ -204,7 +204,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
             builder.gaussian.parameters = parameters
             self.setup_common_builder_params(builder)
             submitted_node = self.submit(builder)
-            label = "neg_m%d" % neg_mult
+            label = f"neg_m{neg_mult}"
             self.to_context(**{label: submitted_node})
 
     def finalize(self):
@@ -216,14 +216,14 @@ class GaussianDeltaScfWorkChain(WorkChain):
         anion_energies = []
 
         for neg_mult in self.ctx.neg_mults:
-            label = "neg_m%d" % neg_mult
+            label = f"neg_m{neg_mult}"
             if not common.check_if_previous_calc_ok(self, self.ctx[label]):
                 return self.exit_codes.ERROR_TERMINATION
 
             anion_energies.append(self.ctx[label].outputs.energy_ev)
 
             if len(self.ctx.neg_mults) > 1:
-                self.out("anion_energy_m%d" % neg_mult,
+                self.out(f"anion_energy_m{neg_mult}",
                          self.ctx[label].outputs.energy_ev)
 
         anion_energy = min(anion_energies)
