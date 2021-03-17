@@ -176,9 +176,9 @@ def make_report(wc_node):
     gs_ea = wc_node.outputs["gs_electron_affinity"].value
 
     print()
-    print("############################################################")
+    print("##############################################################")
     print("#### GROUND STATE: MULTIPLICITY {}".format(gs_multiplicity))
-    print("############################################################")
+    print("##############################################################")
 
     _show_spin_density(wc_node.outputs.gs_cube_images)
 
@@ -201,9 +201,9 @@ def make_report(wc_node):
 
         gs_hf_out_params = dict(wc_node.outputs.gs_hf_out_params)
 
-        print("############################################################")
+        print("##############################################################")
         print("#### GROUND STATE HF")
-        print("############################################################")
+        print("##############################################################")
 
         if "gs_hf_cube_images" in wc_node.outputs:
             _show_spin_density(wc_node.outputs.gs_hf_cube_images)
@@ -225,9 +225,9 @@ def make_report(wc_node):
         if mult == gs_multiplicity:
             continue
 
-        print("############################################################")
+        print("##############################################################")
         print("#### MULTIPLICITY {}".format(mult))
-        print("############################################################")
+        print("##############################################################")
 
         cube_label = f"m{mult}_opt_cube_images"
         _show_spin_density(wc_node.outputs[cube_label])

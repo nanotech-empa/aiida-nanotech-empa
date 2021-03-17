@@ -8,7 +8,9 @@ from aiida.orm import FolderData
 
 import aiida_nanotech_empa.utils.pymol_render as pr
 
-from aiida_gaussian.parsers import CubegenBaseParser
+from aiida.plugins import ParserFactory
+
+CubegenBaseParser = ParserFactory('cubegen_base_parser')
 
 
 class CubegenPymolParser(CubegenBaseParser):

@@ -13,7 +13,7 @@ class GaussianRelaxWorkChain(WorkChain):
     def define(cls, spec):
         super().define(spec)
 
-        spec.input("gaussian_code", valid_type=Code)
+        spec.input('gaussian_code', valid_type=Code)
 
         spec.input('structure',
                    valid_type=StructureData,
@@ -41,6 +41,12 @@ class GaussianRelaxWorkChain(WorkChain):
                    default=lambda: Bool(False),
                    help='if true, perform wfn stability optimization')
 
+        spec.input(
+            'options',
+            valid_type=Dict,
+            required=False,
+            help="Use custom metadata.options instead of the automatic ones.")
+
         spec.outline(cls.setup,
                      if_(cls.should_do_wfn_stability)(cls.uks_wfn_stability),
                      cls.optimization, cls.finalize)
@@ -51,6 +57,11 @@ class GaussianRelaxWorkChain(WorkChain):
             301,
             "ERROR_MULTIPLICITY",
             message="Multiplicity and number of el. doesn't match.",
+        )
+        spec.exit_code(
+            302,
+            "ERROR_OPTIONS",
+            message="Input options are invalid.",
         )
         spec.exit_code(
             390,
@@ -75,6 +86,19 @@ class GaussianRelaxWorkChain(WorkChain):
 
         if self.ctx.mult % 2 == self.ctx.n_electrons % 2:
             return self.exit_codes.ERROR_MULTIPLICITY
+
+        success = common.determine_metadata_options(self)
+        if not success:
+            return self.exit_codes.ERROR_OPTIONS
+
+        num_cores, memory_mb = common.get_gaussian_cores_and_memory(
+            self.ctx.metadata_options, self.ctx.comp)
+
+        self.ctx.link0 = {
+            '%chk': 'aiida.chk',
+            '%mem': "%dMB" % memory_mb,
+            '%nprocshared': str(num_cores),
+        }
 
         return ExitCode(0)
 
@@ -107,9 +131,7 @@ class GaussianRelaxWorkChain(WorkChain):
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
         builder.gaussian.code = self.inputs.gaussian_code
-
-        common.set_metadata(builder.gaussian.metadata, self.ctx.n_atoms,
-                            self.ctx.comp)
+        builder.gaussian.metadata.options = self.ctx.metadata_options
 
         future = self.submit(builder)
         return ToContext(uks_stab=future)
@@ -147,9 +169,7 @@ class GaussianRelaxWorkChain(WorkChain):
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
         builder.gaussian.code = self.inputs.gaussian_code
-
-        common.set_metadata(builder.gaussian.metadata, self.ctx.n_atoms,
-                            self.ctx.comp)
+        builder.gaussian.metadata.options = self.ctx.metadata_options
 
         future = self.submit(builder)
         return ToContext(opt=future)

@@ -115,8 +115,8 @@ def make_pymol_png(input_file,
 
     # ------------------------------------
     # Set the view
-    # zoom to see molecule and extra z distance (1.5)
-    cmd.zoom("(all)", buffer=1.5, complete=1)
+    # zoom to see molecule and extra z distance (1.8)
+    cmd.zoom("(all)", buffer=1.8, complete=1)
 
     view = cmd.get_view()
 

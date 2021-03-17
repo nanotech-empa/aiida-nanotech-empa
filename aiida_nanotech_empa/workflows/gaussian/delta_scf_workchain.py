@@ -41,12 +41,16 @@ class GaussianDeltaScfWorkChain(WorkChain):
                    default=lambda: Int(1),
                    help='spin multiplicity; 0 means RKS')
 
+        spec.input('parent_calc_folder',
+                   valid_type=RemoteData,
+                   required=False,
+                   help="the folder of a completed gaussian calculation")
+
         spec.input(
-            "parent_calc_folder",
-            valid_type=RemoteData,
+            'options',
+            valid_type=Dict,
             required=False,
-            help="the folder of a completed gaussian calculation",
-        )
+            help="Use custom metadata.options instead of the automatic ones.")
 
         spec.outline(cls.setup, cls.submit_scfs, cls.finalize)
 
@@ -56,6 +60,11 @@ class GaussianDeltaScfWorkChain(WorkChain):
             301,
             "ERROR_MULTIPLICITY",
             message="Multiplicity and number of el. doesn't match.",
+        )
+        spec.exit_code(
+            302,
+            "ERROR_OPTIONS",
+            message="Input options are invalid.",
         )
         spec.exit_code(
             390,
@@ -76,13 +85,25 @@ class GaussianDeltaScfWorkChain(WorkChain):
         if self.ctx.mult % 2 == self.ctx.n_electrons % 2:
             return self.exit_codes.ERROR_MULTIPLICITY
 
+        success = common.determine_metadata_options(self)
+        if not success:
+            return self.exit_codes.ERROR_OPTIONS
+
+        num_cores, memory_mb = common.get_gaussian_cores_and_memory(
+            self.ctx.metadata_options, self.ctx.comp)
+
+        self.ctx.link0 = {
+            '%chk': 'aiida.chk',
+            '%mem': "%dMB" % memory_mb,
+            '%nprocshared': str(num_cores),
+        }
+
         return ExitCode(0)
 
     def setup_common_builder_params(self, builder):
         builder.gaussian.structure = self.inputs.structure
         builder.gaussian.code = self.inputs.gaussian_code
-        common.set_metadata(builder.gaussian.metadata, self.ctx.n_atoms,
-                            self.ctx.comp)
+        builder.gaussian.metadata.options = self.ctx.metadata_options
 
     def submit_scfs(self):
         # pylint: disable=too-many-branches

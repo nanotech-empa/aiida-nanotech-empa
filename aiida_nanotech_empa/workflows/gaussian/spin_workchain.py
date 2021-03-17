@@ -12,7 +12,8 @@ GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
 GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
 
 GaussianScfCubesWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf_cubes')
-GaussianSpinOptWorkChain = WorkflowFactory('nanotech_empa.gaussian.spin_opt')
+GaussianRelaxScfCubesWorkChain = WorkflowFactory(
+    'nanotech_empa.gaussian.relax_scf_cubes')
 GaussianDeltaScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.delta_scf')
 GaussianNatOrbWorkChain = WorkflowFactory('nanotech_empa.gaussian.natorb')
 
@@ -49,6 +50,12 @@ class GaussianSpinWorkChain(WorkChain):
                    required=True,
                    help='spin multiplicities')
 
+        spec.input(
+            'options',
+            valid_type=Dict,
+            required=False,
+            help="Use custom metadata.options instead of the automatic ones.")
+
         spec.outline(
             cls.submit_opts, cls.inspect_opts, cls.submit_next_steps,
             cls.inspect_next_steps,
@@ -68,20 +75,21 @@ class GaussianSpinWorkChain(WorkChain):
         # multiplicity 0 means RKS calculation
 
         for mult in self.inputs.multiplicity_list:
-
             label = f"m{mult}_opt"
 
-            submitted_node = self.submit(
-                GaussianSpinOptWorkChain,
-                gaussian_code=self.inputs.gaussian_code,
-                formchk_code=self.inputs.formchk_code,
-                cubegen_code=self.inputs.cubegen_code,
-                structure=self.inputs.structure,
-                functional=self.inputs.functional,
-                basis_set_opt=self.inputs.basis_set_opt,
-                basis_set_scf=self.inputs.basis_set_scf,
-                multiplicity=Int(mult),
-            )
+            builder = GaussianRelaxScfCubesWorkChain.get_builder()
+            builder.gaussian_code = self.inputs.gaussian_code
+            builder.formchk_code = self.inputs.formchk_code
+            builder.cubegen_code = self.inputs.cubegen_code
+            builder.structure = self.inputs.structure
+            builder.functional = self.inputs.functional
+            builder.basis_set_opt = self.inputs.basis_set_opt
+            builder.basis_set_scf = self.inputs.basis_set_scf
+            builder.multiplicity = Int(mult)
+            if 'options' in self.inputs:
+                builder.options = self.inputs.options
+
+            submitted_node = self.submit(builder)
             submitted_node.description = label
             self.to_context(**{label: submitted_node})
 
@@ -132,6 +140,7 @@ class GaussianSpinWorkChain(WorkChain):
         return ExitCode(0)
 
     def submit_next_steps(self):
+        # pylint: disable=too-many-statements
 
         cubes_n_occ = 2
         cubes_n_virt = 2
@@ -140,34 +149,35 @@ class GaussianSpinWorkChain(WorkChain):
         # ------------------------------------------------------
         self.report("Submitting GS cubes")
 
-        submitted_node = self.submit(
-            GaussianCubesWorkChain,
-            formchk_code=self.inputs.formchk_code,
-            cubegen_code=self.inputs.cubegen_code,
-            gaussian_calc_folder=self.ctx.gs_scf_calcnode.outputs.
-            remote_folder,
-            gaussian_output_params=self.ctx.gs_scf_calcnode.
-            outputs['output_parameters'],
-            n_occ=Int(cubes_n_occ),
-            n_virt=Int(cubes_n_virt),
-            cubegen_parser_name='nanotech_empa.gaussian.cubegen_pymol',
-            cubegen_parser_params=Dict(dict={'isovalues': cubes_isovalues}),
-        )
+        builder = GaussianCubesWorkChain.get_builder()
+        builder.formchk_code = self.inputs.formchk_code
+        builder.cubegen_code = self.inputs.cubegen_code
+        builder.gaussian_calc_folder = self.ctx.gs_scf_calcnode.outputs.remote_folder
+        builder.gaussian_output_params = self.ctx.gs_scf_calcnode.outputs.output_parameters
+        builder.n_occ = Int(cubes_n_occ)
+        builder.n_virt = Int(cubes_n_virt)
+        builder.cubegen_parser_name = 'nanotech_empa.gaussian.cubegen_pymol'
+        builder.cubegen_parser_params = Dict(
+            dict={'isovalues': cubes_isovalues})
+
+        submitted_node = self.submit(builder)
         submitted_node.description = "gs cubes"
         self.to_context(gs_cubes=submitted_node)
 
         # ------------------------------------------------------
         self.report("Submitting Delta SCF")
 
-        submitted_node = self.submit(
-            GaussianDeltaScfWorkChain,
-            gaussian_code=self.inputs.gaussian_code,
-            structure=self.ctx.gs_structure,
-            functional=self.inputs.functional,
-            basis_set=self.inputs.basis_set_scf,
-            multiplicity=self.ctx.gs_mult,
-            parent_calc_folder=self.ctx.gs_scf_calcnode.outputs.remote_folder,
-        )
+        builder = GaussianDeltaScfWorkChain.get_builder()
+        builder.gaussian_code = self.inputs.gaussian_code
+        builder.structure = self.ctx.gs_structure
+        builder.functional = self.inputs.functional
+        builder.basis_set = self.inputs.basis_set_scf
+        builder.multiplicity = self.ctx.gs_mult
+        builder.parent_calc_folder = self.ctx.gs_scf_calcnode.outputs.remote_folder
+        if 'options' in self.inputs:
+            builder.options = self.inputs.options
+
+        submitted_node = self.submit(builder)
         submitted_node.description = "delta scf"
         self.to_context(dscf=submitted_node)
 
@@ -175,22 +185,23 @@ class GaussianSpinWorkChain(WorkChain):
         if self.inputs.functional.value != 'HF':
             self.report("Submitting HF SCF")
 
-            submitted_node = self.submit(
-                GaussianScfCubesWorkChain,
-                gaussian_code=self.inputs.gaussian_code,
-                formchk_code=self.inputs.formchk_code,
-                cubegen_code=self.inputs.cubegen_code,
-                structure=self.ctx.gs_structure,
-                functional=Str("HF"),
-                basis_set=self.inputs.basis_set_scf,
-                multiplicity=self.ctx.gs_mult,
-                do_stable_opt=Bool(True),
-                parent_calc_folder=self.ctx.gs_scf_calcnode.outputs.
-                remote_folder,
-                n_occ=Int(1),
-                n_virt=Int(1),
-                isosurfaces=List(list=[0.010, 0.050]),
-            )
+            builder = GaussianScfCubesWorkChain.get_builder()
+            builder.gaussian_code = self.inputs.gaussian_code
+            builder.formchk_code = self.inputs.formchk_code
+            builder.cubegen_code = self.inputs.cubegen_code
+            builder.structure = self.ctx.gs_structure
+            builder.functional = Str("HF")
+            builder.basis_set = self.inputs.basis_set_scf
+            builder.multiplicity = self.ctx.gs_mult
+            builder.wfn_stable_opt = Bool(True)
+            builder.parent_calc_folder = self.ctx.gs_scf_calcnode.outputs.remote_folder
+            builder.n_occ = Int(1)
+            builder.n_virt = Int(1)
+            builder.isosurfaces = List(list=[0.010, 0.050])
+            if 'options' in self.inputs:
+                builder.options = self.inputs.options
+
+            submitted_node = self.submit(builder)
             submitted_node.description = "HF scf"
             self.to_context(gs_hf=submitted_node)
 
@@ -205,21 +216,23 @@ class GaussianSpinWorkChain(WorkChain):
             if mult == self.ctx.gs_mult:
                 continue
 
-            submitted_node = self.submit(
-                GaussianScfCubesWorkChain,
-                gaussian_code=self.inputs.gaussian_code,
-                formchk_code=self.inputs.formchk_code,
-                cubegen_code=self.inputs.cubegen_code,
-                structure=self.ctx.gs_structure,
-                functional=self.inputs.functional,
-                basis_set=self.inputs.basis_set_scf,
-                multiplicity=Int(mult),
-                parent_calc_folder=self.ctx[opt_label].called[0].called[-1].
-                outputs.remote_folder,
-                n_occ=Int(cubes_n_occ),
-                n_virt=Int(cubes_n_virt),
-                isosurfaces=List(list=cubes_isovalues),
-            )
+            builder = GaussianScfCubesWorkChain.get_builder()
+            builder.gaussian_code = self.inputs.gaussian_code
+            builder.formchk_code = self.inputs.formchk_code
+            builder.cubegen_code = self.inputs.cubegen_code
+            builder.structure = self.ctx.gs_structure
+            builder.functional = self.inputs.functional
+            builder.basis_set = self.inputs.basis_set_scf
+            builder.multiplicity = Int(mult)
+            builder.parent_calc_folder = self.ctx[
+                opt_label].outputs.remote_folder
+            builder.n_occ = Int(cubes_n_occ)
+            builder.n_virt = Int(cubes_n_virt)
+            builder.isosurfaces = List(list=cubes_isovalues)
+            if 'options' in self.inputs:
+                builder.options = self.inputs.options
+
+            submitted_node = self.submit(builder)
             submitted_node.description = label
             self.to_context(**{label: submitted_node})
 
@@ -278,22 +291,25 @@ class GaussianSpinWorkChain(WorkChain):
 
         self.report("Submitting natural pop analysis")
 
-        submitted_node = self.submit(
-            GaussianNatOrbWorkChain,
-            gaussian_code=self.inputs.gaussian_code,
-            parent_calc_folder=self.ctx.gs_scf_calcnode.outputs.remote_folder,
-            parent_calc_params=self.ctx.gs_scf_calcnode.outputs.
-            output_parameters,
-        )
+        builder = GaussianNatOrbWorkChain.get_builder()
+        builder.gaussian_code = self.inputs.gaussian_code
+        builder.parent_calc_folder = self.ctx.gs_scf_calcnode.outputs.remote_folder
+        builder.parent_calc_params = self.ctx.gs_scf_calcnode.outputs.output_parameters
+        if 'options' in self.inputs:
+            builder.options = self.inputs.options
+
+        submitted_node = self.submit(builder)
         submitted_node.description = "natural orbitals pop"
         self.to_context(natorb=submitted_node)
 
-        submitted_node = self.submit(
-            GaussianNatOrbWorkChain,
-            gaussian_code=self.inputs.gaussian_code,
-            parent_calc_folder=self.ctx.gs_hf.outputs.remote_folder,
-            parent_calc_params=self.ctx.gs_hf.outputs.scf_out_params,
-        )
+        builder = GaussianNatOrbWorkChain.get_builder()
+        builder.gaussian_code = self.inputs.gaussian_code
+        builder.parent_calc_folder = self.ctx.gs_hf.outputs.remote_folder
+        builder.parent_calc_params = self.ctx.gs_hf.outputs.scf_out_params
+        if 'options' in self.inputs:
+            builder.options = self.inputs.options
+
+        submitted_node = self.submit(builder)
         submitted_node.description = "natural orbitals pop HF"
         self.to_context(natorb_hf=submitted_node)
 

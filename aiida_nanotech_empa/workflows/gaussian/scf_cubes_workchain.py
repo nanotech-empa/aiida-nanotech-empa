@@ -27,6 +27,7 @@ class GaussianScfCubesWorkChain(WorkChain):
                    valid_type=StructureData,
                    required=True,
                    help='input geometry')
+
         spec.input('functional',
                    valid_type=Str,
                    required=True,
@@ -43,18 +44,16 @@ class GaussianScfCubesWorkChain(WorkChain):
                    default=lambda: Int(1),
                    help='spin multiplicity; 0 means RKS')
 
-        spec.input('do_stable_opt',
+        spec.input('wfn_stable_opt',
                    valid_type=Bool,
                    required=False,
                    default=lambda: Bool(False),
                    help='if true, perform wfn stability optimization')
 
-        spec.input(
-            "parent_calc_folder",
-            valid_type=RemoteData,
-            required=False,
-            help="the folder of a completed gaussian calculation",
-        )
+        spec.input('parent_calc_folder',
+                   valid_type=RemoteData,
+                   required=False,
+                   help="the folder of a completed gaussian calculation")
 
         spec.input('n_occ',
                    valid_type=Int,
@@ -74,6 +73,12 @@ class GaussianScfCubesWorkChain(WorkChain):
                    default=lambda: List(list=[0.010]),
                    help='Generated images isosurface isovalues')
 
+        spec.input(
+            'options',
+            valid_type=Dict,
+            required=False,
+            help="Use custom metadata.options instead of the automatic ones.")
+
         spec.outline(cls.setup, cls.scf, cls.cubes, cls.finalize)
 
         spec.outputs.dynamic = True
@@ -82,6 +87,11 @@ class GaussianScfCubesWorkChain(WorkChain):
             301,
             "ERROR_MULTIPLICITY",
             message="Multiplicity and number of el. doesn't match.",
+        )
+        spec.exit_code(
+            302,
+            "ERROR_OPTIONS",
+            message="Input options are invalid.",
         )
         spec.exit_code(
             390,
@@ -101,6 +111,19 @@ class GaussianScfCubesWorkChain(WorkChain):
 
         if self.ctx.mult % 2 == self.ctx.n_electrons % 2:
             return self.exit_codes.ERROR_MULTIPLICITY
+
+        success = common.determine_metadata_options(self)
+        if not success:
+            return self.exit_codes.ERROR_OPTIONS
+
+        num_cores, memory_mb = common.get_gaussian_cores_and_memory(
+            self.ctx.metadata_options, self.ctx.comp)
+
+        self.ctx.link0 = {
+            '%chk': 'aiida.chk',
+            '%mem': "%dMB" % memory_mb,
+            '%nprocshared': str(num_cores),
+        }
 
         return ExitCode(0)
 
@@ -122,7 +145,7 @@ class GaussianScfCubesWorkChain(WorkChain):
                     'nosymm': None,
                 },
             })
-        if self.inputs.do_stable_opt:
+        if self.inputs.wfn_stable_opt:
             parameters['route_parameters']['stable'] = "opt"
         else:
             parameters['route_parameters']['sp'] = None
@@ -141,9 +164,7 @@ class GaussianScfCubesWorkChain(WorkChain):
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
         builder.gaussian.code = self.inputs.gaussian_code
-
-        common.set_metadata(builder.gaussian.metadata, self.ctx.n_atoms,
-                            self.ctx.comp)
+        builder.gaussian.metadata.options = self.ctx.metadata_options
 
         future = self.submit(builder)
         return ToContext(scf=future)

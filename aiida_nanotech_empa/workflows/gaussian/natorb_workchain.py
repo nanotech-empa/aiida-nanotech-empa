@@ -119,10 +119,22 @@ class GaussianNatOrbWorkChain(WorkChain):
             help="parent Gaussian calculation output parameters",
         )
 
+        spec.input(
+            "options",
+            valid_type=Dict,
+            required=False,
+            help="Use custom metadata.options instead of the automatic ones.",
+        )
+
         spec.outline(cls.submit_calc, cls.finalize)
 
         spec.outputs.dynamic = True
 
+        spec.exit_code(
+            302,
+            "ERROR_OPTIONS",
+            message="Input options are invalid.",
+        )
         spec.exit_code(
             390,
             "ERROR_TERMINATION",
@@ -132,10 +144,16 @@ class GaussianNatOrbWorkChain(WorkChain):
     def submit_calc(self):
 
         self.ctx.n_atoms = self.inputs.parent_calc_params['natom']
-        basis_set = self.inputs.parent_calc_params['metadata']['basis_set']
+        self.ctx.basis_set = self.inputs.parent_calc_params['metadata'][
+            'basis_set']
+        self.ctx.comp = self.inputs.gaussian_code.computer
 
-        num_cores, memory_mb = common.determine_comp_resources(
-            self.ctx.n_atoms, basis_set)
+        success = common.determine_metadata_options(self)
+        if not success:
+            return self.exit_codes.ERROR_OPTIONS
+
+        num_cores, memory_mb = common.get_gaussian_cores_and_memory(
+            self.ctx.metadata_options, self.ctx.comp)
 
         builder = GaussianBaseWorkChain.get_builder()
         builder.gaussian.code = self.inputs.gaussian_code
@@ -163,8 +181,7 @@ class GaussianNatOrbWorkChain(WorkChain):
                 'multiplicity': -1,  # ignored
             })
 
-        common.set_metadata(builder.gaussian.metadata, self.ctx.n_atoms,
-                            self.inputs.gaussian_code.computer)
+        builder.gaussian.metadata.options = self.ctx.metadata_options
 
         submitted_node = self.submit(builder)
         submitted_node.description = "naturalorbitals population"

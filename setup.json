@@ -22,14 +22,16 @@
             "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.qe.nanoribbon:NanoribbonWorkChain",
             "nanotech_empa.gaussian.relax = aiida_nanotech_empa.workflows.gaussian:GaussianRelaxWorkChain",
             "nanotech_empa.gaussian.scf_cubes = aiida_nanotech_empa.workflows.gaussian:GaussianScfCubesWorkChain",
-            "nanotech_empa.gaussian.spin_opt = aiida_nanotech_empa.workflows.gaussian:GaussianSpinOptWorkChain",
+            "nanotech_empa.gaussian.relax_scf_cubes = aiida_nanotech_empa.workflows.gaussian:GaussianRelaxScfCubesWorkChain",
             "nanotech_empa.gaussian.delta_scf = aiida_nanotech_empa.workflows.gaussian:GaussianDeltaScfWorkChain",
             "nanotech_empa.gaussian.natorb = aiida_nanotech_empa.workflows.gaussian:GaussianNatOrbWorkChain",
             "nanotech_empa.gaussian.spin = aiida_nanotech_empa.workflows.gaussian:GaussianSpinWorkChain"
         ]
     },
     "include_package_data": true,
-    "setup_requires": ["reentry"],
+    "setup_requires": [
+        "reentry"
+    ],
     "reentry_register": true,
     "install_requires": [
         "aiida-core>=1.2.1,<2.0.0",
