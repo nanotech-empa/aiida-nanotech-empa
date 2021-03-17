@@ -133,7 +133,7 @@ def make_pymol_png(input_file,
         out_filepath += "_iv%.3f" % isov
 
     def save_and_crop(fname):
-        cmd.png(fname, width="%dcm" % (max_w + 1), dpi=600, ray=1)
+        cmd.png(fname, width=f"{max_w + 1}cm", dpi=600, ray=1)
         cmd.set_view(view)
         crop_image_bbox(fname)
 
