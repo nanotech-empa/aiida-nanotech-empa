@@ -118,7 +118,7 @@ class GaussianSpinWorkChain(WorkChain):
 
         self.ctx.gs_mult = Int(self.inputs.multiplicity_list[gs_i]).store()
         self.ctx.gs_energy = opt_energies[gs_i]
-        gs_opt_label = "m{}_opt".format(self.ctx.gs_mult.value)
+        gs_opt_label = f"m{self.ctx.gs_mult.value}_opt"
         self.ctx.gs_structure = self.ctx[gs_opt_label].outputs.opt_structure
 
         self.out("gs_multiplicity", self.ctx.gs_mult)
