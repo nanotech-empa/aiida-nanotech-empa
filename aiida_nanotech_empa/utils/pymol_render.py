@@ -130,7 +130,7 @@ def make_pymol_png(input_file,
         out_filepath += output_name
 
     if ext == '.cube':
-        out_filepath += "_iv%.3f" % isov
+        out_filepath += "_iv{:.3f}".format(isov)
 
     def save_and_crop(fname):
         cmd.png(fname, width=f"{max_w + 1}cm", dpi=600, ray=1)
