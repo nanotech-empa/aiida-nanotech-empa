@@ -1,7 +1,6 @@
 import numpy as np
 
 import ase.io
-import ase.io.cube
 
 import os
 import tempfile
