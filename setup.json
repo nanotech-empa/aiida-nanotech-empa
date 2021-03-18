@@ -15,19 +15,30 @@
     ],
     "entry_points": {
         "aiida.parsers": [
-            "nanotech_empa.pp = aiida_nanotech_empa.parsers:PpParser"
+            "nanotech_empa.pp = aiida_nanotech_empa.parsers.pp_parser:PpParser",
+            "nanotech_empa.gaussian.cubegen_pymol = aiida_nanotech_empa.parsers.cubegen_pymol_parser:CubegenPymolParser"
         ],
         "aiida.workflows": [
-            "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.nanoribbon:NanoribbonWorkChain"
+            "nanotech_empa.nanoribbon = aiida_nanotech_empa.workflows.qe.nanoribbon:NanoribbonWorkChain",
+            "nanotech_empa.gaussian.relax = aiida_nanotech_empa.workflows.gaussian:GaussianRelaxWorkChain",
+            "nanotech_empa.gaussian.scf_cubes = aiida_nanotech_empa.workflows.gaussian:GaussianScfCubesWorkChain",
+            "nanotech_empa.gaussian.relax_scf_cubes = aiida_nanotech_empa.workflows.gaussian:GaussianRelaxScfCubesWorkChain",
+            "nanotech_empa.gaussian.delta_scf = aiida_nanotech_empa.workflows.gaussian:GaussianDeltaScfWorkChain",
+            "nanotech_empa.gaussian.natorb = aiida_nanotech_empa.workflows.gaussian:GaussianNatOrbWorkChain",
+            "nanotech_empa.gaussian.spin = aiida_nanotech_empa.workflows.gaussian:GaussianSpinWorkChain"
         ]
     },
     "include_package_data": true,
-    "setup_requires": ["reentry"],
+    "setup_requires": [
+        "reentry"
+    ],
     "reentry_register": true,
     "install_requires": [
         "aiida-core>=1.2.1,<2.0.0",
         "aiida-quantumespresso>=3.1.0",
-	"ase>=3.0"
+        "ase>=3.0",
+        "aiida-gaussian>=1.0.0",
+        "Pillow>=8.0.0"
     ],
     "extras_require": {
         "testing": [
@@ -38,10 +49,10 @@
             "pytest-cov"
         ],
         "pre-commit": [
-            "astroid==2.2.5",
-            "pre-commit==1.20.0",
-            "prospector==1.1.7",
-            "pylint==2.3.1"
+            "astroid>=2.4.0",
+            "pre-commit>=2.7.0",
+            "prospector>=1.3.0",
+            "pylint>=2.5.0"
         ]
     }
 }

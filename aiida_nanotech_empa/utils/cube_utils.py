@@ -1,5 +1,6 @@
 # pylint: disable=too-many-locals
 import numpy as np
+import ase
 
 ang_2_bohr = 1.889725989
 
@@ -45,6 +46,31 @@ def read_cube_file(file_lines):
     cell /= ang_2_bohr  # convert from bohr to ang
 
     return numbers, positions, cell, origin, data
+
+
+def load_cube_atoms(cube_file):
+    """ Loads only the geometry from the cube file """
+
+    ase_atoms = ase.Atoms()
+
+    with open(cube_file, 'r') as cubef:
+
+        cubef.readline()  # title
+        cubef.readline()  # comment
+
+        orig_line = cubef.readline()
+
+        n_atom = abs(int(orig_line.split()[0]))
+
+        for _i in range(3):
+            cubef.readline()
+        for _i in range(n_atom):
+
+            line = [float(x) for x in cubef.readline().split()]
+            pos = np.array(line[2:]) * 0.529177
+
+            ase_atoms.append(ase.Atom(int(line[0]), position=pos))
+    return ase_atoms
 
 
 def clip_data(data, absmin=None, absmax=None):
