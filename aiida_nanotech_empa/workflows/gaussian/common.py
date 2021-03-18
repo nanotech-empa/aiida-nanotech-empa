@@ -16,7 +16,7 @@ def _get_total_mem_kb(gaussian_mem_mb, computer):
     if computer.scheduler_type == 'direct':
         # For direct scheduler, should ask for extra ~1.5GB
         return (gaussian_mem_mb + 1536) * 1024
-    return (1.25 * gaussian_mem_mb + 100) * 1024
+    return int(1.25 * gaussian_mem_mb + 100) * 1024
 
 
 def _get_gaussian_mem_mb(total_mem_kb, computer):
