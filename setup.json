@@ -26,6 +26,9 @@
             "nanotech_empa.gaussian.delta_scf = aiida_nanotech_empa.workflows.gaussian:GaussianDeltaScfWorkChain",
             "nanotech_empa.gaussian.natorb = aiida_nanotech_empa.workflows.gaussian:GaussianNatOrbWorkChain",
             "nanotech_empa.gaussian.spin = aiida_nanotech_empa.workflows.gaussian:GaussianSpinWorkChain"
+        ],
+        "aiida.schedulers": [
+            "lsf_ethz_euler = aiida_nanotech_empa.schedulers.lsf_ethz_euler:ETHZEulerLsfScheduler"
         ]
     },
     "include_package_data": true,
