@@ -1,26 +1,26 @@
 import yaml
 
 
-def CP2K2DICT(input_lines=None):
+def CP2K2DICT(input_lines=None):  # pylint: disable=too-many-branches
     if input_lines is None:
         return 'no input', {}
     input_dict = {}
     lines = input_lines  #.splitlines()
     i_am_at = [input_dict]
-    for l in lines:
-        if l.replace('\n', ''):
-            print(l)
-            if l.lstrip()[0] not in ['#', '!', '\n']:
-                has_arg = len(l.split()) > 1
-                key = l.split()[0].lstrip('&')
-                if "&" in l and 'END' not in l:
+    for line in lines:  #pylint: disable=too-many-nested-blocks
+        if line.replace('\n', ''):
+            print(line)
+            if line.lstrip()[0] not in ['#', '!', '\n']:
+                has_arg = len(line.split()) > 1
+                key = line.split()[0].lstrip('&')
+                if "&" in line and 'END' not in line:
                     if key in i_am_at[-1].keys():
-                        if type(i_am_at[-1][key]) is not type([]):
+                        if not isinstance(i_am_at[-1][key], list):
                             i_am_at[-1][key] = [i_am_at[-1][key]]
                         if has_arg:
                             i_am_at[-1][key].append({
                                 '_':
-                                " ".join([str(s) for s in l.split()[1:]])
+                                " ".join([str(s) for s in line.split()[1:]])
                             })
                         else:
                             i_am_at[-1][key].append({})
@@ -28,13 +28,14 @@ def CP2K2DICT(input_lines=None):
                     else:
                         if has_arg:
                             i_am_at[-1][key] = {
-                                '_': " ".join([str(s) for s in l.split()[1:]])
+                                '_':
+                                " ".join([str(s) for s in line.split()[1:]])
                             }
                         else:
                             i_am_at[-1][key] = {}
                         i_am_at.append(i_am_at[-1][key])
-                elif "&" in l and 'END' in l:
-                    if type(i_am_at[-1]) is not type([]):
+                elif "&" in line and 'END' in line:
+                    if not isinstance(i_am_at[-1], list):
                         i_am_at = i_am_at[0:-1]
                     else:
                         i_am_at = i_am_at[0:-len(i_am_at[-1])]
@@ -43,8 +44,10 @@ def CP2K2DICT(input_lines=None):
                     ):  #fixes teh case where inside &KINDS we have BASIS .. and BASIS RI_AUX ..
                         key = key + ' '
                     if has_arg:
-                        i_am_at[-1].update(
-                            {key: " ".join([str(s) for s in l.split()[1:]])})
+                        i_am_at[-1].update({
+                            key:
+                            " ".join([str(s) for s in line.split()[1:]])
+                        })
                     else:
                         i_am_at[-1].update({key: ''})
     if len(i_am_at) > 1:
