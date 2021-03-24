@@ -7,32 +7,7 @@ from aiida.orm import StructureData, Dict
 ang_2_bohr = 1.889725989
 
 
-def get_kinds_section(structure: StructureData, magnetization_tags=None):
-    """ Write the &KIND sections given the structure and the settings_dict"""
-    kinds = []
-    with open(
-            pathlib.Path(__file__).parent /
-            '../files/cp2k/atomic_kinds.yml') as fhandle:
-        atom_data = yaml.safe_load(fhandle)
-    ase_structure = structure.get_ase()
-    symbol_tag = {(symbol, str(tag))
-                  for symbol, tag in zip(ase_structure.get_chemical_symbols(),
-                                         ase_structure.get_tags())}
-    for symbol, tag in symbol_tag:
-        new_atom = {
-            '_': symbol if tag == '0' else symbol + tag,
-            'BASIS_SET': atom_data['basis_set'][symbol],
-            'POTENTIAL': atom_data['pseudopotential'][symbol],
-        }
-        if tag != '0':
-            new_atom['ELEMENT'] = symbol
-        if magnetization_tags:
-            new_atom['MAGNETIZATION'] = magnetization_tags[tag]
-        kinds.append(new_atom)
-    return {'FORCE_EVAL': {'SUBSYS': {'KIND': kinds}}}
-
-
-def get_kinds_section_gw(kinds_dict, protocol='gapw_std'):
+def get_kinds_section(kinds_dict, protocol='gapw_std'):
     """ Write the &KIND sections in gw calculations given the structure and the settings_dict"""
 
     bset = 'gapw_std_gw_basis_set'
@@ -45,6 +20,10 @@ def get_kinds_section_gw(kinds_dict, protocol='gapw_std'):
     elif protocol == 'gpw_std':
         bset = 'gpw_std_gw_basis_set'
         bsetaux = 'gpw_std_gw_basis_set_aux'
+        potential = 'pseudopotential'
+    elif protocol == 'gpw':
+        bset = 'basis_set'
+        bsetaux = ''
         potential = 'pseudopotential'
     kinds = []
     with open(
@@ -59,10 +38,11 @@ def get_kinds_section_gw(kinds_dict, protocol='gapw_std'):
         new_section = {
             '_': kind_name,
             'BASIS_SET': atom_data[bset][element],
-            'BASIS_SET RI_AUX': atom_data[bsetaux][element],
             'POTENTIAL': atom_data[potential][element],
             'ELEMENT': element,
         }
+        if bsetaux:
+            new_section['BASIS_SET RI_AUX'] = atom_data[bsetaux][element]
         if is_ghost:
             new_section['GHOST'] = 'TRUE'
         if magnetization != 0.0:

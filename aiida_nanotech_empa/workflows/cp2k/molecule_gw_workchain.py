@@ -7,7 +7,7 @@ import numpy as np
 from aiida.engine import WorkChain, ToContext
 from aiida.orm import Int, Float, Str, Code, Dict, List, Bool
 from aiida.orm import SinglefileData, StructureData
-from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section_gw, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
 from aiida_cp2k.calculations import Cp2kCalculation
 
 ALLOWED_PROTOCOLS = ['gapw_std', 'gapw_hq', 'gpw_std']
@@ -152,8 +152,8 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                 'MULTIPLICITY'] = self.inputs.multiplicity.value
 
         # KINDS section
-        self.ctx.kinds_section = get_kinds_section_gw(kinds_dict,
-                                                      protocol=protocol)
+        self.ctx.kinds_section = get_kinds_section(kinds_dict,
+                                                   protocol=protocol)
         dict_merge(input_dict, self.ctx.kinds_section)
 
         #computational resources
@@ -171,8 +171,10 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         }
         #walltime
         input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value
-        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
         builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
+
+        #cutoff
+        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
         #parser
         builder.metadata.options.parser_name = "cp2k_advanced_parser"

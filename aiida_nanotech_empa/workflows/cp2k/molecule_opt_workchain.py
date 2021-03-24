@@ -8,7 +8,7 @@ from aiida.engine import WorkChain, ToContext
 from aiida.orm import Int, Bool, Code, Dict, List
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
-from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section, tags_and_magnetization, dict_merge
+from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
 
 Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 
@@ -41,6 +41,12 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
                    required=False)
         spec.input("structure", valid_type=StructureData)
 
+        spec.input("debug",
+                   valid_type=Bool,
+                   default=lambda: Bool(False),
+                   required=False,
+                   help="Run with fast parameters for debugging.")
+
         #workchain outline
         spec.outline(cls.setup, cls.submit_calc, cls.finalize)
         spec.outputs.dynamic = True
@@ -65,18 +71,29 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols['default'])
 
+        structure = self.inputs.structure
+        #cutoff
+        self.ctx.cutoff = get_cutoff(structure=structure)
+
         #get initial magnetization
-        structure, magnetization_tags = tags_and_magnetization(
-            self.inputs.structure, self.inputs.magnetization_per_site)
+        magnetization_per_site = copy.deepcopy(
+            self.inputs.magnetization_per_site)
+        structure_with_tags, kinds_dict = determine_kinds(
+            structure, magnetization_per_site)
 
         #make sure cell is big enough for MT poisson solver
-        atoms = structure.get_ase()
-        atoms.cell = 2 * (np.ptp(atoms.positions, axis=0) + 5)
-        atoms.center()
+        if self.inputs.debug:
+            extra_cell = 5.0
+        else:
+            extra_cell = 15.0
+        self.ctx.atoms = structure_with_tags.get_ase()
+        self.ctx.atoms.cell = 2 * (np.ptp(self.ctx.atoms.positions,
+                                          axis=0)) + extra_cell
+        self.ctx.atoms.center()
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.code
-        builder.cp2k.structure = StructureData(ase=atoms)
+        builder.cp2k.structure = StructureData(ase=self.ctx.atoms)
         builder.cp2k.file = {
             'basis':
             SinglefileData(
@@ -97,19 +114,30 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
             input_dict['FORCE_EVAL']['DFT'][
                 'MULTIPLICITY'] = self.inputs.multiplicity.value
+
+        #cutoff
+        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
+
         # KINDS section
-        dict_merge(input_dict, get_kinds_section(structure,
-                                                 magnetization_tags))
+        self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
+        dict_merge(input_dict, self.ctx.kinds_section)
+
+        #computational resources
+        nodes, tasks_per_node, threads = get_nodes(
+            atoms=self.ctx.atoms,
+            calctype='default',
+            computer=self.inputs.code.computer,
+            max_nodes=48,
+            uks=self.inputs.multiplicity.value > 0)
+
+        builder.cp2k.metadata.options.resources = {
+            'num_machines': nodes,
+            'num_mpiprocs_per_machine': tasks_per_node,
+            'num_cores_per_mpiproc': threads
+        }
 
         #walltime
         input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value
-        #computational resources
-        #nodes,tasks,threads = get_nodes(atoms=atoms,computer=self.inputs.code.computer)
-
-        builder.cp2k.metadata.options.resources = {
-            'num_machines': 1,
-            'num_mpiprocs_per_machine': 1,
-        }
         builder.cp2k.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
 
         #parser

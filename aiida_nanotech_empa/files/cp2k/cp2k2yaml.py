@@ -1,8 +1,9 @@
-import numpy as np
 import yaml
 
 
-def CP2K2DICT(input_lines=[]):
+def CP2K2DICT(input_lines=None):
+    if input_lines is None:
+        return 'no input', {}
     input_dict = {}
     lines = input_lines  #.splitlines()
     i_am_at = [input_dict]
