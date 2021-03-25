@@ -30,9 +30,9 @@ gpw_std_scf_step:
           METHOD: FERMI_DIRAC
           ELECTRONIC_TEMPERATURE: '300'
         MIXING:
-          METHOD: BROYDEN_MIXING
-          ALPHA: '0.1'
-          BETA: '1.5'
+          METHOD: DIRECT_P_MIXING
+          ALPHA: '0.15'
+          BETA: '0.5'
           NBUFFER: '8'
         DIAGONALIZATION:
           ALGORITHM: STANDARD
@@ -87,9 +87,9 @@ gpw_std_gw_step:
           METHOD: FERMI_DIRAC
           ELECTRONIC_TEMPERATURE: '300'
         MIXING:
-          METHOD: BROYDEN_MIXING
-          ALPHA: '0.1'
-          BETA: '1.5'
+          METHOD: DIRECT_P_MIXING
+          ALPHA: '0.15'
+          BETA: '0.5'
           NBUFFER: '8'
         DIAGONALIZATION:
           ALGORITHM: STANDARD
@@ -153,9 +153,9 @@ gpw_std_ic_step:
           METHOD: FERMI_DIRAC
           ELECTRONIC_TEMPERATURE: '300'
         MIXING:
-          METHOD: BROYDEN_MIXING
-          ALPHA: '0.1'
-          BETA: '1.5'
+          METHOD: DIRECT_P_MIXING
+          ALPHA: '0.15'
+          BETA: '0.5'
           NBUFFER: '8'
         DIAGONALIZATION:
           ALGORITHM: STANDARD

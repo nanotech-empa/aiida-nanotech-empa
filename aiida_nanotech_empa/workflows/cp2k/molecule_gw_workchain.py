@@ -80,6 +80,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         #pylint: disable=too-many-locals
 
         if self.inputs.protocol not in ALLOWED_PROTOCOLS:
+            self.report("Error: protocol not supported.")
             return self.exit_codes.ERROR_TERMINATION
 
         protocol = self.inputs.protocol.value
