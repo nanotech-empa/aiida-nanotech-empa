@@ -155,4 +155,5 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
 
     def finalize(self):
         self.report("Finalizing...")
-        self.out('opt_structure', self.ctx.opt.outputs.output_structure)
+        for out in self.ctx.opt.outputs:
+            self.out(out, self.ctx.opt.outputs[out])
