@@ -18,7 +18,7 @@ for mult in [0, 1]:
 
     builder.metadata.label = 'Cp2kMoleculeOptWorkChain'
     builder.metadata.description = 'test description'
-    builder.code = load_code("cp2k-8.1@localhost")
+    builder.code = load_code("cp2k@localhost")
     builder.walltime_seconds = Int(500)
     ase_geom = Atoms('HH', positions=[[0, 0, 0], [0.7, 0, 0]])
     ase_geom.cell = np.diag([4.0, 4.0, 4.0])

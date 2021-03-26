@@ -1,4 +1,4 @@
-from aiida_nanotech_empa.workflows.gaussian import common
+from aiida_nanotech_empa.utils import common_utils
 
 import numpy as np
 
@@ -101,7 +101,7 @@ class GaussianSpinWorkChain(WorkChain):
             label = f"m{mult}_opt"
 
             # check if everything finished nicely
-            if not common.check_if_previous_calc_ok(self, self.ctx[label]):
+            if not common_utils.check_if_calc_ok(self, self.ctx[label]):
                 return self.exit_codes.ERROR_TERMINATION
 
             opt_energy = self.ctx[label].outputs.scf_energy
@@ -239,14 +239,14 @@ class GaussianSpinWorkChain(WorkChain):
     def inspect_next_steps(self):
 
         # ------------------------------------------------------
-        if not common.check_if_previous_calc_ok(self, self.ctx.gs_cubes):
+        if not common_utils.check_if_calc_ok(self, self.ctx.gs_cubes):
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("gs_cube_images", self.ctx.gs_cubes.outputs.cube_image_folder)
 
         # ------------------------------------------------------
         if self.inputs.functional.value != 'HF':
-            if not common.check_if_previous_calc_ok(self, self.ctx.gs_hf):
+            if not common_utils.check_if_calc_ok(self, self.ctx.gs_hf):
                 return self.exit_codes.ERROR_TERMINATION
 
             self.out("gs_hf_out_params", self.ctx.gs_hf.outputs.scf_out_params)
@@ -254,7 +254,7 @@ class GaussianSpinWorkChain(WorkChain):
                      self.ctx.gs_hf.outputs.cube_image_folder)
 
         # ------------------------------------------------------
-        if not common.check_if_previous_calc_ok(self, self.ctx.dscf):
+        if not common_utils.check_if_calc_ok(self, self.ctx.dscf):
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("gs_ionization_potential",
@@ -271,7 +271,7 @@ class GaussianSpinWorkChain(WorkChain):
                 continue
 
             # check if everything finished nicely
-            if not common.check_if_previous_calc_ok(self, self.ctx[label]):
+            if not common_utils.check_if_calc_ok(self, self.ctx[label]):
                 return self.exit_codes.ERROR_TERMINATION
 
             vert_energy = self.ctx[label].outputs.scf_energy
@@ -315,13 +315,13 @@ class GaussianSpinWorkChain(WorkChain):
 
     def inspect_nat_orb(self):
 
-        if not common.check_if_previous_calc_ok(self, self.ctx.natorb):
+        if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("gs_natorb_params",
                  self.ctx.natorb.outputs.natorb_proc_parameters)
 
-        if not common.check_if_previous_calc_ok(self, self.ctx.natorb_hf):
+        if not common_utils.check_if_calc_ok(self, self.ctx.natorb_hf):
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("gs_hf_natorb_params",

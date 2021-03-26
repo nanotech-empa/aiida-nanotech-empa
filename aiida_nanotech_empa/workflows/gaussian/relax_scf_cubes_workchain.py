@@ -1,4 +1,4 @@
-from aiida_nanotech_empa.workflows.gaussian import common
+from aiida_nanotech_empa.utils import common_utils
 
 from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Str, Code, Bool, Dict, List, StructureData
@@ -86,7 +86,7 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
 
     def scf_and_cubes(self):
 
-        if not common.check_if_previous_calc_ok(self, self.ctx.opt):
+        if not common_utils.check_if_calc_ok(self, self.ctx.opt):
             return self.exit_codes.ERROR_TERMINATION
 
         self.report("Submitting SCF and Cubes workchain")
@@ -116,7 +116,7 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
 
     def finalize(self):
 
-        if not common.check_if_previous_calc_ok(self, self.ctx.scf_and_cubes):
+        if not common_utils.check_if_calc_ok(self, self.ctx.scf_and_cubes):
             return self.exit_codes.ERROR_TERMINATION
 
         self.report("Finalizing...")

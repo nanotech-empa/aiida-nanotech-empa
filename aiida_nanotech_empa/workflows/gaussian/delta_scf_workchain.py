@@ -1,4 +1,5 @@
 from aiida_nanotech_empa.workflows.gaussian import common
+from aiida_nanotech_empa.utils import common_utils
 
 from aiida.engine import WorkChain, calcfunction, ExitCode
 from aiida.orm import Int, Str, Code, Dict
@@ -230,15 +231,15 @@ class GaussianDeltaScfWorkChain(WorkChain):
 
     def finalize(self):
 
-        if (not common.check_if_previous_calc_ok(self, self.ctx.neutral)
-                or not common.check_if_previous_calc_ok(self, self.ctx.pos)):
+        if (not common_utils.check_if_calc_ok(self, self.ctx.neutral)
+                or not common_utils.check_if_calc_ok(self, self.ctx.pos)):
             return self.exit_codes.ERROR_TERMINATION
 
         anion_energies = []
 
         for neg_mult in self.ctx.neg_mults:
             label = f"neg_m{neg_mult}"
-            if not common.check_if_previous_calc_ok(self, self.ctx[label]):
+            if not common_utils.check_if_calc_ok(self, self.ctx[label]):
                 return self.exit_codes.ERROR_TERMINATION
 
             anion_energies.append(self.ctx[label].outputs.energy_ev)

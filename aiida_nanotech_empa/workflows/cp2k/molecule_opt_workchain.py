@@ -4,11 +4,13 @@ import yaml
 import copy
 import numpy as np
 
-from aiida.engine import WorkChain, ToContext
+from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Bool, Code, Dict, List
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+
+from aiida_nanotech_empa.utils import common_utils
 
 Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 
@@ -155,5 +157,11 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
 
     def finalize(self):
         self.report("Finalizing...")
+
+        if not common_utils.check_if_calc_ok(self, self.ctx.opt):
+            return self.exit_codes.ERROR_TERMINATION
+
         for out in self.ctx.opt.outputs:
             self.out(out, self.ctx.opt.outputs[out])
+
+        return ExitCode(0)

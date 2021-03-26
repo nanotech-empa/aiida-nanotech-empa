@@ -4,11 +4,13 @@ import yaml
 import copy
 import numpy as np
 
-from aiida.engine import WorkChain, ToContext
+from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Float, Str, Code, Dict, List, Bool
 from aiida.orm import SinglefileData, StructureData
 from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
 from aiida_cp2k.calculations import Cp2kCalculation
+
+from aiida_nanotech_empa.utils import common_utils
 
 ALLOWED_PROTOCOLS = ['gapw_std', 'gapw_hq', 'gpw_std']
 
@@ -196,6 +198,9 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
     def submit_second_step(self):
         """Function to submit the second step of the workchain."""
 
+        if not common_utils.check_if_calc_ok(self, self.ctx.first_step):
+            return self.exit_codes.ERROR_TERMINATION
+
         protocol = self.inputs.protocol.value
 
         if self.inputs.image_charge.value:
@@ -264,7 +269,13 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
     def finalize(self):
         self.report("Finalizing...")
+
+        if not common_utils.check_if_calc_ok(self, self.ctx.second_step):
+            return self.exit_codes.ERROR_TERMINATION
+
         self.out('std_output_parameters',
                  self.ctx.second_step.outputs.std_output_parameters)
         self.out('gw_output_parameters',
                  self.ctx.second_step.outputs.gw_output_parameters)
+
+        return ExitCode(0)
