@@ -177,9 +177,9 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             'num_cores_per_mpiproc': threads
         }
         #walltime
-        input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value
-        builder.metadata.options.max_wallclock_seconds = max(
+        input_dict['GLOBAL']['WALLTIME'] = max(
             self.inputs.walltime_seconds.value - 600, 600)
+        builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
 
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
@@ -251,10 +251,10 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         }
 
         #walltime
-        input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value
-        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
-        builder.metadata.options.max_wallclock_seconds = max(
+        input_dict['GLOBAL']['WALLTIME'] = max(
             self.inputs.walltime_seconds.value - 600, 600)
+        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
+        builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
 
         #parser
         builder.metadata.options.parser_name = "nanotech_empa.cp2k_gw_parser"
