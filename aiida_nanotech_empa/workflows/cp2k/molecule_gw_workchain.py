@@ -50,7 +50,11 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    required=False)
         spec.input("walltime_seconds",
                    valid_type=Int,
-                   default=lambda: Int(300),
+                   default=lambda: Int(600),
+                   required=False)
+        spec.input("max_nodes",
+                   valid_type=Int,
+                   default=lambda: Int(2056),
                    required=False)
         spec.input("structure", valid_type=StructureData)
 
@@ -162,7 +166,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             atoms=self.ctx.atoms,
             calctype='default',
             computer=self.inputs.code.computer,
-            max_nodes=48,
+            max_nodes=min(48, self.inputs.max_nodes.value),
             uks=self.inputs.multiplicity.value > 0)
 
         builder.metadata.options.resources = {
@@ -172,7 +176,8 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         }
         #walltime
         input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value
-        builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
+        builder.metadata.options.max_wallclock_seconds = max(
+            self.inputs.walltime_seconds.value - 600, 600)
 
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
@@ -231,7 +236,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             atoms=self.ctx.atoms,
             calctype='gw_ic' if self.inputs.image_charge.value else 'gw',
             computer=self.inputs.code.computer,
-            max_nodes=2048,
+            max_nodes=min(2048, self.inputs.max_nodes.value),
             uks=self.inputs.multiplicity.value > 0)
 
         builder.metadata.options.resources = {
@@ -243,7 +248,8 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         #walltime
         input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
-        builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
+        builder.metadata.options.max_wallclock_seconds = max(
+            self.inputs.walltime_seconds.value - 600, 600)
 
         #parser
         builder.metadata.options.parser_name = "nanotech_empa.cp2k_gw_parser"
