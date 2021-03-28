@@ -1,6 +1,7 @@
 # pylint: disable=too-many-locals
 import numpy as np
 import ase
+import collections
 
 ang_2_bohr = 1.889725989
 
@@ -82,6 +83,14 @@ def clip_data(data, absmin=None, absmax=None):
 
 
 def crop_cube(data, pos, cell, origin, x_crop=None, y_crop=None, z_crop=None):  # pylint: disable=too-many-arguments
+    """
+    Crops the extent of the cube file
+
+    x_crop, y_crop, z_crop can be
+        None: no cropping;
+        single value: atomic extent gets added this value in negative and positive direction;
+        tuple/list of two values: space kept in negative and positive directions;
+    """
 
     dv = np.diag(cell) / data.shape
 
@@ -97,15 +106,21 @@ def crop_cube(data, pos, cell, origin, x_crop=None, y_crop=None, z_crop=None):  
         pmax, pmin = np.max(pos[:, i]), np.min(pos[:, i])
 
         if i_crop:
-            c_p0[i] = pmin - i_crop / 2
-            c_p1[i] = pmax + i_crop / 2
+
+            if isinstance(i_crop, collections.Iterable):
+                i_crop_ = i_crop
+            else:
+                i_crop_ = [i_crop, i_crop]
+
+            c_p0[i] = pmin - i_crop_[0]
+            c_p1[i] = pmax + i_crop_[1]
 
             # make grids match
-            shift_0 = (c_p0[i] - i_p0[i]) % dv[i]
-            c_p0[i] -= shift_0
+            diff_0 = np.round((c_p0[i] - i_p0[i]) / dv[i]) * dv[i]
+            c_p0[i] = i_p0[i] + diff_0
 
-            shift_1 = (c_p1[i] - i_p0[i]) % dv[i]
-            c_p1[i] -= shift_1
+            diff_1 = np.round((c_p1[i] - i_p1[i]) / dv[i]) * dv[i]
+            c_p1[i] = i_p1[i] + diff_1
 
     # crop
     crop_s = ((c_p0 - i_p0) / dv).astype(int)
@@ -137,7 +152,7 @@ def write_cube_file(numbers,
 
     filecontent += 'cube\n'
 
-    dv_br = cell * ang_2_bohr / data.shape
+    dv_br = cell * ang_2_bohr / np.atleast_2d(data.shape).T
 
     filecontent += "{:5d} {:12.6f} {:12.6f} {:12.6f}\n".format(
         natoms, origin[0], origin[1], origin[2])
