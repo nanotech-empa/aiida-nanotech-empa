@@ -71,19 +71,19 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         spec.outputs.dynamic = True
 
         spec.exit_code(
-            390,
-            "ERROR_TERMINATION",
-            message="One or more steps of the work chain failed.",
-        )
-        spec.exit_code(
-            380,
+            381,
             "ERROR_CONVERGENCE1",
             message="SCF of the first step did not converge",
         )
         spec.exit_code(
-            370,
+            382,
             "ERROR_CONVERGENCE2",
             message="SCF of the second step did not converge",
+        )
+        spec.exit_code(
+            390,
+            "ERROR_TERMINATION",
+            message="One or more steps of the work chain failed.",
         )
 
     def setup(self):
