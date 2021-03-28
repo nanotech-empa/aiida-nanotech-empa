@@ -75,6 +75,16 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+        spec.exit_code(
+            380,
+            "ERROR_CONVERGENCE1",
+            message="SCF of the first step did not converge",
+        )
+        spec.exit_code(
+            370,
+            "ERROR_CONVERGENCE2",
+            message="SCF of the second step did not converge",
+        )
 
     def setup(self):
         self.report("Inspecting input and setting up things")
@@ -201,6 +211,11 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         if not common_utils.check_if_calc_ok(self, self.ctx.first_step):
             return self.exit_codes.ERROR_TERMINATION
 
+        if not self.ctx.first_step.outputs.output_parameters[
+                'motion_step_info']['scf_converged'][-1]:
+            self.report("SCF step did not converge")
+            return self.exit_codes.ERROR_CONVERGENCE1
+
         protocol = self.inputs.protocol.value
 
         if self.inputs.image_charge.value:
@@ -272,6 +287,10 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
         if not common_utils.check_if_calc_ok(self, self.ctx.second_step):
             return self.exit_codes.ERROR_TERMINATION
+        if not self.ctx.second_step.outputs.output_parameters[
+                'motion_step_info']['scf_converged'][-1]:
+            self.report("GW step did not converge")
+            return self.exit_codes.ERROR_CONVERGENCE2
 
         self.out('std_output_parameters',
                  self.ctx.second_step.outputs.std_output_parameters)

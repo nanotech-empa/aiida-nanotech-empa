@@ -17,4 +17,5 @@ def check_if_calc_ok(self_, prev_calc):
         else:
             self_.report("ERROR: previous step: " + prev_calc.exit_message)
             return False
+
     return True
