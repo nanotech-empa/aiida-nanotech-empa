@@ -120,6 +120,12 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
+        if self.inputs.debug:
+            input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.001
+            input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-6
+            input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
+                'EPS_SCF'] = 1e-6
+
         # KINDS section
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
         dict_merge(input_dict, self.ctx.kinds_section)
