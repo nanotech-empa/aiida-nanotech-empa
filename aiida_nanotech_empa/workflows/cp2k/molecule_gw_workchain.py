@@ -287,7 +287,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
         if not common_utils.check_if_calc_ok(self, self.ctx.second_step):
             return self.exit_codes.ERROR_TERMINATION
-        if not self.ctx.second_step.outputs.output_parameters[
+        if not self.ctx.second_step.outputs.std_output_parameters[
                 'motion_step_info']['scf_converged'][-1]:
             self.report("GW step did not converge")
             return self.exit_codes.ERROR_CONVERGENCE2
