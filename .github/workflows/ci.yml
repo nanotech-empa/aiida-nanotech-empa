@@ -35,14 +35,16 @@ jobs:
         pip install -e .[testing]
         reentry scan -r aiida
       
-    - name: Install QE
-      run: |
-        bash .github/install_qe.sh
-    
     - name: Install CP2K
       run: |
         bash .github/install_cp2k.sh
+        echo "$PWD/cp2k" >> $GITHUB_PATH
 
+    - name: Install QE
+      run: |
+        bash .github/install_qe.sh
+        echo "$PWD/qe/bin" >> $GITHUB_PATH
+    
     - name: Run pytest
       run: |
         pytest --cov-report=xml --cov=aiida_nanotech_empa
