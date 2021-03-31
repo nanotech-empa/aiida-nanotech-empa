@@ -89,7 +89,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
     def setup(self):
         self.report("Inspecting input and setting up things")
 
-
     def submit_first_step(self):
         """Function to submit the first step of the workchain."""
         #pylint: disable=too-many-locals
