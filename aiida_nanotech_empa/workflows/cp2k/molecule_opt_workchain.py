@@ -8,7 +8,7 @@ from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Bool, Code, Dict, List
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
-from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
 
 from aiida_nanotech_empa.utils import common_utils
 
@@ -69,7 +69,7 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         #load input template
         with open(
                 pathlib.Path(__file__).parent /
-                '../../files/cp2k/molecule_opt_protocol.yml') as handle:
+                './protocols/molecule_opt_protocol.yml') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols['default'])
 
@@ -100,11 +100,11 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
             'basis':
             SinglefileData(
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  "../..", "files/cp2k", "BASIS_MOLOPT")),
+                                  ".", "data", "BASIS_MOLOPT")),
             'pseudo':
             SinglefileData(
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  "../..", "files/cp2k", "POTENTIAL")),
+                                  ".", "data", "POTENTIAL")),
         }
 
         # vdw

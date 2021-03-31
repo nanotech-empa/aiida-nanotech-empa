@@ -7,7 +7,7 @@ import numpy as np
 from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Float, Str, Code, Dict, List, Bool
 from aiida.orm import SinglefileData, StructureData
-from aiida_nanotech_empa.utils.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
 from aiida_cp2k.calculations import Cp2kCalculation
 
 from aiida_nanotech_empa.utils import common_utils
@@ -104,7 +104,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         #load input template
         with open(
                 pathlib.Path(__file__).parent /
-                '../../files/cp2k/gw_protocols.yml') as handle:
+                './protocols/gw_protocols.yml') as handle:
             self.ctx.protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(self.ctx.protocols[protocol_full])
 
@@ -153,11 +153,11 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             'basis':
             SinglefileData(
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  "../..", "files/cp2k", self.ctx.basis)),
+                                  ".", "data", self.ctx.basis)),
             'pseudo':
             SinglefileData(
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  "../..", "files/cp2k", self.ctx.potential)),
+                                  ".", "data", self.ctx.potential)),
         }
 
         #UKS
@@ -231,11 +231,11 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             'basis':
             SinglefileData(
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  "../../", "files/cp2k", self.ctx.basis)),
+                                  ".", "data", self.ctx.basis)),
             'pseudo':
             SinglefileData(
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  "../..", "files/cp2k", self.ctx.potential)),
+                                  ".", "data", self.ctx.potential)),
         }
 
         #restart from wfn of step1

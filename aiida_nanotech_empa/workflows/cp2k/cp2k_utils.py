@@ -26,9 +26,8 @@ def get_kinds_section(kinds_dict, protocol='gapw_std'):
         bsetaux = ''
         potential = 'pseudopotential'
     kinds = []
-    with open(
-            pathlib.Path(__file__).parent /
-            '../files/cp2k/atomic_kinds.yml') as fhandle:
+    with open(pathlib.Path(__file__).parent /
+              './data/atomic_kinds.yml') as fhandle:
         atom_data = yaml.safe_load(fhandle)
 
     for kind_name in kinds_dict:
@@ -169,9 +168,8 @@ def dict_merge(dct, merge_dct):
 def get_cutoff(structure=None):
     if structure is None:
         return int(600)
-    with open(
-            pathlib.Path(__file__).parent /
-            '../files/cp2k/atomic_kinds.yml') as fhandle:
+    with open(pathlib.Path(__file__).parent /
+              './data/atomic_kinds.yml') as fhandle:
         atom_data = yaml.safe_load(fhandle)
     elements = structure.get_symbols_set()
     return max([atom_data['cutoff'][element] for element in elements])
