@@ -10,7 +10,7 @@ from aiida_cp2k.parsers import Cp2kBaseParser
 HART_2_EV = 27.21138602
 
 
-def is_float(s):
+def is_number(s):
     try:
         float(s)
         return True
@@ -97,7 +97,7 @@ class Cp2kGWParser(Cp2kBaseParser):
                 i_line += 2
                 while True:
                     vals = lines[i_line].split()
-                    if len(vals) == 0 or not is_float(vals[0]):
+                    if len(vals) == 0 or not is_number(vals[0]):
                         break
                     results['evals'][spin] += [
                         float(v) * HART_2_EV for v in vals
@@ -113,7 +113,7 @@ class Cp2kGWParser(Cp2kBaseParser):
                         i_line += 1
                         continue
                     vals = lines[i_line].split()
-                    if len(vals) == 0 or not is_float(vals[0]):
+                    if len(vals) == 0 or not is_number(vals[0]):
                         break
                     results['evals'][spin] += [
                         float(v) * HART_2_EV for v in vals
@@ -159,7 +159,7 @@ class Cp2kGWParser(Cp2kBaseParser):
                     # header & example line:
                     #     Molecular orbital   E_SCF (eV)       Sigc (eV)   Sigx-vxc (eV)       E_GW (eV)
                     #        1 ( occ )           -26.079           6.728         -10.116         -26.068
-                    if len(vals) == 8 and is_float(vals[0]):
+                    if len(vals) == 8 and is_number(vals[0]):
                         gw_mo.append(int(vals[0]) -
                                      1)  # start orb count from 0
                         gw_occ.append(1 if vals[2] == 'occ' else 0)
@@ -205,7 +205,7 @@ class Cp2kGWParser(Cp2kBaseParser):
                     # header & example line:
                     #           MO     E_n before ic corr           Delta E_ic    E_n after ic corr
                     #   70 ( occ )                -11.735                1.031              -10.705
-                    if len(vals) == 7 and is_float(vals[0]):
+                    if len(vals) == 7 and is_number(vals[0]):
                         ic_mo.append(int(vals[0]) -
                                      1)  # start orb count from 0
                         ic_occ.append(1 if vals[2] == 'occ' else 0)
