@@ -49,10 +49,10 @@ def setup_context_variables(self_):
 def determine_comp_resources(num_atoms, basis_set=""):
 
     if basis_set.lower() in ("sto-3g", "sv", "svp", "def2sv", "def2svp"):
-        num_cores = int(np.round(num_atoms / 14))
+        num_cores = int(np.round(num_atoms / 20))
         mem_per_core = 512
     else:
-        num_cores = int(np.round(num_atoms / 10))
+        num_cores = int(np.round(num_atoms / 16))
         mem_per_core = 2048
 
     num_cores = max(1, num_cores)
@@ -77,7 +77,7 @@ def get_default_metadata_options(num_atoms, computer, basis_set):
         "tot_num_mpiprocs": num_cores,
     }
 
-    if computer.scheduler_type != 'lsf':
+    if 'lsf' not in computer.scheduler_type:
         # LSF scheduler doesn't work with 'num_machines'
         options['resources']['num_machines'] = 1
 
@@ -159,13 +159,3 @@ def get_gaussian_cores_and_memory(options, computer):
         memory_mb = _get_gaussian_mem_mb(options['max_memory_kb'], computer)
 
     return num_cores, memory_mb
-
-
-def check_if_previous_calc_ok(wc_inst, prev_calc):
-    if not prev_calc.is_finished_ok:
-        if prev_calc.exit_status is not None and prev_calc.exit_status >= 500:
-            wc_inst.report("Warning: previous step: " + prev_calc.exit_message)
-        else:
-            wc_inst.report("ERROR: previous step: " + prev_calc.exit_message)
-            return False
-    return True

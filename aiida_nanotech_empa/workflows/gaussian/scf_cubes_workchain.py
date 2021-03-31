@@ -1,4 +1,5 @@
 from aiida_nanotech_empa.workflows.gaussian import common
+from aiida_nanotech_empa.utils import common_utils
 
 from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Str, Bool, Code, Dict, List
@@ -171,7 +172,7 @@ class GaussianScfCubesWorkChain(WorkChain):
 
     def cubes(self):
 
-        if not common.check_if_previous_calc_ok(self, self.ctx.scf):
+        if not common_utils.check_if_calc_ok(self, self.ctx.scf):
             return self.exit_codes.ERROR_TERMINATION
 
         self.report("Generating cubes")
@@ -191,7 +192,7 @@ class GaussianScfCubesWorkChain(WorkChain):
 
     def finalize(self):
 
-        if not common.check_if_previous_calc_ok(self, self.ctx.cubes):
+        if not common_utils.check_if_calc_ok(self, self.ctx.cubes):
             return self.exit_codes.ERROR_TERMINATION
 
         self.report("Finalizing...")
