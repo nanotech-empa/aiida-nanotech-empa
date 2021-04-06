@@ -1,4 +1,5 @@
 [![Build Status](https://github.com/nanotech-empa/aiida-nanotech-empa/workflows/ci/badge.svg?branch=master)](https://github.com/nanotech-empa/aiida-nanotech-empa/actions)
+[![codecov](https://codecov.io/gh/nanotech-empa/aiida-nanotech-empa/branch/develop/graph/badge.svg?token=52ACMY55UQ)](https://codecov.io/gh/nanotech-empa/aiida-nanotech-empa)
 [![PyPI version](https://badge.fury.io/py/aiida-nanotech-empa.svg)](https://badge.fury.io/py/aiida-nanotech-empa)
 
 # aiida-nanotech-empa

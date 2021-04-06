@@ -34,6 +34,26 @@ jobs:
         pip install --upgrade pip
         pip install -e .[testing]
         reentry scan -r aiida
+      
+    - name: Install CP2K
+      run: |
+        bash .github/install_cp2k.sh
+        echo "$PWD/cp2k" >> $GITHUB_PATH
+
+    - name: Install QE
+      run: |
+        bash .github/install_qe.sh
+        echo "$PWD/qe/bin" >> $GITHUB_PATH
+    
+    - name: Run pytest
+      run: |
+        pytest --cov-report=xml --cov=aiida_nanotech_empa
+
+    - name: Upload coverage to codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
+        file: ./coverage.xml
 
   pre-commit:
     runs-on: ubuntu-latest
