@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 from .cube_utils import load_cube_atoms
 
 # PYMOL asynchronous mode (pymolwiki.org/index.php/Jupyter)
-import pymol
+import pymol  # pylint: disable=import-error
 
 _stdouterr = sys.stdout, sys.stderr
 pymol.finish_launching(['pymol', '-qc'])
