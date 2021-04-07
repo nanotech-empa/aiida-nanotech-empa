@@ -5,7 +5,7 @@ from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
 
-Cp2kMoleculeGwWorkChain = WorkflowFactory('nanotech_empa.cp2k_molecule_gw')
+Cp2kMoleculeGwWorkChain = WorkflowFactory('nanotech_empa.cp2k.molecule_gw')
 
 
 def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
