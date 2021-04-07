@@ -192,6 +192,12 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
+        if self.inputs.debug:
+            input_dict['FORCE_EVAL']['DFT']['PRINT']['MO_CUBES'][
+                'STRIDE'] = '6 6 6'
+            input_dict['FORCE_EVAL']['DFT']['PRINT']['E_DENSITY_CUBE'][
+                'STRIDE'] = '6 6 6'
+
         #parser
         builder.metadata.options.parser_name = "cp2k_advanced_parser"
 
@@ -268,6 +274,12 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             self.inputs.walltime_seconds.value - 600, 600)
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
         builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
+
+        if self.inputs.debug:
+            input_dict['FORCE_EVAL']['DFT']['PRINT']['MO_CUBES'][
+                'STRIDE'] = '6 6 6'
+            input_dict['FORCE_EVAL']['DFT']['PRINT']['E_DENSITY_CUBE'][
+                'STRIDE'] = '6 6 6'
 
         #parser
         builder.metadata.options.parser_name = "nanotech_empa.cp2k_gw_parser"

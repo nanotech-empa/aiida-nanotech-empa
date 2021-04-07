@@ -46,7 +46,9 @@ gpw_std_scf_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '4 4 4'
+          STRIDE: '2 2 2'
+        E_DENSITY_CUBE:
+          STRIDE: '2 2 2'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -112,7 +114,9 @@ gpw_std_gw_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '4 4 4'
+          STRIDE: '2 2 2'
+        E_DENSITY_CUBE:
+          STRIDE: '2 2 2'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -181,7 +185,9 @@ gpw_std_ic_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '4 4 4'
+          STRIDE: '2 2 2'
+        E_DENSITY_CUBE:
+          STRIDE: '2 2 2'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -223,7 +229,9 @@ gapw_std_scf_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '4 4 4'
+          STRIDE: '2 2 2'
+        E_DENSITY_CUBE:
+          STRIDE: '2 2 2'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -280,7 +288,9 @@ gapw_std_gw_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '4 4 4'
+          STRIDE: '2 2 2'
+        E_DENSITY_CUBE:
+          STRIDE: '2 2 2'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -341,7 +351,9 @@ gapw_std_ic_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '4 4 4'
+          STRIDE: '2 2 2'
+        E_DENSITY_CUBE:
+          STRIDE: '2 2 2'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -363,11 +375,6 @@ gapw_hq_scf_step:
       MGRID:
         CUTOFF: '600'
         REL_CUTOFF: '50'
-      PRINT:
-        MO_CUBES:
-          NHOMO: 4
-          NLUMO: 1
-          STRIDE: '4 4 4'
       QS:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
@@ -388,7 +395,9 @@ gapw_hq_scf_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '4 4 4'
+          STRIDE: '2 2 2'
+        E_DENSITY_CUBE:
+          STRIDE: '2 2 2'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -445,7 +454,9 @@ gapw_hq_gw_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '4 4 4'
+          STRIDE: '2 2 2'
+        E_DENSITY_CUBE:
+          STRIDE: '2 2 2'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -504,7 +515,9 @@ gapw_hq_ic_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '4 4 4'
+          STRIDE: '2 2 2'
+        E_DENSITY_CUBE:
+          STRIDE: '2 2 2'
     SUBSYS:
       CELL:
         PERIODIC: NONE
