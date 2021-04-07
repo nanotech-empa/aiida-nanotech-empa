@@ -1,15 +1,25 @@
+import os
+import os.path
+import sys
+import time
+import tempfile
+
 import numpy as np
 
 import ase.io
 
-import os
-import tempfile
-
 from PIL import Image, ImageOps
 
-from pymol import cmd  # pylint: disable=import-error
-
 from .cube_utils import load_cube_atoms
+
+# PYMOL asynchronous mode (pymolwiki.org/index.php/Jupyter)
+import pymol  # pylint: disable=import-error
+
+_stdouterr = sys.stdout, sys.stderr
+pymol.finish_launching(['pymol', '-qc'])
+sys.stdout, sys.stderr = _stdouterr
+
+from pymol import cmd  # pylint: disable=import-error,wrong-import-position
 
 
 def crop_image_bbox(filename):
@@ -27,12 +37,13 @@ def crop_image_bbox(filename):
     image.save(filename)
 
 
-def make_pymol_png(input_file,
-                   isov=0.05,
-                   colors=('brightorange', 'marine'),
-                   output_folder='.',
-                   output_name=None,
-                   orientations=('z', 'y', 'x')):
+def make_pymol_png(  # noqa
+        input_file,
+        isov=0.05,
+        colors=('brightorange', 'marine'),
+        output_folder='.',
+        output_name=None,
+        orientations=('z', 'y', 'x')):
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
@@ -115,8 +126,8 @@ def make_pymol_png(input_file,
 
     # ------------------------------------
     # Set the view
-    # zoom to see molecule and extra z distance (1.8)
-    cmd.zoom("(all)", buffer=1.8, complete=1)
+    # zoom to see molecule and extra z distance (1.5)
+    cmd.zoom("(all)", buffer=1.5, complete=1)
 
     view = cmd.get_view()
 
@@ -133,14 +144,21 @@ def make_pymol_png(input_file,
         out_filepath += "_iv{:.3f}".format(isov)
 
     def save_and_crop(fname):
-        cmd.png(fname, width=f"{max_w + 1}cm", dpi=600, ray=1)
+        cmd.png(fname, width=f"{max_w + 1}cm", dpi=500, ray=1)
+        # Wait for a bit, sometimes the pymol png gets created with a delay
+        for _i in range(200):
+            if os.path.isfile(fname):
+                break
+            time.sleep(0.5)
+        if not os.path.isfile(fname):
+            raise FileNotFoundError(f'Pymol render did not create {fname}')
         cmd.set_view(view)
         crop_image_bbox(fname)
 
     for orient in orientations:
         if orient in ('z', 'z+'):
             save_and_crop(out_filepath + "_z+.png")
-        if orient == 'z-':
+        elif orient == 'z-':
             cmd.turn("x", 180)
             cmd.turn("y", 180)
             save_and_crop(out_filepath + "_z-.png")
