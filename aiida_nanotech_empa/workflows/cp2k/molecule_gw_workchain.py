@@ -73,12 +73,17 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         spec.exit_code(
             381,
             "ERROR_CONVERGENCE1",
-            message="SCF of the first step did not converge",
+            message="SCF of the first step did not converge.",
         )
         spec.exit_code(
             382,
             "ERROR_CONVERGENCE2",
-            message="SCF of the second step did not converge",
+            message="SCF of the second step did not converge.",
+        )
+        spec.exit_code(
+            383,
+            "ERROR_NEGATIVE_GAP",
+            message="SCF produced a negative gap.",
         )
         spec.exit_code(
             390,
@@ -215,10 +220,16 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         if not common_utils.check_if_calc_ok(self, self.ctx.first_step):
             return self.exit_codes.ERROR_TERMINATION
 
-        if not self.ctx.first_step.outputs.output_parameters[
-                'motion_step_info']['scf_converged'][-1]:
+        scf_out_params = self.ctx.first_step.outputs.output_parameters
+
+        if not scf_out_params['motion_step_info']['scf_converged'][-1]:
             self.report("SCF step did not converge")
             return self.exit_codes.ERROR_CONVERGENCE1
+
+        if min(scf_out_params['bandgap_spin1_au'],
+               scf_out_params['bandgap_spin2_au']) < 0.0:
+            self.report("Negative gap!")
+            return self.exit_codes.ERROR_NEGATIVE_GAP
 
         protocol = self.inputs.protocol.value
 
