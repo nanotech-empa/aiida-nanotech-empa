@@ -27,7 +27,7 @@ class PpParser(BasePpParser):
                                                 origin,
                                                 x_crop=None,
                                                 y_crop=1.8,
-                                                z_crop=(3.1, 5.1))
+                                                z_crop=(3.1, 3.1))
         # NB! No point in clipping if the file is not compressed!
         #clip_data(new_data, absmin=1e-8)
 
