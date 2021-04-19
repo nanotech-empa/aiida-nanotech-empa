@@ -1,4 +1,62 @@
 # -------------------------------------------------------------
+# SCF SECTIONS
+# -------------------------------------------------------------
+scf_ot_cg:
+  SCF_GUESS: RESTART
+  EPS_SCF: '1.0E-6'
+  EPS_EIGVAL: '1.0E-6'
+  MAX_SCF: '50'
+  CHOLESKY: 'OFF'
+  MAX_ITER_LUMO: '600'
+  OT:
+    PRECONDITIONER: 'FULL_ALL'
+    MINIMIZER: 'CG'
+  OUTER_SCF:
+    MAX_SCF: '20'
+    EPS_SCF: '1.0E-6'
+# ------------
+scf_ot_diis:
+  SCF_GUESS: RESTART
+  EPS_SCF: '1.0E-6'
+  EPS_EIGVAL: '1.0E-6'
+  MAX_SCF: '50'
+  CHOLESKY: 'OFF'
+  MAX_ITER_LUMO: '600'
+  OT:
+    PRECONDITIONER: 'FULL_ALL'
+    MINIMIZER: 'DIIS'
+  OUTER_SCF:
+    MAX_SCF: '20'
+    EPS_SCF: '1.0E-6'
+# ------------
+scf_diag_smearing:
+  SCF_GUESS: RESTART
+  EPS_SCF: '5.0E-6'
+  MAX_SCF: '500'
+  CHOLESKY: INVERSE
+  ADDED_MOS: '50'
+  SMEAR:
+    _: 'ON'
+    METHOD: FERMI_DIRAC
+    ELECTRONIC_TEMPERATURE: '300'
+  MIXING:
+    METHOD: 'BROYDEN_MIXING'
+    ALPHA: '0.1'
+    BETA: '1.5'
+    NBUFFER: '8'
+  DIAGONALIZATION:
+    ALGORITHM: STANDARD
+  OUTER_SCF:
+    MAX_SCF: '10'
+    EPS_SCF: '5.0E-6'
+# ------------
+scf_diag_level_shift:
+  SCF_GUESS: RESTART
+  EPS_SCF: '1.0E-6'
+  MAX_SCF: '500'
+  LEVEL_SHIFT: '0.1'
+  CHOLESKY: 'OFF'
+# -------------------------------------------------------------
 # GPW SCF STEP
 # -------------------------------------------------------------
 gpw_std_scf_step:
@@ -16,29 +74,10 @@ gpw_std_scf_step:
         METHOD: GPW
         EPS_PGF_ORB: '1.0E-80'
         EPS_FILTER_MATRIX: '1.0E-80'
+        EPS_DEFAULT: '1.0E-16'
       POISSON:
         PERIODIC: NONE
         PSOLVER: MT
-      SCF:
-        SCF_GUESS: ATOMIC
-        EPS_SCF: '1.0E-6'
-        MAX_SCF: '500'
-        CHOLESKY: INVERSE
-        ADDED_MOS: '50'
-        SMEAR:
-          _: 'ON'
-          METHOD: FERMI_DIRAC
-          ELECTRONIC_TEMPERATURE: '300'
-        MIXING:
-          METHOD: DIRECT_P_MIXING
-          ALPHA: '0.15'
-          BETA: '0.5'
-          NBUFFER: '8'
-        DIAGONALIZATION:
-          ALGORITHM: STANDARD
-        OUTER_SCF:
-          MAX_SCF: '50'
-          EPS_SCF: '1.0E-6'
       XC:
         XC_FUNCTIONAL:
           _: PBE
@@ -46,9 +85,9 @@ gpw_std_scf_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
         E_DENSITY_CUBE:
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -75,29 +114,10 @@ gpw_std_gw_step:
         METHOD: GPW
         EPS_PGF_ORB: '1.0E-80'
         EPS_FILTER_MATRIX: '1.0E-80'
+        EPS_DEFAULT: '1.0E-16'
       POISSON:
         PERIODIC: NONE
         PSOLVER: MT
-      SCF:
-        SCF_GUESS: RESTART
-        EPS_SCF: '1.0E-6'
-        MAX_SCF: '500'
-        CHOLESKY: INVERSE
-        ADDED_MOS: '50'
-        SMEAR:
-          _: 'ON'
-          METHOD: FERMI_DIRAC
-          ELECTRONIC_TEMPERATURE: '300'
-        MIXING:
-          METHOD: DIRECT_P_MIXING
-          ALPHA: '0.15'
-          BETA: '0.5'
-          NBUFFER: '8'
-        DIAGONALIZATION:
-          ALGORITHM: STANDARD
-        OUTER_SCF:
-          MAX_SCF: '50'
-          EPS_SCF: '1.0E-6'
       XC:
         XC_FUNCTIONAL:
           _: PBE
@@ -114,9 +134,9 @@ gpw_std_gw_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
         E_DENSITY_CUBE:
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -143,29 +163,10 @@ gpw_std_ic_step:
         METHOD: GPW
         EPS_PGF_ORB: '1.0E-80'
         EPS_FILTER_MATRIX: '1.0E-80'
+        EPS_DEFAULT: '1.0E-16'
       POISSON:
         PERIODIC: NONE
         PSOLVER: MT
-      SCF:
-        SCF_GUESS: RESTART
-        EPS_SCF: '1.0E-6'
-        MAX_SCF: '500'
-        CHOLESKY: INVERSE
-        ADDED_MOS: '50'
-        SMEAR:
-          _: 'ON'
-          METHOD: FERMI_DIRAC
-          ELECTRONIC_TEMPERATURE: '300'
-        MIXING:
-          METHOD: DIRECT_P_MIXING
-          ALPHA: '0.15'
-          BETA: '0.5'
-          NBUFFER: '8'
-        DIAGONALIZATION:
-          ALGORITHM: STANDARD
-        OUTER_SCF:
-          MAX_SCF: '50'
-          EPS_SCF: '1.0E-6'
       XC:
         XC_FUNCTIONAL:
           _: PBE
@@ -185,9 +186,9 @@ gpw_std_ic_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
         E_DENSITY_CUBE:
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -213,15 +214,10 @@ gapw_std_scf_step:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
         EPS_FILTER_MATRIX: '1.0E-80'
+        EPS_DEFAULT: '1.0E-16'
       POISSON:
         PERIODIC: NONE
         PSOLVER: MT
-      SCF:
-        EPS_SCF: '1.0E-6'
-        SCF_GUESS: ATOMIC
-        MAX_SCF: '500'
-        LEVEL_SHIFT: '0.1'
-        CHOLESKY: 'OFF'
       XC:
         XC_FUNCTIONAL:
           _: PBE
@@ -229,9 +225,9 @@ gapw_std_scf_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
         E_DENSITY_CUBE:
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -258,21 +254,10 @@ gapw_std_gw_step:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
         EPS_FILTER_MATRIX: '1.0E-80'
+        EPS_DEFAULT: '1.0E-16'
       POISSON:
         PERIODIC: NONE
         PSOLVER: MT
-      SCF:
-        EPS_SCF: '1.0E-6'
-        SCF_GUESS: RESTART
-        MAX_SCF: '30'
-        OT:
-          PRECONDITIONER: FULL_ALL
-          MINIMIZER: BROYDEN
-        OUTER_SCF:
-          MAX_SCF: '20'
-          EPS_SCF: '1.0E-6'
-        CHOLESKY: 'OFF'
-        EPS_EIGVAL: '1.0E-6'
       XC:
         XC_FUNCTIONAL:
           _: PBE
@@ -288,9 +273,9 @@ gapw_std_gw_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
         E_DENSITY_CUBE:
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -317,21 +302,10 @@ gapw_std_ic_step:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
         EPS_FILTER_MATRIX: '1.0E-80'
+        EPS_DEFAULT: '1.0E-16'
       POISSON:
         PERIODIC: NONE
         PSOLVER: MT
-      SCF:
-        EPS_SCF: '1.0E-6'
-        SCF_GUESS: RESTART
-        MAX_SCF: '50'
-        OT:
-          PRECONDITIONER: FULL_ALL
-          MINIMIZER: BROYDEN
-        OUTER_SCF:
-          MAX_SCF: '20'
-          EPS_SCF: '1.0E-6'
-        CHOLESKY: 'OFF'
-        EPS_EIGVAL: '1.0E-6'
       XC:
         XC_FUNCTIONAL:
           _: PBE
@@ -351,9 +325,9 @@ gapw_std_ic_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
         E_DENSITY_CUBE:
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -379,15 +353,10 @@ gapw_hq_scf_step:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
         EPS_FILTER_MATRIX: '1.0E-80'
+        EPS_DEFAULT: '1.0E-16'
       POISSON:
         PERIODIC: NONE
         PSOLVER: MT
-      SCF:
-        EPS_SCF: '1.0E-6'
-        SCF_GUESS: ATOMIC
-        MAX_SCF: '500'
-        LEVEL_SHIFT: '0.2'
-        CHOLESKY: 'OFF'
       XC:
         XC_FUNCTIONAL:
           _: PBE
@@ -395,9 +364,9 @@ gapw_hq_scf_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
         E_DENSITY_CUBE:
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -424,21 +393,10 @@ gapw_hq_gw_step:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
         EPS_FILTER_MATRIX: '1.0E-80'
+        EPS_DEFAULT: '1.0E-16'
       POISSON:
         PERIODIC: NONE
         PSOLVER: MT
-      SCF:
-        EPS_SCF: '1.0E-6'
-        SCF_GUESS: RESTART
-        MAX_SCF: '30'
-        OT:
-          PRECONDITIONER: FULL_ALL
-          MINIMIZER: BROYDEN
-        OUTER_SCF:
-          MAX_SCF: '20'
-          EPS_SCF: '1.0E-6'
-        CHOLESKY: 'OFF'
-        EPS_EIGVAL: '1.0E-6'
       XC:
         XC_FUNCTIONAL:
           _: PBE
@@ -454,9 +412,9 @@ gapw_hq_gw_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
         E_DENSITY_CUBE:
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE
@@ -483,19 +441,10 @@ gapw_hq_ic_step:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'
         EPS_FILTER_MATRIX: '1.0E-80'
+        EPS_DEFAULT: '1.0E-16'
       POISSON:
         PERIODIC: NONE
         PSOLVER: MT
-      SCF:
-        EPS_SCF: '1.0E-6'
-        SCF_GUESS: RESTART
-        MAX_SCF: '30'
-        OT:
-          PRECONDITIONER: FULL_SINGLE_INVERSE
-          MINIMIZER: CG
-        OUTER_SCF:
-          MAX_SCF: '30'
-          EPS_SCF: '1.0E-6'
       XC:
         XC_FUNCTIONAL:
           _: PBE
@@ -515,9 +464,9 @@ gapw_hq_ic_step:
         MO_CUBES:
           NHOMO: '4'
           NLUMO: '1'
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
         E_DENSITY_CUBE:
-          STRIDE: '2 2 2'
+          STRIDE: '4 4 4'
     SUBSYS:
       CELL:
         PERIODIC: NONE

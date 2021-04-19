@@ -4,13 +4,14 @@ import yaml
 import copy
 import numpy as np
 
-from aiida.engine import WorkChain, ToContext, ExitCode
+from aiida.engine import WorkChain, ToContext, ExitCode, while_
 from aiida.orm import Int, Float, Str, Code, Dict, List, Bool
 from aiida.orm import SinglefileData, StructureData
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
-from aiida_cp2k.calculations import Cp2kCalculation
 
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
 from aiida_nanotech_empa.utils import common_utils
+
+from aiida_cp2k.calculations import Cp2kCalculation
 
 ALLOWED_PROTOCOLS = ['gapw_std', 'gapw_hq', 'gpw_std']
 
@@ -20,6 +21,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
     def define(cls, spec):
         super().define(spec)
         spec.input("code", valid_type=Code)
+        spec.input("structure", valid_type=StructureData)
 
         spec.input("protocol",
                    valid_type=Str,
@@ -32,16 +34,11 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    default=lambda: Bool(False),
                    required=False,
                    help="Run the image charge correction calculation.")
-
         spec.input("z_ic_plane",
                    valid_type=Float,
                    default=lambda: Float(8.22),
                    required=False)
-        spec.input(
-            "charge",  # +1 means one electron removed
-            valid_type=Int,
-            default=lambda: Int(0),
-            required=False)
+
         spec.input("multiplicity",
                    valid_type=Int,
                    default=lambda: Int(0),
@@ -58,16 +55,23 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    valid_type=Int,
                    default=lambda: Int(2056),
                    required=False)
-        spec.input("structure", valid_type=StructureData)
-
         spec.input("debug",
                    valid_type=Bool,
                    default=lambda: Bool(False),
                    required=False,
                    help="Run with fast parameters for debugging.")
 
-        spec.outline(cls.setup, cls.submit_first_step, cls.submit_second_step,
-                     cls.finalize)
+        spec.input(
+            'options',
+            valid_type=Dict,
+            required=False,
+            help=
+            "User-defined metadata.options that override the automatic ones.")
+
+        spec.outline(
+            cls.setup,
+            while_(cls.scf_is_not_done)(cls.submit_scf, cls.check_scf),
+            cls.submit_gw, cls.finalize)
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -92,26 +96,18 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         )
 
     def setup(self):
-        self.report("Inspecting input and setting up things")
 
-    def submit_first_step(self):
-        """Function to submit the first step of the workchain."""
-        #pylint: disable=too-many-locals
+        self.report("Inspecting input and setting up things")
 
         if self.inputs.protocol not in ALLOWED_PROTOCOLS:
             self.report("Error: protocol not supported.")
             return self.exit_codes.ERROR_TERMINATION
 
-        protocol = self.inputs.protocol.value
-
-        protocol_full = protocol + "_scf_step"
-
-        #load input template
+        # Load protocol templates
         with open(
-                pathlib.Path(__file__).parent /
-                './protocols/gw_protocols.yml') as handle:
+                pathlib.Path(__file__).parent.joinpath(
+                    './protocols/gw_protocols.yml')) as handle:
             self.ctx.protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(self.ctx.protocols[protocol_full])
 
         structure = self.inputs.structure
         self.ctx.cutoff = get_cutoff(structure=structure)
@@ -133,171 +129,224 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         structure_with_tags, kinds_dict = determine_kinds(
             structure, magnetization_per_site, ghost_per_site)
 
+        # KINDS section
+        self.ctx.kinds_section = get_kinds_section(
+            kinds_dict, protocol=self.inputs.protocol)
+
         #make sure cell is big enough for MT poisson solver
         if self.inputs.debug:
             extra_cell = 5.0
         else:
             extra_cell = 15.0
-        self.ctx.atoms = structure_with_tags.get_ase()
-        self.ctx.atoms.cell = 2 * (np.ptp(self.ctx.atoms.positions,
-                                          axis=0)) + extra_cell
-        self.ctx.atoms.center()
+        atoms = structure_with_tags.get_ase()
+        atoms.cell = 2 * (np.ptp(atoms.positions, axis=0)) + extra_cell
+        atoms.center()
+        self.ctx.structure = StructureData(ase=atoms)
 
-        builder = Cp2kCalculation.get_builder()
-        builder.code = self.inputs.code
-        builder.structure = StructureData(ase=self.ctx.atoms)
+        # --------------------------------------------------
+        # Determine which basis and pseudo files to include
+        if self.inputs.protocol in ['gapw_std', 'gapw_hq']:
+            basis = "GW_BASIS_SET"
+            potential = "ALL_POTENTIALS"
+        elif self.inputs.protocol == 'gpw_std':
+            basis = "K_GW_BASIS"
+            potential = "POTENTIAL"
 
-        if protocol in ['gapw_std', 'gapw_hq']:
-            self.ctx.basis = "GW_BASIS_SET"
-            self.ctx.potential = "ALL_POTENTIALS"
-        elif protocol == 'gpw_std':
-            self.ctx.basis = "K_GW_BASIS"
-            self.ctx.potential = "POTENTIAL"
-
-        builder.file = {
+        self.ctx.files = {
             'basis':
             SinglefileData(
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  ".", "data", self.ctx.basis)),
+                                  ".", "data", basis)),
             'pseudo':
             SinglefileData(
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  ".", "data", self.ctx.potential)),
+                                  ".", "data", potential)),
         }
+        # --------------------------------------------------
 
-        #UKS
+        self.ctx.current_scf_protocol = None
+        self.ctx.scf_restart_from_last = False
+
+        return ExitCode(0)
+
+    def scf_is_not_done(self):
+
+        if hasattr(self.ctx, 'scf'):
+            scf_out_params = self.ctx.scf.outputs.output_parameters
+
+            scf_converged = scf_out_params['motion_step_info'][
+                'scf_converged'][-1]
+
+            gap_positive = min(scf_out_params['bandgap_spin1_au'],
+                               scf_out_params['bandgap_spin2_au']) >= 0.0
+
+            if scf_converged and gap_positive:
+                self.report("SCF finished well, continue to GW!")
+                return False
+
+            if scf_converged:
+                # If the SCF converged but the gap was negative, restart in the next step
+                self.ctx.scf_restart_from_last = True
+            else:
+                self.ctx.scf_restart_from_last = False
+
+            self.report(
+                "Something went wrong in the SCF, try the next protocol.")
+
+        return True
+
+    def _check_and_set_uks(self, input_dict):
         if self.inputs.multiplicity.value > 0:
             input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
             input_dict['FORCE_EVAL']['DFT'][
                 'MULTIPLICITY'] = self.inputs.multiplicity.value
 
-        # KINDS section
-        self.ctx.kinds_section = get_kinds_section(kinds_dict,
-                                                   protocol=protocol)
-        dict_merge(input_dict, self.ctx.kinds_section)
+    def _set_debug(self, input_dict):
+        input_dict['FORCE_EVAL']['DFT']['PRINT']['MO_CUBES'][
+            'STRIDE'] = '6 6 6'
+        input_dict['FORCE_EVAL']['DFT']['PRINT']['E_DENSITY_CUBE'][
+            'STRIDE'] = '6 6 6'
 
-        #computational resources
+    def _get_resources(self, calctype, max_nodes_cap):
         nodes, tasks_per_node, threads = get_nodes(
-            atoms=self.ctx.atoms,
-            calctype='default',
+            atoms=self.ctx.structure.get_ase(),
+            calctype=calctype,
             computer=self.inputs.code.computer,
-            max_nodes=min(48, self.inputs.max_nodes.value),
+            max_nodes=min(max_nodes_cap, self.inputs.max_nodes.value),
             uks=self.inputs.multiplicity.value > 0)
 
-        builder.metadata.options.resources = {
+        res = {
             'num_machines': nodes,
             'num_mpiprocs_per_machine': tasks_per_node,
             'num_cores_per_mpiproc': threads
         }
-        #walltime
-        input_dict['GLOBAL']['WALLTIME'] = max(
-            self.inputs.walltime_seconds.value - 600, 600)
-        builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
 
-        #cutoff
-        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
+        return res
 
-        if self.inputs.debug:
-            input_dict['FORCE_EVAL']['DFT']['PRINT']['MO_CUBES'][
-                'STRIDE'] = '6 6 6'
-            input_dict['FORCE_EVAL']['DFT']['PRINT']['E_DENSITY_CUBE'][
-                'STRIDE'] = '6 6 6'
+    def _get_metadata_options(self, calctype, max_nodes_cap):
+        # automatically determined metadata_options
+        options = {
+            'resources': self._get_resources(calctype, max_nodes_cap),
+            'max_wallclock_seconds': self.inputs.walltime_seconds.value,
+        }
+        # If user specified any, overwrite those:
+        if 'options' in self.inputs:
+            dict_merge(options, dict(self.inputs.options))
+        return options
 
-        #parser
-        builder.metadata.options.parser_name = "cp2k_advanced_parser"
+    def submit_scf(self):
 
-        #handlers
-
-        #cp2k input dictionary
-        builder.parameters = Dict(dict=input_dict)
-
-        submitted_node = self.submit(builder)
-        return ToContext(first_step=submitted_node)
-
-    def submit_second_step(self):
-        """Function to submit the second step of the workchain."""
-
-        if not common_utils.check_if_calc_ok(self, self.ctx.first_step):
-            return self.exit_codes.ERROR_TERMINATION
-
-        scf_out_params = self.ctx.first_step.outputs.output_parameters
-
-        if not scf_out_params['motion_step_info']['scf_converged'][-1]:
-            self.report("SCF step did not converge")
+        # Try the next SCF section:
+        if self.ctx.current_scf_protocol is None:
+            # First try
+            self.ctx.current_scf_protocol = 'scf_ot_cg'
+        elif self.ctx.current_scf_protocol == 'scf_ot_cg':
+            # Second try
+            self.ctx.current_scf_protocol = 'scf_ot_diis'
+        elif self.ctx.current_scf_protocol == 'scf_ot_diis':
+            # Third try
+            self.ctx.current_scf_protocol = 'scf_diag_smearing'
+        else:
+            # Failure
             return self.exit_codes.ERROR_CONVERGENCE1
 
-        if min(scf_out_params['bandgap_spin1_au'],
-               scf_out_params['bandgap_spin2_au']) < 0.0:
-            self.report("Negative gap!")
-            return self.exit_codes.ERROR_NEGATIVE_GAP
+        self.report(
+            f"Submitting SCF (protocol {self.ctx.current_scf_protocol})")
 
-        protocol = self.inputs.protocol.value
+        # -------------------------------------------------------
+        # Build the input dictionary
 
-        if self.inputs.image_charge.value:
-            protocol_full = protocol + "_ic_step"
-        else:
-            protocol_full = protocol + "_gw_step"
+        step_protocol = self.inputs.protocol.value + "_scf_step"
+        input_dict = copy.deepcopy(self.ctx.protocols[step_protocol])
 
-        #load input template
-        input_dict = copy.deepcopy(self.ctx.protocols[protocol_full])
+        scf_section = copy.deepcopy(
+            self.ctx.protocols[self.ctx.current_scf_protocol])
+        input_dict['FORCE_EVAL']['DFT']['SCF'] = scf_section
+
+        self._check_and_set_uks(input_dict)
+
+        dict_merge(input_dict, self.ctx.kinds_section)
+
+        input_dict['GLOBAL']['WALLTIME'] = max(
+            self.inputs.walltime_seconds.value - 600, 600)
+
+        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
+
+        if self.inputs.debug:
+            self._set_debug(input_dict)
+
+        # -------------------------------------------------------
 
         builder = Cp2kCalculation.get_builder()
         builder.code = self.inputs.code
-        builder.structure = self.ctx.first_step.inputs.structure
-        builder.file = {
-            'basis':
-            SinglefileData(
-                file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  ".", "data", self.ctx.basis)),
-            'pseudo':
-            SinglefileData(
-                file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  ".", "data", self.ctx.potential)),
-        }
+        builder.structure = self.ctx.structure
+        builder.file = self.ctx.files
 
-        #restart from wfn of step1
-        builder.parent_calc_folder = self.ctx.first_step.outputs.remote_folder
-
-        #UKS
-        if self.inputs.multiplicity.value > 0:
-            input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
+        if hasattr(self.ctx, 'scf') and self.ctx.scf_restart_from_last:
+            builder.parent_calc_folder = self.ctx.scf.outputs.remote_folder
             input_dict['FORCE_EVAL']['DFT'][
-                'MULTIPLICITY'] = self.inputs.multiplicity.value
-        # KINDS section
+                'RESTART_FILE_NAME'] = './parent_calc/aiida-RESTART.wfn'
+
+        builder.parameters = Dict(dict=input_dict)
+
+        builder.metadata.options = self._get_metadata_options(
+            calctype='default', max_nodes_cap=48)
+        builder.metadata.options['parser_name'] = "cp2k_advanced_parser"
+
+        submitted_node = self.submit(builder)
+        return ToContext(scf=submitted_node)
+
+    def check_scf(self):
+        if not common_utils.check_if_calc_ok(self, self.ctx.scf):
+            return self.exit_codes.ERROR_TERMINATION
+        return ExitCode(0)
+
+    def submit_gw(self):
+
+        self.report("Submitting GW.")
+
+        # -------------------------------------------------------
+        # Build the input dictionary
+
+        if self.inputs.image_charge.value:
+            step_protocol = self.inputs.protocol.value + "_ic_step"
+        else:
+            step_protocol = self.inputs.protocol.value + "_gw_step"
+
+        input_dict = copy.deepcopy(self.ctx.protocols[step_protocol])
+
+        scf_section = copy.deepcopy(
+            self.ctx.protocols[self.ctx.current_scf_protocol])
+        input_dict['FORCE_EVAL']['DFT']['SCF'] = scf_section
+
+        self._check_and_set_uks(input_dict)
+
         dict_merge(input_dict, self.ctx.kinds_section)
 
-        #computational resources
-        nodes, tasks_per_node, threads = get_nodes(
-            atoms=self.ctx.atoms,
-            calctype='gw_ic' if self.inputs.image_charge.value else 'gw',
-            computer=self.inputs.code.computer,
-            max_nodes=min(2048, self.inputs.max_nodes.value),
-            uks=self.inputs.multiplicity.value > 0)
-
-        builder.metadata.options.resources = {
-            'num_machines': nodes,
-            'num_mpiprocs_per_machine': tasks_per_node,
-            'num_cores_per_mpiproc': threads
-        }
-
-        #walltime
         input_dict['GLOBAL']['WALLTIME'] = max(
             self.inputs.walltime_seconds.value - 600, 600)
+
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
-        builder.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
 
         if self.inputs.debug:
-            input_dict['FORCE_EVAL']['DFT']['PRINT']['MO_CUBES'][
-                'STRIDE'] = '6 6 6'
-            input_dict['FORCE_EVAL']['DFT']['PRINT']['E_DENSITY_CUBE'][
-                'STRIDE'] = '6 6 6'
+            self._set_debug(input_dict)
 
-        #parser
-        builder.metadata.options.parser_name = "nanotech_empa.cp2k_gw_parser"
+        # -------------------------------------------------------
 
-        #handlers
+        builder = Cp2kCalculation.get_builder()
+        builder.code = self.inputs.code
+        builder.structure = self.ctx.structure
+        builder.file = self.ctx.files
 
-        #cp2k input dictionary
+        #restart from wfn of step1
+        builder.parent_calc_folder = self.ctx.scf.outputs.remote_folder
+
+        builder.metadata.options = self._get_metadata_options(
+            calctype='gw_ic' if self.inputs.image_charge.value else 'gw',
+            max_nodes_cap=2048)
+        builder.metadata.options[
+            'parser_name'] = "nanotech_empa.cp2k_gw_parser"
+
         builder.parameters = Dict(dict=input_dict)
 
         submitted_node = self.submit(builder)
