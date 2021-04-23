@@ -149,20 +149,67 @@ def get_pil_image(cube_image_folder, name):
     return pil_image
 
 
-def _show_spin_density(cube_image_folder):
+def plot_cube_images(cube_image_folder,
+                     name_contains=None,
+                     show=True,
+                     save_image_loc=None,
+                     save_prefix=""):
+
+    if name_contains is None:
+        name_contains = ['z+']
+
+    rows = {}
     image_names = cube_image_folder.list_object_names()
     for imag_name in image_names:
-        if "spin" in imag_name and "z+" in imag_name and "iv0.010" in imag_name:
-            pil_image = get_pil_image(cube_image_folder, imag_name)
+
+        if not all([e in imag_name for e in name_contains]):
+            continue
+
+        label = imag_name.split("_")[0]
+        if label not in rows:
+            rows[label] = []
+        pil_image = get_pil_image(cube_image_folder, imag_name)
+        rows[label].append((imag_name, pil_image))
+
+        if save_image_loc is not None:
+            plt.figure(figsize=(5, 5))
             plt.imshow(pil_image)
-            plt.title(imag_name)
             plt.axis('off')
+            image_file_name = save_image_loc + "/{}{}.png".format(
+                save_prefix, imag_name)
+            plt.savefig(image_file_name, dpi=400, bbox_inches='tight')
+            plt.close()
+            print(f"saved {image_file_name}")
+
+    if show:
+        for label in rows:
+            n_imag_row = len(rows[label])
+            plt.figure(figsize=(5 * n_imag_row, 5))
+            for i, pi in enumerate(rows[label]):
+                plt.subplot(1, n_imag_row, i + 1)
+                plt.imshow(pi[1])
+                plt.title(pi[0])
+                plt.axis('off')
             plt.show()
 
 
-def make_report(wc_node):
+def _show_spin_density(cube_image_folder, nb, save_prefix=""):
+    if nb:
+        plot_cube_images(cube_image_folder,
+                         name_contains=['spin', 'z+', 'iv0.010'],
+                         show=True)
+    else:
+        plot_cube_images(cube_image_folder,
+                         name_contains=['spin', 'z+'],
+                         show=False,
+                         save_image_loc=".",
+                         save_prefix=save_prefix)
+
+
+def make_report(wc_node, nb=False):
     """ Function that generates a report for a gaussian spin workchain run"""
     #pylint: disable=too-many-locals
+    #pylint: disable=too-many-statements
     print("Functional:", wc_node.inputs.functional.value)
     print("Basis set OPT:", wc_node.inputs.basis_set_opt.value)
     print("Basis set SCF:", wc_node.inputs.basis_set_scf.value)
@@ -180,12 +227,13 @@ def make_report(wc_node):
     print("#### GROUND STATE: MULTIPLICITY {}".format(gs_multiplicity))
     print("##############################################################")
 
-    _show_spin_density(wc_node.outputs.gs_cube_images)
+    _show_spin_density(wc_node.outputs.gs_cube_images, nb, save_prefix='gs_')
 
     print(f"Energy (eV): {gs_energy:10.4f}")
     print()
-    print(f"IP (eV): {gs_ip:8.4f}")
-    print(f"EA (eV): {gs_ea:8.4f} (accurate only with a diffuse basis)")
+    print(f"IP    (eV): {gs_ip:8.4f}")
+    print(f"EA    (eV): {gs_ea:8.4f} (accurate only with a diffuse basis)")
+    print(f"IP-EA (eV): {gs_ip-gs_ea:8.4f}")
     print()
     print(_get_out_params_str(gs_out_params))
 
@@ -206,7 +254,9 @@ def make_report(wc_node):
         print("##############################################################")
 
         if "gs_hf_cube_images" in wc_node.outputs:
-            _show_spin_density(wc_node.outputs.gs_hf_cube_images)
+            _show_spin_density(wc_node.outputs.gs_hf_cube_images,
+                               nb,
+                               save_prefix='gs_hf_')
 
         print()
         print(_get_out_params_str(gs_hf_out_params))
@@ -230,7 +280,9 @@ def make_report(wc_node):
         print("##############################################################")
 
         cube_label = f"m{mult}_opt_cube_images"
-        _show_spin_density(wc_node.outputs[cube_label])
+        _show_spin_density(wc_node.outputs[cube_label],
+                           nb,
+                           save_prefix=f'm{mult}_')
 
         adia_label = f"m{mult}_opt_energy"
         vert_label = f"m{mult}_vert_energy"
