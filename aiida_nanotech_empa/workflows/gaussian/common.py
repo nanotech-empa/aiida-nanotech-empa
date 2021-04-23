@@ -53,7 +53,7 @@ def determine_comp_resources(num_atoms, basis_set=""):
         mem_per_core = 512
     else:
         num_cores = int(np.round(num_atoms / 16))
-        mem_per_core = 2048
+        mem_per_core = 4096
 
     num_cores = max(1, num_cores)
     num_cores = min(24, num_cores)
