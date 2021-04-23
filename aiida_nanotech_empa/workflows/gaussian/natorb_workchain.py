@@ -4,7 +4,7 @@ from aiida_nanotech_empa.utils import common_utils
 import numpy as np
 
 from aiida.engine import WorkChain, ToContext, calcfunction, ExitCode
-from aiida.orm import Code, Dict, RemoteData
+from aiida.orm import Code, Dict, RemoteData, Bool
 
 from aiida.plugins import WorkflowFactory
 
@@ -120,6 +120,13 @@ class GaussianNatOrbWorkChain(WorkChain):
             help="parent Gaussian calculation output parameters",
         )
 
+        spec.input("save_natorb_chk",
+                   valid_type=Bool,
+                   required=False,
+                   default=lambda: Bool(False),
+                   help=("Save natural orbitals in the chk file." +
+                         "Can introduce errors for larger systems"))
+
         spec.input(
             "options",
             valid_type=Dict,
@@ -159,28 +166,34 @@ class GaussianNatOrbWorkChain(WorkChain):
         builder = GaussianBaseWorkChain.get_builder()
         builder.gaussian.code = self.inputs.gaussian_code
         builder.gaussian.parent_calc_folder = self.inputs.parent_calc_folder
-        builder.gaussian.parameters = Dict(
-            dict={
-                'link0_parameters': {
-                    '%chk': 'aiida.chk',
-                    '%oldchk': 'parent_calc/aiida.chk',
-                    '%mem': "%dMB" % memory_mb,
-                    '%nprocshared': str(num_cores),
+
+        parameters = {
+            'link0_parameters': {
+                '%chk': 'aiida.chk',
+                '%oldchk': 'parent_calc/aiida.chk',
+                '%mem': "%dMB" % memory_mb,
+                '%nprocshared': str(num_cores),
+            },
+            'route_parameters': {
+                'guess': {
+                    'read': None,
+                    'only': None,
                 },
-                'route_parameters': {
-                    'guess': {
-                        'read': None,
-                        'only': None,
-                    },
-                    'pop': 'naturalorbital',
-                    'geom': 'allcheck',
-                    'chkbasis': None,
-                },
-                'functional': "",  # ignored
-                'basis_set': "",  # ignored
-                'charge': -1,  # ignored
-                'multiplicity': -1,  # ignored
-            })
+                'pop': 'naturalorbital',
+                'geom': 'allcheck',
+                'chkbasis': None,
+            },
+            'functional': "",  # ignored
+            'basis_set': "",  # ignored
+            'charge': -1,  # ignored
+            'multiplicity': -1,  # ignored
+        }
+
+        if self.inputs.save_natorb_chk:
+            parameters['route_parameters']['guess']['save'] = None
+            parameters['route_parameters']['guess']['naturalorbitals'] = None
+
+        builder.gaussian.parameters = Dict(dict=parameters)
 
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
@@ -199,5 +212,6 @@ class GaussianNatOrbWorkChain(WorkChain):
             "natorb_proc_parameters",
             process_natural_orb_occupations(
                 self.ctx.natorb.outputs.output_parameters))
+        self.out('remote_folder', self.ctx.natorb.outputs.remote_folder)
 
         return ExitCode(0)
