@@ -12,7 +12,7 @@ from aiida.plugins import ParserFactory
 
 import aiida_gaussian.utils.cube
 
-CubegenBaseParser = ParserFactory('cubegen_base_parser')
+CubegenBaseParser = ParserFactory('gaussian.cubegen_base')
 
 
 class CubegenPymolParser(CubegenBaseParser):

@@ -130,7 +130,7 @@ def determine_metadata_options(self_):
             self_.ctx.n_atoms, self_.ctx.comp, bset)
 
     # Always use the gaussian_advanced_parser
-    self_.ctx.metadata_options['parser_name'] = 'gaussian_advanced_parser'
+    self_.ctx.metadata_options['parser_name'] = 'gaussian.advanced'
 
     return True
 
