@@ -27,6 +27,7 @@
             "nanotech_empa.gaussian.delta_scf = aiida_nanotech_empa.workflows.gaussian:GaussianDeltaScfWorkChain",
             "nanotech_empa.gaussian.natorb = aiida_nanotech_empa.workflows.gaussian:GaussianNatOrbWorkChain",
             "nanotech_empa.gaussian.spin = aiida_nanotech_empa.workflows.gaussian:GaussianSpinWorkChain",
+            "nanotech_empa.gaussian.hf_mp2 = aiida_nanotech_empa.workflows.gaussian:GaussianHfMp2WorkChain",
             "nanotech_empa.cp2k.molecule_opt = aiida_nanotech_empa.workflows.cp2k.molecule_opt_workchain:Cp2kMoleculeOptWorkChain",
             "nanotech_empa.cp2k.molecule_gw =  aiida_nanotech_empa.workflows.cp2k.molecule_gw_workchain:Cp2kMoleculeGwWorkChain"
         ],
@@ -45,7 +46,7 @@
         "aiida-cp2k",
         "ase>=3.0",
         "aiida-gaussian>=1.0.0",
-        "Pillow>=8.0.0"
+        "pillow>=8.0.0"
     ],
     "extras_require": {
         "testing": [

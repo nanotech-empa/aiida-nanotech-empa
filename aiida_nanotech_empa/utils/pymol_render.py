@@ -70,6 +70,10 @@ def make_pymol_png(  # noqa
 
     # ------------------------------------
 
+    cmd.set("specular", 0.3)
+
+    # ------------------------------------
+
     filepath, ext = os.path.splitext(input_file)
     filename = os.path.basename(filepath)
 
@@ -111,12 +115,12 @@ def make_pymol_png(  # noqa
     cmd.show("spheres")
 
     cmd.set("stick_h_scale", 1.0)
-    cmd.set_bond("stick_radius", 0.10, "all", 'all')
+    cmd.set_bond("stick_radius", 0.105, "all", 'all')
 
-    cmd.set("sphere_scale", 0.20, "all")
-    cmd.set("sphere_scale", 0.15, "elem H")
+    cmd.set("sphere_scale", 0.21, "all")
+    cmd.set("sphere_scale", 0.16, "elem H")
 
-    cmd.color("black", "name C*")
+    cmd.color("gray10", "name C*")
     cmd.color("blue", "name N*")
 
     cmd.set("orthoscopic", "on")

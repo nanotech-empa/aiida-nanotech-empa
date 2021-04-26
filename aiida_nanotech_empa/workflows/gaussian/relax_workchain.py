@@ -42,6 +42,12 @@ class GaussianRelaxWorkChain(WorkChain):
                    default=lambda: Bool(False),
                    help='if true, perform wfn stability optimization')
 
+        spec.input('tight',
+                   valid_type=Bool,
+                   required=False,
+                   default=lambda: Bool(False),
+                   help='Use tight optimization criteria.')
+
         spec.input(
             'options',
             valid_type=Dict,
@@ -154,7 +160,7 @@ class GaussianRelaxWorkChain(WorkChain):
                         'conver': 7
                     },
                     'nosymm': None,
-                    'opt': None,
+                    'opt': 'tight' if self.inputs.tight else None,
                 },
             })
 

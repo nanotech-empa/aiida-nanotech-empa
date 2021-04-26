@@ -3,7 +3,7 @@ from aiida_nanotech_empa.utils import common_utils
 import numpy as np
 
 from aiida.engine import WorkChain, if_, ExitCode
-from aiida.orm import Int, Str, Bool, Code, Dict, List
+from aiida.orm import Int, Str, Code, Dict, List
 from aiida.orm import StructureData
 
 from aiida.plugins import WorkflowFactory
@@ -144,7 +144,7 @@ class GaussianSpinWorkChain(WorkChain):
 
         cubes_n_occ = 2
         cubes_n_virt = 2
-        cubes_isovalues = [0.010, 0.050]
+        cubes_isovalues = [0.010, 0.005]
 
         # ------------------------------------------------------
         self.report("Submitting GS cubes")
@@ -180,30 +180,6 @@ class GaussianSpinWorkChain(WorkChain):
         submitted_node = self.submit(builder)
         submitted_node.description = "delta scf"
         self.to_context(dscf=submitted_node)
-
-        # ------------------------------------------------------
-        if self.inputs.functional.value != 'HF':
-            self.report("Submitting HF SCF")
-
-            builder = GaussianScfCubesWorkChain.get_builder()
-            builder.gaussian_code = self.inputs.gaussian_code
-            builder.formchk_code = self.inputs.formchk_code
-            builder.cubegen_code = self.inputs.cubegen_code
-            builder.structure = self.ctx.gs_structure
-            builder.functional = Str("HF")
-            builder.basis_set = self.inputs.basis_set_scf
-            builder.multiplicity = self.ctx.gs_mult
-            builder.wfn_stable_opt = Bool(True)
-            builder.parent_calc_folder = self.ctx.gs_scf_calcnode.outputs.remote_folder
-            builder.n_occ = Int(1)
-            builder.n_virt = Int(1)
-            builder.isosurfaces = List(list=[0.010, 0.050])
-            if 'options' in self.inputs:
-                builder.options = self.inputs.options
-
-            submitted_node = self.submit(builder)
-            submitted_node.description = "HF scf"
-            self.to_context(gs_hf=submitted_node)
 
         # ------------------------------------------------------
         self.report("Submitting vertical calculations")
@@ -243,15 +219,6 @@ class GaussianSpinWorkChain(WorkChain):
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("gs_cube_images", self.ctx.gs_cubes.outputs.cube_image_folder)
-
-        # ------------------------------------------------------
-        if self.inputs.functional.value != 'HF':
-            if not common_utils.check_if_calc_ok(self, self.ctx.gs_hf):
-                return self.exit_codes.ERROR_TERMINATION
-
-            self.out("gs_hf_out_params", self.ctx.gs_hf.outputs.scf_out_params)
-            self.out("gs_hf_cube_images",
-                     self.ctx.gs_hf.outputs.cube_image_folder)
 
         # ------------------------------------------------------
         if not common_utils.check_if_calc_ok(self, self.ctx.dscf):
@@ -302,17 +269,6 @@ class GaussianSpinWorkChain(WorkChain):
         submitted_node.description = "natural orbitals pop"
         self.to_context(natorb=submitted_node)
 
-        builder = GaussianNatOrbWorkChain.get_builder()
-        builder.gaussian_code = self.inputs.gaussian_code
-        builder.parent_calc_folder = self.ctx.gs_hf.outputs.remote_folder
-        builder.parent_calc_params = self.ctx.gs_hf.outputs.scf_out_params
-        if 'options' in self.inputs:
-            builder.options = self.inputs.options
-
-        submitted_node = self.submit(builder)
-        submitted_node.description = "natural orbitals pop HF"
-        self.to_context(natorb_hf=submitted_node)
-
     def inspect_nat_orb(self):
 
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
@@ -320,12 +276,6 @@ class GaussianSpinWorkChain(WorkChain):
 
         self.out("gs_natorb_params",
                  self.ctx.natorb.outputs.natorb_proc_parameters)
-
-        if not common_utils.check_if_calc_ok(self, self.ctx.natorb_hf):
-            return self.exit_codes.ERROR_TERMINATION
-
-        self.out("gs_hf_natorb_params",
-                 self.ctx.natorb_hf.outputs.natorb_proc_parameters)
 
         return ExitCode(0)
 
