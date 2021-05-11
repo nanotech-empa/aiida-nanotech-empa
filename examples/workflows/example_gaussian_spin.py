@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 import ase.io
@@ -11,10 +12,13 @@ import aiida_nanotech_empa.utils.gaussian_wcs_postprocess as pp
 
 GaussianSpinWorkChain = WorkflowFactory('nanotech_empa.gaussian.spin')
 
+DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def _example_gaussian_spin(gaussian_code, formchk_code, cubegen_code):
 
-    ase_geom = ase.io.read("./benzene-diradical.xyz")
+    ase_geom = ase.io.read(os.path.join(DATA_DIR, "benzene-diradical.xyz"))
     ase_geom.cell = np.diag([10.0, 10.0, 10.0])
 
     builder = GaussianSpinWorkChain.get_builder()
@@ -31,7 +35,7 @@ def _example_gaussian_spin(gaussian_code, formchk_code, cubegen_code):
 
     assert wc_node.is_finished_ok
 
-    pp.make_report(wc_node, nb=False)
+    pp.make_report(wc_node, nb=False, save_image_loc=OUTPUT_DIR)
 
 
 if __name__ == '__main__':
