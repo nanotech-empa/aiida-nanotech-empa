@@ -3,7 +3,7 @@ from aiida_nanotech_empa.utils import common_utils
 import numpy as np
 
 from aiida.engine import WorkChain, if_, ExitCode
-from aiida.orm import Int, Str, Code, Dict, List
+from aiida.orm import Int, Str, Code, Dict, List, Float
 from aiida.orm import StructureData
 
 from aiida.plugins import WorkflowFactory
@@ -113,6 +113,8 @@ class GaussianSpinWorkChain(WorkChain):
                      self.ctx[label].outputs.scf_out_params)
             self.out(f"m{mult}_opt_cube_images",
                      self.ctx[label].outputs.cube_image_folder)
+            self.out(f"m{mult}_opt_cube_planes",
+                     self.ctx[label].outputs.cube_planes_array)
 
         gs_i = np.argmin(opt_energies)
 
@@ -142,9 +144,11 @@ class GaussianSpinWorkChain(WorkChain):
     def submit_next_steps(self):
         # pylint: disable=too-many-statements
 
-        cubes_n_occ = 2
-        cubes_n_virt = 2
-        cubes_isovalues = [0.010, 0.005]
+        cubes_n_occ = 5
+        cubes_n_virt = 5
+        cubes_orb_indexes = list(range(-cubes_n_occ + 1, cubes_n_virt + 1))
+        cubes_isovalues = [0.010, 0.001]
+        cubes_heights = [3.0, 4.0]
 
         # ------------------------------------------------------
         self.report("Submitting GS cubes")
@@ -154,11 +158,15 @@ class GaussianSpinWorkChain(WorkChain):
         builder.cubegen_code = self.inputs.cubegen_code
         builder.gaussian_calc_folder = self.ctx.gs_scf_calcnode.outputs.remote_folder
         builder.gaussian_output_params = self.ctx.gs_scf_calcnode.outputs.output_parameters
-        builder.n_occ = Int(cubes_n_occ)
-        builder.n_virt = Int(cubes_n_virt)
+        builder.orbital_indexes = List(list=cubes_orb_indexes)
+        builder.edge_space = Float(max(cubes_heights))
         builder.cubegen_parser_name = 'nanotech_empa.gaussian.cubegen_pymol'
         builder.cubegen_parser_params = Dict(
-            dict={'isovalues': cubes_isovalues})
+            dict={
+                'isovalues': cubes_isovalues,
+                'heights': cubes_heights,
+                'orient_cube': True,
+            })
 
         submitted_node = self.submit(builder)
         submitted_node.description = "gs cubes"
@@ -204,7 +212,13 @@ class GaussianSpinWorkChain(WorkChain):
                 opt_label].outputs.remote_folder
             builder.n_occ = Int(cubes_n_occ)
             builder.n_virt = Int(cubes_n_virt)
-            builder.isosurfaces = List(list=cubes_isovalues)
+            builder.cubegen_parser_params = Dict(
+                dict={
+                    'isovalues': cubes_isovalues,
+                    'heights': cubes_heights,
+                    'orient_cube': True,
+                })
+
             if 'options' in self.inputs:
                 builder.options = self.inputs.options
 
@@ -219,6 +233,7 @@ class GaussianSpinWorkChain(WorkChain):
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("gs_cube_images", self.ctx.gs_cubes.outputs.cube_image_folder)
+        self.out("gs_cube_planes", self.ctx.gs_cubes.outputs.cube_planes_array)
 
         # ------------------------------------------------------
         if not common_utils.check_if_calc_ok(self, self.ctx.dscf):
@@ -247,6 +262,8 @@ class GaussianSpinWorkChain(WorkChain):
                      self.ctx[label].outputs.scf_out_params)
             self.out(f"m{mult}_vert_cube_images",
                      self.ctx[label].outputs.cube_image_folder)
+            self.out(f"m{mult}_vert_cube_planes",
+                     self.ctx[label].outputs.cube_planes_array)
 
         return ExitCode(0)
 

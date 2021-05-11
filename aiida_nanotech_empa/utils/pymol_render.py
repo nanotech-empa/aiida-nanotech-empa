@@ -10,7 +10,7 @@ import ase.io
 
 from PIL import Image, ImageOps
 
-from .cube_utils import load_cube_atoms
+from aiida_gaussian.utils.cube import Cube
 
 # PYMOL asynchronous mode (pymolwiki.org/index.php/Jupyter)
 import pymol  # pylint: disable=import-error
@@ -80,7 +80,7 @@ def make_pymol_png(  # noqa
     if ext == '.cube':
 
         # Geometry from cube
-        ase_geom = load_cube_atoms(input_file)
+        ase_geom = Cube.from_file(input_file, read_data=False).ase_atoms
         tempf = tempfile.NamedTemporaryFile(delete=False, mode='w')
         ase_geom.write(tempf.name, format='xyz')
         tempf.close()

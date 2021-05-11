@@ -20,6 +20,8 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
     def define(cls, spec):
         super().define(spec)
         spec.input("code", valid_type=Code)
+        spec.input("structure", valid_type=StructureData)
+
         spec.input(
             "charge",  # +1 means one electron removed
             valid_type=Int,
@@ -39,10 +41,8 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
                    required=False)
         spec.input("walltime_seconds",
                    valid_type=Int,
-                   default=lambda: Int(300),
+                   default=lambda: Int(7200),
                    required=False)
-        spec.input("structure", valid_type=StructureData)
-
         spec.input("debug",
                    valid_type=Bool,
                    default=lambda: Bool(False),

@@ -487,6 +487,9 @@ class NanoribbonWorkChain(WorkChain):
             if error_msg is not None:
                 return self.exit_codes.CALC_FAILED
 
+            self.out('spin_density_arraydata',
+                     self.ctx.export_spinden.outputs.output_data)
+
         self.report("END of workchain")
         return
 

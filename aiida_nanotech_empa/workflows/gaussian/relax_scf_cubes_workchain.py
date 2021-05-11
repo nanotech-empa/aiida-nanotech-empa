@@ -1,7 +1,7 @@
 from aiida_nanotech_empa.utils import common_utils
 
 from aiida.engine import WorkChain, ToContext, ExitCode
-from aiida.orm import Int, Str, Code, Bool, Dict, List, StructureData
+from aiida.orm import Int, Str, Code, Bool, Dict, StructureData
 
 from aiida.plugins import WorkflowFactory
 
@@ -106,7 +106,11 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
 
         builder.n_occ = Int(1)
         builder.n_virt = Int(1)
-        builder.isosurfaces = List(list=[0.010, 0.050])
+        builder.cubegen_parser_params = Dict(dict={
+            'heights': [3.0],
+            'orient_cube': True,
+            'isovalues': [0.01, 0.005],
+        })
 
         if 'options' in self.inputs:
             builder.options = self.inputs.options
@@ -129,6 +133,8 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
 
         self.out("cube_image_folder",
                  self.ctx.scf_and_cubes.outputs.cube_image_folder)
+        self.out("cube_planes_array",
+                 self.ctx.scf_and_cubes.outputs.cube_planes_array)
 
         self.out("remote_folder", self.ctx.scf_and_cubes.outputs.remote_folder)
 

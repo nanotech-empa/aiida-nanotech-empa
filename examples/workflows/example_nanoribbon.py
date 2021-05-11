@@ -6,6 +6,8 @@ from aiida.orm import load_code
 from aiida.plugins import DataFactory, WorkflowFactory
 from aiida.engine import run_get_node
 
+from aiida_nanotech_empa.utils.cube_utils import cube_from_qe_pp_arraydata
+
 # AiiDA classes.
 StructureData = DataFactory('structure')
 NanoribbonWorkChain = WorkflowFactory('nanotech_empa.nanoribbon')
@@ -44,6 +46,11 @@ def _example_nanoribbon(qe_pw_code, qe_pp_code, qe_projwfc_code, geo_file,
     _, node = run_get_node(builder)
 
     assert node.is_finished_ok
+
+    if 'spin_density_arraydata' in node.outputs:
+        cube = cube_from_qe_pp_arraydata(node.outputs.spin_density_arraydata)
+        cube.write_cube_file("spin.cube")
+        print("Wrote spin.cube!")
 
 
 def example_nanoribbon_no_spin(qe_pw_code, qe_pp_code, qe_projwfc_code):
