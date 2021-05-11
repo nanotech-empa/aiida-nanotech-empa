@@ -193,20 +193,24 @@ def plot_cube_images(cube_image_folder,
             plt.show()
 
 
-def _show_spin_density(cube_image_folder, nb, save_prefix=""):
+def _show_spin_density(cube_image_folder,
+                       nb,
+                       save_image_loc=None,
+                       save_prefix=""):
     if nb:
-        plot_cube_images(cube_image_folder,
-                         name_contains=['spin', 'z+', 'iv0.010'],
-                         show=True)
+        name_contains = ['spin', 'z+', 'iv0.010']
+        show = True
     else:
-        plot_cube_images(cube_image_folder,
-                         name_contains=['spin', 'z+'],
-                         show=False,
-                         save_image_loc=".",
-                         save_prefix=save_prefix)
+        name_contains = ['spin', 'z+']
+        show = False
+    plot_cube_images(cube_image_folder,
+                     name_contains=name_contains,
+                     show=show,
+                     save_image_loc=save_image_loc,
+                     save_prefix=save_prefix)
 
 
-def make_report(wc_node, nb=False):
+def make_report(wc_node, nb=False, save_image_loc=None):
     """ Function that generates a report for a gaussian spin workchain run"""
     #pylint: disable=too-many-locals
     #pylint: disable=too-many-statements
@@ -227,7 +231,10 @@ def make_report(wc_node, nb=False):
     print("#### GROUND STATE: MULTIPLICITY {}".format(gs_multiplicity))
     print("##############################################################")
 
-    _show_spin_density(wc_node.outputs.gs_cube_images, nb, save_prefix='gs_')
+    _show_spin_density(wc_node.outputs.gs_cube_images,
+                       nb,
+                       save_image_loc=save_image_loc,
+                       save_prefix='gs_')
 
     print(f"Energy (eV): {gs_energy:10.4f}")
     print()
@@ -256,6 +263,7 @@ def make_report(wc_node, nb=False):
         if "gs_hf_cube_images" in wc_node.outputs:
             _show_spin_density(wc_node.outputs.gs_hf_cube_images,
                                nb,
+                               save_image_loc=save_image_loc,
                                save_prefix='gs_hf_')
 
         print()
@@ -282,6 +290,7 @@ def make_report(wc_node, nb=False):
         cube_label = f"m{mult}_vert_cube_images"
         _show_spin_density(wc_node.outputs[cube_label],
                            nb,
+                           save_image_loc=save_image_loc,
                            save_prefix=f'm{mult}_')
 
         adia_label = f"m{mult}_opt_energy"

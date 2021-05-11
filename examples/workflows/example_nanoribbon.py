@@ -13,6 +13,7 @@ StructureData = DataFactory('structure')
 NanoribbonWorkChain = WorkflowFactory('nanotech_empa.nanoribbon')
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def _example_nanoribbon(qe_pw_code, qe_pp_code, qe_projwfc_code, geo_file,
@@ -49,7 +50,7 @@ def _example_nanoribbon(qe_pw_code, qe_pp_code, qe_projwfc_code, geo_file,
 
     if 'spin_density_arraydata' in node.outputs:
         cube = cube_from_qe_pp_arraydata(node.outputs.spin_density_arraydata)
-        cube.write_cube_file("spin.cube")
+        cube.write_cube_file(os.path.join(OUTPUT_DIR, "spin.cube"))
         print("Wrote spin.cube!")
 
 
