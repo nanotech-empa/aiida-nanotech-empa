@@ -175,7 +175,7 @@ def plot_cube_images(cube_image_folder,
             plt.figure(figsize=(5, 5))
             plt.imshow(pil_image)
             plt.axis('off')
-            image_file_name = save_image_loc + "/{}{}.png".format(
+            image_file_name = save_image_loc + "/{}{}".format(
                 save_prefix, imag_name)
             plt.savefig(image_file_name, dpi=400, bbox_inches='tight')
             plt.close()
@@ -279,7 +279,7 @@ def make_report(wc_node, nb=False):
         print("#### MULTIPLICITY {}".format(mult))
         print("##############################################################")
 
-        cube_label = f"m{mult}_opt_cube_images"
+        cube_label = f"m{mult}_vert_cube_images"
         _show_spin_density(wc_node.outputs[cube_label],
                            nb,
                            save_prefix=f'm{mult}_')

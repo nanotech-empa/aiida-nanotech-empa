@@ -10,7 +10,7 @@ import aiida_nanotech_empa.utils.pymol_render as pr
 
 from aiida.plugins import ParserFactory
 
-import aiida_gaussian.utils.cube
+from aiida_gaussian.utils.cube import Cube
 
 CubegenBaseParser = ParserFactory('gaussian.cubegen_base')
 
@@ -18,6 +18,14 @@ CubegenBaseParser = ParserFactory('gaussian.cubegen_base')
 class CubegenPymolParser(CubegenBaseParser):
     """Cubegen parser based on pymol."""
     def _parse_folders(self, retrieved_folders, parser_params):
+
+        # Parse constant-height planes based on the base parser
+        super()._parse_folders(retrieved_folders, parser_params)
+
+        # By default, don't re-orient cube
+        orient_cube = False
+        if 'orient_cube' in parser_params:
+            orient_cube = parser_params['orient_cube']
 
         if 'isovalues' in parser_params:
             isovalues = parser_params['isovalues']
@@ -34,9 +42,11 @@ class CubegenPymolParser(CubegenBaseParser):
                     # pymol rendering, however, requires the path to the cube file
                     # therefore, we need to write the contents to a temporary file
 
-                    cube = aiida_gaussian.utils.cube.Cube()
                     with retrieved_fd.open(filename) as handle:
-                        cube.read_cube(handle)
+                        cube = Cube.from_file_handle(handle)
+
+                    if orient_cube:
+                        self._orient_cube(cube)
 
                     with tempfile.NamedTemporaryFile(mode='w+',
                                                      encoding='utf-8',
@@ -51,6 +61,7 @@ class CubegenPymolParser(CubegenBaseParser):
                                     (1.0, 0.2, 0.2),  # red
                                     (0.0, 0.4, 1.0),  # blue
                                 ],
+                                orientations=('z'),
                                 output_folder=image_folder.name,
                                 output_name=os.path.splitext(filename)[0])
 

@@ -2,7 +2,7 @@ from aiida_nanotech_empa.workflows.gaussian import common
 from aiida_nanotech_empa.utils import common_utils
 
 from aiida.engine import WorkChain, ToContext, ExitCode
-from aiida.orm import Int, Str, Bool, Code, Dict, List
+from aiida.orm import Int, Str, Bool, Code, Dict, Float, List
 from aiida.orm import StructureData, RemoteData
 
 from aiida.plugins import WorkflowFactory
@@ -68,11 +68,25 @@ class GaussianScfCubesWorkChain(WorkChain):
                    default=lambda: Int(1),
                    help='Number of virtual orbital cubes to generate')
 
-        spec.input('isosurfaces',
-                   valid_type=List,
+        spec.input(
+            'edge_space',
+            valid_type=Float,
+            required=False,
+            default=lambda: Float(3.0),
+            help='Extra cube space in addition to molecule bounding box [ang].'
+        )
+
+        spec.input(
+            "cubegen_parser_name",
+            valid_type=str,
+            default='nanotech_empa.gaussian.cubegen_pymol',
+            non_db=True,
+        )
+        spec.input("cubegen_parser_params",
+                   valid_type=Dict,
                    required=False,
-                   default=lambda: List(list=[0.010]),
-                   help='Generated images isosurface isovalues')
+                   default=lambda: Dict(dict={}),
+                   help='Additional parameters to cubegen parser.')
 
         spec.input(
             'options',
@@ -177,17 +191,22 @@ class GaussianScfCubesWorkChain(WorkChain):
 
         self.report("Generating cubes")
 
+        orb_index_list = list(
+            range(-self.inputs.n_occ.value + 1, self.inputs.n_virt.value + 1))
+
         future = self.submit(
             GaussianCubesWorkChain,
             formchk_code=self.inputs.formchk_code,
             cubegen_code=self.inputs.cubegen_code,
             gaussian_calc_folder=self.ctx.scf.outputs.remote_folder,
             gaussian_output_params=self.ctx.scf.outputs['output_parameters'],
-            n_occ=self.inputs.n_occ,
-            n_virt=self.inputs.n_virt,
-            cubegen_parser_name='nanotech_empa.gaussian.cubegen_pymol',
-            cubegen_parser_params=Dict(
-                dict={'isovalues': list(self.inputs.isosurfaces)}))
+            orbital_indexes=List(list=orb_index_list),
+            orbital_index_ref=Str('half_num_el'),
+            edge_space=self.inputs.edge_space,
+            dx=Float(0.15),
+            retrieve_cubes=Bool(False),
+            cubegen_parser_name=self.inputs.cubegen_parser_name,
+            cubegen_parser_params=self.inputs.cubegen_parser_params)
         return ToContext(cubes=future)
 
     def finalize(self):
@@ -202,13 +221,10 @@ class GaussianScfCubesWorkChain(WorkChain):
 
         self.out("remote_folder", self.ctx.scf.outputs['remote_folder'])
 
-        self.out("cube_image_folder",
-                 self.ctx.cubes.outputs['cube_image_folder'])
-
-        #for cubes_out in list(self.ctx.cubes.outputs):
-        #    if cubes_out.startswith("cube"):
-        #        self.out(cubes_out, self.ctx.cubes.outputs[cubes_out])
-        #    elif cubes_out == 'retrieved':
-        #        self.out("cubes_retrieved", self.ctx.cubes.outputs[cubes_out])
+        for cubes_out in list(self.ctx.cubes.outputs):
+            if cubes_out.startswith("cube"):
+                self.out(cubes_out, self.ctx.cubes.outputs[cubes_out])
+            elif cubes_out == 'retrieved':
+                self.out("cubes_retrieved", self.ctx.cubes.outputs[cubes_out])
 
         return ExitCode(0)
