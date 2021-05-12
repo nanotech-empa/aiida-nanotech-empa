@@ -3,7 +3,7 @@ from aiida_nanotech_empa.utils import common_utils
 
 import numpy as np
 
-from aiida.engine import WorkChain, ToContext, calcfunction, ExitCode
+from aiida.engine import WorkChain, ToContext, calcfunction, ExitCode, if_
 from aiida.orm import Code, Dict, RemoteData, Bool
 
 from aiida.plugins import WorkflowFactory
@@ -134,7 +134,8 @@ class GaussianNatOrbWorkChain(WorkChain):
             help="Use custom metadata.options instead of the automatic ones.",
         )
 
-        spec.outline(cls.submit_calc, cls.finalize)
+        spec.outline(cls.submit_calc,
+                     if_(cls.save_natorb_chk)(cls.submit_save), cls.finalize)
 
         spec.outputs.dynamic = True
 
@@ -163,6 +164,9 @@ class GaussianNatOrbWorkChain(WorkChain):
         num_cores, memory_mb = common.get_gaussian_cores_and_memory(
             self.ctx.metadata_options, self.ctx.comp)
 
+        self.ctx.num_cores = num_cores
+        self.ctx.memory_mb = memory_mb
+
         builder = GaussianBaseWorkChain.get_builder()
         builder.gaussian.code = self.inputs.gaussian_code
         builder.gaussian.parent_calc_folder = self.inputs.parent_calc_folder
@@ -189,10 +193,6 @@ class GaussianNatOrbWorkChain(WorkChain):
             'multiplicity': -1,  # ignored
         }
 
-        if self.inputs.save_natorb_chk:
-            parameters['route_parameters']['guess']['save'] = None
-            parameters['route_parameters']['guess']['naturalorbitals'] = None
-
         builder.gaussian.parameters = Dict(dict=parameters)
 
         builder.gaussian.metadata.options = self.ctx.metadata_options
@@ -201,10 +201,61 @@ class GaussianNatOrbWorkChain(WorkChain):
         submitted_node.description = "naturalorbitals population"
         return ToContext(natorb=submitted_node)
 
+    def save_natorb_chk(self):
+        return self.inputs.save_natorb_chk
+
+    def submit_save(self):
+
+        if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
+            return self.exit_codes.ERROR_TERMINATION
+
+        builder = GaussianBaseWorkChain.get_builder()
+        builder.gaussian.code = self.inputs.gaussian_code
+        #builder.gaussian.parent_calc_folder = self.ctx.natorb.outputs.remote_folder
+        builder.gaussian.parent_calc_folder = self.inputs.parent_calc_folder
+
+        parameters = {
+            'link0_parameters': {
+                '%chk': 'aiida.chk',
+                '%oldchk': 'parent_calc/aiida.chk',
+                '%mem': "%dMB" % self.ctx.memory_mb,
+                '%nprocshared': str(self.ctx.num_cores),
+            },
+            'route_parameters': {
+                'guess': {
+                    'save': None,
+                    'only': None,
+                    'naturalorbitals': None,
+                },
+                'geom': 'allcheck',
+                'chkbasis': None,
+            },
+            'functional': "",  # ignored
+            'basis_set': "",  # ignored
+            'charge': -1,  # ignored
+            'multiplicity': -1,  # ignored
+        }
+
+        builder.gaussian.parameters = Dict(dict=parameters)
+
+        builder.gaussian.metadata.options = self.ctx.metadata_options
+
+        submitted_node = self.submit(builder)
+        submitted_node.description = "naturalorbitals save"
+        return ToContext(natorb_save=submitted_node)
+
     def finalize(self):
 
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
             return self.exit_codes.ERROR_TERMINATION
+
+        if self.save_natorb_chk():
+            if not common_utils.check_if_calc_ok(self, self.ctx.natorb_save):
+                return self.exit_codes.ERROR_TERMINATION
+            self.out('remote_folder',
+                     self.ctx.natorb_save.outputs.remote_folder)
+        else:
+            self.out('remote_folder', self.ctx.natorb.outputs.remote_folder)
 
         self.out("natorb_raw_parameters",
                  self.ctx.natorb.outputs.output_parameters)
@@ -212,6 +263,5 @@ class GaussianNatOrbWorkChain(WorkChain):
             "natorb_proc_parameters",
             process_natural_orb_occupations(
                 self.ctx.natorb.outputs.output_parameters))
-        self.out('remote_folder', self.ctx.natorb.outputs.remote_folder)
 
         return ExitCode(0)
