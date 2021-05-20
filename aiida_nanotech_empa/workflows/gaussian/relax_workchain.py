@@ -48,6 +48,12 @@ class GaussianRelaxWorkChain(WorkChain):
                    default=lambda: Bool(False),
                    help='Use tight optimization criteria.')
 
+        spec.input('freq',
+                   valid_type=Bool,
+                   required=False,
+                   default=lambda: Bool(False),
+                   help='Also run vibrational analysis.')
+
         spec.input(
             'options',
             valid_type=Dict,
@@ -69,6 +75,11 @@ class GaussianRelaxWorkChain(WorkChain):
             302,
             "ERROR_OPTIONS",
             message="Input options are invalid.",
+        )
+        spec.exit_code(
+            380,
+            "ERROR_NO_VIBR_ANALYSIS",
+            message="Vibrational analysis did not succeed.",
         )
         spec.exit_code(
             390,
@@ -116,6 +127,7 @@ class GaussianRelaxWorkChain(WorkChain):
         parameters = Dict(
             dict={
                 'link0_parameters': self.ctx.link0.copy(),
+                'dieze_tag': '#P',
                 'functional': self.ctx.functional,
                 'basis_set': self.inputs.basis_set.value,
                 'charge': 0,
@@ -150,6 +162,7 @@ class GaussianRelaxWorkChain(WorkChain):
         parameters = Dict(
             dict={
                 'link0_parameters': self.ctx.link0.copy(),
+                'dieze_tag': '#P',
                 'functional': self.ctx.functional,
                 'basis_set': self.inputs.basis_set.value,
                 'charge': 0,
@@ -157,12 +170,14 @@ class GaussianRelaxWorkChain(WorkChain):
                 'route_parameters': {
                     'scf': {
                         'maxcycle': 128,
-                        'conver': 7
                     },
                     'nosymm': None,
                     'opt': 'tight' if self.inputs.tight else None,
                 },
             })
+
+        if not self.inputs.tight:
+            parameters['route_parameters']['scf']['conver'] = 7
 
         builder = GaussianBaseWorkChain.get_builder()
 
@@ -172,6 +187,9 @@ class GaussianRelaxWorkChain(WorkChain):
             builder.gaussian.parent_calc_folder = self.ctx.uks_stab.outputs.remote_folder
         elif self.inputs.multiplicity == 1:
             parameters['route_parameters']['guess'] = "mix"
+
+        if self.inputs.freq:
+            parameters['route_parameters']['freq'] = None
 
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
@@ -185,6 +203,10 @@ class GaussianRelaxWorkChain(WorkChain):
 
         if not common_utils.check_if_calc_ok(self, self.ctx.opt):
             return self.exit_codes.ERROR_TERMINATION
+
+        if self.inputs.freq:
+            if 'vibfreqs' not in dict(self.ctx.opt.outputs.output_parameters):
+                return self.exit_codes.ERROR_NO_VIBR_ANALYSIS
 
         self.report("Finalizing...")
 
