@@ -135,9 +135,7 @@ class GaussianRelaxWorkChain(WorkChain):
                 'route_parameters': {
                     'scf': {
                         'maxcycle': 128,
-                        'conver': 7
                     },
-                    'nosymm': None,
                     'Stable': 'opt',
                 },
             })
@@ -171,13 +169,9 @@ class GaussianRelaxWorkChain(WorkChain):
                     'scf': {
                         'maxcycle': 128,
                     },
-                    'nosymm': None,
                     'opt': 'tight' if self.inputs.tight else None,
                 },
             })
-
-        if not self.inputs.tight:
-            parameters['route_parameters']['scf']['conver'] = 7
 
         builder = GaussianBaseWorkChain.get_builder()
 

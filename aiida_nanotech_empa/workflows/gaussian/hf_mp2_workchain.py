@@ -125,7 +125,6 @@ class GaussianHfMp2WorkChain(WorkChain):
                         'maxcycle': 128,
                         'conver': 7
                     },
-                    'nosymm': None,
                     'stable': 'opt',
                 },
             })
@@ -193,10 +192,8 @@ class GaussianHfMp2WorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128,
-                        'conver': 7
+                        'maxcycle': 128
                     },
-                    'nosymm': None,
                     'sp': None,
                 },
             })
