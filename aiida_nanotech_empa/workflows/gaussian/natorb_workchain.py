@@ -4,7 +4,7 @@ from aiida_nanotech_empa.utils import common_utils
 import numpy as np
 
 from aiida.engine import WorkChain, ToContext, calcfunction, ExitCode, if_
-from aiida.orm import Code, Dict, RemoteData, Bool, Int, List
+from aiida.orm import Code, Dict, RemoteData, Bool, Int, List, Float
 
 from aiida.plugins import WorkflowFactory
 
@@ -128,6 +128,8 @@ class GaussianNatOrbWorkChain(WorkChain):
                    help=("Save natural orbitals in the chk file." +
                          "Can introduce errors for larger systems"))
 
+        # -------------------------------------------------------------------
+        # CUBE GENERATION INPUTS
         spec.input(
             "num_natural_orbital_cubes",
             valid_type=Int,
@@ -135,9 +137,22 @@ class GaussianNatOrbWorkChain(WorkChain):
             default=lambda: Int(0),
             help='Generate cubes for SAVED natural orbitals (n*occ and n*virt).'
         )
-
         spec.input("formchk_code", valid_type=Code, required=False)
         spec.input("cubegen_code", valid_type=Code, required=False)
+
+        spec.input(
+            'edge_space',
+            valid_type=Float,
+            required=False,
+            default=lambda: Float(3.0),
+            help='Extra cube space in addition to molecule bounding box [ang].'
+        )
+        spec.input("cubegen_parser_params",
+                   valid_type=Dict,
+                   required=False,
+                   default=lambda: Dict(dict={}),
+                   help='Additional parameters to cubegen parser.')
+        # -------------------------------------------------------------------
 
         spec.input(
             "options",
@@ -276,12 +291,11 @@ class GaussianNatOrbWorkChain(WorkChain):
         builder.gaussian_output_params = self.ctx.natorb.outputs.output_parameters
         builder.orbital_indexes = List(list=list(range(-n_d + 1, n_u + 1)))
         builder.natural_orbitals = Bool(True)
-
+        builder.edge_space = self.inputs.edge_space
+        builder.dx = Float(0.15)
         builder.cubegen_parser_name = 'nanotech_empa.gaussian.cubegen_pymol'
-        builder.cubegen_parser_params = Dict(dict={
-            'isovalues': [0.050],
-            'orient_cube': True
-        })
+        builder.cubegen_parser_params = self.inputs.cubegen_parser_params
+
         future = self.submit(builder)
         return ToContext(cubes=future)
 
