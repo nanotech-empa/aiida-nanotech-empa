@@ -109,7 +109,7 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
         builder.cubegen_parser_params = Dict(dict={
             'heights': [3.0],
             'orient_cube': True,
-            'isovalues': [0.01, 0.005],
+            'isovalues': [0.01],
         })
 
         if 'options' in self.inputs:

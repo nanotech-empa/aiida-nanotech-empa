@@ -39,6 +39,6 @@ def _example_gaussian_spin(gaussian_code, formchk_code, cubegen_code):
 
 
 if __name__ == '__main__':
-    _example_gaussian_spin(load_code("gaussian09@localhost"),
+    _example_gaussian_spin(load_code("gaussian@localhost"),
                            load_code("formchk@localhost"),
                            load_code("cubegen@localhost"))

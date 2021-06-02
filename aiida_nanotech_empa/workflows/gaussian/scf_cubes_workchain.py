@@ -154,10 +154,8 @@ class GaussianScfCubesWorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128,
-                        'conver': 7
+                        'maxcycle': 128
                     },
-                    'nosymm': None,
                 },
             })
         if self.inputs.wfn_stable_opt:

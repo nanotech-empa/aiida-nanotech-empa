@@ -4,11 +4,12 @@ from aiida_nanotech_empa.utils import common_utils
 import numpy as np
 
 from aiida.engine import WorkChain, ToContext, calcfunction, ExitCode, if_
-from aiida.orm import Code, Dict, RemoteData, Bool
+from aiida.orm import Code, Dict, RemoteData, Bool, Int, List, Float
 
 from aiida.plugins import WorkflowFactory
 
 GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
+GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
 
 ## --------------------------------------------------------------------
 ## Natural orbital processing:
@@ -127,6 +128,32 @@ class GaussianNatOrbWorkChain(WorkChain):
                    help=("Save natural orbitals in the chk file." +
                          "Can introduce errors for larger systems"))
 
+        # -------------------------------------------------------------------
+        # CUBE GENERATION INPUTS
+        spec.input(
+            "num_natural_orbital_cubes",
+            valid_type=Int,
+            required=False,
+            default=lambda: Int(0),
+            help='Generate cubes for SAVED natural orbitals (n*occ and n*virt).'
+        )
+        spec.input("formchk_code", valid_type=Code, required=False)
+        spec.input("cubegen_code", valid_type=Code, required=False)
+
+        spec.input(
+            'edge_space',
+            valid_type=Float,
+            required=False,
+            default=lambda: Float(3.0),
+            help='Extra cube space in addition to molecule bounding box [ang].'
+        )
+        spec.input("cubegen_parser_params",
+                   valid_type=Dict,
+                   required=False,
+                   default=lambda: Dict(dict={}),
+                   help='Additional parameters to cubegen parser.')
+        # -------------------------------------------------------------------
+
         spec.input(
             "options",
             valid_type=Dict,
@@ -134,8 +161,11 @@ class GaussianNatOrbWorkChain(WorkChain):
             help="Use custom metadata.options instead of the automatic ones.",
         )
 
-        spec.outline(cls.submit_calc,
-                     if_(cls.save_natorb_chk)(cls.submit_save), cls.finalize)
+        spec.outline(
+            cls.submit_calc,
+            if_(cls.save_natorb_chk)(cls.submit_save,
+                                     if_(cls.should_do_cubes)(cls.cubes)),
+            cls.finalize)
 
         spec.outputs.dynamic = True
 
@@ -244,6 +274,31 @@ class GaussianNatOrbWorkChain(WorkChain):
         submitted_node.description = "naturalorbitals save"
         return ToContext(natorb_save=submitted_node)
 
+    def should_do_cubes(self):
+        codes_set = 'formchk_code' in self.inputs and 'cubegen_code' in self.inputs
+        pos_num_specified = self.inputs.num_natural_orbital_cubes.value > 0
+        return self.save_natorb_chk() and codes_set and pos_num_specified
+
+    def cubes(self):
+
+        n_d = self.inputs.num_natural_orbital_cubes.value
+        n_u = self.inputs.num_natural_orbital_cubes.value
+
+        builder = GaussianCubesWorkChain.get_builder()
+        builder.formchk_code = self.inputs.formchk_code
+        builder.cubegen_code = self.inputs.cubegen_code
+        builder.gaussian_calc_folder = self.ctx.natorb_save.outputs.remote_folder
+        builder.gaussian_output_params = self.ctx.natorb.outputs.output_parameters
+        builder.orbital_indexes = List(list=list(range(-n_d + 1, n_u + 1)))
+        builder.natural_orbitals = Bool(True)
+        builder.edge_space = self.inputs.edge_space
+        builder.dx = Float(0.15)
+        builder.cubegen_parser_name = 'nanotech_empa.gaussian.cubegen_pymol'
+        builder.cubegen_parser_params = self.inputs.cubegen_parser_params
+
+        future = self.submit(builder)
+        return ToContext(cubes=future)
+
     def finalize(self):
 
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
@@ -256,6 +311,13 @@ class GaussianNatOrbWorkChain(WorkChain):
                      self.ctx.natorb_save.outputs.remote_folder)
         else:
             self.out('remote_folder', self.ctx.natorb.outputs.remote_folder)
+
+        if self.should_do_cubes():
+            if not common_utils.check_if_calc_ok(self, self.ctx.cubes):
+                return self.exit_codes.ERROR_TERMINATION
+            for cubes_out in list(self.ctx.cubes.outputs):
+                if cubes_out.startswith("cube"):
+                    self.out(cubes_out, self.ctx.cubes.outputs[cubes_out])
 
         self.out("natorb_raw_parameters",
                  self.ctx.natorb.outputs.output_parameters)
