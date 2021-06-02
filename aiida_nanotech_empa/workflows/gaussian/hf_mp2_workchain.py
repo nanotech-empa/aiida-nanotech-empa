@@ -2,7 +2,7 @@ from aiida_nanotech_empa.workflows.gaussian import common
 from aiida_nanotech_empa.utils import common_utils
 
 from aiida.engine import WorkChain, ToContext, ExitCode
-from aiida.orm import Int, Str, Code, Dict, List
+from aiida.orm import Int, Str, Code, Dict
 from aiida.orm import StructureData, RemoteData
 
 from aiida.plugins import WorkflowFactory
@@ -171,7 +171,11 @@ class GaussianHfMp2WorkChain(WorkChain):
 
         builder.n_occ = Int(2)
         builder.n_virt = Int(2)
-        builder.isosurfaces = List(list=[0.010, 0.005])
+        builder.cubegen_parser_params = Dict(dict={
+            'heights': [3.0],
+            'orient_cube': True,
+            'isovalues': [0.01],
+        })
 
         future = self.submit(builder)
         return ToContext(hf=future)
