@@ -315,8 +315,9 @@ class GaussianNatOrbWorkChain(WorkChain):
         if self.should_do_cubes():
             if not common_utils.check_if_calc_ok(self, self.ctx.cubes):
                 return self.exit_codes.ERROR_TERMINATION
-            self.out('cube_image_folder',
-                     self.ctx.cubes.outputs.cube_image_folder)
+            for cubes_out in list(self.ctx.cubes.outputs):
+                if cubes_out.startswith("cube"):
+                    self.out(cubes_out, self.ctx.cubes.outputs[cubes_out])
 
         self.out("natorb_raw_parameters",
                  self.ctx.natorb.outputs.output_parameters)
