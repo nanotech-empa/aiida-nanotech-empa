@@ -281,6 +281,9 @@ class GaussianNatOrbWorkChain(WorkChain):
 
     def cubes(self):
 
+        if not common_utils.check_if_calc_ok(self, self.ctx.natorb_save):
+            return self.exit_codes.ERROR_TERMINATION
+
         n_d = self.inputs.num_natural_orbital_cubes.value
         n_u = self.inputs.num_natural_orbital_cubes.value
 
