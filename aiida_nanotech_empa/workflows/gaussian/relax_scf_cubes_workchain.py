@@ -6,7 +6,7 @@ from aiida.orm import Int, Str, Code, Bool, Dict, StructureData
 from aiida.plugins import WorkflowFactory
 
 GaussianRelaxWorkChain = WorkflowFactory('nanotech_empa.gaussian.relax')
-GaussianScfCubesWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf_cubes')
+GaussianScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf')
 
 
 class GaussianRelaxScfCubesWorkChain(WorkChain):
@@ -91,7 +91,7 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
 
         self.report("Submitting SCF and Cubes workchain")
 
-        builder = GaussianScfCubesWorkChain.get_builder()
+        builder = GaussianScfWorkChain.get_builder()
 
         builder.gaussian_code = self.inputs.gaussian_code
         builder.formchk_code = self.inputs.formchk_code
@@ -127,9 +127,9 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
 
         self.out("opt_structure", self.ctx.opt.outputs.output_structure)
         self.out("opt_energy", self.ctx.opt.outputs.energy_ev)
-        self.out("scf_energy", self.ctx.scf_and_cubes.outputs.scf_energy)
+        self.out("scf_energy", self.ctx.scf_and_cubes.outputs.energy_ev)
         self.out("scf_out_params",
-                 self.ctx.scf_and_cubes.outputs.scf_out_params)
+                 self.ctx.scf_and_cubes.outputs.output_parameters)
 
         self.out("cube_image_folder",
                  self.ctx.scf_and_cubes.outputs.cube_image_folder)

@@ -1,15 +1,14 @@
-from aiida_nanotech_empa.workflows.gaussian import common
 from aiida_nanotech_empa.utils import common_utils
 
 from aiida.engine import WorkChain, ToContext, ExitCode
-from aiida.orm import Int, Str, Code, Dict
+from aiida.orm import Int, Str, Code, Dict, Float, Bool
 from aiida.orm import StructureData, RemoteData
 
 from aiida.plugins import WorkflowFactory
 
 GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
 GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
-GaussianScfCubesWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf_cubes')
+GaussianScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf')
 
 # -------------------------------------------------------------
 # Work Chain to run HF and MP2
@@ -22,8 +21,6 @@ class GaussianHfMp2WorkChain(WorkChain):
         super().define(spec)
 
         spec.input("gaussian_code", valid_type=Code)
-        spec.input("formchk_code", valid_type=Code)
-        spec.input("cubegen_code", valid_type=Code)
 
         spec.input('structure',
                    valid_type=StructureData,
@@ -46,14 +43,39 @@ class GaussianHfMp2WorkChain(WorkChain):
                    required=False,
                    help="the folder of a completed gaussian calculation")
 
+        # -------------------------------------------------------------------
+        # CUBE GENERATION INPUTS
+        spec.input(
+            "num_orbital_cubes",
+            valid_type=Int,
+            required=False,
+            default=lambda: Int(0),
+            help='Generate cubes for the mp2 orbitals (n*occ and n*virt).')
+
+        spec.input("formchk_code", valid_type=Code, required=False)
+        spec.input("cubegen_code", valid_type=Code, required=False)
+
+        spec.input(
+            'edge_space',
+            valid_type=Float,
+            required=False,
+            default=lambda: Float(3.0),
+            help='Extra cube space in addition to molecule bounding box [ang].'
+        )
+        spec.input("cubegen_parser_params",
+                   valid_type=Dict,
+                   required=False,
+                   default=lambda: Dict(dict={}),
+                   help='Additional parameters to cubegen parser.')
+        # -------------------------------------------------------------------
+
         spec.input(
             'options',
             valid_type=Dict,
             required=False,
             help="Use custom metadata.options instead of the automatic ones.")
 
-        spec.outline(cls.setup, cls.hf_small_basis_stable, cls.hf_production,
-                     cls.mp2, cls.finalize)
+        spec.outline(cls.hf, cls.mp2, cls.finalize)
 
         spec.outputs.dynamic = True
 
@@ -73,112 +95,30 @@ class GaussianHfMp2WorkChain(WorkChain):
             message="One or more steps of the work chain failed.",
         )
 
-    def is_uks(self):
-        if self.inputs.multiplicity.value == 0:
-            return False
-        return True
+    def hf(self):
 
-    def setup(self):
-        self.report("Inspecting input and setting up things")
+        self.report("Submitting HF")
 
-        pymatgen_structure = self.inputs.structure.get_pymatgen_molecule()
-        self.ctx.n_atoms = pymatgen_structure.num_sites
-        self.ctx.n_electrons = pymatgen_structure.nelectrons
-
-        if self.inputs.multiplicity.value == 0:
-            self.ctx.mult = 1
-        else:
-            self.ctx.mult = self.inputs.multiplicity.value
-
-        self.ctx.comp = self.inputs.gaussian_code.computer
-
-        if self.ctx.mult % 2 == self.ctx.n_electrons % 2:
-            return self.exit_codes.ERROR_MULTIPLICITY
-
-        success = common.determine_metadata_options(self)
-        if not success:
-            return self.exit_codes.ERROR_OPTIONS
-
-        num_cores, memory_mb = common.get_gaussian_cores_and_memory(
-            self.ctx.metadata_options, self.ctx.comp)
-
-        self.ctx.link0 = {
-            '%chk': 'aiida.chk',
-            '%mem': "%dMB" % memory_mb,
-            '%nprocshared': str(num_cores),
-        }
-
-        return ExitCode(0)
-
-    def hf_small_basis_stable(self):
-        self.report("Submitting HF stability")
-
-        parameters = Dict(
-            dict={
-                'link0_parameters': self.ctx.link0.copy(),
-                'functional': 'uhf' if self.is_uks() else 'hf',
-                'basis_set': 'STO-3G',
-                'charge': 0,
-                'multiplicity': self.ctx.mult,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 128,
-                        'conver': 7
-                    },
-                    'stable': 'opt',
-                },
-            })
-
-        builder = GaussianBaseWorkChain.get_builder()
-
-        if "parent_calc_folder" in self.inputs:
-            # Read WFN from parent calc
-            parameters['link0_parameters']['%oldchk'] = "parent_calc/aiida.chk"
-            parameters['route_parameters']['guess'] = "read"
-            builder.gaussian.parent_calc_folder = self.inputs.parent_calc_folder
-        elif self.is_uks() and self.ctx.mult == 1:
-            # For open-shell singlet, mix homo & lumo
-            parameters['route_parameters']['guess'] = "mix"
-
-        builder.gaussian.parameters = parameters
-        builder.gaussian.structure = self.inputs.structure
-        builder.gaussian.code = self.inputs.gaussian_code
-        builder.gaussian.metadata.options = self.ctx.metadata_options
-
-        future = self.submit(builder)
-        return ToContext(hf_stable=future)
-
-    def hf_production(self):
-
-        if not common_utils.check_if_calc_ok(self, self.ctx.hf_stable):
-            return self.exit_codes.ERROR_TERMINATION
-
-        self.report("Submitting HF production run")
-
-        builder = GaussianScfCubesWorkChain.get_builder()
+        builder = GaussianScfWorkChain.get_builder()
         builder.gaussian_code = self.inputs.gaussian_code
-        builder.formchk_code = self.inputs.formchk_code
-        builder.cubegen_code = self.inputs.cubegen_code
 
         builder.structure = self.inputs.structure
         builder.functional = Str('hf')
         builder.basis_set = self.inputs.basis_set
         builder.multiplicity = self.inputs.multiplicity
 
-        builder.parent_calc_folder = self.ctx.hf_stable.outputs.remote_folder
+        builder.wfn_stable_opt_min_basis = Bool(True)
+
         if 'options' in self.inputs:
             builder.options = self.inputs.options
 
-        builder.n_occ = Int(2)
-        builder.n_virt = Int(2)
-        builder.cubegen_parser_params = Dict(dict={
-            'heights': [3.0],
-            'orient_cube': True,
-            'isovalues': [0.01],
-        })
-
         future = self.submit(builder)
         return ToContext(hf=future)
+
+    def should_do_cubes(self):
+        codes_set = 'formchk_code' in self.inputs and 'cubegen_code' in self.inputs
+        non_zero_num = self.inputs.num_orbital_cubes.value > 0
+        return codes_set and non_zero_num
 
     def mp2(self):
 
@@ -187,32 +127,26 @@ class GaussianHfMp2WorkChain(WorkChain):
 
         self.report("Submitting MP2")
 
-        parameters = Dict(
-            dict={
-                'link0_parameters': self.ctx.link0.copy(),
-                'functional': 'ump2' if self.is_uks() else 'mp2',
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.ctx.mult,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 128
-                    },
-                    'sp': None,
-                },
-            })
+        builder = GaussianScfWorkChain.get_builder()
+        builder.gaussian_code = self.inputs.gaussian_code
 
-        builder = GaussianBaseWorkChain.get_builder()
+        builder.structure = self.inputs.structure
+        builder.functional = Str('mp2')
+        builder.basis_set = self.inputs.basis_set
+        builder.multiplicity = self.inputs.multiplicity
 
-        # Read WFN from the HF
-        parameters['link0_parameters']['%oldchk'] = "parent_calc/aiida.chk"
-        parameters['route_parameters']['guess'] = "read"
-        builder.gaussian.parent_calc_folder = self.ctx.hf.outputs.remote_folder
+        builder.parent_calc_folder = self.ctx.hf.outputs.remote_folder
 
-        builder.gaussian.parameters = parameters
-        builder.gaussian.structure = self.inputs.structure
-        builder.gaussian.code = self.inputs.gaussian_code
-        builder.gaussian.metadata.options = self.ctx.metadata_options
+        if self.should_do_cubes():
+            builder.n_occ = self.inputs.num_orbital_cubes
+            builder.n_virt = self.inputs.num_orbital_cubes
+            builder.formchk_code = self.inputs.formchk_code
+            builder.cubegen_code = self.inputs.cubegen_code
+            builder.edge_space = self.inputs.edge_space
+            builder.cubegen_parser_params = self.inputs.cubegen_parser_params
+
+        if 'options' in self.inputs:
+            builder.options = self.inputs.options
 
         future = self.submit(builder)
         return ToContext(mp2=future)
@@ -224,11 +158,12 @@ class GaussianHfMp2WorkChain(WorkChain):
 
         self.report("Finalizing...")
 
-        self.out("hf_output_parameters", self.ctx.hf.outputs.scf_out_params)
+        self.out("hf_output_parameters", self.ctx.hf.outputs.output_parameters)
         self.out("mp2_output_parameters",
                  self.ctx.mp2.outputs.output_parameters)
 
-        self.out("hf_cube_images", self.ctx.hf.outputs.cube_image_folder)
+        if self.should_do_cubes():
+            self.out("mp2_cube_images", self.ctx.mp2.outputs.cube_image_folder)
 
         self.out("remote_folder", self.ctx.mp2.outputs.remote_folder)
 

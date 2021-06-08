@@ -11,7 +11,7 @@ from aiida.plugins import WorkflowFactory
 GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
 GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
 
-GaussianScfCubesWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf_cubes')
+GaussianScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf')
 GaussianRelaxScfCubesWorkChain = WorkflowFactory(
     'nanotech_empa.gaussian.relax_scf_cubes')
 GaussianDeltaScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.delta_scf')
@@ -200,7 +200,7 @@ class GaussianSpinWorkChain(WorkChain):
             if mult == self.ctx.gs_mult:
                 continue
 
-            builder = GaussianScfCubesWorkChain.get_builder()
+            builder = GaussianScfWorkChain.get_builder()
             builder.gaussian_code = self.inputs.gaussian_code
             builder.formchk_code = self.inputs.formchk_code
             builder.cubegen_code = self.inputs.cubegen_code
@@ -256,10 +256,10 @@ class GaussianSpinWorkChain(WorkChain):
             if not common_utils.check_if_calc_ok(self, self.ctx[label]):
                 return self.exit_codes.ERROR_TERMINATION
 
-            vert_energy = self.ctx[label].outputs.scf_energy
+            vert_energy = self.ctx[label].outputs.energy_ev
             self.out(f"m{mult}_vert_energy", vert_energy)
             self.out(f"m{mult}_vert_out_params",
-                     self.ctx[label].outputs.scf_out_params)
+                     self.ctx[label].outputs.output_parameters)
             self.out(f"m{mult}_vert_cube_images",
                      self.ctx[label].outputs.cube_image_folder)
             self.out(f"m{mult}_vert_cube_planes",
