@@ -32,7 +32,8 @@
             "nanotech_empa.gaussian.casscf = aiida_nanotech_empa.workflows.gaussian:GaussianCasscfWorkChain",
             "nanotech_empa.gaussian.casscf_series = aiida_nanotech_empa.workflows.gaussian:GaussianCasscfSeriesWorkChain",
             "nanotech_empa.cp2k.molecule_opt = aiida_nanotech_empa.workflows.cp2k.molecule_opt_workchain:Cp2kMoleculeOptWorkChain",
-            "nanotech_empa.cp2k.molecule_gw =  aiida_nanotech_empa.workflows.cp2k.molecule_gw_workchain:Cp2kMoleculeGwWorkChain"
+            "nanotech_empa.cp2k.molecule_gw =  aiida_nanotech_empa.workflows.cp2k.molecule_gw_workchain:Cp2kMoleculeGwWorkChain",
+            "nanotech_empa.cp2k.ads_gw_ic = aiida_nanotech_empa.workflows.cp2k.adsorbed_gw_ic_workchain:Cp2kAdsorbedGwIcWorkChain"
         ],
         "aiida.schedulers": [
             "lsf_ethz_euler = aiida_nanotech_empa.schedulers.lsf_ethz_euler:ETHZEulerLsfScheduler"
