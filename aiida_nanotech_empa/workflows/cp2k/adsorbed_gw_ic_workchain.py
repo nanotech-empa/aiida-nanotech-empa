@@ -11,47 +11,59 @@ from aiida.plugins import WorkflowFactory
 Cp2kMoleculeGwWorkChain = WorkflowFactory('nanotech_empa.cp2k.molecule_gw')
 Cp2kMoleculeOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.molecule_opt')
 
-
-def _extract_image_plane(ase_geom):
-    au_layer_dz = 1.0  # ang
-    au_atoms = ase_geom[np.array(ase_geom.get_chemical_symbols()) == 'Au']
-    au_top_layer = au_atoms[
-        np.abs(np.max(au_atoms.positions[:, 2]) -
-               au_atoms.positions[:, 2]) < au_layer_dz]
-    gold_surf_z = np.mean(au_top_layer.positions[:, 2])
-
-    imag_plane_z = gold_surf_z + 1.42  # Kharche et al
-
-    return imag_plane_z
+IC_PLANE_HEIGHTS = {
+    'Au(111)': 1.42,  # Kharche J. Phys. Chem. Lett. 7, 1526–1533 (2016).
+}
 
 
-@calcfunction
-def extract_image_plane(adsorbed_structure):
-    ase_geom = adsorbed_structure.get_ase()
-    imag_plane_z = _extract_image_plane(ase_geom)
-    return Float(imag_plane_z)
+def geometrical_analysis(ase_geo, substr_elem):
+    """Simple geometry analysis that returns in the case of 
+    1) an isolated molecule -> geometry, None
+    2) adsorbed system -> molecular geometry, top substr. layer z
+    """
+    chem_symbols_arr = np.array(ase_geo.get_chemical_symbols())
+    s_atoms = ase_geo[chem_symbols_arr == substr_elem]
+    non_s_atoms = ase_geo[chem_symbols_arr != substr_elem]
+    if len(s_atoms) == 0:
+        return ase_geo, None
+    layer_dz = 1.0  # ang
+    substr_top_layer = s_atoms[np.abs(
+        np.max(s_atoms.positions[:, 2]) - s_atoms.positions[:, 2]) < layer_dz]
+    surf_z = np.mean(substr_top_layer.positions[:, 2])
 
+    mol_atoms = non_s_atoms[non_s_atoms.positions[:, 2] > surf_z]
 
-@calcfunction
-def extract_molecule(adsorbed_structure):
-    ase_geom = adsorbed_structure.get_ase()
-    imag_plane_z = _extract_image_plane(ase_geom)
-    molecule_atoms = ase_geom[ase_geom.positions[:, 2] > imag_plane_z]
-    return StructureData(ase=molecule_atoms)
+    return mol_atoms, surf_z
 
 
 @calcfunction
-def extract_molecule_mags_per_site(adsorbed_structure, mag_per_site):
-    ase_geom = adsorbed_structure.get_ase()
-    imag_plane_z = _extract_image_plane(ase_geom)
+def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
+
+    ase_geo = structure.get_ase()
+    substr_elem = substrate.value.split('(')[0]
+
+    mol_atoms, surf_z = geometrical_analysis(ase_geo, substr_elem)
+
+    if surf_z is None:
+        if ads_h is None:
+            return ExitCode(
+                300, 'Ads. height not specified for isolated molecule.')
+        # Adsorption height is defined from the geometrical center of the molecule
+        surf_z = np.mean(mol_atoms.positions[:, 2]) - ads_h.value
+
+    imag_plane_z = surf_z + IC_PLANE_HEIGHTS[substrate.value]
 
     mps = []
     if list(mag_per_site):
         mps = [
-            m for at, m in zip(ase_geom, list(mag_per_site))
-            if at.position[2] > imag_plane_z
+            m for at, m in zip(ase_geo, list(mag_per_site)) if at in mol_atoms
         ]
-    return List(list=mps)
+
+    return {
+        'mol_struct': StructureData(ase=mol_atoms),
+        'image_plane_z': Float(imag_plane_z),
+        'mol_mag_per_site': List(list=mps),
+    }
 
 
 @calcfunction
@@ -97,18 +109,29 @@ def calc_gw_ic_parameters(gw_params, ic_params):
 
 class Cp2kAdsorbedGwIcWorkChain(WorkChain):
     """
-    WorkChain to run GW and IC for an adosrbed system
+    WorkChain to run GW and IC for an adsorbed system
 
-    Currently only Au(111) substrate is supported (and assumed)
+    Two different ways to run:
+    1) geometry of a molecule adsorbed on a substrate
+    2) isolated molecule & adsorption height
     """
     @classmethod
     def define(cls, spec):
         super().define(spec)
         spec.input("code", valid_type=Code)
 
-        spec.input("ads_struct",
+        spec.input("structure",
                    valid_type=StructureData,
-                   help="Adsorbed molecule on a metal slab.")
+                   help="A molecule on a substrate or an isolated molecule.")
+        spec.input("ads_height",
+                   valid_type=Float,
+                   required=False,
+                   help=("Ads. height from the molecular geometrical center."
+                         "Required if an isolated molecule is specified."))
+        spec.input("substrate",
+                   valid_type=Str,
+                   default=lambda: Str('Au(111)'),
+                   help="Substrate type, determines the image charge plane.")
         spec.input("protocol",
                    valid_type=Str,
                    default=lambda: Str('gapw_std'),
@@ -141,18 +164,27 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
                    default=lambda: Str("ads_geo"),
                    required=False,
                    help="Possibilities: ads_geo, gas_opt")
-        spec.input(
-            "geometry_opt_mult",
-            valid_type=Int,
-            default=lambda: Int(0),
-            required=False,
-            help="Multiplicity in case of gas optimization is selected.")
+        spec.input("geometry_opt_mult",
+                   valid_type=Int,
+                   default=lambda: Int(0),
+                   required=False,
+                   help="Multiplicity in case of 'gas opt' is selected.")
 
         spec.outline(cls.setup,
                      if_(cls.gas_opt_selected)(cls.gas_opt, cls.check_gas_opt),
                      cls.ic, cls.gw, cls.finalize)
         spec.outputs.dynamic = True
 
+        spec.exit_code(
+            380,
+            "ERROR_SUBSTR_NOT_SUPPORTED",
+            message="Specified substrate is not supported.",
+        )
+        spec.exit_code(
+            381,
+            "ERROR_STRUCTURE_ANALYSIS",
+            message="Structure analysis failed.",
+        )
         spec.exit_code(
             390,
             "ERROR_TERMINATION",
@@ -162,17 +194,28 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
     def setup(self):
         self.report("Inspecting input and setting up things.")
 
-        n_atoms = len(self.inputs.ads_struct.get_ase())
+        n_atoms = len(self.inputs.structure.get_ase())
         n_mags = len(list(self.inputs.magnetization_per_site))
         if n_mags not in (0, n_atoms):
             self.report(
                 "If set, magnetization_per_site needs a value for every atom.")
             return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
 
-        self.ctx.image_plane_z = extract_image_plane(self.inputs.ads_struct)
-        self.ctx.mol_struct = extract_molecule(self.inputs.ads_struct)
-        self.ctx.mol_mag_per_site = extract_molecule_mags_per_site(
-            self.inputs.ads_struct, self.inputs.magnetization_per_site)
+        if self.inputs.substrate.value not in IC_PLANE_HEIGHTS:
+            return self.exit_codes.ERROR_SUBSTR_NOT_SUPPORTED
+
+        an_out = analyze_structure(
+            self.inputs.structure, self.inputs.substrate,
+            self.inputs.magnetization_per_site, None
+            if 'ads_height' not in self.inputs else self.inputs.ads_height)
+
+        if 'mol_struct' not in an_out:
+            self.report('Structure analyis failed.')
+            return self.exit_codes.ERROR_STRUCTURE_ANALYSIS
+
+        self.ctx.mol_struct = an_out['mol_struct']
+        self.ctx.image_plane_z = an_out['image_plane_z']
+        self.ctx.mol_mag_per_site = an_out['mol_mag_per_site']
 
         return ExitCode(0)
 
