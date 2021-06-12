@@ -6,10 +6,19 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:10
+        ports:
+          - 5432:5432
+      rabbitmq:
+        image: rabbitmq:latest
+        ports:
+          - 5672:5672
     strategy:
       matrix:
-        python-version: [3.7]
+        python-version: [3.7, 3.8]
         backend: ['django']
     steps:
     - uses: actions/checkout@v2
@@ -21,50 +30,48 @@ jobs:
 
     - name: Install system dependencies
       run: |
-        wget -O - "https://github.com/rabbitmq/signing-keys/releases/download/2.0/rabbitmq-release-signing-key.asc" | sudo apt-key add -
-        echo 'deb https://dl.bintray.com/rabbitmq-erlang/debian bionic erlang' | sudo tee -a /etc/apt/sources.list.d/bintray.rabbitmq.list
-        echo 'deb https://dl.bintray.com/rabbitmq/debian bionic main' | sudo tee -a /etc/apt/sources.list.d/bintray.rabbitmq.list
-        sudo rm -f /etc/apt/sources.list.d/dotnetdev.list /etc/apt/sources.list.d/microsoft-prod.list
         sudo apt update
-        sudo apt install postgresql-10 rabbitmq-server graphviz
-        sudo systemctl status rabbitmq-server.service
+        sudo apt install postgresql-12
 
     - name: Install python dependencies
       run: |
         pip install --upgrade pip
         pip install -e .[testing]
         reentry scan -r aiida
-
-  docs:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v1
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.7
-    - name: Install python dependencies
+      
+    - name: Install CP2K
       run: |
-        pip install --upgrade pip
-        pip install -e .[docs]
-        reentry scan -r aiida
-    - name: Build docs
-      run: cd docs && make
+        bash .github/install_cp2k.sh
+        echo "$PWD/cp2k" >> $GITHUB_PATH
+
+    - name: Install QE
+      run: |
+        bash .github/install_qe.sh
+        echo "$PWD/qe/bin" >> $GITHUB_PATH
+    
+    - name: Run pytest
+      run: |
+        pytest --cov-report=xml --cov=aiida_nanotech_empa
+
+    - name: Upload coverage to codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
+        file: ./coverage.xml
 
   pre-commit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v1
-    - name: Set up Python 3.7
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 3.7
+        python-version: 3.8
     - name: Install python dependencies
       run: |
         pip install --upgrade pip
-        pip install -e .[pre-commit,docs,testing]
+        pip install -e .[pre-commit,testing]
         reentry scan -r aiida
     - name: Run pre-commit
       run: |

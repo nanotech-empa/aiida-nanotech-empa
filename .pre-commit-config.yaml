@@ -2,6 +2,7 @@
 # pre-commit install
 
 # yapf = yet another python formatter
+repos:
 - repo: https://github.com/pre-commit/mirrors-yapf
   rev: v0.28.0
   hooks:

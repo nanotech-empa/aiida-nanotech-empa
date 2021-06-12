@@ -1,0 +1,103 @@
+from ase import Atoms
+
+from aiida.orm import StructureData, Bool, Str, Int, Float, List
+from aiida.orm import load_code
+from aiida.engine import run_get_node
+from aiida.plugins import WorkflowFactory
+
+Cp2kMoleculeGwWorkChain = WorkflowFactory('nanotech_empa.cp2k.molecule_gw')
+
+
+def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
+
+    builder = Cp2kMoleculeGwWorkChain.get_builder()
+
+    builder.metadata.label = 'Cp2kMoleculeGwWorkChain'
+    builder.metadata.description = 'test description'
+    builder.code = cp2k_code
+
+    ase_geom = Atoms('HH',
+                     positions=[[0, 0, 0], [0.75, 0, 0]],
+                     cell=[4.0, 4.0, 4.0])
+    builder.structure = StructureData(ase=ase_geom)
+
+    builder.protocol = Str(protocol)
+
+    builder.multiplicity = Int(mult)
+    if mult == 1:
+        builder.magnetization_per_site = List(list=[-1, 1])
+
+    builder.image_charge = Bool(ic)
+    builder.z_ic_plane = Float(0.8)
+
+    builder.debug = Bool(True)
+    builder.max_nodes = Int(1)
+
+    _, calc_node = run_get_node(builder)
+
+    assert calc_node.is_finished_ok
+
+    gw_out_dict = dict(calc_node.outputs.gw_output_parameters)
+    print()
+    for k in gw_out_dict:
+        print("  {}: {}".format(k, gw_out_dict[k]))
+
+
+def example_cp2k_gw_gpw_std_rks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, False, 'gpw_std', 0)
+
+
+def example_cp2k_gw_gpw_std_uks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, False, 'gpw_std', 1)
+
+
+def example_cp2k_gw_gapw_std_rks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, False, 'gapw_std', 0)
+
+
+def example_cp2k_gw_gapw_std_uks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, False, 'gapw_std', 1)
+
+
+def example_cp2k_gw_gapw_hq_rks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, False, 'gapw_hq', 0)
+
+
+def example_cp2k_gw_gapw_hq_uks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, False, 'gapw_hq', 1)
+
+
+def example_cp2k_ic_gpw_std_rks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, True, 'gpw_std', 0)
+
+
+def example_cp2k_ic_gpw_std_uks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, True, 'gpw_std', 1)
+
+
+def example_cp2k_ic_gapw_std_rks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, True, 'gapw_std', 0)
+
+
+def example_cp2k_ic_gapw_std_uks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, True, 'gapw_std', 1)
+
+
+def example_cp2k_ic_gapw_hq_rks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, True, 'gapw_hq', 0)
+
+
+def example_cp2k_ic_gapw_hq_uks(cp2k_code):
+    _example_cp2k_gw(cp2k_code, True, 'gapw_hq', 1)
+
+
+if __name__ == '__main__':
+
+    for ic in [False, True]:
+        for pc in ['gpw_std', 'gapw_std', 'gapw_hq']:
+            for mult in [0, 1]:
+                print()
+                print("####################################")
+                print("#### ic={}; {}; mult={}".format(ic, pc, mult))
+                print("####################################")
+                _example_cp2k_gw(load_code("cp2k@localhost"), ic, pc, mult)

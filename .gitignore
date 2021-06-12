@@ -12,3 +12,4 @@
 build/
 dist/
 pip-wheel-metadata/
+.ipynb_checkpoints/
