@@ -44,6 +44,13 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
                    default=lambda: Int(0),
                    help='spin multiplicity; 0 means RKS')
 
+        spec.input('empirical_dispersion',
+                   valid_type=Str,
+                   required=False,
+                   default=lambda: Str(""),
+                   help=('Include empirical dispersion corrections'
+                         '(e.g. "GD3", "GD3BJ")'))
+
         spec.input(
             'options',
             valid_type=Dict,
@@ -78,6 +85,8 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
         builder.multiplicity = self.inputs.multiplicity
         builder.wfn_stable_opt = Bool(self.is_uks())
 
+        builder.empirical_dispersion = self.inputs.empirical_dispersion
+
         if 'options' in self.inputs:
             builder.options = self.inputs.options
 
@@ -101,6 +110,8 @@ class GaussianRelaxScfCubesWorkChain(WorkChain):
         builder.functional = self.inputs.functional
         builder.basis_set = self.inputs.basis_set_scf
         builder.multiplicity = self.inputs.multiplicity
+
+        builder.empirical_dispersion = self.inputs.empirical_dispersion
 
         builder.parent_calc_folder = self.ctx.opt.outputs.remote_folder
 

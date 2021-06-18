@@ -57,6 +57,13 @@ class GaussianScfWorkChain(WorkChain):
                    default=lambda: Bool(False),
                    help='if true, perform first a minimal basis stability opt')
 
+        spec.input('empirical_dispersion',
+                   valid_type=Str,
+                   required=False,
+                   default=lambda: Str(""),
+                   help=('Include empirical dispersion corrections'
+                         '(e.g. "GD3", "GD3BJ")'))
+
         spec.input('parent_calc_folder',
                    valid_type=RemoteData,
                    required=False,
@@ -233,6 +240,10 @@ class GaussianScfWorkChain(WorkChain):
         elif self.is_uks() and self.ctx.mult == 1:
             # For open-shell singlet, mix homo & lumo
             parameters['route_parameters']['guess'] = "mix"
+
+        if self.inputs.empirical_dispersion.value != "":
+            parameters['route_parameters'][
+                'empiricaldispersion'] = self.inputs.empirical_dispersion.value
 
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
