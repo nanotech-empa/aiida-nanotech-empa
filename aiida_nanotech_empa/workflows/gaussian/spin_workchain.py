@@ -35,6 +35,12 @@ class GaussianSpinWorkChain(WorkChain):
                    valid_type=Str,
                    required=True,
                    help='xc functional')
+        spec.input('empirical_dispersion',
+                   valid_type=Str,
+                   required=False,
+                   default=lambda: Str(""),
+                   help=('Include empirical dispersion corrections'
+                         '(e.g. "GD3", "GD3BJ")'))
 
         spec.input('basis_set_opt',
                    valid_type=Str,
@@ -83,6 +89,7 @@ class GaussianSpinWorkChain(WorkChain):
             builder.cubegen_code = self.inputs.cubegen_code
             builder.structure = self.inputs.structure
             builder.functional = self.inputs.functional
+            builder.empirical_dispersion = self.inputs.empirical_dispersion
             builder.basis_set_opt = self.inputs.basis_set_opt
             builder.basis_set_scf = self.inputs.basis_set_scf
             builder.multiplicity = Int(mult)
@@ -206,6 +213,7 @@ class GaussianSpinWorkChain(WorkChain):
             builder.cubegen_code = self.inputs.cubegen_code
             builder.structure = self.ctx.gs_structure
             builder.functional = self.inputs.functional
+            builder.empirical_dispersion = self.inputs.empirical_dispersion
             builder.basis_set = self.inputs.basis_set_scf
             builder.multiplicity = Int(mult)
             builder.parent_calc_folder = self.ctx[

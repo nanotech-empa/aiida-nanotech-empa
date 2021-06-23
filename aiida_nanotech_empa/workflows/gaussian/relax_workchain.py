@@ -54,11 +54,17 @@ class GaussianRelaxWorkChain(WorkChain):
                    default=lambda: Bool(False),
                    help='Also run vibrational analysis.')
 
-        spec.input(
-            'options',
-            valid_type=Dict,
-            required=False,
-            help="Use custom metadata.options instead of the automatic ones.")
+        spec.input('empirical_dispersion',
+                   valid_type=Str,
+                   required=False,
+                   default=lambda: Str(""),
+                   help=('Include empirical dispersion corrections'
+                         '(e.g. "GD3", "GD3BJ")'))
+
+        spec.input('options',
+                   valid_type=Dict,
+                   required=False,
+                   help="Use custom metadata.options instead of automatic.")
 
         spec.outline(cls.setup,
                      if_(cls.should_do_wfn_stability)(cls.uks_wfn_stability),
@@ -184,6 +190,10 @@ class GaussianRelaxWorkChain(WorkChain):
 
         if self.inputs.freq:
             parameters['route_parameters']['freq'] = None
+
+        if self.inputs.empirical_dispersion.value != "":
+            parameters['route_parameters'][
+                'empiricaldispersion'] = self.inputs.empirical_dispersion.value
 
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
