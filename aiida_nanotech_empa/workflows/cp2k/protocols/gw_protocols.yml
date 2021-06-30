@@ -127,7 +127,7 @@ gpw_std_gw_step:
             GW:
               CORR_MOS_OCC: '10'
               CORR_MOS_VIRT: '10'
-              EV_GW_ITER: '5'
+              EV_GW_ITER: '8'
               NPARAM_PADE: '16'
               RI_SIGMA_X: ''
       PRINT:
@@ -267,7 +267,7 @@ gapw_std_gw_step:
             GW:
               CORR_MOS_OCC: '10'
               CORR_MOS_VIRT: '10'
-              EV_GW_ITER: '5'
+              EV_GW_ITER: '8'
               RI_SIGMA_X: ''
       PRINT:
         MO_CUBES:
@@ -406,7 +406,7 @@ gapw_hq_gw_step:
             GW:
               CORR_MOS_OCC: '10'
               CORR_MOS_VIRT: '10'
-              EV_GW_ITER: '5'
+              EV_GW_ITER: '8'
               RI_SIGMA_X: ''
       PRINT:
         MO_CUBES:

@@ -143,16 +143,16 @@ basis_set:
 # Basis sets for the GW workchain
 # -------------------------------------------------------------
 gpw_std_gw_basis_set:
-  H:  aug-cc-pVDZ-GTH
+  H:  aug-DZVP-GTH-up-up-up-up
   B:  K-aug-DZVP-GTH-3
-  C:  aug-cc-pVDZ-GTH
+  C:  aug-DZVP-GTH-up-up-up-up
   N:  aug-DZVP-GTH
   O:  aug-DZVP-GTH
 
 gpw_std_gw_basis_set_aux:
-  H:  aug-cc-pVDZ-RIFIT
+  H:  RI_aug_DZ
   B:  K-RI_aug_DZ
-  C:  aug-cc-pVDZ-RIFIT
+  C:  RI_aug_DZ
   N:  RI_aug_DZ
   O:  RI_DZVP-own  
 

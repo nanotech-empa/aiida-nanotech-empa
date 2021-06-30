@@ -134,7 +134,7 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
                    help="Substrate type, determines the image charge plane.")
         spec.input("protocol",
                    valid_type=Str,
-                   default=lambda: Str('gapw_std'),
+                   default=lambda: Str('gpw_std'),
                    required=False,
                    help="Protocol supported by the GW workchain.")
         spec.input("multiplicity",
