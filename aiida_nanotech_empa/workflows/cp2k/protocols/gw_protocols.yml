@@ -67,6 +67,7 @@ gpw_std_scf_step:
       POTENTIAL_FILE_NAME: POTENTIAL
       UKS: '.FALSE.'
       MULTIPLICITY: '0'
+      SORT_BASIS: 'EXP'
       MGRID:
         CUTOFF: '600'
         REL_CUTOFF: '50'
@@ -107,6 +108,7 @@ gpw_std_gw_step:
       POTENTIAL_FILE_NAME: POTENTIAL
       UKS: '.FALSE.'
       MULTIPLICITY: '0'
+      SORT_BASIS: 'EXP'
       MGRID:
         CUTOFF: '600'
         REL_CUTOFF: '50'
@@ -156,6 +158,7 @@ gpw_std_ic_step:
       POTENTIAL_FILE_NAME: POTENTIAL
       UKS: '.FALSE.'
       MULTIPLICITY: '0'
+      SORT_BASIS: 'EXP'
       MGRID:
         CUTOFF: '600'
         REL_CUTOFF: '50'
