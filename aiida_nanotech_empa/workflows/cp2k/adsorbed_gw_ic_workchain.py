@@ -51,12 +51,21 @@ def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
         # Adsorption height is defined from the geometrical center of the molecule
         surf_z = np.mean(mol_atoms.positions[:, 2]) - ads_h.value
 
+    else:
+        # If you manually specify adsorption height, it will override the
+        # height extracted from the geometry
+        if ads_h is not None:
+            surf_z = np.mean(mol_atoms.positions[:, 2]) - ads_h.value
+
     imag_plane_z = surf_z + IC_PLANE_HEIGHTS[substrate.value]
 
     mps = []
     if list(mag_per_site):
+        mol_at_tuples = [(e, *np.round(p, 2)) for e, p in zip(
+            mol_atoms.get_chemical_symbols(), mol_atoms.positions)]
         mps = [
-            m for at, m in zip(ase_geo, list(mag_per_site)) if at in mol_atoms
+            m for at, m in zip(ase_geo, list(mag_per_site))
+            if (at.symbol, *np.round(at.position, 2)) in mol_at_tuples
         ]
 
     return {
