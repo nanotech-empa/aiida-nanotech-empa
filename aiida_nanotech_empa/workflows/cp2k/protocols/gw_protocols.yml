@@ -67,6 +67,7 @@ gpw_std_scf_step:
       POTENTIAL_FILE_NAME: POTENTIAL
       UKS: '.FALSE.'
       MULTIPLICITY: '0'
+      SORT_BASIS: 'EXP'
       MGRID:
         CUTOFF: '600'
         REL_CUTOFF: '50'
@@ -107,6 +108,7 @@ gpw_std_gw_step:
       POTENTIAL_FILE_NAME: POTENTIAL
       UKS: '.FALSE.'
       MULTIPLICITY: '0'
+      SORT_BASIS: 'EXP'
       MGRID:
         CUTOFF: '600'
         REL_CUTOFF: '50'
@@ -127,7 +129,7 @@ gpw_std_gw_step:
             GW:
               CORR_MOS_OCC: '10'
               CORR_MOS_VIRT: '10'
-              EV_GW_ITER: '5'
+              EV_GW_ITER: '8'
               NPARAM_PADE: '16'
               RI_SIGMA_X: ''
       PRINT:
@@ -156,6 +158,7 @@ gpw_std_ic_step:
       POTENTIAL_FILE_NAME: POTENTIAL
       UKS: '.FALSE.'
       MULTIPLICITY: '0'
+      SORT_BASIS: 'EXP'
       MGRID:
         CUTOFF: '600'
         REL_CUTOFF: '50'
@@ -267,7 +270,7 @@ gapw_std_gw_step:
             GW:
               CORR_MOS_OCC: '10'
               CORR_MOS_VIRT: '10'
-              EV_GW_ITER: '5'
+              EV_GW_ITER: '8'
               RI_SIGMA_X: ''
       PRINT:
         MO_CUBES:
@@ -406,7 +409,7 @@ gapw_hq_gw_step:
             GW:
               CORR_MOS_OCC: '10'
               CORR_MOS_VIRT: '10'
-              EV_GW_ITER: '5'
+              EV_GW_ITER: '8'
               RI_SIGMA_X: ''
       PRINT:
         MO_CUBES:
