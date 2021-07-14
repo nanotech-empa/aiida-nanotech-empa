@@ -122,7 +122,8 @@ class GaussianDeltaScfWorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128
+                        'conver': 7,
+                        'maxcycle': 150
                     },
                     'sp': None,
                 },
@@ -167,7 +168,8 @@ class GaussianDeltaScfWorkChain(WorkChain):
                 'multiplicity': pos_mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128
+                        'conver': 7,
+                        'maxcycle': 150
                     },
                     'sp': None,
                 },
@@ -205,7 +207,8 @@ class GaussianDeltaScfWorkChain(WorkChain):
                     'multiplicity': neg_mult,
                     'route_parameters': {
                         'scf': {
-                            'maxcycle': 128
+                            'conver': 7,
+                            'maxcycle': 150
                         },
                         'sp': None,
                     },
