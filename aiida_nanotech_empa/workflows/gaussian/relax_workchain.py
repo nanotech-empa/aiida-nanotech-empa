@@ -190,7 +190,7 @@ class GaussianRelaxWorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 256,
+                        'maxcycle': 140,
                     },
                     'Stable': 'opt',
                 },
@@ -223,7 +223,7 @@ class GaussianRelaxWorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 150
+                        'maxcycle': 140
                     },
                     'opt': None,
                 },
