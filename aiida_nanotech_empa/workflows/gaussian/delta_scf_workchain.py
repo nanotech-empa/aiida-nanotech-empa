@@ -123,7 +123,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
                 'route_parameters': {
                     'scf': {
                         'conver': 7,
-                        'maxcycle': 150
+                        'maxcycle': 140
                     },
                     'sp': None,
                 },
@@ -169,7 +169,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
                 'route_parameters': {
                     'scf': {
                         'conver': 7,
-                        'maxcycle': 150
+                        'maxcycle': 140
                     },
                     'sp': None,
                 },
@@ -208,7 +208,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
                     'route_parameters': {
                         'scf': {
                             'conver': 7,
-                            'maxcycle': 150
+                            'maxcycle': 140
                         },
                         'sp': None,
                     },

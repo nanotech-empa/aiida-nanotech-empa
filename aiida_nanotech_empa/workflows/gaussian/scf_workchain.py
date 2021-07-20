@@ -113,6 +113,7 @@ class GaussianScfWorkChain(WorkChain):
             cls.setup,
             if_(cls.should_do_min_basis_stable_opt)(cls.min_basis_stable_opt),
             cls.scf,
+            if_(cls.did_scf_fail)(cls.scf),
             if_(cls.should_do_cubes)(cls.cubes), cls.finalize)
 
         spec.outputs.dynamic = True
@@ -159,6 +160,11 @@ class GaussianScfWorkChain(WorkChain):
             '%nprocshared': str(num_cores),
         }
 
+        # Use default convergence criterion at the start
+        # but switch to conver=7 in case of failure
+        self.ctx.conver = None
+        self.ctx.scf_label = 'scf'
+
         return ExitCode(0)
 
     def should_do_min_basis_stable_opt(self):
@@ -177,7 +183,7 @@ class GaussianScfWorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 150
+                        'maxcycle': 140
                     },
                     'stable': 'opt',
                 },
@@ -215,7 +221,7 @@ class GaussianScfWorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 150
+                        'maxcycle': 140
                     },
                 },
             })
@@ -244,13 +250,29 @@ class GaussianScfWorkChain(WorkChain):
             parameters['route_parameters'][
                 'empiricaldispersion'] = self.inputs.empirical_dispersion.value
 
+        if self.ctx.conver is not None:
+            parameters['route_parameters']['scf']['conver'] = self.ctx.conver
+
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
         builder.gaussian.code = self.inputs.gaussian_code
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
         future = self.submit(builder)
-        return ToContext(scf=future)
+        future.description = self.ctx.scf_label
+        return ToContext(**{self.ctx.scf_label: future})
+
+    def did_scf_fail(self):
+
+        scf_node = self.ctx[self.ctx.scf_label]
+        if not common_utils.check_if_calc_ok(self, scf_node):
+            # set up for conver=7 calculation
+            self.report("SCF failed with default convergence criterion!")
+            self.report("Switching to a looser threshold.")
+            self.ctx.conver = 7
+            self.ctx.scf_label = f'scf_c{self.ctx.conver}'
+            return True
+        return False
 
     def should_do_cubes(self):
         codes_set = 'formchk_code' in self.inputs and 'cubegen_code' in self.inputs
@@ -260,7 +282,9 @@ class GaussianScfWorkChain(WorkChain):
 
     def cubes(self):
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.scf):
+        scf_node = self.ctx[self.ctx.scf_label]
+
+        if not common_utils.check_if_calc_ok(self, scf_node):
             return self.exit_codes.ERROR_TERMINATION
 
         self.report("Generating cubes")
@@ -273,8 +297,8 @@ class GaussianScfWorkChain(WorkChain):
             GaussianCubesWorkChain,
             formchk_code=self.inputs.formchk_code,
             cubegen_code=self.inputs.cubegen_code,
-            gaussian_calc_folder=self.ctx.scf.outputs.remote_folder,
-            gaussian_output_params=self.ctx.scf.outputs['output_parameters'],
+            gaussian_calc_folder=scf_node.outputs.remote_folder,
+            gaussian_output_params=scf_node.outputs['output_parameters'],
             orbital_indexes=List(list=orb_index_list),
             orbital_index_ref=Str('half_num_el'),
             edge_space=self.inputs.cubes_edge_space,
@@ -286,7 +310,9 @@ class GaussianScfWorkChain(WorkChain):
 
     def finalize(self):
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.scf):
+        scf_node = self.ctx[self.ctx.scf_label]
+
+        if not common_utils.check_if_calc_ok(self, scf_node):
             return self.exit_codes.ERROR_TERMINATION
 
         self.report("Finalizing...")
@@ -301,10 +327,9 @@ class GaussianScfWorkChain(WorkChain):
                     self.out("cubes_retrieved",
                              self.ctx.cubes.outputs[cubes_out])
 
-        self.out("energy_ev", self.ctx.scf.outputs.energy_ev)
-        self.out("output_parameters",
-                 self.ctx.scf.outputs['output_parameters'])
+        self.out("energy_ev", scf_node.outputs.energy_ev)
+        self.out("output_parameters", scf_node.outputs['output_parameters'])
 
-        self.out("remote_folder", self.ctx.scf.outputs['remote_folder'])
+        self.out("remote_folder", scf_node.outputs['remote_folder'])
 
         return ExitCode(0)
