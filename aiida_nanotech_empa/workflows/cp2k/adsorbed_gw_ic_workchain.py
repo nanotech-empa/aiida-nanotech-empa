@@ -334,4 +334,13 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         self.out('gw_ic_parameters',
                  calc_gw_ic_parameters(gw_out_params, ic_out_params))
 
+        # Add the workchain pk to the input structure extras
+        extras_label = "Cp2kAdsorbedGwIcWorkChain_pks"
+        if extras_label not in self.inputs.structure.extras:
+            extras_list = []
+        else:
+            extras_list = self.inputs.structure.extras[extras_label]
+        extras_list.append(self.node.pk)
+        self.inputs.structure.set_extra(extras_label, extras_list)
+
         return ExitCode(0)
