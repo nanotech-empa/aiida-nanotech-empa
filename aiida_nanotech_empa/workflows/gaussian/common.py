@@ -73,13 +73,19 @@ def get_default_metadata_options(num_atoms, computer, basis_set):
 
     options['max_wallclock_seconds'] = 24 * 60 * 60
 
-    options['resources'] = {
-        "tot_num_mpiprocs": num_cores,
-    }
-
-    if 'lsf' not in computer.scheduler_type:
-        # LSF scheduler doesn't work with 'num_machines'
-        options['resources']['num_machines'] = 1
+    if 'lsf' in computer.scheduler_type:
+        # LSF scheduler has some peculiarities:
+        # 'num_machines' can not be set
+        # tot_num_mpiprocs determines the number of cores
+        options['resources'] = {
+            "tot_num_mpiprocs": num_cores,
+        }
+    else:
+        options['resources'] = {
+            'num_machines': 1,
+            "tot_num_mpiprocs": 1,
+            'num_cores_per_machine': num_cores
+        }
 
     return options
 
@@ -136,16 +142,28 @@ def determine_metadata_options(self_):
 
 
 def get_total_number_of_cores(resources, computer):
-    if 'tot_num_mpiprocs' in resources:
-        return resources['tot_num_mpiprocs']
+
+    num_machines = 1
     if 'num_machines' in resources:
-        if 'num_mpiprocs_per_machine' in resources:
-            return resources['num_machines'] * resources[
-                'num_mpiprocs_per_machine']
+        num_machines = resources['num_machines']
+
+    if 'num_cores_per_machine' in resources:
+        return num_machines * resources['num_cores_per_machine']
+
+    tot_num_mpiprocs = 1
+    if 'tot_num_mpiprocs' in resources:
+        tot_num_mpiprocs = resources['tot_num_mpiprocs']
+    elif 'num_mpiprocs_per_machine' in resources:
+        tot_num_mpiprocs = resources['num_mpiprocs_per_machine'] * num_machines
+    else:
         def_mppm = computer.get_default_mpiprocs_per_machine()
         if def_mppm is not None:
-            return resources['num_machines'] * def_mppm
-    return None
+            tot_num_mpiprocs = def_mppm * num_machines
+
+    if 'num_cores_per_mpiproc' in resources:
+        return tot_num_mpiprocs * resources['num_cores_per_mpiproc']
+
+    return tot_num_mpiprocs
 
 
 def get_gaussian_cores_and_memory(options, computer):

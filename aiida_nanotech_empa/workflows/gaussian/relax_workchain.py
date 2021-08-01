@@ -303,6 +303,7 @@ class GaussianRelaxWorkChain(WorkChain):
             builder.cubegen_code = self.inputs.cubegen_code
             builder.cubes_n_occ = self.inputs.cubes_n_occ
             builder.cubes_n_virt = self.inputs.cubes_n_virt
+            builder.cubes_edge_space = self.inputs.cubes_edge_space
             builder.cubegen_parser_name = self.inputs.cubegen_parser_name
             builder.cubegen_parser_params = self.inputs.cubegen_parser_params
 

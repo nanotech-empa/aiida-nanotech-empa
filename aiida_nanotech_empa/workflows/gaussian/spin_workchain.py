@@ -94,10 +94,11 @@ class GaussianSpinWorkChain(WorkChain):
             builder.formchk_code = self.inputs.formchk_code
             builder.cubegen_code = self.inputs.cubegen_code
 
-            builder.cubes_n_occ = Int(1)
-            builder.cubes_n_virt = Int(1)
+            builder.cubes_n_occ = Int(2)
+            builder.cubes_n_virt = Int(2)
+            builder.cubes_edge_space = Float(4.0)
             builder.cubegen_parser_params = Dict(dict={
-                'heights': [3.0],
+                'heights': [4.0],
                 'orient_cube': True,
                 'isovalues': [0.01],
             })
