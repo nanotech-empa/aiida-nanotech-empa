@@ -19,3 +19,15 @@ def check_if_calc_ok(self_, prev_calc):
             return False
 
     return True
+
+
+def thumbnail(ase_struc, file_format=None):
+    """Prepare binary information."""
+    import base64
+    from tempfile import NamedTemporaryFile
+
+    file_format = file_format if file_format else 'png'
+    tmp = NamedTemporaryFile()
+    ase_struc.write(tmp.name, format=file_format)  # pylint: disable=no-member
+    with open(tmp.name, "rb") as raw:
+        return base64.b64encode(raw.read()).decode()

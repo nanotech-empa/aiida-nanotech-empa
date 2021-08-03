@@ -170,4 +170,10 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         for out in self.ctx.opt.outputs:
             self.out(out, self.ctx.opt.outputs[out])
 
+        # Add thumbnail
+        ase_geom = self.outputs.output_structure.get_ase()
+        self.report('adding thumbnail to structure pk:' +
+                    str(self.outputs.output_structure.pk))
+        self.out('thumbnail', common_utils.thumbnail(ase_struc=ase_geom))
+
         return ExitCode(0)
