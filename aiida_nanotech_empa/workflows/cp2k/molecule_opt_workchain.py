@@ -173,7 +173,7 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         # Add thumbnail
         struc = self.ctx.opt.outputs.output_structure
         self.report('adding thumbnail of structure pk:' + str(struc.pk))
-        self.set_extra('thumbnail',
-                       common_utils.thumbnail(ase_struc=struc.get_ase()))
+        self.node.set_extra('thumbnail',
+                            common_utils.thumbnail(ase_struc=struc.get_ase()))
 
         return ExitCode(0)
