@@ -1,3 +1,7 @@
+import base64
+from tempfile import NamedTemporaryFile
+
+
 def check_if_calc_ok(self_, prev_calc):
     """Checks if a calculation finished well.
 
@@ -23,8 +27,6 @@ def check_if_calc_ok(self_, prev_calc):
 
 def thumbnail(ase_struc, file_format=None):
     """Prepare binary information."""
-    import base64
-    from tempfile import NamedTemporaryFile
 
     file_format = file_format if file_format else 'png'
     tmp = NamedTemporaryFile()
