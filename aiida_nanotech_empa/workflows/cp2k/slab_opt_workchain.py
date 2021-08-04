@@ -47,6 +47,10 @@ class Cp2kSlabOptWorkChain(WorkChain):
                    valid_type=Int,
                    default=lambda: Int(48),
                    required=False)
+        spec.input("walltime_seconds",
+                   valid_type=Int,
+                   default=lambda: Int(7200),
+                   required=False)
         spec.input("debug",
                    valid_type=Bool,
                    default=lambda: Bool(False),
