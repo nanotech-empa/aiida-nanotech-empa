@@ -145,7 +145,8 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         }
 
         #walltime
-        input_dict['GLOBAL']['WALLTIME'] = self.inputs.walltime_seconds.value
+        input_dict['GLOBAL']['WALLTIME'] = max(
+            self.inputs.walltime_seconds.value - 600, 600)
         builder.cp2k.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
 
         #parser
