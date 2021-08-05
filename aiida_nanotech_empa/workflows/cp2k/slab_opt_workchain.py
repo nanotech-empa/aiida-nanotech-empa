@@ -125,6 +125,9 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         if self.inputs.debug:
             input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.1
+            input_dict['MOTION']['GEO_OPT']['RMS_DR'] = 0.1
+            input_dict['MOTION']['GEO_OPT']['RMS_FORCE'] = 0.1
+            input_dict['MOTION']['GEO_OPT']['MAX_DR'] = 0.1
             input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
             input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
                 'EPS_SCF'] = 1e-4
