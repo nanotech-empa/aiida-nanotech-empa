@@ -2,7 +2,6 @@ import os
 import pathlib
 import yaml
 import copy
-import numpy as np
 
 from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Bool, Code, Dict, List, Str
