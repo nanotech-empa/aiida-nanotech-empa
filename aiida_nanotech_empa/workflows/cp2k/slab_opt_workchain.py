@@ -91,15 +91,7 @@ class Cp2kSlabOptWorkChain(WorkChain):
         structure_with_tags, kinds_dict = determine_kinds(
             structure, magnetization_per_site)
 
-        #make sure cell is big enough for MT poisson solver
-        if self.inputs.debug:
-            extra_cell = 5.0
-        else:
-            extra_cell = 15.0
         self.ctx.atoms = structure_with_tags.get_ase()
-        self.ctx.atoms.cell = 2 * (np.ptp(self.ctx.atoms.positions,
-                                          axis=0)) + extra_cell
-        self.ctx.atoms.center()
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.code
