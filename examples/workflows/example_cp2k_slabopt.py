@@ -1,4 +1,5 @@
-from ase.io import read
+import os
+import ase.io
 
 from aiida.orm import StructureData, Bool, Int, List, Str
 from aiida.orm import load_code
@@ -6,6 +7,9 @@ from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
 
 Cp2kSlabOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.slab_opt')
+
+DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+GEO_FILE = "test_slab.xyz"
 
 
 def _example_cp2k_slabopt(cp2k_code, mult):
@@ -16,7 +20,7 @@ def _example_cp2k_slabopt(cp2k_code, mult):
     builder.metadata.description = 'test description'
     builder.code = cp2k_code
     builder.walltime_seconds = Int(600)
-    ase_geom = read('test_slab.xyz')
+    ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
     builder.max_nodes = Int(1)
     builder.fixed_atoms = Str('3..34')
