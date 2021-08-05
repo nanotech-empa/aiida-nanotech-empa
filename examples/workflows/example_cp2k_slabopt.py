@@ -20,7 +20,7 @@ def _example_cp2k_slabopt(cp2k_code, mult):
     ase_geom = read('test_slab.xyz')
     builder.structure = StructureData(ase=ase_geom)
     builder.max_nodes = Int(1)
-    builder.fixed_atoms=Str('3..66')
+    builder.fixed_atoms=Str('3..34')
 
     builder.multiplicity = Int(mult)
     mag = [0 for i in ase_geom]
