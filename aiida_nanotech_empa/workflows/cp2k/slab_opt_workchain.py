@@ -124,10 +124,10 @@ class Cp2kSlabOptWorkChain(WorkChain):
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
         if self.inputs.debug:
-            input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.001
-            input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-6
+            input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.1
+            input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
             input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
-                'EPS_SCF'] = 1e-6
+                'EPS_SCF'] = 1e-4
 
         # KINDS section
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
@@ -182,22 +182,25 @@ class Cp2kSlabOptWorkChain(WorkChain):
         self.node.set_extra('formula', struc.get_formula())
 
         # add formula to extra as molecule@surface
-        analyzer = analyze_structure.StructureAnalyzer()
-        analyzer.structure = ase_geom
-        res = analyzer.details
+        try:  #mainly for debug cases where the analyzer could crash due to odd geometries
+            analyzer = analyze_structure.StructureAnalyzer()
+            analyzer.structure = ase_geom
+            res = analyzer.details
 
-        mol_formula = ''
-        for imol in res['all_molecules']:
-            mol_formula += ase_geom[imol].get_chemical_formula() + ' '
-        if len(res['slabatoms']) > 0:
-            mol_formula += 'at ' + ase_geom[
-                res['slabatoms']].get_chemical_formula()
-            if len(res['bottom_H']) > 0:
-                mol_formula += ' saturated: ' + ase_geom[
-                    res['bottom_H']].get_chemical_formula()
-            if len(res['adatoms']) > 0:
-                mol_formula += ' Adatoms: ' + ase_geom[
-                    res['adatoms']].get_chemical_formula()
+            mol_formula = ''
+            for imol in res['all_molecules']:
+                mol_formula += ase_geom[imol].get_chemical_formula() + ' '
+            if len(res['slabatoms']) > 0:
+                mol_formula += 'at ' + ase_geom[
+                    res['slabatoms']].get_chemical_formula()
+                if len(res['bottom_H']) > 0:
+                    mol_formula += ' saturated: ' + ase_geom[
+                        res['bottom_H']].get_chemical_formula()
+                if len(res['adatoms']) > 0:
+                    mol_formula += ' Adatoms: ' + ase_geom[
+                        res['adatoms']].get_chemical_formula()
+        except ValueError:
+            mol_formula = struc.get_formula()
 
         self.node.set_extra('formula', mol_formula)
 
