@@ -16,6 +16,7 @@ default:
                 _: 'OFF'   
     FORCE_EVAL:
         METHOD: Quickstep
+        STRESS_TENSOR: ANALYTICAL
         SUBSYS:
             CELL:
                 PERIODIC: XYZ 
