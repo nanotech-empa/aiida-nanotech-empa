@@ -84,7 +84,7 @@ class Cp2kCellOptWorkChain(WorkChain):
         #load input template
         with open(
                 pathlib.Path(__file__).parent /
-                './protocols/bulk_opt_protocol.yml') as handle:
+                './protocols/cell_opt_protocol.yml') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols['default'])
 
