@@ -34,6 +34,7 @@
             "nanotech_empa.cp2k.molecule_opt = aiida_nanotech_empa.workflows.cp2k.molecule_opt_workchain:Cp2kMoleculeOptWorkChain",
             "nanotech_empa.cp2k.slab_opt = aiida_nanotech_empa.workflows.cp2k.slab_opt_workchain:Cp2kSlabOptWorkChain",
             "nanotech_empa.cp2k.bulk_opt = aiida_nanotech_empa.workflows.cp2k.bulk_opt_workchain:Cp2kBulkOptWorkChain",
+            "nanotech_empa.cp2k.cell_opt = aiida_nanotech_empa.workflows.cp2k.cell_opt_workchain:Cp2kCellOptWorkChain",
             "nanotech_empa.cp2k.molecule_gw =  aiida_nanotech_empa.workflows.cp2k.molecule_gw_workchain:Cp2kMoleculeGwWorkChain",
             "nanotech_empa.cp2k.ads_gw_ic = aiida_nanotech_empa.workflows.cp2k.adsorbed_gw_ic_workchain:Cp2kAdsorbedGwIcWorkChain"
         ],
