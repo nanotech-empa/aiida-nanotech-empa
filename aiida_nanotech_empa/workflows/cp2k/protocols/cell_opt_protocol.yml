@@ -72,6 +72,7 @@ default:
                     EACH:
                         QS_SCF: '0'
                         GEO_OPT: '0'
+                        CELL_OPT: '0'
                     ADD_LAST: 'NUMERIC'
                 E_DENSITY_CUBE:
                     STRIDE: '4 4 4'
