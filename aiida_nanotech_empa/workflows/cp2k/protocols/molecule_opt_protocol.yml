@@ -39,7 +39,7 @@ default:
             SCF:
                 SCF_GUESS: RESTART
                 EPS_SCF: 1.0E-7
-                MAX_SCF: 20
+                MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
@@ -66,3 +66,18 @@ default:
                         TYPE: DFTD3
                 XC_FUNCTIONAL: 
                         _: PBE
+            PRINT:
+                MO_CUBES:
+                    NHOMO: '1'
+                    NLUMO: '1'
+                    STRIDE: '4 4 4'
+                    EACH:
+                        QS_SCF: '0'
+                        GEO_OPT: '0'
+                    ADD_LAST: 'NUMERIC'
+                E_DENSITY_CUBE:
+                    STRIDE: '4 4 4'
+                    EACH:
+                        QS_SCF: '0'
+                        GEO_OPT: '0'
+                    ADD_LAST: 'NUMERIC'

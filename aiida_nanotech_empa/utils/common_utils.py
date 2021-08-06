@@ -19,7 +19,8 @@ def check_if_calc_ok(self_, prev_calc):
         if prev_calc.exit_status is not None and prev_calc.exit_status >= 500:
             self_.report("Warning: previous step: " + prev_calc.exit_message)
         else:
-            self_.report("ERROR: previous step: " + prev_calc.exit_message)
+            self_.report("ERROR: previous step: " +
+                         str(prev_calc.exit_message))
             return False
 
     return True
