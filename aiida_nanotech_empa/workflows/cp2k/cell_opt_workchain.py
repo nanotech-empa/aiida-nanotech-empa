@@ -14,7 +14,7 @@ from aiida_nanotech_empa.utils import common_utils
 Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 
 
-class Cp2kBulkOptWorkChain(WorkChain):
+class Cp2kCellOptWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
