@@ -9,7 +9,7 @@ from aiida.plugins import WorkflowFactory
 Cp2kSlabOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.slab_opt')
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
-GEO_FILE = "test_slab.xyz"
+GEO_FILE = "h2_on_hbn.xyz"
 
 
 def _example_cp2k_slabopt(cp2k_code, mult):
@@ -23,7 +23,7 @@ def _example_cp2k_slabopt(cp2k_code, mult):
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
     builder.max_nodes = Int(1)
-    builder.fixed_atoms = Str('3..34')
+    builder.fixed_atoms = Str('3..18')
 
     builder.multiplicity = Int(mult)
     mag = [0 for i in ase_geom]
@@ -53,9 +53,8 @@ def example_cp2k_slabopt_uks(cp2k_code):
 
 
 if __name__ == '__main__':
-    for mult in [0]:
-        print()
-        print("####################################")
-        print("####  mult={}".format(mult))
-        print("####################################")
-        _example_cp2k_slabopt(load_code("cp2k@localhost"), mult)
+    print("#### RKS")
+    _example_cp2k_slabopt(load_code("cp2k@localhost"), 0)
+
+    print("#### UKS")
+    _example_cp2k_slabopt(load_code("cp2k@localhost"), 1)

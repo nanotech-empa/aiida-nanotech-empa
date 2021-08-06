@@ -93,7 +93,7 @@ class StructureAnalyzer(HasTraits):
         # 6=metalating atoms
         #frame=ase frame
         #thr=threashold in the histogram for being considered a surface layer
-        nat = frame.get_number_of_atoms()
+        nat = frame.get_global_number_of_atoms()
 
         #all atom types set to 5 (unknown)
         atype = np.zeros(nat, dtype=np.int16) + 5
@@ -402,55 +402,37 @@ class StructureAnalyzer(HasTraits):
 
         summary += ' \n'
         if len(metalatings) > 0:
-            summary += 'metal atoms inside molecules (already counted): ' + list_to_string_range(
-                metalatings) + '\n'
+            metalating_str = list_to_string_range(metalatings)
+            summary += f'metal atoms inside molecules (already counted): {metalating_str}\n'
         if len(unclassified) > 0:
             cases.append('u')
             summary += 'unclassified: ' + list_to_string_range(unclassified)
 
         ## INDEXES FROM 0 if mol_ids_range is not called
 
+        cell_str = " ".join(
+            [str(i) for i in itertools.chain(*atoms.cell.tolist())])
+
         return {
-            'total_charge':
-            total_charge,
-            'system_type':
-            sys_type,
-            'cell':
-            " ".join([str(i) for i in itertools.chain(*atoms.cell.tolist())]),
-            'slab_layers':
-            slab_layers,
-            'bottom_H':
-            sorted(bottom_H),
-            'bulkatoms':
-            sorted(bulkatoms),
-            'wireatoms':
-            sorted(wireatoms),
-            'slabatoms':
-            sorted(slabatoms),
-            'adatoms':
-            sorted(adatoms),
-            'all_molecules':
-            all_molecules,
-            'metalatings':
-            sorted(metalatings),
-            'unclassified':
-            sorted(unclassified),
-            'numatoms':
-            len(atoms),
-            'all_elements':
-            all_elements,
-            'slab_elements':
-            slab_elements,
-            'spins_up':
-            spins_up,
-            'spins_down':
-            spins_down,
-            'other_tags':
-            other_tags,
-            'sys_size':
-            sys_size,
-            'cases':
-            cases,
-            'summary':
-            summary
+            'total_charge': total_charge,
+            'system_type': sys_type,
+            'cell': cell_str,
+            'slab_layers': slab_layers,
+            'bottom_H': sorted(bottom_H),
+            'bulkatoms': sorted(bulkatoms),
+            'wireatoms': sorted(wireatoms),
+            'slabatoms': sorted(slabatoms),
+            'adatoms': sorted(adatoms),
+            'all_molecules': all_molecules,
+            'metalatings': sorted(metalatings),
+            'unclassified': sorted(unclassified),
+            'numatoms': len(atoms),
+            'all_elements': all_elements,
+            'slab_elements': slab_elements,
+            'spins_up': spins_up,
+            'spins_down': spins_down,
+            'other_tags': other_tags,
+            'sys_size': sys_size,
+            'cases': cases,
+            'summary': summary
         }

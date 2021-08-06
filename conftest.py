@@ -113,4 +113,5 @@ def qe_projwfc_code(local_code_factory):
 
 @pytest.fixture(scope='function')
 def cp2k_code(local_code_factory):
-    return local_code_factory('cp2k', 'cp2k.ssmp')
+    prepend_text = "export OMP_NUM_THREADS=2"
+    return local_code_factory('cp2k', 'cp2k.ssmp', prepend_text=prepend_text)

@@ -182,7 +182,6 @@ class Cp2kSlabOptWorkChain(WorkChain):
         ase_geom = struc.get_ase()
         self.node.set_extra('thumbnail',
                             common_utils.thumbnail(ase_struc=ase_geom))
-        self.node.set_extra('formula', struc.get_formula())
 
         # add formula to extra as molecule@surface
         try:  #mainly for debug cases where the analyzer could crash due to odd geometries
