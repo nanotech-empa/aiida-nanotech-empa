@@ -23,7 +23,6 @@ def _example_cp2k_bulkopt(cp2k_code, mult):
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
     builder.max_nodes = Int(1)
-    #builder.fixed_atoms = Str('3..18')
 
     builder.multiplicity = Int(mult)
     mag = [0 for i in ase_geom]

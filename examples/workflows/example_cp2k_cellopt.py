@@ -25,7 +25,6 @@ def _example_cp2k_cellopt(cp2k_code, mult):
     builder.max_nodes = Int(1)
     builder.symmetry = Str('ORTHORHOMBIC')
     builder.cell_freedom = Str('KEEP_SYMMETRY')
-    #builder.fixed_atoms = Str('3..18')
 
     builder.multiplicity = Int(mult)
     mag = [0 for i in ase_geom]
