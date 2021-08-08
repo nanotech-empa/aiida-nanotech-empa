@@ -24,6 +24,7 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
     builder.structure = StructureData(ase=ase_geom)
     builder.max_nodes = Int(1)
     if cell_opt:
+        builder.cell_opt = Bool(True)
         builder.symmetry = Str('ORTHORHOMBIC')
         builder.cell_freedom = Str('KEEP_SYMMETRY')
     builder.multiplicity = Int(mult)
