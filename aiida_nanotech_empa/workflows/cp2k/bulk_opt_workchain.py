@@ -217,9 +217,5 @@ class Cp2kBulkOptWorkChain(WorkChain):
         self.node.set_extra('thumbnail',
                             common_utils.thumbnail(ase_struc=ase_geom))
         self.node.set_extra('formula', struc.get_formula())
-        if self.inputs.cell_opt.value:
-            self.node.set_extra('cell_optimized', 'True')
-        else:
-            self.node.set_extra('cell_optimized', 'False')
 
         return ExitCode(0)
