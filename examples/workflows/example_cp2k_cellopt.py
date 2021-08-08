@@ -12,20 +12,20 @@ DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 GEO_FILE = "si_bulk.xyz"
 
 
-def _example_cp2k_cellopt(cp2k_code, cell_opt, mult):
+def _example_cp2k_cellopt(cp2k_code, mult):
 
     builder = Cp2kCellOptWorkChain.get_builder()
 
-    builder.metadata.label = 'Cp2kBulkOptWorkChain'
+    builder.metadata.label = 'Cp2kCellOptWorkChain'
     builder.metadata.description = 'test description'
     builder.code = cp2k_code
     builder.walltime_seconds = Int(600)
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
     builder.max_nodes = Int(1)
-    if cell_opt:
-        builder.symmetry = Str('ORTHORHOMBIC')
-        builder.cell_freedom = Str('KEEP_SYMMETRY')
+    builder.symmetry = Str('ORTHORHOMBIC')
+    builder.cell_freedom = Str('KEEP_SYMMETRY')
+
     builder.multiplicity = Int(mult)
     mag = [0 for i in ase_geom]
     if mult == 1:
@@ -45,24 +45,17 @@ def _example_cp2k_cellopt(cp2k_code, cell_opt, mult):
         print("  {}: {}".format(k, cellopt_out_dict[k]))
 
 
-def example_cp2k_bulkopt_rks(cp2k_code):
-    _example_cp2k_cellopt(cp2k_code, False, 0)
-
-
 def example_cp2k_cellopt_rks(cp2k_code):
-    _example_cp2k_cellopt(cp2k_code, True, 0)
+    _example_cp2k_cellopt(cp2k_code, 0)
 
 
 def example_cp2k_cellopt_uks(cp2k_code):
-    _example_cp2k_cellopt(cp2k_code, True, 1)
+    _example_cp2k_cellopt(cp2k_code, 1)
 
 
 if __name__ == '__main__':
-    print("#### Bulk opt  RKS")
-    _example_cp2k_cellopt(load_code("cp2k@localhost"), False, 0)
+    print("#### RKS")
+    _example_cp2k_cellopt(load_code("cp2k@localhost"), 0)
 
-    print("#### Cell opt RKS")
-    _example_cp2k_cellopt(load_code("cp2k@localhost"), True, 0)
-
-    print("#### Cell opt UKS")
-    _example_cp2k_cellopt(load_code("cp2k@localhost"), True, 1)
+    print("#### UKS")
+    _example_cp2k_cellopt(load_code("cp2k@localhost"), 1)
