@@ -6,15 +6,15 @@ from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
 
-Cp2kCellOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.cell_opt')
+Cp2kBulkOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.bulk_opt')
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 GEO_FILE = "si_bulk.xyz"
 
 
-def _example_cp2k_cellopt(cp2k_code, cell_opt, mult):
+def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
 
-    builder = Cp2kCellOptWorkChain.get_builder()
+    builder = Cp2kBulkOptWorkChain.get_builder()
 
     builder.metadata.label = 'Cp2kBulkOptWorkChain'
     builder.metadata.description = 'test description'
@@ -39,30 +39,30 @@ def _example_cp2k_cellopt(cp2k_code, cell_opt, mult):
 
     assert calc_node.is_finished_ok
 
-    cellopt_out_dict = dict(calc_node.outputs.output_parameters)
+    bulkopt_out_dict = dict(calc_node.outputs.output_parameters)
     print()
-    for k in cellopt_out_dict:
-        print("  {}: {}".format(k, cellopt_out_dict[k]))
+    for k in bulkopt_out_dict:
+        print("  {}: {}".format(k, bulkopt_out_dict[k]))
 
 
 def example_cp2k_bulkopt_rks(cp2k_code):
-    _example_cp2k_cellopt(cp2k_code, False, 0)
+    _example_cp2k_bulkopt(cp2k_code, False, 0)
 
 
-def example_cp2k_cellopt_rks(cp2k_code):
-    _example_cp2k_cellopt(cp2k_code, True, 0)
+def example_cp2k_cellkopt_rks(cp2k_code):
+    _example_cp2k_bulkopt(cp2k_code, True, 0)
 
 
 def example_cp2k_cellopt_uks(cp2k_code):
-    _example_cp2k_cellopt(cp2k_code, True, 1)
+    _example_cp2k_bulkopt(cp2k_code, True, 1)
 
 
 if __name__ == '__main__':
     print("#### Bulk opt  RKS")
-    _example_cp2k_cellopt(load_code("cp2k@localhost"), False, 0)
+    _example_cp2k_bulkopt(load_code("cp2k@localhost"), False, 0)
 
     print("#### Cell opt RKS")
-    _example_cp2k_cellopt(load_code("cp2k@localhost"), True, 0)
+    _example_cp2k_bulkopt(load_code("cp2k@localhost"), True, 0)
 
     print("#### Cell opt UKS")
-    _example_cp2k_cellopt(load_code("cp2k@localhost"), True, 1)
+    _example_cp2k_bulkopt(load_code("cp2k@localhost"), True, 1)
