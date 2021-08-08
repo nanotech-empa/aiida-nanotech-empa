@@ -86,7 +86,7 @@ class Cp2kBulkOptWorkChain(WorkChain):
     def submit_calc(self):
 
         #load input template
-        the_protocol = './protocols/cell_opt_protocol.yml'
+        the_protocol = './protocols/bulk_opt_protocol.yml'
         if self.inputs.cell_opt.value:
             the_protocol = './protocols/cell_opt_protocol.yml'
         with open(pathlib.Path(__file__).parent / the_protocol) as handle:
@@ -217,7 +217,7 @@ class Cp2kBulkOptWorkChain(WorkChain):
         self.node.set_extra('thumbnail',
                             common_utils.thumbnail(ase_struc=ase_geom))
         self.node.set_extra('formula', struc.get_formula())
-        if self.ipunts.cell_opt.value:
+        if self.inputs.cell_opt.value:
             self.node.set_extra('cell_optimized', 'True')
         else:
             self.node.set_extra('cell_optimized', 'False')
