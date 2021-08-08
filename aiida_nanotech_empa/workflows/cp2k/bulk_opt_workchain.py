@@ -14,7 +14,7 @@ from aiida_nanotech_empa.utils import common_utils
 Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 
 
-class Cp2kBulkOptWorkChain(WorkChain):
+class Cp2kCellOptWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
@@ -29,6 +29,18 @@ class Cp2kBulkOptWorkChain(WorkChain):
         spec.input("fixed_atoms",
                    valid_type=Str,
                    default=lambda: Str(''),
+                   required=False)
+        spec.input("cell_opt",
+                   valid_type=Bool,
+                   default=lambda: Bool(False),
+                   required=False)
+        spec.input("symmetry",
+                   valid_type=Str,
+                   default=lambda: Str('ORTHORHOMBIC'),
+                   required=False)
+        spec.input("cell_freedom",
+                   valid_type=Str,
+                   default=lambda: Str('KEEP_SYMMETRY'),
                    required=False)
         spec.input("multiplicity",
                    valid_type=Int,
@@ -74,9 +86,10 @@ class Cp2kBulkOptWorkChain(WorkChain):
     def submit_calc(self):
 
         #load input template
-        with open(
-                pathlib.Path(__file__).parent /
-                './protocols/bulk_opt_protocol.yml') as handle:
+        the_protocol = './protocols/cell_opt_protocol.yml'
+        if self.inputs.cell_opt.value:
+            the_protocol = './protocols/cell_opt_protocol.yml'
+        with open(pathlib.Path(__file__).parent / the_protocol) as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols['default'])
 
@@ -116,21 +129,42 @@ class Cp2kBulkOptWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT'][
                 'MULTIPLICITY'] = self.inputs.multiplicity.value
 
-        #fixed atoms
-        input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS'][
-            'LIST'] = self.inputs.fixed_atoms.value
+        # only bulk opt
+        if not self.inputs.cell_opt.value:
+            # fixed atoms
+            input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS'][
+                'LIST'] = self.inputs.fixed_atoms.value
+            if self.inputs.debug:
+                input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.1
+                input_dict['MOTION']['GEO_OPT']['RMS_DR'] = 0.1
+                input_dict['MOTION']['GEO_OPT']['RMS_FORCE'] = 0.1
+                input_dict['MOTION']['GEO_OPT']['MAX_DR'] = 0.1
+                input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
+                input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
+                    'EPS_SCF'] = 1e-4
+        # cell opt
+        else:
+            #cell symmetry
+            input_dict['FORCE_EVAL']['SUBSYS']['CELL'][
+                'SYMMETRY'] = self.inputs.symmetry.value
+
+            #cell do free
+            if self.inputs.cell_freedom.value == 'KEEP_SYMMETRY':
+                input_dict['MOTION']['CELL_OPT']['KEEP_SYMMETRY'] = ''
+            elif self.inputs.cell_freedom.value == 'KEEP_ANGLES':
+                input_dict['MOTION']['CELL_OPT']['KEEP_ANGLES'] = ''
+            if self.inputs.debug:
+                input_dict['MOTION']['CELL_OPT']['MAX_FORCE'] = 0.1
+                input_dict['MOTION']['CELL_OPT']['RMS_DR'] = 0.1
+                input_dict['MOTION']['CELL_OPT']['RMS_FORCE'] = 0.1
+                input_dict['MOTION']['CELL_OPT']['MAX_DR'] = 0.1
+                input_dict['MOTION']['CELL_OPT']['PRESSURE_TOLERANCE'] = 500
+                input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
+                input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
+                    'EPS_SCF'] = 1e-4
 
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
-
-        if self.inputs.debug:
-            input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.1
-            input_dict['MOTION']['GEO_OPT']['RMS_DR'] = 0.1
-            input_dict['MOTION']['GEO_OPT']['RMS_FORCE'] = 0.1
-            input_dict['MOTION']['GEO_OPT']['MAX_DR'] = 0.1
-            input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
-            input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
-                'EPS_SCF'] = 1e-4
 
         # KINDS section
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
@@ -183,8 +217,9 @@ class Cp2kBulkOptWorkChain(WorkChain):
         self.node.set_extra('thumbnail',
                             common_utils.thumbnail(ase_struc=ase_geom))
         self.node.set_extra('formula', struc.get_formula())
-
-        # add formula to extra as molecule@surface
-        self.node.set_extra('formula', struc.get_formula())
+        if self.ipunts.cell_opt.value:
+            self.node.set_extra('cell_optimized', 'True')
+        else:
+            self.node.set_extra('cell_optimized', 'False')
 
         return ExitCode(0)
