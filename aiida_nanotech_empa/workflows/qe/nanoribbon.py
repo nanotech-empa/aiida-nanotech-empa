@@ -76,7 +76,7 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_cell_opt1(self):
-        if self.inputs.optimize_cell.valie:
+        if self.inputs.optimize_cell.value:
             structure = self.inputs.structure
             return self._submit_pw_calc(structure,
                                         label="cell_opt1",
@@ -90,7 +90,7 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_cell_opt2(self):
-        if self.inputs.optimize_cell.valie:
+        if self.inputs.optimize_cell.value:
             prev_calc = self.ctx.cell_opt1
             # ---
             # check if previous calc was okay
@@ -111,7 +111,7 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_scf(self):
-        if self.inputs.optimize_cell.valie:
+        if self.inputs.optimize_cell.value:
             prev_calc = self.ctx.cell_opt2
             # ---
             # check if previous calc was okay
