@@ -13,13 +13,14 @@ from PIL import Image, ImageOps
 from aiida_gaussian.utils.cube import Cube
 
 # PYMOL asynchronous mode (pymolwiki.org/index.php/Jupyter)
-import pymol  # pylint: disable=import-error
+import pymol  # pylint: disable=import-error,useless-suppression
 
 _stdouterr = sys.stdout, sys.stderr
 pymol.finish_launching(['pymol', '-qc'])
 sys.stdout, sys.stderr = _stdouterr
 
-from pymol import cmd  # pylint: disable=import-error,wrong-import-position
+# pylint: disable=import-error,useless-suppression,wrong-import-position
+from pymol import cmd
 
 
 def crop_image_bbox(filename):
@@ -47,7 +48,6 @@ def make_pymol_png(  # noqa
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
-    # pylint: disable=too-many-branches
 
     cmd.delete('all')
 
@@ -81,10 +81,10 @@ def make_pymol_png(  # noqa
 
         # Geometry from cube
         ase_geom = Cube.from_file(input_file, read_data=False).ase_atoms
-        tempf = tempfile.NamedTemporaryFile(delete=False, mode='w')
-        ase_geom.write(tempf.name, format='xyz')
-        tempf.close()
-        cmd.load(tempf.name, format='xyz')
+        with tempfile.NamedTemporaryFile(delete=False, mode='w') as tempf:
+            ase_geom.write(tempf.name, format='xyz')
+            tempf.close()
+            cmd.load(tempf.name, format='xyz')
 
         # Load the cube data & draw isosurfaces
         cmd.load(input_file, "cube")

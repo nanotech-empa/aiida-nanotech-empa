@@ -89,7 +89,8 @@ class Cp2kBulkOptWorkChain(WorkChain):
         the_protocol = './protocols/bulk_opt_protocol.yml'
         if self.inputs.cell_opt.value:
             the_protocol = './protocols/cell_opt_protocol.yml'
-        with open(pathlib.Path(__file__).parent / the_protocol) as handle:
+        with open(pathlib.Path(__file__).parent / the_protocol,
+                  encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols['default'])
 

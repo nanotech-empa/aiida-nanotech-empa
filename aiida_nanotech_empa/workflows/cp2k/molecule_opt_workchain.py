@@ -67,9 +67,9 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
     def submit_calc(self):
 
         #load input template
-        with open(
-                pathlib.Path(__file__).parent /
-                './protocols/molecule_opt_protocol.yml') as handle:
+        with open(pathlib.Path(__file__).parent /
+                  './protocols/molecule_opt_protocol.yml',
+                  encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols['default'])
 

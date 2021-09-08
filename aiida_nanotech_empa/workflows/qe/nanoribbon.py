@@ -559,7 +559,7 @@ class NanoribbonWorkChain(WorkChain):
         ## TEMPORARY double pools in case of spin
         spinpools = int(1)
         start_mag = self._get_magnetization(structure)
-        if any([m != 0 for m in start_mag.values()]):
+        if any((m != 0 for m in start_mag.values())):
             spinpools = int(2)
 
         natoms = len(structure.sites)
@@ -637,7 +637,7 @@ class NanoribbonWorkChain(WorkChain):
         #     params['CONTROL']['restart_mode'] = 'restart'
 
         start_mag = self._get_magnetization(structure)
-        if any([m != 0 for m in start_mag.values()]):
+        if any((m != 0 for m in start_mag.values())):
             params['SYSTEM']['nspin'] = 2
             params['SYSTEM']['starting_magnetization'] = start_mag
 

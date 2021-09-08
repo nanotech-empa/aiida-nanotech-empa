@@ -162,7 +162,7 @@ def plot_cube_images(cube_image_folder,
     image_names = cube_image_folder.list_object_names()
     for imag_name in image_names:
 
-        if not all([e in imag_name for e in name_contains]):
+        if not all((e in imag_name for e in name_contains)):
             continue
 
         label = imag_name.split("_")[0]
@@ -182,10 +182,10 @@ def plot_cube_images(cube_image_folder,
             print(f"saved {image_file_name}")
 
     if show:
-        for label in rows:
-            n_imag_row = len(rows[label])
+        for label, val in rows.items():
+            n_imag_row = len(val)
             plt.figure(figsize=(5 * n_imag_row, 5))
-            for i, pi in enumerate(rows[label]):
+            for i, pi in enumerate(val):
                 plt.subplot(1, n_imag_row, i + 1)
                 plt.imshow(pi[1])
                 plt.title(pi[0])

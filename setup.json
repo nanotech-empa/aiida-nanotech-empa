@@ -52,7 +52,8 @@
         "aiida-cp2k",
         "ase>=3.0",
         "aiida-gaussian>=1.0.0",
-        "pillow>=8.0.0"
+        "pillow>=8.0.0",
+        "more-itertools"
     ],
     "extras_require": {
         "testing": [
