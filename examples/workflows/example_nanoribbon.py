@@ -16,8 +16,10 @@ DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-def _example_nanoribbon(opt_cell, set_of_codes, geo_file, description):
-    qe_pw_code, qe_pp_code, qe_projwfc_code = set_of_codes
+def _example_nanoribbon(opt_cell, qe_pw_code, qe_pp_code, qe_projwfc_code,
+                        geo_file, description):
+    # pylint: disable=too-many-arguments
+
     builder = NanoribbonWorkChain.get_builder()
 
     # Calculation settings.
@@ -54,21 +56,21 @@ def _example_nanoribbon(opt_cell, set_of_codes, geo_file, description):
         print("Wrote spin.cube!")
 
 
-def example_nanoribbon_no_spin(set_of_codes):
+def example_nanoribbon_no_spin(qe_pw_code, qe_pp_code, qe_projwfc_code):
 
-    _example_nanoribbon(True, set_of_codes,
+    _example_nanoribbon(True, qe_pw_code, qe_pp_code, qe_projwfc_code,
                         os.path.join(DATA_DIR, 'c2h2_no_spin.xyz'),
                         "Test calculation no spin")
 
 
-def example_nanoribbon_spin(set_of_codes):
-    _example_nanoribbon(True, set_of_codes,
+def example_nanoribbon_spin(qe_pw_code, qe_pp_code, qe_projwfc_code):
+    _example_nanoribbon(True, qe_pw_code, qe_pp_code, qe_projwfc_code,
                         os.path.join(DATA_DIR, 'c2h2_spin.xyz'),
                         "Test calculation spin")
 
 
-def example_nanoribbon_no_cell(set_of_codes):
-    _example_nanoribbon(False, set_of_codes,
+def example_nanoribbon_no_cell(qe_pw_code, qe_pp_code, qe_projwfc_code):
+    _example_nanoribbon(False, qe_pw_code, qe_pp_code, qe_projwfc_code,
                         os.path.join(DATA_DIR, 'c2h2_no_spin.xyz'),
                         "Test calculation no cell opt")
 
@@ -76,8 +78,8 @@ def example_nanoribbon_no_cell(set_of_codes):
 if __name__ == '__main__':
     set_of_codes = (load_code('pw@localhost'), load_code('pp@localhost'),
                     load_code('projwfc@localhost'))
-    example_nanoribbon_no_cell(set_of_codes)
+    example_nanoribbon_no_cell(*set_of_codes)
 
-    example_nanoribbon_no_spin(set_of_codes)
+    example_nanoribbon_no_spin(*set_of_codes)
 
-    example_nanoribbon_spin(set_of_codes)
+    example_nanoribbon_spin(*set_of_codes)
