@@ -107,8 +107,6 @@ class GaussianDeltaScfWorkChain(WorkChain):
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
     def submit_scfs(self):
-        # pylint: disable=too-many-branches
-
         # --------------------------------------------------
         self.report("Submitting NEUTRAL SCF")
         # --------------------------------------------------

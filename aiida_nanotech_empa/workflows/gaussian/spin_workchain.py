@@ -161,8 +161,6 @@ class GaussianSpinWorkChain(WorkChain):
         return ExitCode(0)
 
     def submit_next_steps(self):
-        # pylint: disable=too-many-statements
-
         cubes_n_occ = 5
         cubes_n_virt = 5
         cubes_orb_indexes = list(range(-cubes_n_occ + 1, cubes_n_virt + 1))

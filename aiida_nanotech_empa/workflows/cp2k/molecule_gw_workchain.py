@@ -104,9 +104,9 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             return self.exit_codes.ERROR_TERMINATION
 
         # Load protocol templates
-        with open(
-                pathlib.Path(__file__).parent.joinpath(
-                    './protocols/gw_protocols.yml')) as handle:
+        with open(pathlib.Path(__file__).parent.joinpath(
+                './protocols/gw_protocols.yml'),
+                  encoding='utf-8') as handle:
             self.ctx.protocols = yaml.safe_load(handle)
 
         structure = self.inputs.structure

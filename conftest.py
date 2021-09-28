@@ -15,7 +15,7 @@ SSSP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "examples/data/sssp_minimal")
 
 #@pytest.fixture(scope='function', autouse=True)
-#def clear_database_auto(clear_database):  # pylint: disable=unused-argument
+#def clear_database_auto(clear_database):
 #    """Automatically clear database in between tests."""
 
 

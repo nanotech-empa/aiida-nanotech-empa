@@ -30,7 +30,7 @@ def thumbnail(ase_struc, file_format=None):
     """Prepare binary information."""
 
     file_format = file_format if file_format else 'png'
-    tmp = NamedTemporaryFile()
-    ase_struc.write(tmp.name, format=file_format)  # pylint: disable=no-member
-    with open(tmp.name, "rb") as raw:
-        return base64.b64encode(raw.read()).decode()
+    with NamedTemporaryFile() as tmp:
+        ase_struc.write(tmp.name, format=file_format)
+        with open(tmp.name, "rb") as raw:
+            return base64.b64encode(raw.read()).decode()
