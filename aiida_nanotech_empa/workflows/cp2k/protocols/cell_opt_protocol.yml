@@ -2,24 +2,25 @@ default:
     GLOBAL:
         EXTENDED_FFT_LENGTHS: '' 
         PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
+        RUN_TYPE: CELL_OPT
         WALLTIME: 600   
     MOTION:
-        GEO_OPT:
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
+        CELL_OPT:
+            EXTERNAL_PRESSURE: 0
             MAX_FORCE: 0.000100
             MAX_ITER: 1000
             OPTIMIZER: BFGS
+            TYPE: DIRECT_CELL_OPT
         PRINT:
             RESTART_HISTORY: 
                 _: 'OFF'   
     FORCE_EVAL:
         METHOD: Quickstep
+        STRESS_TENSOR: ANALYTICAL
         SUBSYS:
             CELL:
-                PERIODIC: NONE
-                SYMMETRY: ORTHORHOMBIC        
+                PERIODIC: XYZ 
+                SYMMETRY: ORTHORHOMBIC       
         DFT:
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL   
@@ -28,9 +29,6 @@ default:
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
-            POISSON:
-                PERIODIC: NONE
-                PSOLVER: MT
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -73,11 +71,11 @@ default:
                     STRIDE: '4 4 4'
                     EACH:
                         QS_SCF: '0'
-                        GEO_OPT: '0'
+                        CELL_OPT: '0'
                     ADD_LAST: 'NUMERIC'
                 E_DENSITY_CUBE:
                     STRIDE: '4 4 4'
                     EACH:
                         QS_SCF: '0'
-                        GEO_OPT: '0'
+                        CELL_OPT: '0'
                     ADD_LAST: 'NUMERIC'

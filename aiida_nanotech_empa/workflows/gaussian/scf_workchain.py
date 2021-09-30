@@ -21,8 +21,6 @@ class GaussianScfWorkChain(WorkChain):
         super().define(spec)
 
         spec.input("gaussian_code", valid_type=Code)
-        spec.input("formchk_code", valid_type=Code)
-        spec.input("cubegen_code", valid_type=Code)
 
         spec.input('structure',
                    valid_type=StructureData,
@@ -57,6 +55,13 @@ class GaussianScfWorkChain(WorkChain):
                    default=lambda: Bool(False),
                    help='if true, perform first a minimal basis stability opt')
 
+        spec.input('empirical_dispersion',
+                   valid_type=Str,
+                   required=False,
+                   default=lambda: Str(""),
+                   help=('Include empirical dispersion corrections'
+                         '(e.g. "GD3", "GD3BJ")'))
+
         spec.input('parent_calc_folder',
                    valid_type=RemoteData,
                    required=False,
@@ -64,34 +69,33 @@ class GaussianScfWorkChain(WorkChain):
 
         # -------------------------------------------------------------------
         # CUBE GENERATION INPUTS
-        spec.input('n_occ',
+
+        spec.input("formchk_code", valid_type=Code, required=False)
+        spec.input("cubegen_code", valid_type=Code, required=False)
+
+        spec.input('cubes_n_occ',
                    valid_type=Int,
                    required=False,
                    default=lambda: Int(0),
                    help='Number of occupied orbital cubes to generate')
 
-        spec.input('n_virt',
+        spec.input('cubes_n_virt',
                    valid_type=Int,
                    required=False,
                    default=lambda: Int(0),
                    help='Number of virtual orbital cubes to generate')
 
-        spec.input("formchk_code", valid_type=Code, required=False)
-        spec.input("cubegen_code", valid_type=Code, required=False)
+        spec.input('cubes_edge_space',
+                   valid_type=Float,
+                   required=False,
+                   default=lambda: Float(3.0),
+                   help='Extra cube space in addition to bounding box [ang].')
 
-        spec.input(
-            'edge_space',
-            valid_type=Float,
-            required=False,
-            default=lambda: Float(3.0),
-            help='Extra cube space in addition to molecule bounding box [ang].'
-        )
-        spec.input(
-            "cubegen_parser_name",
-            valid_type=str,
-            default='nanotech_empa.gaussian.cubegen_pymol',
-            non_db=True,
-        )
+        spec.input('cubegen_parser_name',
+                   valid_type=str,
+                   default='nanotech_empa.gaussian.cubegen_pymol',
+                   non_db=True)
+
         spec.input("cubegen_parser_params",
                    valid_type=Dict,
                    required=False,
@@ -109,6 +113,7 @@ class GaussianScfWorkChain(WorkChain):
             cls.setup,
             if_(cls.should_do_min_basis_stable_opt)(cls.min_basis_stable_opt),
             cls.scf,
+            if_(cls.did_scf_fail)(cls.scf),
             if_(cls.should_do_cubes)(cls.cubes), cls.finalize)
 
         spec.outputs.dynamic = True
@@ -155,6 +160,11 @@ class GaussianScfWorkChain(WorkChain):
             '%nprocshared': str(num_cores),
         }
 
+        # Use default convergence criterion at the start
+        # but switch to conver=7 in case of failure
+        self.ctx.conver = None
+        self.ctx.scf_label = 'scf'
+
         return ExitCode(0)
 
     def should_do_min_basis_stable_opt(self):
@@ -166,13 +176,14 @@ class GaussianScfWorkChain(WorkChain):
         parameters = Dict(
             dict={
                 'link0_parameters': self.ctx.link0.copy(),
+                'dieze_tag': '#P',
                 'functional': self.ctx.functional,
                 'basis_set': 'STO-3G',
                 'charge': 0,
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128
+                        'maxcycle': 140
                     },
                     'stable': 'opt',
                 },
@@ -203,13 +214,14 @@ class GaussianScfWorkChain(WorkChain):
         parameters = Dict(
             dict={
                 'link0_parameters': self.ctx.link0.copy(),
+                'dieze_tag': '#P',
                 'functional': self.ctx.functional,
                 'basis_set': self.inputs.basis_set.value,
                 'charge': 0,
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128
+                        'maxcycle': 140
                     },
                 },
             })
@@ -234,38 +246,62 @@ class GaussianScfWorkChain(WorkChain):
             # For open-shell singlet, mix homo & lumo
             parameters['route_parameters']['guess'] = "mix"
 
+        if self.inputs.empirical_dispersion.value != "":
+            parameters['route_parameters'][
+                'empiricaldispersion'] = self.inputs.empirical_dispersion.value
+
+        if self.ctx.conver is not None:
+            parameters['route_parameters']['scf']['conver'] = self.ctx.conver
+
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
         builder.gaussian.code = self.inputs.gaussian_code
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
         future = self.submit(builder)
-        return ToContext(scf=future)
+        future.description = self.ctx.scf_label
+        return ToContext(**{self.ctx.scf_label: future})
+
+    def did_scf_fail(self):
+
+        scf_node = self.ctx[self.ctx.scf_label]
+        if not common_utils.check_if_calc_ok(self, scf_node):
+            # set up for conver=7 calculation
+            self.report("SCF failed with default convergence criterion!")
+            self.report("Switching to a looser threshold.")
+            self.ctx.conver = 7
+            self.ctx.scf_label = f'scf_c{self.ctx.conver}'
+            return True
+        return False
 
     def should_do_cubes(self):
         codes_set = 'formchk_code' in self.inputs and 'cubegen_code' in self.inputs
-        non_zero_num = self.inputs.n_occ.value > 0 and self.inputs.n_virt.value > 0
+        non_zero_num = (self.inputs.cubes_n_occ.value > 0
+                        and self.inputs.cubes_n_virt.value > 0)
         return codes_set and non_zero_num
 
     def cubes(self):
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.scf):
+        scf_node = self.ctx[self.ctx.scf_label]
+
+        if not common_utils.check_if_calc_ok(self, scf_node):
             return self.exit_codes.ERROR_TERMINATION
 
         self.report("Generating cubes")
 
         orb_index_list = list(
-            range(-self.inputs.n_occ.value + 1, self.inputs.n_virt.value + 1))
+            range(-self.inputs.cubes_n_occ.value + 1,
+                  self.inputs.cubes_n_virt.value + 1))
 
         future = self.submit(
             GaussianCubesWorkChain,
             formchk_code=self.inputs.formchk_code,
             cubegen_code=self.inputs.cubegen_code,
-            gaussian_calc_folder=self.ctx.scf.outputs.remote_folder,
-            gaussian_output_params=self.ctx.scf.outputs['output_parameters'],
+            gaussian_calc_folder=scf_node.outputs.remote_folder,
+            gaussian_output_params=scf_node.outputs['output_parameters'],
             orbital_indexes=List(list=orb_index_list),
             orbital_index_ref=Str('half_num_el'),
-            edge_space=self.inputs.edge_space,
+            edge_space=self.inputs.cubes_edge_space,
             dx=Float(0.15),
             retrieve_cubes=Bool(False),
             cubegen_parser_name=self.inputs.cubegen_parser_name,
@@ -274,7 +310,9 @@ class GaussianScfWorkChain(WorkChain):
 
     def finalize(self):
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.scf):
+        scf_node = self.ctx[self.ctx.scf_label]
+
+        if not common_utils.check_if_calc_ok(self, scf_node):
             return self.exit_codes.ERROR_TERMINATION
 
         self.report("Finalizing...")
@@ -289,10 +327,9 @@ class GaussianScfWorkChain(WorkChain):
                     self.out("cubes_retrieved",
                              self.ctx.cubes.outputs[cubes_out])
 
-        self.out("energy_ev", self.ctx.scf.outputs.energy_ev)
-        self.out("output_parameters",
-                 self.ctx.scf.outputs['output_parameters'])
+        self.out("energy_ev", scf_node.outputs.energy_ev)
+        self.out("output_parameters", scf_node.outputs['output_parameters'])
 
-        self.out("remote_folder", self.ctx.scf.outputs['remote_folder'])
+        self.out("remote_folder", scf_node.outputs['remote_folder'])
 
         return ExitCode(0)

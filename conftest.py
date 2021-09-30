@@ -15,7 +15,7 @@ SSSP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "examples/data/sssp_minimal")
 
 #@pytest.fixture(scope='function', autouse=True)
-#def clear_database_auto(clear_database):  # pylint: disable=unused-argument
+#def clear_database_auto(clear_database):
 #    """Automatically clear database in between tests."""
 
 
@@ -113,4 +113,5 @@ def qe_projwfc_code(local_code_factory):
 
 @pytest.fixture(scope='function')
 def cp2k_code(local_code_factory):
-    return local_code_factory('cp2k', 'cp2k.ssmp')
+    prepend_text = "export OMP_NUM_THREADS=2"
+    return local_code_factory('cp2k', 'cp2k.ssmp', prepend_text=prepend_text)

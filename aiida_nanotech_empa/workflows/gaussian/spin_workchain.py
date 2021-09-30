@@ -12,8 +12,7 @@ GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
 GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
 
 GaussianScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf')
-GaussianRelaxScfCubesWorkChain = WorkflowFactory(
-    'nanotech_empa.gaussian.relax_scf_cubes')
+GaussianRelaxWorkChain = WorkflowFactory('nanotech_empa.gaussian.relax')
 GaussianDeltaScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.delta_scf')
 GaussianNatOrbWorkChain = WorkflowFactory('nanotech_empa.gaussian.natorb')
 
@@ -35,6 +34,12 @@ class GaussianSpinWorkChain(WorkChain):
                    valid_type=Str,
                    required=True,
                    help='xc functional')
+        spec.input('empirical_dispersion',
+                   valid_type=Str,
+                   required=False,
+                   default=lambda: Str(""),
+                   help=('Include empirical dispersion corrections'
+                         '(e.g. "GD3", "GD3BJ")'))
 
         spec.input('basis_set_opt',
                    valid_type=Str,
@@ -77,15 +82,27 @@ class GaussianSpinWorkChain(WorkChain):
         for mult in self.inputs.multiplicity_list:
             label = f"m{mult}_opt"
 
-            builder = GaussianRelaxScfCubesWorkChain.get_builder()
+            builder = GaussianRelaxWorkChain.get_builder()
             builder.gaussian_code = self.inputs.gaussian_code
-            builder.formchk_code = self.inputs.formchk_code
-            builder.cubegen_code = self.inputs.cubegen_code
             builder.structure = self.inputs.structure
             builder.functional = self.inputs.functional
-            builder.basis_set_opt = self.inputs.basis_set_opt
-            builder.basis_set_scf = self.inputs.basis_set_scf
+            builder.empirical_dispersion = self.inputs.empirical_dispersion
+            builder.basis_set = self.inputs.basis_set_opt
             builder.multiplicity = Int(mult)
+
+            builder.basis_set_scf = self.inputs.basis_set_scf
+            builder.formchk_code = self.inputs.formchk_code
+            builder.cubegen_code = self.inputs.cubegen_code
+
+            builder.cubes_n_occ = Int(2)
+            builder.cubes_n_virt = Int(2)
+            builder.cubes_edge_space = Float(4.0)
+            builder.cubegen_parser_params = Dict(dict={
+                'heights': [4.0],
+                'orient_cube': True,
+                'isovalues': [0.01],
+            })
+
             if 'options' in self.inputs:
                 builder.options = self.inputs.options
 
@@ -104,13 +121,13 @@ class GaussianSpinWorkChain(WorkChain):
             if not common_utils.check_if_calc_ok(self, self.ctx[label]):
                 return self.exit_codes.ERROR_TERMINATION
 
-            opt_energy = self.ctx[label].outputs.scf_energy
+            opt_energy = self.ctx[label].outputs.scf_energy_ev
             opt_energies.append(opt_energy)
             self.out(f"m{mult}_opt_energy", opt_energy)
             self.out(f"m{mult}_opt_structure",
-                     self.ctx[label].outputs.opt_structure)
+                     self.ctx[label].outputs.output_structure)
             self.out(f"m{mult}_opt_out_params",
-                     self.ctx[label].outputs.scf_out_params)
+                     self.ctx[label].outputs.scf_output_parameters)
             self.out(f"m{mult}_opt_cube_images",
                      self.ctx[label].outputs.cube_image_folder)
             self.out(f"m{mult}_opt_cube_planes",
@@ -129,21 +146,21 @@ class GaussianSpinWorkChain(WorkChain):
         self.ctx.gs_mult = Int(self.inputs.multiplicity_list[gs_i]).store()
         self.ctx.gs_energy = opt_energies[gs_i]
         gs_opt_label = f"m{self.ctx.gs_mult.value}_opt"
-        self.ctx.gs_structure = self.ctx[gs_opt_label].outputs.opt_structure
+        self.ctx.gs_structure = self.ctx[gs_opt_label].outputs.output_structure
+
+        self.ctx.gs_out_params = self.ctx[
+            gs_opt_label].outputs.scf_output_parameters
+        self.ctx.gs_scf_remote_folder = self.ctx[
+            gs_opt_label].outputs.scf_remote_folder
 
         self.out("gs_multiplicity", self.ctx.gs_mult)
         self.out("gs_energy", self.ctx.gs_energy)
         self.out("gs_structure", self.ctx.gs_structure)
-        self.out("gs_out_params",
-                 self.ctx[gs_opt_label].outputs.scf_out_params)
-
-        self.ctx.gs_scf_calcnode = self.ctx[gs_opt_label].called[0].called[-1]
+        self.out("gs_out_params", self.ctx.gs_out_params)
 
         return ExitCode(0)
 
     def submit_next_steps(self):
-        # pylint: disable=too-many-statements
-
         cubes_n_occ = 5
         cubes_n_virt = 5
         cubes_orb_indexes = list(range(-cubes_n_occ + 1, cubes_n_virt + 1))
@@ -156,8 +173,8 @@ class GaussianSpinWorkChain(WorkChain):
         builder = GaussianCubesWorkChain.get_builder()
         builder.formchk_code = self.inputs.formchk_code
         builder.cubegen_code = self.inputs.cubegen_code
-        builder.gaussian_calc_folder = self.ctx.gs_scf_calcnode.outputs.remote_folder
-        builder.gaussian_output_params = self.ctx.gs_scf_calcnode.outputs.output_parameters
+        builder.gaussian_calc_folder = self.ctx.gs_scf_remote_folder
+        builder.gaussian_output_params = self.ctx.gs_out_params
         builder.orbital_indexes = List(list=cubes_orb_indexes)
         builder.edge_space = Float(max(cubes_heights))
         builder.cubegen_parser_name = 'nanotech_empa.gaussian.cubegen_pymol'
@@ -181,7 +198,7 @@ class GaussianSpinWorkChain(WorkChain):
         builder.functional = self.inputs.functional
         builder.basis_set = self.inputs.basis_set_scf
         builder.multiplicity = self.ctx.gs_mult
-        builder.parent_calc_folder = self.ctx.gs_scf_calcnode.outputs.remote_folder
+        builder.parent_calc_folder = self.ctx.gs_scf_remote_folder
         if 'options' in self.inputs:
             builder.options = self.inputs.options
 
@@ -206,12 +223,13 @@ class GaussianSpinWorkChain(WorkChain):
             builder.cubegen_code = self.inputs.cubegen_code
             builder.structure = self.ctx.gs_structure
             builder.functional = self.inputs.functional
+            builder.empirical_dispersion = self.inputs.empirical_dispersion
             builder.basis_set = self.inputs.basis_set_scf
             builder.multiplicity = Int(mult)
             builder.parent_calc_folder = self.ctx[
                 opt_label].outputs.remote_folder
-            builder.n_occ = Int(cubes_n_occ)
-            builder.n_virt = Int(cubes_n_virt)
+            builder.cubes_n_occ = Int(cubes_n_occ)
+            builder.cubes_n_virt = Int(cubes_n_virt)
             builder.cubegen_parser_params = Dict(
                 dict={
                     'isovalues': cubes_isovalues,
@@ -277,8 +295,8 @@ class GaussianSpinWorkChain(WorkChain):
 
         builder = GaussianNatOrbWorkChain.get_builder()
         builder.gaussian_code = self.inputs.gaussian_code
-        builder.parent_calc_folder = self.ctx.gs_scf_calcnode.outputs.remote_folder
-        builder.parent_calc_params = self.ctx.gs_scf_calcnode.outputs.output_parameters
+        builder.parent_calc_folder = self.ctx.gs_scf_remote_folder
+        builder.parent_calc_params = self.ctx.gs_out_params
         if 'options' in self.inputs:
             builder.options = self.inputs.options
 

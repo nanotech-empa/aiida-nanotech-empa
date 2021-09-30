@@ -2,11 +2,12 @@ from aiida_nanotech_empa.workflows.gaussian import common
 from aiida_nanotech_empa.utils import common_utils
 
 from aiida.engine import WorkChain, ToContext, if_, ExitCode
-from aiida.orm import Int, Str, Code, Dict, Bool, StructureData
+from aiida.orm import Int, Str, Code, Dict, Bool, List, Float, StructureData
 
 from aiida.plugins import WorkflowFactory
 
 GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
+GaussianScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf')
 
 
 class GaussianRelaxWorkChain(WorkChain):
@@ -54,15 +55,70 @@ class GaussianRelaxWorkChain(WorkChain):
                    default=lambda: Bool(False),
                    help='Also run vibrational analysis.')
 
-        spec.input(
-            'options',
-            valid_type=Dict,
-            required=False,
-            help="Use custom metadata.options instead of the automatic ones.")
+        spec.input('empirical_dispersion',
+                   valid_type=Str,
+                   required=False,
+                   default=lambda: Str(""),
+                   help=('Include empirical dispersion corrections'
+                         '(e.g. "GD3", "GD3BJ")'))
+
+        spec.input('constraints',
+                   valid_type=List,
+                   required=False,
+                   default=lambda: List(list=[]),
+                   help='Supported constraints: ("distance", n1, n2, d)')
+
+        #### ------------------------------------------------------------------
+        #### Do an extra SCF step at the end and potentially create cubes
+
+        spec.input('basis_set_scf',
+                   valid_type=Str,
+                   required=False,
+                   help='Basis set for SCF. If not present, SCF is skipped.')
+
+        spec.input("formchk_code", valid_type=Code, required=False)
+        spec.input("cubegen_code", valid_type=Code, required=False)
+
+        spec.input('cubes_n_occ',
+                   valid_type=Int,
+                   required=False,
+                   default=lambda: Int(0),
+                   help='Number of occupied orbital cubes to generate')
+
+        spec.input('cubes_n_virt',
+                   valid_type=Int,
+                   required=False,
+                   default=lambda: Int(0),
+                   help='Number of virtual orbital cubes to generate')
+
+        spec.input('cubes_edge_space',
+                   valid_type=Float,
+                   required=False,
+                   default=lambda: Float(3.0),
+                   help='Extra cube space in addition to bounding box [ang].')
+
+        spec.input('cubegen_parser_name',
+                   valid_type=str,
+                   default='nanotech_empa.gaussian.cubegen_pymol',
+                   non_db=True)
+
+        spec.input("cubegen_parser_params",
+                   valid_type=Dict,
+                   required=False,
+                   default=lambda: Dict(dict={}),
+                   help='Additional parameters to cubegen parser.')
+
+        #### ------------------------------------------------------------------
+
+        spec.input('options',
+                   valid_type=Dict,
+                   required=False,
+                   help="Use custom metadata.options instead of automatic.")
 
         spec.outline(cls.setup,
                      if_(cls.should_do_wfn_stability)(cls.uks_wfn_stability),
-                     cls.optimization, cls.finalize)
+                     cls.optimization,
+                     if_(cls.should_do_scf)(cls.scf), cls.finalize)
 
         spec.outputs.dynamic = True
 
@@ -134,7 +190,7 @@ class GaussianRelaxWorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128,
+                        'maxcycle': 140,
                     },
                     'Stable': 'opt',
                 },
@@ -167,9 +223,9 @@ class GaussianRelaxWorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128,
+                        'maxcycle': 140
                     },
-                    'opt': 'tight' if self.inputs.tight else None,
+                    'opt': None,
                 },
             })
 
@@ -182,16 +238,80 @@ class GaussianRelaxWorkChain(WorkChain):
         elif self.inputs.multiplicity == 1:
             parameters['route_parameters']['guess'] = "mix"
 
+        # In case of the open-shell singlet, take smaller steps to prevent
+        # losing the spin solution
+        if self.inputs.multiplicity == 1:
+            parameters['route_parameters']['opt'] = {'maxstep': 10}
+
         if self.inputs.freq:
             parameters['route_parameters']['freq'] = None
+
+        if self.inputs.empirical_dispersion.value != "":
+            parameters['route_parameters'][
+                'empiricaldispersion'] = self.inputs.empirical_dispersion.value
+
+        opt_dict = {}
+
+        if self.inputs.tight:
+            opt_dict['tight'] = None
+
+        if len(self.inputs.constraints) != 0:
+            constr_str = ""
+            for c in self.inputs.constraints:
+                if c[0] == 'distance':
+                    constr_str += "{} {} ={:.4f} B\n".format(
+                        c[1] + 1, c[2] + 1, c[3])
+                    constr_str += "{} {} F\n".format(c[1] + 1, c[2] + 1)
+                else:
+                    self.report(f"Unsupported constraint {c[0]}, skipping.")
+            if constr_str != "":
+                opt_dict['modredundant'] = None
+                parameters['input_parameters'] = {constr_str: None}
+
+        if len(opt_dict) != 0:
+            parameters['route_parameters']['opt'] = opt_dict
 
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
         builder.gaussian.code = self.inputs.gaussian_code
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
-        future = self.submit(builder)
-        return ToContext(opt=future)
+        submitted_node = self.submit(builder)
+        return ToContext(opt=submitted_node)
+
+    def should_do_scf(self):
+        return 'basis_set_scf' in self.inputs
+
+    def scf(self):
+
+        if not common_utils.check_if_calc_ok(self, self.ctx.opt):
+            return self.exit_codes.ERROR_TERMINATION
+
+        self.report("Submitting SCF")
+
+        builder = GaussianScfWorkChain.get_builder()
+        builder.gaussian_code = self.inputs.gaussian_code
+        builder.structure = self.ctx.opt.outputs.output_structure
+        builder.functional = self.inputs.functional
+        builder.empirical_dispersion = self.inputs.empirical_dispersion
+        builder.basis_set = self.inputs.basis_set_scf
+        builder.multiplicity = self.inputs.multiplicity
+        builder.parent_calc_folder = self.ctx.opt.outputs.remote_folder
+
+        if 'formchk_code' in self.inputs and 'cubegen_code' in self.inputs:
+            builder.formchk_code = self.inputs.formchk_code
+            builder.cubegen_code = self.inputs.cubegen_code
+            builder.cubes_n_occ = self.inputs.cubes_n_occ
+            builder.cubes_n_virt = self.inputs.cubes_n_virt
+            builder.cubes_edge_space = self.inputs.cubes_edge_space
+            builder.cubegen_parser_name = self.inputs.cubegen_parser_name
+            builder.cubegen_parser_params = self.inputs.cubegen_parser_params
+
+        if 'options' in self.inputs:
+            builder.options = self.inputs.options
+
+        submitted_node = self.submit(builder)
+        return ToContext(scf=submitted_node)
 
     def finalize(self):
 
@@ -208,5 +328,19 @@ class GaussianRelaxWorkChain(WorkChain):
         self.out("energy_ev", self.ctx.opt.outputs.energy_ev)
         self.out("output_parameters", self.ctx.opt.outputs.output_parameters)
         self.out("remote_folder", self.ctx.opt.outputs.remote_folder)
+
+        if 'scf' in self.ctx:
+            if not common_utils.check_if_calc_ok(self, self.ctx.scf):
+                return self.exit_codes.ERROR_TERMINATION
+            self.out("scf_energy_ev", self.ctx.scf.outputs.energy_ev)
+            self.out("scf_output_parameters",
+                     self.ctx.scf.outputs.output_parameters)
+            self.out("scf_remote_folder", self.ctx.scf.outputs.remote_folder)
+            for cubes_out in list(self.ctx.scf.outputs):
+                if cubes_out.startswith("cube"):
+                    self.out(cubes_out, self.ctx.scf.outputs[cubes_out])
+                elif cubes_out == 'retrieved':
+                    self.out("cubes_retrieved",
+                             self.ctx.scf.outputs[cubes_out])
 
         return ExitCode(0)

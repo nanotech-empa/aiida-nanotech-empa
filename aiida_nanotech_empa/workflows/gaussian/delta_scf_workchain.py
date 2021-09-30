@@ -107,8 +107,6 @@ class GaussianDeltaScfWorkChain(WorkChain):
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
     def submit_scfs(self):
-        # pylint: disable=too-many-branches
-
         # --------------------------------------------------
         self.report("Submitting NEUTRAL SCF")
         # --------------------------------------------------
@@ -122,7 +120,8 @@ class GaussianDeltaScfWorkChain(WorkChain):
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128
+                        'conver': 7,
+                        'maxcycle': 140
                     },
                     'sp': None,
                 },
@@ -167,7 +166,8 @@ class GaussianDeltaScfWorkChain(WorkChain):
                 'multiplicity': pos_mult,
                 'route_parameters': {
                     'scf': {
-                        'maxcycle': 128
+                        'conver': 7,
+                        'maxcycle': 140
                     },
                     'sp': None,
                 },
@@ -205,7 +205,8 @@ class GaussianDeltaScfWorkChain(WorkChain):
                     'multiplicity': neg_mult,
                     'route_parameters': {
                         'scf': {
-                            'maxcycle': 128
+                            'conver': 7,
+                            'maxcycle': 140
                         },
                         'sp': None,
                     },

@@ -51,12 +51,21 @@ def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
         # Adsorption height is defined from the geometrical center of the molecule
         surf_z = np.mean(mol_atoms.positions[:, 2]) - ads_h.value
 
+    else:
+        # If you manually specify adsorption height, it will override the
+        # height extracted from the geometry
+        if ads_h is not None:
+            surf_z = np.mean(mol_atoms.positions[:, 2]) - ads_h.value
+
     imag_plane_z = surf_z + IC_PLANE_HEIGHTS[substrate.value]
 
     mps = []
     if list(mag_per_site):
+        mol_at_tuples = [(e, *np.round(p, 2)) for e, p in zip(
+            mol_atoms.get_chemical_symbols(), mol_atoms.positions)]
         mps = [
-            m for at, m in zip(ase_geo, list(mag_per_site)) if at in mol_atoms
+            m for at, m in zip(ase_geo, list(mag_per_site))
+            if (at.symbol, *np.round(at.position, 2)) in mol_at_tuples
         ]
 
     return {
@@ -134,7 +143,7 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
                    help="Substrate type, determines the image charge plane.")
         spec.input("protocol",
                    valid_type=Str,
-                   default=lambda: Str('gapw_std'),
+                   default=lambda: Str('gpw_std'),
                    required=False,
                    help="Protocol supported by the GW workchain.")
         spec.input("multiplicity",
@@ -324,5 +333,14 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
 
         self.out('gw_ic_parameters',
                  calc_gw_ic_parameters(gw_out_params, ic_out_params))
+
+        # Add the workchain pk to the input structure extras
+        extras_label = "Cp2kAdsorbedGwIcWorkChain_pks"
+        if extras_label not in self.inputs.structure.extras:
+            extras_list = []
+        else:
+            extras_list = self.inputs.structure.extras[extras_label]
+        extras_list.append(self.node.pk)
+        self.inputs.structure.set_extra(extras_label, extras_list)
 
         return ExitCode(0)

@@ -2,10 +2,9 @@ import os
 import pathlib
 import yaml
 import copy
-import numpy as np
 
 from aiida.engine import WorkChain, ToContext, ExitCode
-from aiida.orm import Int, Bool, Code, Dict, List
+from aiida.orm import Int, Bool, Code, Dict, List, Str
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
@@ -15,7 +14,7 @@ from aiida_nanotech_empa.utils import common_utils
 Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 
 
-class Cp2kMoleculeOptWorkChain(WorkChain):
+class Cp2kBulkOptWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
@@ -27,6 +26,22 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
             valid_type=Int,
             default=lambda: Int(0),
             required=False)
+        spec.input("fixed_atoms",
+                   valid_type=Str,
+                   default=lambda: Str(''),
+                   required=False)
+        spec.input("cell_opt",
+                   valid_type=Bool,
+                   default=lambda: Bool(False),
+                   required=False)
+        spec.input("symmetry",
+                   valid_type=Str,
+                   default=lambda: Str('ORTHORHOMBIC'),
+                   required=False)
+        spec.input("cell_freedom",
+                   valid_type=Str,
+                   default=lambda: Str('KEEP_SYMMETRY'),
+                   required=False)
         spec.input("multiplicity",
                    valid_type=Int,
                    default=lambda: Int(0),
@@ -38,6 +53,10 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         spec.input("vdw",
                    valid_type=Bool,
                    default=lambda: Bool(False),
+                   required=False)
+        spec.input("max_nodes",
+                   valid_type=Int,
+                   default=lambda: Int(48),
                    required=False)
         spec.input("walltime_seconds",
                    valid_type=Int,
@@ -67,8 +86,10 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
     def submit_calc(self):
 
         #load input template
-        with open(pathlib.Path(__file__).parent /
-                  './protocols/molecule_opt_protocol.yml',
+        the_protocol = './protocols/bulk_opt_protocol.yml'
+        if self.inputs.cell_opt.value:
+            the_protocol = './protocols/cell_opt_protocol.yml'
+        with open(pathlib.Path(__file__).parent / the_protocol,
                   encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols['default'])
@@ -83,15 +104,7 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         structure_with_tags, kinds_dict = determine_kinds(
             structure, magnetization_per_site)
 
-        #make sure cell is big enough for MT poisson solver
-        if self.inputs.debug:
-            extra_cell = 5.0
-        else:
-            extra_cell = 15.0
         self.ctx.atoms = structure_with_tags.get_ase()
-        self.ctx.atoms.cell = 2 * (np.ptp(self.ctx.atoms.positions,
-                                          axis=0)) + extra_cell
-        self.ctx.atoms.center()
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.code
@@ -117,14 +130,42 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT'][
                 'MULTIPLICITY'] = self.inputs.multiplicity.value
 
+        # only bulk opt
+        if not self.inputs.cell_opt.value:
+            # fixed atoms
+            input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS'][
+                'LIST'] = self.inputs.fixed_atoms.value
+            if self.inputs.debug:
+                input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.1
+                input_dict['MOTION']['GEO_OPT']['RMS_DR'] = 0.1
+                input_dict['MOTION']['GEO_OPT']['RMS_FORCE'] = 0.1
+                input_dict['MOTION']['GEO_OPT']['MAX_DR'] = 0.1
+                input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
+                input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
+                    'EPS_SCF'] = 1e-4
+        # cell opt
+        else:
+            #cell symmetry
+            input_dict['FORCE_EVAL']['SUBSYS']['CELL'][
+                'SYMMETRY'] = self.inputs.symmetry.value
+
+            #cell do free
+            if self.inputs.cell_freedom.value == 'KEEP_SYMMETRY':
+                input_dict['MOTION']['CELL_OPT']['KEEP_SYMMETRY'] = ''
+            elif self.inputs.cell_freedom.value == 'KEEP_ANGLES':
+                input_dict['MOTION']['CELL_OPT']['KEEP_ANGLES'] = ''
+            if self.inputs.debug:
+                input_dict['MOTION']['CELL_OPT']['MAX_FORCE'] = 0.1
+                input_dict['MOTION']['CELL_OPT']['RMS_DR'] = 0.1
+                input_dict['MOTION']['CELL_OPT']['RMS_FORCE'] = 0.1
+                input_dict['MOTION']['CELL_OPT']['MAX_DR'] = 0.1
+                input_dict['MOTION']['CELL_OPT']['PRESSURE_TOLERANCE'] = 500
+                input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
+                input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
+                    'EPS_SCF'] = 1e-4
+
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
-
-        if self.inputs.debug:
-            input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.001
-            input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-6
-            input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
-                'EPS_SCF'] = 1e-6
 
         # KINDS section
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
@@ -133,9 +174,9 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         #computational resources
         nodes, tasks_per_node, threads = get_nodes(
             atoms=self.ctx.atoms,
-            calctype='default',
+            calctype='slab',
             computer=self.inputs.code.computer,
-            max_nodes=48,
+            max_nodes=self.inputs.max_nodes.value,
             uks=self.inputs.multiplicity.value > 0)
 
         builder.cp2k.metadata.options.resources = {
@@ -173,8 +214,9 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
 
         # Add extras
         struc = self.ctx.opt.outputs.output_structure
+        ase_geom = struc.get_ase()
         self.node.set_extra('thumbnail',
-                            common_utils.thumbnail(ase_struc=struc.get_ase()))
+                            common_utils.thumbnail(ase_struc=ase_geom))
         self.node.set_extra('formula', struc.get_formula())
 
         return ExitCode(0)

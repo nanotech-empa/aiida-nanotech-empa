@@ -3,7 +3,7 @@
 import numpy as np
 
 # AiiDA imports
-from aiida.orm import Code, Dict, Float, Int, KpointsData, Str, StructureData
+from aiida.orm import Bool, Code, Dict, Float, Int, KpointsData, Str, StructureData
 from aiida.engine import WorkChain, ToContext, while_
 #from aiida.orm.nodes.data.upf import get_pseudos_dict, get_pseudos_from_structure
 
@@ -18,6 +18,10 @@ class NanoribbonWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(NanoribbonWorkChain, cls).define(spec)
+        spec.input("optimize_cell",
+                   valid_type=Bool,
+                   default=lambda: Bool(True),
+                   required=False)
         spec.input("max_kpoints",
                    valid_type=Int,
                    default=lambda: Int(120),
@@ -72,43 +76,52 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_cell_opt1(self):
-        structure = self.inputs.structure
-        return self._submit_pw_calc(structure,
-                                    label="cell_opt1",
-                                    runtype='vc-relax',
-                                    precision=0.5,
-                                    min_kpoints=int(1),
-                                    max_nodes=self.inputs.max_nodes.value,
-                                    mem_node=self.inputs.mem_node.value)
+        if self.inputs.optimize_cell.value:
+            structure = self.inputs.structure
+            return self._submit_pw_calc(structure,
+                                        label="cell_opt1",
+                                        runtype='vc-relax',
+                                        precision=0.5,
+                                        min_kpoints=int(1),
+                                        max_nodes=self.inputs.max_nodes.value,
+                                        mem_node=self.inputs.mem_node.value)
+        self.report("Skipping: cell_opt = False")
+        return
 
     # =========================================================================
     def run_cell_opt2(self):
-        prev_calc = self.ctx.cell_opt1
-        # ---
-        # check if previous calc was okay
-        error_msg = self._check_prev_calc(prev_calc)
-        if error_msg is not None:
-            return self.exit_codes.CALC_FAILED
-        # ---
-        structure = prev_calc.outputs.output_structure
-        return self._submit_pw_calc(structure,
-                                    label="cell_opt2",
-                                    runtype='vc-relax',
-                                    precision=1.0,
-                                    min_kpoints=int(1),
-                                    max_nodes=self.inputs.max_nodes.value,
-                                    mem_node=self.inputs.mem_node.value)
+        if self.inputs.optimize_cell.value:
+            prev_calc = self.ctx.cell_opt1
+            # ---
+            # check if previous calc was okay
+            error_msg = self._check_prev_calc(prev_calc)
+            if error_msg is not None:
+                return self.exit_codes.CALC_FAILED
+            # ---
+            structure = prev_calc.outputs.output_structure
+            return self._submit_pw_calc(structure,
+                                        label="cell_opt2",
+                                        runtype='vc-relax',
+                                        precision=1.0,
+                                        min_kpoints=int(1),
+                                        max_nodes=self.inputs.max_nodes.value,
+                                        mem_node=self.inputs.mem_node.value)
+        self.report("Skipping: cell_opt = False")
+        return
 
     # =========================================================================
     def run_scf(self):
-        prev_calc = self.ctx.cell_opt2
+        if self.inputs.optimize_cell.value:
+            prev_calc = self.ctx.cell_opt2
+            # ---
+            # check if previous calc was okay
+            error_msg = self._check_prev_calc(prev_calc)
+            if error_msg is not None:
+                return self.exit_codes.CALC_FAILED
         # ---
-        # check if previous calc was okay
-        error_msg = self._check_prev_calc(prev_calc)
-        if error_msg is not None:
-            return self.exit_codes.CALC_FAILED
-        # ---
-        structure = prev_calc.outputs.output_structure
+            structure = prev_calc.outputs.output_structure
+        else:
+            structure = self.inputs.structure
         min_kpoints = min(int(10), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
                                     label="scf",
@@ -546,7 +559,7 @@ class NanoribbonWorkChain(WorkChain):
         ## TEMPORARY double pools in case of spin
         spinpools = int(1)
         start_mag = self._get_magnetization(structure)
-        if any([m != 0 for m in start_mag.values()]):
+        if any((m != 0 for m in start_mag.values())):
             spinpools = int(2)
 
         natoms = len(structure.sites)
@@ -624,7 +637,7 @@ class NanoribbonWorkChain(WorkChain):
         #     params['CONTROL']['restart_mode'] = 'restart'
 
         start_mag = self._get_magnetization(structure)
-        if any([m != 0 for m in start_mag.values()]):
+        if any((m != 0 for m in start_mag.values())):
             params['SYSTEM']['nspin'] = 2
             params['SYSTEM']['starting_magnetization'] = start_mag
 
