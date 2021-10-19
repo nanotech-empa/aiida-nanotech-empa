@@ -223,15 +223,15 @@ def get_nodes(atoms=None,
         cost = cost * 2
 
     if calctype == 'slab':
-        if cost / 4 < 50:
+        if cost / 11 < 50:
             nodes = 4
             tasks_per_node = max_tasks_per_node
             threads = 1
-        elif cost / 4 < 200:
+        elif cost / 11 < 200:
             nodes = 12
             tasks_per_node = max_tasks_per_node
             threads = 1
-        elif cost / 4 < 1200:
+        elif cost / 11 < 1600:
             nodes = 27
             tasks_per_node = max_tasks_per_node
             threads = 1
