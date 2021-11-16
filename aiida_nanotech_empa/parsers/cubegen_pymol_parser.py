@@ -62,9 +62,9 @@ class CubegenPymolParser(CubegenBaseParser):
                                         (0.0, 0.4, 1.0),  # blue
                                     ],
                                     orientations=('z'),
-                                    output_folder=image_folder.name,
+                                    output_folder=image_folder,
                                     output_name=os.path.splitext(filename)[0])
 
-            image_folder_node = FolderData(tree=image_folder.name)
+            image_folder_node = FolderData(tree=image_folder)
 
             self.out("cube_image_folder", image_folder_node)
