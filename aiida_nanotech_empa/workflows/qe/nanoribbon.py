@@ -13,6 +13,8 @@ from aiida_quantumespresso.calculations.pp import PpCalculation
 from aiida_quantumespresso.calculations.projwfc import ProjwfcCalculation
 from aiida_quantumespresso.utils.pseudopotential import validate_and_prepare_pseudos_inputs
 
+from aiida_nanotech_empa.utils import common_utils
+
 
 class NanoribbonWorkChain(WorkChain):
     @classmethod
@@ -92,12 +94,10 @@ class NanoribbonWorkChain(WorkChain):
     def run_cell_opt2(self):
         if self.inputs.optimize_cell.value:
             prev_calc = self.ctx.cell_opt1
-            # ---
-            # check if previous calc was okay
-            error_msg = self._check_prev_calc(prev_calc)
-            if error_msg is not None:
+
+            if not common_utils.check_if_calc_ok(self, prev_calc):
                 return self.exit_codes.CALC_FAILED
-            # ---
+
             structure = prev_calc.outputs.output_structure
             return self._submit_pw_calc(structure,
                                         label="cell_opt2",
@@ -113,12 +113,10 @@ class NanoribbonWorkChain(WorkChain):
     def run_scf(self):
         if self.inputs.optimize_cell.value:
             prev_calc = self.ctx.cell_opt2
-            # ---
-            # check if previous calc was okay
-            error_msg = self._check_prev_calc(prev_calc)
-            if error_msg is not None:
+
+            if not common_utils.check_if_calc_ok(self, prev_calc):
                 return self.exit_codes.CALC_FAILED
-        # ---
+
             structure = prev_calc.outputs.output_structure
         else:
             structure = self.inputs.structure
@@ -141,12 +139,10 @@ class NanoribbonWorkChain(WorkChain):
         builder.code = self.inputs.pp_code
 
         prev_calc = self.ctx.scf
-        # ---
-        # check if previous calc was okay
-        error_msg = self._check_prev_calc(prev_calc)
-        if error_msg is not None:
+
+        if not common_utils.check_if_calc_ok(self, prev_calc):
             return self.exit_codes.CALC_FAILED
-        # ---
+
         builder.parent_folder = prev_calc.outputs.remote_folder
 
         structure = prev_calc.inputs.structure
@@ -211,12 +207,10 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_bands(self):
-        # ---
-        # check if previous calc was okay
-        error_msg = self._check_prev_calc(self.ctx.export_hartree)
-        if error_msg is not None:
+
+        if not common_utils.check_if_calc_ok(self, self.ctx.export_hartree):
             return self.exit_codes.CALC_FAILED
-        # ---
+
         prev_calc = self.ctx.scf
         structure = prev_calc.inputs.structure
         parent_folder = prev_calc.outputs.remote_folder
@@ -233,18 +227,16 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_export_pdos(self):
+
+        prev_calc = self.ctx.bands
+        if not common_utils.check_if_calc_ok(self, prev_calc):
+            return self.exit_codes.CALC_FAILED
+
         self.report("Running projwfc.x to export PDOS")
         label = "export_pdos"
-        # ---
-        # check if previous calc was okay
-        error_msg = self._check_prev_calc(self.ctx.bands)
-        if error_msg is not None:
-            return self.exit_codes.CALC_FAILED
-        # ---
+
         builder = ProjwfcCalculation.get_builder()
         builder.code = self.inputs.projwfc_code
-        prev_calc = self.ctx.bands
-        self._check_prev_calc(prev_calc)
 
         natoms = len(prev_calc.inputs.structure.attributes['sites'])
         nproc_mach = min(
@@ -301,13 +293,12 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_bands_lowres(self):
-        self.report("Running bands with fewer kpt to export KS")
-        # ---
-        # check if previous calc was okay
-        error_msg = self._check_prev_calc(self.ctx.export_pdos)
-        if error_msg is not None:
+
+        if not common_utils.check_if_calc_ok(self, self.ctx.export_pdos):
             return self.exit_codes.CALC_FAILED
-        # ---
+
+        self.report("Running bands with fewer kpt to export KS")
+
         prev_calc = self.ctx.scf
         structure = prev_calc.inputs.structure
         parent_folder = prev_calc.outputs.remote_folder
@@ -324,16 +315,13 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def prepare_export_orbitals(self):
+
+        prev_calc = self.ctx.bands_lowres
+        if not common_utils.check_if_calc_ok(self, prev_calc):
+            return self.exit_codes.CALC_FAILED
+
         self.report("Getting ready to export KS orbitals.")
 
-        # Getting and checking the previous calculation.
-        prev_calc = self.ctx.bands_lowres
-        # ---
-        # check if previous calc was okay
-        error_msg = self._check_prev_calc(prev_calc)
-        if error_msg is not None:
-            return self.exit_codes.CALC_FAILED
-        # ---
         self.ctx.export_orbitals_parameters = {
             'INPUTPP': {
                 # contribution of a selected wavefunction
@@ -394,19 +382,18 @@ class NanoribbonWorkChain(WorkChain):
         return self.ctx.export_orbitals_band_number <= kband2
 
     def run_export_orbitals(self):
-        self.report("Running pp.x to export KS orbitals")
-        # ---
         # check if previous calc was okay
         if self.ctx.export_orbitals_band_number == self.ctx.first_band:
             to_check = 'bands_lowres'
         else:
             to_check = 'export_orbitals_{}'.format(
                 self.ctx.export_orbitals_band_number - 1)
-
-        error_msg = self._check_prev_calc(getattr(self.ctx, to_check))
-        if error_msg is not None:
+        if not common_utils.check_if_calc_ok(self, getattr(self.ctx,
+                                                           to_check)):
             return self.exit_codes.CALC_FAILED
-        # ---
+
+        self.report("Running pp.x to export KS orbitals")
+
         builder = PpCalculation.get_builder()
         builder.code = self.inputs.pp_code
         prev_calc = self.ctx.bands_lowres
@@ -435,12 +422,10 @@ class NanoribbonWorkChain(WorkChain):
         label = "export_spinden"
         last_ks = 'export_orbitals_{}'.format(
             self.ctx.export_orbitals_band_number - 1)
-        # ---
-        # check if previous calc was okay
-        error_msg = self._check_prev_calc(getattr(self.ctx, last_ks))
-        if error_msg is not None:
+
+        if not common_utils.check_if_calc_ok(self, getattr(self.ctx, last_ks)):
             return self.exit_codes.CALC_FAILED
-        # ---
+
         builder = PpCalculation.get_builder()
         builder.code = self.inputs.pp_code
         nproc_mach = builder.code.computer.get_default_mpiprocs_per_machine()
@@ -496,8 +481,7 @@ class NanoribbonWorkChain(WorkChain):
         # check if previous calc was okay
         if nspin > 1:
             prev_calc = self.ctx.export_spinden
-            error_msg = self._check_prev_calc(prev_calc)
-            if error_msg is not None:
+            if not common_utils.check_if_calc_ok(self, prev_calc):
                 return self.exit_codes.CALC_FAILED
 
             self.out('spin_density_arraydata',
@@ -505,17 +489,6 @@ class NanoribbonWorkChain(WorkChain):
 
         self.report("END of workchain")
         return
-
-    def _check_prev_calc(self, prev_calc):
-        #error = None
-        #output_fname = prev_calc.attributes['output_filename']
-        if not prev_calc.is_finished_ok:
-            if prev_calc.exit_status >= 500:
-                self.report("Warning: previous step: " +
-                            prev_calc.exit_message)
-            else:
-                self.report("ERROR: previous step: " + prev_calc.exit_message)
-                return self.exit_codes.CALC_FAILED
 
     # =========================================================================
     def _submit_pw_calc(  # pylint: disable=too-many-arguments
