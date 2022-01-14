@@ -104,11 +104,11 @@ class Cp2kBulkOptWorkChain(WorkChain):
         structure_with_tags, kinds_dict = determine_kinds(
             structure, magnetization_per_site)
 
-        self.ctx.atoms = structure_with_tags.get_ase()
+        ase_atoms = structure_with_tags.get_ase()
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.code
-        builder.cp2k.structure = StructureData(ase=self.ctx.atoms)
+        builder.cp2k.structure = StructureData(ase=ase_atoms)
         builder.cp2k.file = {
             'basis':
             SinglefileData(
@@ -173,7 +173,7 @@ class Cp2kBulkOptWorkChain(WorkChain):
 
         #computational resources
         nodes, tasks_per_node, threads = get_nodes(
-            atoms=self.ctx.atoms,
+            atoms=ase_atoms,
             calctype='slab',
             computer=self.inputs.code.computer,
             max_nodes=self.inputs.max_nodes.value,

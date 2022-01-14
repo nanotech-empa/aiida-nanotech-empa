@@ -88,14 +88,13 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
             extra_cell = 5.0
         else:
             extra_cell = 15.0
-        self.ctx.atoms = structure_with_tags.get_ase()
-        self.ctx.atoms.cell = 2 * (np.ptp(self.ctx.atoms.positions,
-                                          axis=0)) + extra_cell
-        self.ctx.atoms.center()
+        ase_atoms = structure_with_tags.get_ase()
+        ase_atoms.cell = 2 * (np.ptp(ase_atoms.positions, axis=0)) + extra_cell
+        ase_atoms.center()
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.code
-        builder.cp2k.structure = StructureData(ase=self.ctx.atoms)
+        builder.cp2k.structure = StructureData(ase=ase_atoms)
         builder.cp2k.file = {
             'basis':
             SinglefileData(
@@ -132,7 +131,7 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
 
         #computational resources
         nodes, tasks_per_node, threads = get_nodes(
-            atoms=self.ctx.atoms,
+            atoms=ase_atoms,
             calctype='default',
             computer=self.inputs.code.computer,
             max_nodes=48,

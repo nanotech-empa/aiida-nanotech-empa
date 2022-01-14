@@ -24,11 +24,11 @@ def select_frontier_orbital_energies(out_params, n_orb=4):
 
         homo_s0 = out_params['homos'][0]
 
-        i_start = homo_s0 - n_orb
-        i_end = homo_s0 + n_orb
+        i_start = max(homo_s0 - n_orb, -1)
+        i_end = min(homo_s0 + n_orb, len(mo_e[0]) - 1)
 
         for i_orb in range(i_end, i_start, -1):
-            indexes.append(i_orb)
+            indexes.append(i_orb + 1)
             energies[0].append(mo_e[0][i_orb])
             occs[0].append(2 if i_orb <= homo_s0 else 0)
 
@@ -42,11 +42,11 @@ def select_frontier_orbital_energies(out_params, n_orb=4):
 
         central_i = int(np.round((homo_s0 + homo_s1) / 2))
 
-        i_start = central_i - n_orb
-        i_end = central_i + n_orb
+        i_start = max(central_i - n_orb, -1)
+        i_end = min(central_i + n_orb, len(mo_e[0]) - 1)
 
         for i_orb in range(i_end, i_start, -1):
-            indexes.append(i_orb)
+            indexes.append(i_orb + 1)
             energies[0].append(mo_e[0][i_orb])
             energies[1].append(mo_e[1][i_orb])
             occs[0].append(1 if i_orb <= homo_s0 else 0)
@@ -112,7 +112,8 @@ def _get_out_params_str(out_params):
     s += "MO energies:\n"
     s += _get_orb_energies_str(out_params, 4)
     s += "\n"
-    s += "GAP:       {:.4f} eV\n".format(out_params['gap'])
+    if 'gap' in dict(out_params):
+        s += "GAP:       {:.4f} eV\n".format(out_params['gap'])
     if 'gap_a' in dict(out_params):
         s += "GAP alpha: {:.4f} eV\n".format(out_params['gap_a'])
         s += "GAP beta:  {:.4f} eV\n".format(out_params['gap_b'])
@@ -130,7 +131,7 @@ def _get_natorb_analysis_str(natorb_params, out_params, n_orb=4):
     lines = ["{:>20} {:>16} {:>16}".format("i_no", "occ", "sp. proj. occ")]
 
     for i_no in range(i_end, i_start, -1):
-        lines.append("{:>20} {:16.4f} {:16.4f}".format(i_no, no_occs[i_no],
+        lines.append("{:>20} {:16.4f} {:16.4f}".format(i_no + 1, no_occs[i_no],
                                                        no_occs_sp[i_no]))
     lines.append("---------------------------------------------------------")
     lines.append("{:>20} {:16.4f} {:16.4f}".format(
