@@ -48,12 +48,18 @@ def setup_context_variables(self_):
 
 def determine_comp_resources(num_atoms, basis_set=""):
 
+    # Very small basis sets:
     if basis_set.lower() in ("sto-3g", "sv", "svp", "def2sv", "def2svp"):
         num_cores = int(np.round(num_atoms / 20))
         mem_per_core = 512
-    else:
+    # Large basis sets:
+    elif basis_set.lower() in ("6-311g*", "6-311g**", "6-311+g*", "6-311+g**"):
         num_cores = int(np.round(num_atoms / 16))
         mem_per_core = 4096
+    # Default:
+    else:
+        num_cores = int(np.round(num_atoms / 18))
+        mem_per_core = 2048
 
     num_cores = max(1, num_cores)
     num_cores = min(24, num_cores)
