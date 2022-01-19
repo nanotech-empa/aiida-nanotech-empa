@@ -220,7 +220,7 @@ def get_nodes(atoms=None,
 
     cost = compute_cost(atoms.get_chemical_symbols())
     if uks:
-        cost = cost * 2
+        cost = cost * 1.26
 
     if calctype == 'slab':
         if cost / 11 < 50:
@@ -231,7 +231,7 @@ def get_nodes(atoms=None,
             nodes = 12
             tasks_per_node = max_tasks_per_node
             threads = 1
-        elif cost / 11 < 1600:
+        elif cost / 11 < 1400:
             nodes = 27
             tasks_per_node = max_tasks_per_node
             threads = 1
