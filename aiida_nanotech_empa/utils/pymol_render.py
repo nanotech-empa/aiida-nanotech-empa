@@ -23,7 +23,7 @@ sys.stdout, sys.stderr = _stdouterr
 from pymol import cmd
 
 
-def crop_image_bbox(filename):
+def _crop_image_bbox(filename):
 
     image = Image.open(filename)
 
@@ -36,6 +36,31 @@ def crop_image_bbox(filename):
 
     image = image.convert('RGBA')
     image.save(filename)
+
+
+def _save_and_crop(fname, max_w, view):
+
+    for _try in range(2):
+        # Pymol sometimes creates the png with a delay
+        # and sometimes even after a long delay, the image is not created
+        # in this case, try to create the image again (loop over _try)
+        cmd.png(fname, width=f"{max_w + 1}cm", dpi=500, ray=1)
+        # Wait for a bit
+        for _i in range(200):
+            if os.path.isfile(fname):
+                break
+            time.sleep(0.5)
+        if os.path.isfile(fname):
+            break
+
+    if not os.path.isfile(fname):
+        raise FileNotFoundError(f'Pymol render did not create {fname}')
+
+    cmd.set_view(view)  # reset the view
+    # Sleep a bit more to make sure the image is finished
+    # (before, sometimes the PIL in _crop was complaining of a corrupted png)
+    time.sleep(0.1)
+    _crop_image_bbox(fname)
 
 
 def make_pymol_png(  # noqa
@@ -135,7 +160,8 @@ def make_pymol_png(  # noqa
 
     view = cmd.get_view()
 
-    # make pictures from 3 different angles
+    # ------------------------------------
+    # Output images
 
     out_filepath = output_folder + "/"
 
@@ -147,38 +173,26 @@ def make_pymol_png(  # noqa
     if ext == '.cube':
         out_filepath += "_iv{:.3f}".format(isov)
 
-    def save_and_crop(fname):
-        cmd.png(fname, width=f"{max_w + 1}cm", dpi=500, ray=1)
-        # Wait for a bit, sometimes the pymol png gets created with a delay
-        for _i in range(200):
-            if os.path.isfile(fname):
-                break
-            time.sleep(0.5)
-        if not os.path.isfile(fname):
-            raise FileNotFoundError(f'Pymol render did not create {fname}')
-        cmd.set_view(view)
-        crop_image_bbox(fname)
-
     for orient in orientations:
         if orient in ('z', 'z+'):
-            save_and_crop(out_filepath + "_z+.png")
+            _save_and_crop(out_filepath + "_z+.png", max_w, view)
         elif orient == 'z-':
             cmd.turn("x", 180)
             cmd.turn("y", 180)
-            save_and_crop(out_filepath + "_z-.png")
+            _save_and_crop(out_filepath + "_z-.png", max_w, view)
         elif orient in ('y', 'y+'):
             cmd.turn("x", -90)
-            save_and_crop(out_filepath + "_y+.png")
+            _save_and_crop(out_filepath + "_y+.png", max_w, view)
         elif orient == 'y-':
             cmd.turn("x", 90)
             cmd.turn("z", 180)
-            save_and_crop(out_filepath + "_y-.png")
+            _save_and_crop(out_filepath + "_y-.png", max_w, view)
         elif orient in ('x', 'x+'):
             cmd.turn("x", -90)
             cmd.turn("y", 90)
-            save_and_crop(out_filepath + "_x+.png")
+            _save_and_crop(out_filepath + "_x+.png", max_w, view)
         elif orient == 'x-':
             cmd.turn("x", -90)
             cmd.turn("y", -90)
             cmd.turn("z", 180)
-            save_and_crop(out_filepath + "_x-.png")
+            _save_and_crop(out_filepath + "_x-.png", max_w, view)
