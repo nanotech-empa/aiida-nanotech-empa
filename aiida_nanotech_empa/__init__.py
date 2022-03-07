@@ -4,4 +4,8 @@ aiida_nanotech_empa
 AiiDA plugin containing plugins/work chains developed at nanotech@surfaces group from Empa.
 """
 
-__version__ = "0.5.2"
+from aiida_nanotech_empa.version import __version__
+
+__all__ = [
+    "__version__",
+]
