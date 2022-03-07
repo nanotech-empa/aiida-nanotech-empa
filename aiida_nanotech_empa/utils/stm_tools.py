@@ -195,6 +195,7 @@ def plot_mapping(sop,
                  extrap_h=3.0,
                  fwhm=0.05,
                  save_dir=None,
+                 ax=None,
                  kind='orb'):
     # pylint: disable=too-many-arguments,too-many-locals
     """
@@ -244,10 +245,17 @@ def plot_mapping(sop,
     if save_dir is not None:
         save_figure_and_igor(data, f"{save_dir}/{fname}", label, **imshow_args)
 
-    plt.imshow(data.T, **imshow_args)
-    plt.title(label)
-    plt.axis('off')
-    plt.show()
+    show_plot = False
+    if ax is None:
+        ax = plt.gca()
+        show_plot = True
+
+    ax.imshow(data.T, **imshow_args)
+    ax.set_title(label, loc='left')
+    ax.axis('off')
+
+    if show_plot:
+        plt.show()
 
 
 def plot_no_mapping(nop,
@@ -298,12 +306,14 @@ def plot_no_mapping(nop,
     if save_dir is not None:
         save_figure_and_igor(data, f"{save_dir}/{fname}", label, **imshow_args)
 
+    show_plot = False
     if ax is None:
         ax = plt.gca()
+        show_plot = True
 
     ax.imshow(data.T, **imshow_args)
     ax.set_title(label, loc='left')
     ax.axis('off')
 
-    if ax is None:
+    if show_plot:
         plt.show()
