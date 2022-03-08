@@ -2,4 +2,4 @@
 # -*- coding: utf-8 -*-
 """This module contains project version information."""
 
-__version__ = "0.5.2"
+__version__ = "0.5.3"
