@@ -177,21 +177,23 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             scf_converged = scf_out_params['motion_step_info'][
                 'scf_converged'][-1]
 
+            if not scf_converged:
+                self.report("SCF did not converge, try the next protocol.")
+                self.ctx.scf_restart_from_last = False
+                return True
+
             gap_positive = min(scf_out_params['bandgap_spin1_au'],
                                scf_out_params['bandgap_spin2_au']) >= 0.0
 
-            if scf_converged and gap_positive:
-                self.report("SCF finished well, continue to GW!")
-                return False
-
-            if scf_converged:
-                # If the SCF converged but the gap was negative, restart in the next step
+            if not gap_positive:
+                self.report("Gap is negative, try the next protocol.")
+                # If the SCF converged but the gap was negative,
+                # restart in the next step
                 self.ctx.scf_restart_from_last = True
-            else:
-                self.ctx.scf_restart_from_last = False
+                return True
 
-            self.report(
-                "Something went wrong in the SCF, try the next protocol.")
+            self.report("SCF finished well, continue to GW!")
+            return False
 
         return True
 
