@@ -40,6 +40,10 @@ class NanoribbonWorkChain(WorkChain):
         spec.input("pp_code", valid_type=Code)
         spec.input("projwfc_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
+        spec.input("tot_charge",
+                   valid_type=Float,
+                   default=lambda: Float(0.0),
+                   required=False)
         spec.input("precision",
                    valid_type=Float,
                    default=lambda: Float(1.0),
@@ -80,13 +84,15 @@ class NanoribbonWorkChain(WorkChain):
     def run_cell_opt1(self):
         if self.inputs.optimize_cell.value:
             structure = self.inputs.structure
-            return self._submit_pw_calc(structure,
-                                        label="cell_opt1",
-                                        runtype='vc-relax',
-                                        precision=0.5,
-                                        min_kpoints=int(1),
-                                        max_nodes=self.inputs.max_nodes.value,
-                                        mem_node=self.inputs.mem_node.value)
+            return self._submit_pw_calc(
+                structure,
+                tot_charge=self.inputs.tot_charge.value,
+                label="cell_opt1",
+                runtype='vc-relax',
+                precision=0.5,
+                min_kpoints=int(1),
+                max_nodes=self.inputs.max_nodes.value,
+                mem_node=self.inputs.mem_node.value)
         self.report("Skipping: cell_opt = False")
         return
 
@@ -99,13 +105,15 @@ class NanoribbonWorkChain(WorkChain):
                 return self.exit_codes.CALC_FAILED
 
             structure = prev_calc.outputs.output_structure
-            return self._submit_pw_calc(structure,
-                                        label="cell_opt2",
-                                        runtype='vc-relax',
-                                        precision=1.0,
-                                        min_kpoints=int(1),
-                                        max_nodes=self.inputs.max_nodes.value,
-                                        mem_node=self.inputs.mem_node.value)
+            return self._submit_pw_calc(
+                structure,
+                tot_charge=self.inputs.tot_charge.value,
+                label="cell_opt2",
+                runtype='vc-relax',
+                precision=1.0,
+                min_kpoints=int(1),
+                max_nodes=self.inputs.max_nodes.value,
+                mem_node=self.inputs.mem_node.value)
         self.report("Skipping: cell_opt = False")
         return
 
@@ -122,6 +130,7 @@ class NanoribbonWorkChain(WorkChain):
             structure = self.inputs.structure
         min_kpoints = min(int(10), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
+                                    tot_charge=self.inputs.tot_charge.value,
                                     label="scf",
                                     runtype='scf',
                                     precision=3.0,
@@ -216,6 +225,7 @@ class NanoribbonWorkChain(WorkChain):
         parent_folder = prev_calc.outputs.remote_folder
         min_kpoints = min(int(20), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
+                                    tot_charge=self.inputs.tot_charge.value,
                                     label="bands",
                                     parent_folder=parent_folder,
                                     runtype='bands',
@@ -304,6 +314,7 @@ class NanoribbonWorkChain(WorkChain):
         parent_folder = prev_calc.outputs.remote_folder
         min_kpoints = min(int(12), self.inputs.max_kpoints.value)
         return self._submit_pw_calc(structure,
+                                    tot_charge=self.inputs.tot_charge.value,
                                     label="bands_lowres",
                                     parent_folder=parent_folder,
                                     runtype='bands',
@@ -494,6 +505,7 @@ class NanoribbonWorkChain(WorkChain):
     def _submit_pw_calc(  # pylint: disable=too-many-arguments
             self,
             structure,
+            tot_charge,
             label,
             runtype,
             precision,
@@ -507,7 +519,8 @@ class NanoribbonWorkChain(WorkChain):
 
         builder.code = self.inputs.pw_code
         builder.structure = structure
-        builder.parameters = self._get_parameters(structure, runtype, label)
+        builder.parameters = self._get_parameters(structure, tot_charge,
+                                                  runtype, label)
         builder.pseudos = validate_and_prepare_pseudos_inputs(
             structure, None, self.inputs.pseudo_family)
 
@@ -578,7 +591,7 @@ class NanoribbonWorkChain(WorkChain):
         return ToContext(**{label: future})
 
     # =========================================================================
-    def _get_parameters(self, structure, runtype, label):
+    def _get_parameters(self, structure, tot_charge, runtype, label):
         params = {
             'CONTROL': {
                 'calculation': runtype,
@@ -591,6 +604,7 @@ class NanoribbonWorkChain(WorkChain):
                 'ecutrho': 400.,
                 'occupations': 'smearing',
                 'degauss': 0.001,
+                'tot_charge': tot_charge,
             },
             'ELECTRONS': {
                 'conv_thr': 1.e-8,
