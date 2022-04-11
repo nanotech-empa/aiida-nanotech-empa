@@ -209,7 +209,7 @@ def get_nodes(atoms=None,
               max_nodes=1,
               uks=False):
     """"Determine the resources needed for the calculation."""
-    #pylint: disable=too-many-branches
+
     threads = 1
     max_tasks_per_node = computer.get_default_mpiprocs_per_machine()
     if max_tasks_per_node is None:
@@ -218,61 +218,113 @@ def get_nodes(atoms=None,
     if atoms is None or computer is None:
         return max_nodes, max_tasks_per_node, threads
 
+    resources = {
+        'slab': {
+            50: {
+                'nodes': 4,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            200: {
+                'nodes': 12,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            1400: {
+                'nodes': 27,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            3000: {
+                'nodes': 48,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            4000: {
+                'nodes': 75,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            10000: {
+                'nodes': 108,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            }
+        },
+        'default': {
+            50: {
+                'nodes': 4,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            100: {
+                'nodes': 12,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            180: {
+                'nodes': 27,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            400: {
+                'nodes': 48,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+        },
+        'gw': {
+            50: {
+                'nodes': 12,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            100: {
+                'nodes': 256,
+                'tasks_per_node': int(max(max_tasks_per_node / 3, 1)),
+                'threads': 1
+            },
+            180: {
+                'nodes': 512,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            400: {
+                'nodes': 1024,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+        },
+        'gw_ic': {
+            50: {
+                'nodes': 12,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            100: {
+                'nodes': 256,
+                'tasks_per_node': int(max(max_tasks_per_node / 3, 1)),
+                'threads': 1
+            },
+            180: {
+                'nodes': 512,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+            400: {
+                'nodes': 1024,
+                'tasks_per_node': max_tasks_per_node,
+                'threads': 1
+            },
+        }
+    }
+
     cost = compute_cost(atoms.get_chemical_symbols())
     if uks:
         cost = cost * 1.26
 
-    if calctype == 'slab':
-        if cost / 11 < 50:
-            nodes = 4
-            tasks_per_node = max_tasks_per_node
-            threads = 1
-        elif cost / 11 < 200:
-            nodes = 12
-            tasks_per_node = max_tasks_per_node
-            threads = 1
-        elif cost / 11 < 1400:
-            nodes = 27
-            tasks_per_node = max_tasks_per_node
-            threads = 1
-        else:
-            nodes = 48
-            tasks_per_node = max_tasks_per_node
-            threads = 1
-
-    elif calctype == 'default':
-        if cost / 4 < 50:
-            nodes = 4
-            tasks_per_node = max_tasks_per_node
-            threads = 1
-        elif cost / 4 < 100:
-            nodes = 12
-            tasks_per_node = max_tasks_per_node
-            threads = 1
-        elif cost / 4 < 180:
-            nodes = 12
-            tasks_per_node = max_tasks_per_node
-            threads = 1
-        else:
-            nodes = 27
-            tasks_per_node = max_tasks_per_node
-            threads = 1
-    else:
-        if cost / 4 < 50:
-            nodes = 12
-            tasks_per_node = max_tasks_per_node
-            threads = 1
-        elif cost / 4 < 100:
-            nodes = 256
-            tasks_per_node = int(max(max_tasks_per_node / 3, 1))
-            threads = 1
-        elif cost / 4 < 180:
-            nodes = 512
-            tasks_per_node = 1
-            threads = 1
-        else:
-            nodes = 1024
-            tasks_per_node = 1
-            threads = 1
-
+    theone = min(resources[calctype], key=lambda x: abs(x - cost))
+    nodes = resources[calctype][theone]['nodes']
+    tasks_per_node = resources[calctype][theone]['tasks_per_node']
+    threads = resources[calctype][theone]['threads']
     return min(nodes, max_nodes), tasks_per_node, threads
