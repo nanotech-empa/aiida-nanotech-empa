@@ -202,11 +202,11 @@ def compute_cost(element_list, calctype='default', uks=False):
         else:
             the_cost += 4
     if calctype == 'slab':
-        cost = int(cost / 11)
+        the_cost = int(the_cost / 11)
     else:
-        cost = int(cost / 4)
+        the_cost = int(the_cost / 4)
     if uks:
-        cost = cost * 1.26
+        the_cost = the_cost * 1.26
     return the_cost
 
 
