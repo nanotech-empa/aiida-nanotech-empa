@@ -175,7 +175,7 @@ def get_cutoff(structure=None):
     return max([atom_data['cutoff'][element] for element in elements])
 
 
-def compute_cost(element_list):
+def compute_cost(element_list, calctype='default', uks=False):
     cost = {
         'H': 1,
         'C': 4,
@@ -186,6 +186,7 @@ def compute_cost(element_list):
         'Cu': 11,
         'Ag': 11,
         'Pt': 18,
+        'Tb': 19,
         'Co': 11,
         'Zn': 10,
         'Pd': 18,
@@ -200,6 +201,12 @@ def compute_cost(element_list):
             the_cost += cost[s]
         else:
             the_cost += 4
+    if calctype == 'slab':
+        cost = int(cost / 11)
+    else:
+        cost = int(cost / 4)
+    if uks:
+        cost = cost * 1.26
     return the_cost
 
 
@@ -319,9 +326,9 @@ def get_nodes(atoms=None,
         }
     }
 
-    cost = compute_cost(atoms.get_chemical_symbols())
-    if uks:
-        cost = cost * 1.26
+    cost = compute_cost(element_list=atoms.get_chemical_symbols(),
+                        calctype=calctype,
+                        uks=uks)
 
     theone = min(resources[calctype], key=lambda x: abs(x - cost))
     nodes = resources[calctype][theone]['nodes']
