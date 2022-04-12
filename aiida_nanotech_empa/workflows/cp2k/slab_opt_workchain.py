@@ -44,7 +44,7 @@ class Cp2kSlabOptWorkChain(WorkChain):
                    required=False)
         spec.input("protocol",
                    valid_type=Str,
-                   default=lambda: Str('Standard'),
+                   default=lambda: Str('standard'),
                    required=False,
                    help="Settings to run simulations with.")
         spec.input("max_nodes",
