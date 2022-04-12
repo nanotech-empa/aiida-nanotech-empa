@@ -32,7 +32,7 @@ def _example_cp2k_slabopt(cp2k_code, mult):
         mag[1] = -1
         builder.magnetization_per_site = List(list=mag)
 
-    builder.debug = Bool(True)
+    builder.protocol = Str('debug')
 
     _, calc_node = run_get_node(builder)
 
