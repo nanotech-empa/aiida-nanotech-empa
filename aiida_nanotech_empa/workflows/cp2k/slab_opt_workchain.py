@@ -42,10 +42,11 @@ class Cp2kSlabOptWorkChain(WorkChain):
                    valid_type=Bool,
                    default=lambda: Bool(False),
                    required=False)
-        spec.input("low_accuracy",
-                   valid_type=Bool,
-                   default=lambda: Bool(False),
-                   required=False)
+        spec.input("protocol",
+                   valid_type=Str,
+                   default=lambda: Str('Standard'),
+                   required=False,
+                   help="Settings to run simulations with.")
         spec.input("max_nodes",
                    valid_type=Int,
                    default=lambda: Int(48),
@@ -54,11 +55,6 @@ class Cp2kSlabOptWorkChain(WorkChain):
                    valid_type=Int,
                    default=lambda: Int(7200),
                    required=False)
-        spec.input("debug",
-                   valid_type=Bool,
-                   default=lambda: Bool(False),
-                   required=False,
-                   help="Run with fast parameters for debugging.")
 
         #workchain outline
         spec.outline(cls.setup, cls.submit_calc, cls.finalize)
@@ -76,18 +72,11 @@ class Cp2kSlabOptWorkChain(WorkChain):
         # --------------------------------------------------
 
     def submit_calc(self):
-
-        #load input template
-        which_protocol = 'default'
-        if self.inputs.low_accuracy:
-            which_protocol = 'low_accuracy'
-        if self.inputs.debug:
-            which_protocol = 'debug'
         with open(pathlib.Path(__file__).parent /
                   './protocols/slab_opt_protocol.yml',
                   encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(protocols[which_protocol])
+            input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
 
         structure = self.inputs.structure
         #cutoff
