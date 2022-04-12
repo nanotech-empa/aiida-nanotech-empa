@@ -1,7 +1,7 @@
 import os
 import ase.io
 
-from aiida.orm import StructureData, Bool, Int, List, Str
+from aiida.orm import StructureData, Int, List, Str
 from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
