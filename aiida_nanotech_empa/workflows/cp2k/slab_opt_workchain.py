@@ -42,6 +42,10 @@ class Cp2kSlabOptWorkChain(WorkChain):
                    valid_type=Bool,
                    default=lambda: Bool(False),
                    required=False)
+        spec.input("low_accuracy",
+                   valid_type=Bool,
+                   default=lambda: Bool(False),
+                   required=False)
         spec.input("max_nodes",
                    valid_type=Int,
                    default=lambda: Int(48),
@@ -74,11 +78,16 @@ class Cp2kSlabOptWorkChain(WorkChain):
     def submit_calc(self):
 
         #load input template
+        which_protocol = 'default'
+        if self.inputs.low_accuracy:
+            which_protocol = 'low_accuracy'
+        if self.inputs.debug:
+            which_protocol = 'debug'
         with open(pathlib.Path(__file__).parent /
                   './protocols/slab_opt_protocol.yml',
                   encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(protocols['default'])
+            input_dict = copy.deepcopy(protocols[which_protocol])
 
         structure = self.inputs.structure
         #cutoff
@@ -122,15 +131,6 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
-
-        if self.inputs.debug:
-            input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.1
-            input_dict['MOTION']['GEO_OPT']['RMS_DR'] = 0.1
-            input_dict['MOTION']['GEO_OPT']['RMS_FORCE'] = 0.1
-            input_dict['MOTION']['GEO_OPT']['MAX_DR'] = 0.1
-            input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
-            input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
-                'EPS_SCF'] = 1e-4
 
         # KINDS section
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
