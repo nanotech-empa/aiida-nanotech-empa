@@ -177,7 +177,8 @@ gpw_std_ic_step:
           RI:
             RI_METRIC:
               POTENTIAL_TYPE: IDENTITY
-          LOW_SCALING: {}
+          LOW_SCALING:
+            MEMORY_CUT: 1
           RI_RPA:
             GW:
               CORR_MOS_OCC: '10'
@@ -316,7 +317,8 @@ gapw_std_ic_step:
           RI:
             RI_METRIC:
               POTENTIAL_TYPE: IDENTITY
-          LOW_SCALING: {}
+          LOW_SCALING:
+            MEMORY_CUT: 1
           RI_RPA:
             GW:
               CORR_MOS_OCC: '10'
@@ -455,7 +457,8 @@ gapw_hq_ic_step:
           RI:
             RI_METRIC:
               POTENTIAL_TYPE: IDENTITY
-          LOW_SCALING: {}
+          LOW_SCALING:
+            MEMORY_CUT: 1
           RI_RPA:
             GW:
               CORR_MOS_OCC: '10'
