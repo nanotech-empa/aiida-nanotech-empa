@@ -426,7 +426,7 @@ gapw_hq_gw_step:
   GLOBAL:
     RUN_TYPE: ENERGY
     PRINT_LEVEL: MEDIUM
-    EXTENDED_FFT_LENGTHS: ''
+    EXTENDED_FFT_LENGTHS:  ''
 # -------------------------------------------------------------
 # GAPW high-quality IC STEP
 # -------------------------------------------------------------
