@@ -43,10 +43,10 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
 
     assert calc_node.is_finished_ok
 
-    gw_ic_res = dict(calc_node.outputs.gw_ic_parameters)
+    gw_res = dict(calc_node.outputs.gw_output_parameters)
     print()
-    for k in gw_ic_res:
-        print("  {}: {}".format(k, gw_ic_res[k]))
+    for k in gw_res:
+        print("  {}: {}".format(k, gw_res[k]))
     print()
 
 
