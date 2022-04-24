@@ -87,7 +87,7 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
                    required=False,
                    help="Run with fast parameters for debugging.")
         spec.input("geo_opt",
-                   valid_type=Str,
+                   valid_type=Bool,
                    default=lambda: Bool(True),
                    required=False,
                    help="Perform geo opt step.")

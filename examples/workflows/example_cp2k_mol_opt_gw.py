@@ -60,6 +60,6 @@ def example_cp2k_mol_opt_gw_no_geo_opt(cp2k_code):
 
 if __name__ == '__main__':
     print("# geo opt #")
-    example_cp2k_mol_opt_gw_geo_opt(load_code("cp2k@localhost"))
+    example_cp2k_mol_opt_gw_geo_opt(load_code("cp2k-9.1@daint-mc-em01"))
     print("# No geo opt #")
-    example_cp2k_mol_opt_gw_no_geo_opt(load_code("cp2k@localhost"))
+    example_cp2k_mol_opt_gw_no_geo_opt(load_code("cp2k-9.1@daint-mc-em01"))
