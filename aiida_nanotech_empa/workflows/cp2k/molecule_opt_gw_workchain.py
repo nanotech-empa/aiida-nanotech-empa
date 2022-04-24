@@ -148,7 +148,8 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         builder.walltime_seconds = self.inputs.walltime_seconds
         builder.debug = self.inputs.debug
 
-        builder.metadata.description = "gas_opt"
+        builder.metadata.description = "auto from gw gas_opt"
+        builder.metadata.label = 'Cp2kMolOptWorkChain'
         submitted_node = self.submit(builder)
         return ToContext(gas_opt=submitted_node)
 
