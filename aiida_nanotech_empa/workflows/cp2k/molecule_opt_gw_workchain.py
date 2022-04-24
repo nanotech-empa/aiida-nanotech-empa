@@ -44,7 +44,7 @@ def analyze_structure(structure, mag_per_site):
     }
 
 
-class Cp2kMolOptGwWorkChain(WorkChain):
+class Cp2kMoleculeOptGwWorkChain(WorkChain):
     """
     WorkChain to  optimize molecule and run GW 
 
