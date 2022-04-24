@@ -162,9 +162,6 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
 
     def gw(self):
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.ic):
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
-
         self.report("Submitting GW.")
 
         builder = Cp2kMoleculeGwWorkChain.get_builder()
