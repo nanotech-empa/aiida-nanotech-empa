@@ -199,7 +199,7 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         self.out('gw_output_parameters', gw_out_params)
 
         # Add the workchain pk to the input structure extras
-        extras_label = "Cp2kMolOptGwWorkChain_pks"
+        extras_label = "Cp2kMoleculeOptGwWorkChain_pks"
         if extras_label not in self.inputs.structure.extras:
             extras_list = []
         else:
