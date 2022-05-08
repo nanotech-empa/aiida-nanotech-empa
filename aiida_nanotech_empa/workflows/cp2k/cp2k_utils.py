@@ -7,7 +7,7 @@ from aiida.orm import StructureData, Dict
 ang_2_bohr = 1.889725989
 
 
-def get_kinds_section(kinds_dict, protocol='gapw_std'):
+def get_kinds_section(kinds_dict, protocol='gapw_std', bsse=False):
     """ Write the &KIND sections in gw calculations given the structure and the settings_dict"""
 
     bset = 'gapw_std_gw_basis_set'
@@ -46,7 +46,22 @@ def get_kinds_section(kinds_dict, protocol='gapw_std'):
             new_section['GHOST'] = 'TRUE'
         if magnetization != 0.0:
             new_section['MAGNETIZATION'] = magnetization
+
+        #add only ghosts compliant to BSSE input
         kinds.append(new_section)
+        if bsse:
+            new_section = {
+                '_': kind_name + '_ghost',
+                'BASIS_SET': atom_data[bset][element],
+                'POTENTIAL': atom_data[potential][element],
+                'ELEMENT': element,
+            }
+            new_section['GHOST'] = 'TRUE'
+            if bsetaux:
+                new_section['BASIS_SET RI_AUX'] = atom_data[bsetaux][element]
+            if magnetization != 0.0:
+                new_section['MAGNETIZATION'] = magnetization
+            kinds.append(new_section)
 
     return {'FORCE_EVAL': {'SUBSYS': {'KIND': kinds}}}
 

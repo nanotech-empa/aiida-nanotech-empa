@@ -3,18 +3,41 @@ import pathlib
 import yaml
 import copy
 
-from aiida.engine import WorkChain, ToContext, ExitCode
+from aiida.engine import WorkChain, ToContext, ExitCode, calcfunction
 from aiida.orm import Int, Bool, Code, Dict, List, Str
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.utils import analyze_structure
 
-from aiida_nanotech_empa.utils import common_utils, analyze_structure
+from aiida_nanotech_empa.utils import common_utils
 
 Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 
 
-class Cp2kSlabOptWorkChain(WorkChain):
+@calcfunction
+def split_structure(charges, fragments, multiplicity):
+    charges = list(charges)
+    multiplicity = list(multiplicity)
+    fragments = list(fragments)
+    if not charges:
+        charges = [0 for f in fragments]
+    if not multiplicity:
+        multiplicity = [0 for f in fragments]
+    setup_dict = {}
+    for i, fragment in enumerate(fragments):
+        label = 'frag_' + str(i)
+        fragment.sort()
+        setup_dict[label] = {
+            'charge': charges[i],
+            'multiplicity': multiplicity[i],
+            'fragment': analyze_structure.list_to_string_range(fragment,
+                                                               shift=1)
+        }
+    return setup_dict
+
+
+class Cp2kBsseWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
@@ -23,18 +46,22 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         spec.input(
             "charge",  # +1 means one electron removed
-            valid_type=Int,
-            default=lambda: Int(0),
+            valid_type=List,
+            default=lambda: List(list=[]),
             required=False)
-        spec.input("fixed_atoms",
-                   valid_type=Str,
-                   default=lambda: Str(''),
-                   required=False)
         spec.input("multiplicity",
+                   valid_type=List,
+                   default=lambda: List(list=[]),
+                   required=False)
+        spec.input("whole_multiplicity",
                    valid_type=Int,
                    default=lambda: Int(0),
                    required=False)
         spec.input("magnetization_per_site",
+                   valid_type=List,
+                   default=lambda: List(list=[]),
+                   required=False)
+        spec.input("fragments",
                    valid_type=List,
                    default=lambda: List(list=[]),
                    required=False)
@@ -65,15 +92,28 @@ class Cp2kSlabOptWorkChain(WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+        spec.exit_code(
+            400,
+            "ERROR_NFRAGMENTS",
+            message="Only the case of 2 fragments is supported.",
+        )
 
     def setup(self):
         self.report("Inspecting input and setting up things")
+        self.ctx.fragments = split_structure(self.inputs.charge,
+                                             self.inputs.fragments,
+                                             self.inputs.multiplicity)
+        if len(list(self.inputs.fragments)) != 2:
+            return self.exit_codes.ERROR_NFRAGMENTS
+        return ExitCode(0)
 
         # --------------------------------------------------
 
+    # pylint: disable=too-many-locals
     def submit_calc(self):
+        self.report("Submitting BSSE")
         with open(pathlib.Path(__file__).parent /
-                  './protocols/slab_opt_protocol.yml',
+                  './protocols/bsse_protocol.yml',
                   encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
@@ -109,21 +149,66 @@ class Cp2kSlabOptWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
 
         #UKS
-        if self.inputs.multiplicity.value > 0:
+        if not all(m == 0 for m in self.inputs.multiplicity):
             input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
-            input_dict['FORCE_EVAL']['DFT'][
-                'MULTIPLICITY'] = self.inputs.multiplicity.value
-
-        #fixed atoms
-        input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS'][
-            'LIST'] = self.inputs.fixed_atoms.value
+            #input_dict['FORCE_EVAL']['DFT'][
+            #    'MULTIPLICITY'] = self.inputs.whole_multiplicity.value
 
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
         # KINDS section
-        self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
+        self.ctx.kinds_section = get_kinds_section(kinds_dict,
+                                                   protocol='gpw',
+                                                   bsse=True)
         dict_merge(input_dict, self.ctx.kinds_section)
+
+        # BSSE section
+        frag = 'FRAGMENT'
+        conf = 'CONFIGURATION'
+        fragments = self.ctx.fragments
+        input_dict['FORCE_EVAL']['BSSE'] = {}
+        for details in fragments.items():
+            #    input_dict['FORCE_EVAL']['BSSE'][conf] = {
+            #        'CHARGE': details[1]['charge'],
+            #        'MULTIPLICITY': details[1]['multiplicity'],
+            #        'GLB_CONF' : 1
+            #    }
+            input_dict['FORCE_EVAL']['BSSE'][frag] = {
+                'LIST': details[1]['fragment']
+            }
+            frag = frag + ' '
+        #    conf = conf + ' '
+
+        ##check the following with BSSE experts, it's not all combinations....
+        input_dict['FORCE_EVAL']['BSSE'][conf] = {
+            'CHARGE': fragments['frag_0']['charge'],
+            'MULTIPLICITY': fragments['frag_0']['multiplicity'],
+            'GLB_CONF': '1 0',
+            'SUB_CONF': '1 0'
+        }
+        conf += ' '
+        input_dict['FORCE_EVAL']['BSSE'][conf] = {
+            'CHARGE': fragments['frag_0']['charge'],
+            'MULTIPLICITY': fragments['frag_0']['multiplicity'],
+            'GLB_CONF': '1 1',
+            'SUB_CONF': '1 0'
+        }
+        conf += ' '
+        input_dict['FORCE_EVAL']['BSSE'][conf] = {
+            'CHARGE': fragments['frag_1']['charge'],
+            'MULTIPLICITY': fragments['frag_1']['multiplicity'],
+            'GLB_CONF': '1 1',
+            'SUB_CONF': '0 1'
+        }
+        conf += ' '
+        input_dict['FORCE_EVAL']['BSSE'][conf] = {
+            'CHARGE':
+            fragments['frag_0']['charge'] + fragments['frag_1']['charge'],
+            'MULTIPLICITY': self.inputs.whole_multiplicity,
+            'GLB_CONF': '1 1',
+            'SUB_CONF': '1 1'
+        }
 
         #computational resources
         max_nodes = self.inputs.max_nodes.value
@@ -134,7 +219,7 @@ class Cp2kSlabOptWorkChain(WorkChain):
             calctype='slab',
             computer=self.inputs.code.computer,
             max_nodes=max_nodes,
-            uks=self.inputs.multiplicity.value > 0)
+            uks=self.inputs.whole_multiplicity.value > 0)
 
         builder.cp2k.metadata.options.resources = {
             'num_machines': nodes,
@@ -150,10 +235,6 @@ class Cp2kSlabOptWorkChain(WorkChain):
         #parser
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
-        #handlers
-        builder.handler_overrides = Dict(
-            dict={'resubmit_unconverged_geometry': True})
-
         #cp2k input dictionary
         builder.cp2k.parameters = Dict(dict=input_dict)
 
@@ -168,34 +249,5 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         for out in self.ctx.opt.outputs:
             self.out(out, self.ctx.opt.outputs[out])
-
-        # Add extras
-        struc = self.ctx.opt.outputs.output_structure
-        ase_geom = struc.get_ase()
-        self.node.set_extra('thumbnail',
-                            common_utils.thumbnail(ase_struc=ase_geom))
-
-        # add formula to extra as molecule@surface
-        try:  #mainly for debug cases where the analyzer could crash due to odd geometries
-            analyzer = analyze_structure.StructureAnalyzer()
-            analyzer.structure = ase_geom
-            res = analyzer.details
-
-            mol_formula = ''
-            for imol in res['all_molecules']:
-                mol_formula += ase_geom[imol].get_chemical_formula() + ' '
-            if len(res['slabatoms']) > 0:
-                mol_formula += 'at ' + ase_geom[
-                    res['slabatoms']].get_chemical_formula()
-                if len(res['bottom_H']) > 0:
-                    mol_formula += ' saturated: ' + ase_geom[
-                        res['bottom_H']].get_chemical_formula()
-                if len(res['adatoms']) > 0:
-                    mol_formula += ' Adatoms: ' + ase_geom[
-                        res['adatoms']].get_chemical_formula()
-        except ValueError:
-            mol_formula = struc.get_formula()
-
-        self.node.set_extra('formula', mol_formula)
 
         return ExitCode(0)

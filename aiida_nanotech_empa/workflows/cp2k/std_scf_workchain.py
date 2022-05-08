@@ -9,12 +9,12 @@ from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
 
-from aiida_nanotech_empa.utils import common_utils, analyze_structure
+from aiida_nanotech_empa.utils import common_utils
 
 Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 
 
-class Cp2kSlabOptWorkChain(WorkChain):
+class Cp2kStdScfWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
@@ -26,10 +26,6 @@ class Cp2kSlabOptWorkChain(WorkChain):
             valid_type=Int,
             default=lambda: Int(0),
             required=False)
-        spec.input("fixed_atoms",
-                   valid_type=Str,
-                   default=lambda: Str(''),
-                   required=False)
         spec.input("multiplicity",
                    valid_type=Int,
                    default=lambda: Int(0),
@@ -73,7 +69,7 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
     def submit_calc(self):
         with open(pathlib.Path(__file__).parent /
-                  './protocols/slab_opt_protocol.yml',
+                  './protocols/slab_scf_protocol.yml',
                   encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
@@ -114,10 +110,6 @@ class Cp2kSlabOptWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT'][
                 'MULTIPLICITY'] = self.inputs.multiplicity.value
 
-        #fixed atoms
-        input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS'][
-            'LIST'] = self.inputs.fixed_atoms.value
-
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
@@ -150,10 +142,6 @@ class Cp2kSlabOptWorkChain(WorkChain):
         #parser
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
-        #handlers
-        builder.handler_overrides = Dict(
-            dict={'resubmit_unconverged_geometry': True})
-
         #cp2k input dictionary
         builder.cp2k.parameters = Dict(dict=input_dict)
 
@@ -168,34 +156,5 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         for out in self.ctx.opt.outputs:
             self.out(out, self.ctx.opt.outputs[out])
-
-        # Add extras
-        struc = self.ctx.opt.outputs.output_structure
-        ase_geom = struc.get_ase()
-        self.node.set_extra('thumbnail',
-                            common_utils.thumbnail(ase_struc=ase_geom))
-
-        # add formula to extra as molecule@surface
-        try:  #mainly for debug cases where the analyzer could crash due to odd geometries
-            analyzer = analyze_structure.StructureAnalyzer()
-            analyzer.structure = ase_geom
-            res = analyzer.details
-
-            mol_formula = ''
-            for imol in res['all_molecules']:
-                mol_formula += ase_geom[imol].get_chemical_formula() + ' '
-            if len(res['slabatoms']) > 0:
-                mol_formula += 'at ' + ase_geom[
-                    res['slabatoms']].get_chemical_formula()
-                if len(res['bottom_H']) > 0:
-                    mol_formula += ' saturated: ' + ase_geom[
-                        res['bottom_H']].get_chemical_formula()
-                if len(res['adatoms']) > 0:
-                    mol_formula += ' Adatoms: ' + ase_geom[
-                        res['adatoms']].get_chemical_formula()
-        except ValueError:
-            mol_formula = struc.get_formula()
-
-        self.node.set_extra('formula', mol_formula)
 
         return ExitCode(0)

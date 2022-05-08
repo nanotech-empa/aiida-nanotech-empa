@@ -9,12 +9,12 @@ from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
 
-from aiida_nanotech_empa.utils import common_utils, analyze_structure
+from aiida_nanotech_empa.utils import common_utils
 
 Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 
 
-class Cp2kSlabOptWorkChain(WorkChain):
+class Cp2kStdOptWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
@@ -168,34 +168,5 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         for out in self.ctx.opt.outputs:
             self.out(out, self.ctx.opt.outputs[out])
-
-        # Add extras
-        struc = self.ctx.opt.outputs.output_structure
-        ase_geom = struc.get_ase()
-        self.node.set_extra('thumbnail',
-                            common_utils.thumbnail(ase_struc=ase_geom))
-
-        # add formula to extra as molecule@surface
-        try:  #mainly for debug cases where the analyzer could crash due to odd geometries
-            analyzer = analyze_structure.StructureAnalyzer()
-            analyzer.structure = ase_geom
-            res = analyzer.details
-
-            mol_formula = ''
-            for imol in res['all_molecules']:
-                mol_formula += ase_geom[imol].get_chemical_formula() + ' '
-            if len(res['slabatoms']) > 0:
-                mol_formula += 'at ' + ase_geom[
-                    res['slabatoms']].get_chemical_formula()
-                if len(res['bottom_H']) > 0:
-                    mol_formula += ' saturated: ' + ase_geom[
-                        res['bottom_H']].get_chemical_formula()
-                if len(res['adatoms']) > 0:
-                    mol_formula += ' Adatoms: ' + ase_geom[
-                        res['adatoms']].get_chemical_formula()
-        except ValueError:
-            mol_formula = struc.get_formula()
-
-        self.node.set_extra('formula', mol_formula)
 
         return ExitCode(0)
