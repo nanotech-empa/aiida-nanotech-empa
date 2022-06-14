@@ -31,6 +31,12 @@ class GaussianRelaxWorkChain(WorkChain):
                    required=True,
                    help='basis_set')
 
+        spec.input('charge',
+                   valid_type=Int,
+                   required=False,
+                   default=lambda: Int(0),
+                   help='Total charge of the molecule.')
+
         spec.input('multiplicity',
                    valid_type=Int,
                    required=False,
@@ -157,6 +163,7 @@ class GaussianRelaxWorkChain(WorkChain):
         self.report("Inspecting input and setting up things")
 
         common.setup_context_variables(self)
+        self.ctx.n_electrons -= self.inputs.charge.value
 
         if self.ctx.mult % 2 == self.ctx.n_electrons % 2:
             return self.exit_codes.ERROR_MULTIPLICITY
@@ -186,7 +193,7 @@ class GaussianRelaxWorkChain(WorkChain):
                 'dieze_tag': '#P',
                 'functional': self.ctx.functional,
                 'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
+                'charge': self.inputs.charge.value,
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
@@ -219,13 +226,14 @@ class GaussianRelaxWorkChain(WorkChain):
                 'dieze_tag': '#P',
                 'functional': self.ctx.functional,
                 'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
+                'charge': self.inputs.charge.value,
                 'multiplicity': self.ctx.mult,
                 'route_parameters': {
                     'scf': {
                         'maxcycle': 140
                     },
                     'opt': None,
+                    'nosymm': None,
                 },
             })
 
