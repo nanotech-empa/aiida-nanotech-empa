@@ -335,3 +335,163 @@ def get_nodes(atoms=None,
     tasks_per_node = resources[calctype][theone]['tasks_per_node']
     threads = resources[calctype][theone]['threads']
     return min(nodes, max_nodes), tasks_per_node, threads
+
+def is_number(s):
+    """ Returns True if string is a number or range. """
+    numbers = s.split('..')
+    try:
+        return all(float(f) for f in numbers)
+    except ValueError:
+        return False
+def fixed_dict(xyz,ids):
+    return {'COMPONENTS_TO_FIX' : xyz,'LIST' : ids}
+def collective_dict(cv,restraint):
+    return {'RESTRAINT' : {'K' : restraint } , 'COLVAR': cv }
+def get_atoms(details):
+    """ Gets atom elements in a CV. """
+    try:
+        last_id = 1+min(i for i,j in enumerate(details[2:]) if not is_number(j) )
+    except ValueError:
+        last_id = len(details) - 1
+    ids = ' '.join(i for i in details[2:last_id+1])
+    return {'ATOMS':ids}
+
+def get_ids(details,label=None):
+    """ Get ids of atoms points and planes."""
+    if label:
+        labels = [i for i, x in enumerate(details) if x.lower() == label]
+        ids = []
+        for lab in labels:
+            ids0=''
+            pos = lab+2
+            while is_number(details[pos]):
+                ids0+=details[pos]+' '
+                pos+=1
+            ids.append(ids0)
+    else:
+        labels=[]
+        ids = []
+        pos = 1
+        while is_number(details[pos]):
+            ids.append(details[pos])
+            pos+=1
+    return labels,ids
+
+def get_points(details):
+    """ Get point elements in a CV. """
+    points,allids = get_ids(details,'point')
+    allpoints=[]
+    for i,point in enumerate(points):
+        ids = allids[i]
+        if details[point+1].lower() == 'fix_point':
+            allpoints.append({'TYPE':'FIX_POINT','XYZ':ids})
+        else:
+            allpoints.append({'TYPE':'GEO_CENTER','ATOMS':ids})
+    return {'POINT':allpoints}
+
+def get_planes(details):
+    """ Get planes of a CV. """
+    planes ,allids = get_ids(details,'plane')
+    return_dict = {}
+    allplanes=[]
+    for i,plane in enumerate(planes):
+        ids = allids[i]
+        if details[plane+1].lower() == 'atoms':
+            allplanes.append({'DEF_TYPE':'ATOMS','ATOMS':ids})
+        else:
+            allplanes.append({'DEF_TYPE':'VECTOR','NORMAL_VECTOR':ids})
+    return {'PLANE':allplanes}
+
+def cv_dist(details):
+    """ CV for distance between atoms or points. """
+    #WEIGHTS NOT IMPLEMENTED
+    points = get_points(details)
+    axis = [i for i, x in enumerate(details) if x.lower() == "axis"]
+    return_dict={}
+    # case ATOMS, no points
+    if not points['POINT'] :
+        return_dict = {'DISTANCE' : get_atoms(details)}
+    # case of points
+    else:
+        return_dict={'DISTANCE':points}
+    if axis:
+        return_dict['DISTANCE'].update({'AXIS':details[axis[0]+1].upper()})
+    return return_dict
+
+def cv_angle(details):
+    """ CV for angle between atoms. """
+    #WEIGHTS NOT IMPLEMENTED
+    points = get_points(details)
+    axis = [i for i, x in enumerate(details) if x.lower() == "axis"]
+    return_dict={}
+    # case ATOMS, no points
+    if not points['POINT'] :
+        return_dict = {'ANGLE' : get_atoms(details)}
+    # case of points
+    else:
+        return_dict={'ANGLE':points}
+    return return_dict
+
+def cv_angle_plane_plane(details):
+    """ CV anagle between two planes. """
+    points = get_points(details)
+    return_dict = {'ANGLE_PLANE_PLANE':{}}
+    if points:
+        return_dict['ANGLE_PLANE_PLANE'].update(points)
+    return_dict['ANGLE_PLANE_PLANE'].update(get_planes(details))
+    return return_dict
+
+def cv_bond_rotation(details):
+    """ CV bond rotation. """
+    points = get_points(details)
+    if points['POINT']:
+        return_dict={'BOND_ROTATION':points}
+        return_dict['BOND_ROTATION'].update({'P1_BOND1': '1','P2_BOND1': '2','P1_BOND2': '3','P2_BOND2': '4'})
+        return return_dict
+    else:
+        labels,ids = get_ids(details)
+        return {'BOND_ROTATION':{'P1_BOND1': ids[0],'P2_BOND1': ids[1],'P1_BOND2': ids[2],'P2_BOND2': ids[3]}}
+
+def get_colvar_section(colvars):
+    """ Creates the COLVAR dictionary. """
+        allcvs=[]
+        colvars = colvars.split(",")
+        for cv in colvars:
+            details = cv.split()
+            details.append('end')
+            if details[0].lower() == 'distance':
+                allcvs.append(cv_dist(details))
+            elif details[0].lower() == 'angle':
+                allcvs.append(cv_angle(details))
+            elif details[0].lower() == 'angle_plane_plane':
+                allcvs.append(cv_angle_plane_plane(details))
+            elif details[0].lower() == 'bond_rotation':
+                allcvs.append(cv_bond_rotation(details))
+        return {'COLVAR':allcvs}
+
+def get_constraints_section(constraints):
+    """ Creates the constraints dictionary. """
+    constraints_dict={}
+    constraints = constraints.split(",")
+    fixed=[]
+    colvar=[]
+    for const in constraints:
+        details = const.split()
+        details.append('end')
+        if 'fixed' in details[0].lower():
+            # 'fixed xy 1..2 7 9' --> '1..2 7 9'
+            indexes = const.lower().replace('fixed','')
+            indexes = indexes.replace('x','')
+            indexes = indexes.replace('y','')
+            indexes = indexes.replace('z','')
+            xyz='XYZ'
+            if any(c in details[1].upper() for c in ['X','Y','Z']):
+                xyz = details[1].upper()
+            fixed.append(fixed_dict(xyz,indexes.strip()))
+        if 'collective' in details[0].lower():
+            colvar.append(collective_dict(details[1],details[2]))
+        if fixed:
+            constraints_dict.update({'FIXED_ATOMS':fixed})
+        if colvar:
+            constraints_dict.update({'COLLECTIVE':colvar})
+    return constraints_dict
