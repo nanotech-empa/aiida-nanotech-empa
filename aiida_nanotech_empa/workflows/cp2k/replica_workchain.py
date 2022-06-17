@@ -34,6 +34,7 @@ class Cp2kReplicaWorkChain(WorkChain):
         """Initialise the work chain process."""
         self.ctx.latest_structure = self.inputs.structure
         self.ctx.colvars = self._get_actual_colvars()
+        self.propagation_step = 0
     
     def first_scf(self):
         """Run the geometry optimization."""
@@ -77,13 +78,17 @@ class Cp2kReplicaWorkChain(WorkChain):
             builder.input_dict = {"colvar": 2}
             submitted_calculation = self.submit(builder)
             self.report(f"Submitted initial geometry optimization: {submitted_node}")
-            return ToContext(initial_geo_opt=submitted_calculation)
+            self.to_context(**{f"run_{self.propagation_step}":append_(future)})
 
     
     def update_latest_structure(self):
         """Increment the colvars."""
-        for calculation in self.ctx.initial_geo_opt:
-        self.ctx.colvars = 
-
+        results = []
+        for index, calculation in enumerate(getattr(self.ctx, f"run_{self.propagation_step}")):
+            results.append((calculation.outputs.total_energy, index))
+        
+        lowest_energy_calc = sort(results, key=lambda x: x[0])[0][1]
+        self.ctx.latest_structure = getattr(self.ctx, f"run_{self.propagation_step}")[lowest_energy_calc].outputs.structure
+        self.ctx.propagation_step += 1
     
         
