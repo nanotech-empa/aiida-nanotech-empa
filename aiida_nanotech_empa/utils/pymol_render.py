@@ -40,7 +40,7 @@ def _crop_image_bbox(filename):
 
 def _save_and_crop(fname, max_w, view):
 
-    for _try in range(2):
+    for _try in range(4):
         # Pymol sometimes creates the png with a delay
         # and sometimes even after a long delay, the image is not created
         # in this case, try to create the image again (loop over _try)
