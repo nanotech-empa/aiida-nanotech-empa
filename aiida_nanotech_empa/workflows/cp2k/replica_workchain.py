@@ -2,6 +2,7 @@
 from aiida import orm
 from aiida.plugins import DataFactory, WorkflowFactory
 import math
+from nanotech_empa.workflows.cp2k.cp2k_utils import compute_colvars
 
 StructureData = DataFactory("structure")
 Cp2kBaseWorkChain = DataFactory("cp2k.base")
@@ -18,60 +19,65 @@ class Cp2kReplicaWorkChain(WorkChain):
         spec.input("code", valid_type=orm.Code)
         spec.input("constraints", valid_type=orm.Str)
         spec.input("colvars", valid_type=orm.Str)
-        spec.input("colvar_targets", valid_type=orm.List)
-        spec.input("colvar_increments", valid_type=orm.List)
+        spec.input("colvars_targets", valid_type=orm.List)
+        spec.input("colvars_increments", valid_type=orm.List)
+        spec.input("continuation_of", valid_type=orm.Int)
 
         spec.outline(
             cls.start,
             cls.first_scf,
+            cls.update_colvars_values,
+            cls.update_colvars_increments,
             while(cls.should_run_simulations)(
-                cls.update_colvar_increments,
                 cls.run_constrained_geo_opts,
                 cls.update_latest_structure,
+                cls.update_colvars_values,
+                cls.update_colvars_increments,
             )
         )
     def start(self):
-        """Initialise the work chain process."""
+        """Initialise the workchain process."""
         self.ctx.latest_structure = self.inputs.structure
-        self.ctx.colvars = self._get_actual_colvars()
+        self.ctx.should_run_simulations = True
+        #self.ctx.colvars = self._get_actual_colvars()
         self.propagation_step = 0
     
     def first_scf(self):
-        """Run the geometry optimization."""
+        """Run scf on the initial geometry."""
         builder = Cp2kBaseWorkChain.get_builder()
         builder.structure = self.ctx.latest_structure
         builder.code = self.inputs.code
         submitted_calculation = self.submit(builder)
-        self.report(f"Submitted initial geometry optimization: {submitted_node}")
-        return ToContext(initial_geo_opt=submitted_calculation)
+        self.report(f"Submitted scf of the initial geometry: {submitted_node}")
+        return ToContext(initial_scf=submitted_calculation)
     
-    def _get_actual_colvars(self):
-        ase_structure = self.ctx.structure.get_ase()
-        colvars = self.inputs.colvars.split()
-        actual_colvars = []
-        # ToDo: Check if the colvars are actually present in the structure.
-        # ToDo: compute the actual colvars.
-        return actual_colvars
+    def update_colvars_values(self):
+        ase_structure = self.ctx.latest_structure.get_ase()
+        colvars = self.inputs.colvars.value
+        self.ctx.colvars_values = compute_colvars(colvars, ase_structure)
         
-    def update_colvar_increments(self):
-        """Increment the colvars. If the target value is reached, set increment to 0."""
+    def update_colvars_increments(self):
+        """Increment/decrement the colvars according to deviation from target. 
+        If the target value is reached, set increment to 0."""
         self.ctx.colvar_increments = []
-        for index, colvar in enumerate(self._get_actual_colvars()):
-            if math.abs(spec.input.colvar_targets[index] - colvar) < self.inputs.increment_colvars[i]:
-                self.ctx.colvar_increments.append(self.inputs.increment_colvars[i])
+        for index, colvar in enumerate(self.ctx.colvars_values):
+            if math.abs(spec.input.colvars_targets[index] - colvar) < self.inputs.colvars_increments[i]:
+                self.ctx.colvars_increments.append(math.abs(self.inputs.colvars_increments[i])*np.sign(self.inputs.colvar_targets[i] - colvar))
             else:
-                self.ctx.colvar_increments.append(0)
+                self.ctx.colvars_increments.append(0)
+        if all(i = 0 for i in self.ctx.colvar_increments):
+            self.ctx.should_run_simulations = False
     
 
     def run_constrained_geo_opts(self):
-        """Run a constrained geometry optimizations."""
+        """Run a constrained geometry optimization for each non 0 increment of colvars."""
         builder = Cp2kBaseWorkChain.get_builder()
         builder.structure = self.ctx.latest_structure
         builder.code = self.inputs.code
 
 
-        for index, value in enumerate(self._get_actual_colvars):
-            if self.ctx.colvar_increments[index] == 0:
+        for index, value in enumerate(self.ctx.colvars_values):
+            if self.ctx.colvars_increments[index] == 0:
                 continue
 
             # Populate the input dictionary with the constraints and colvars.
