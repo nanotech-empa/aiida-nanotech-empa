@@ -109,6 +109,10 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         # vdw
         if not self.inputs.vdw.value:
             input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
+        else:
+            builder.cp2k.file['dftd3'] = SinglefileData(
+                file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                  ".", "data", "dftd3.dat"))
 
         #UKS
         if self.inputs.multiplicity.value > 0:

@@ -1,5 +1,3 @@
-import os
-
 from ase import Atoms
 
 from aiida.orm import StructureData, Bool, Str, Int, List
@@ -8,9 +6,6 @@ from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
 
 Cp2kMoleculeOptGwWorkChain = WorkflowFactory('nanotech_empa.cp2k.mol_opt_gw')
-
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
-GEO_FILE = "h2.xyz"
 
 
 def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
@@ -59,7 +54,7 @@ def example_cp2k_mol_opt_gw_no_geo_opt(cp2k_code):
 
 
 if __name__ == '__main__':
-    print("# geo opt #")
-    example_cp2k_mol_opt_gw_geo_opt(load_code("cp2k-9.1@daint-mc-em01"))
-    print("# No geo opt #")
-    example_cp2k_mol_opt_gw_no_geo_opt(load_code("cp2k-9.1@daint-mc-em01"))
+    print("# Run geometry optimization and then run GW #")
+    example_cp2k_mol_opt_gw_geo_opt(load_code("cp2k@localhost"))
+    print("# Run GW only #")
+    example_cp2k_mol_opt_gw_no_geo_opt(load_code("cp2k@localhost"))
