@@ -31,7 +31,7 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
         builder.geo_opt = Bool(True)
 
     builder.debug = Bool(True)
-    builder.walltime_seconds = Int(5 * 60)
+    builder.walltime_seconds = Int(60 * 60)
     builder.max_nodes = Int(1)
 
     _, calc_node = run_get_node(builder)
