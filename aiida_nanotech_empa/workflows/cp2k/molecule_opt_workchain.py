@@ -157,7 +157,7 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
 
         #handlers
         builder.handler_overrides = Dict(
-            dict={'resubmit_unconverged_geometry': True})
+            dict={'restart_incomplete_calculation': True})
 
         #cp2k input dictionary
         builder.cp2k.parameters = Dict(dict=input_dict)

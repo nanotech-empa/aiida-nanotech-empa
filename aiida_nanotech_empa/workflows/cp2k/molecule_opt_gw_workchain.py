@@ -135,8 +135,6 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         builder.vdw = Bool(True)
         builder.walltime_seconds = self.inputs.walltime_seconds
         builder.debug = self.inputs.debug
-        builder.handler_overrides = Dict(
-            dict={'restart_incomplete_calculation': True})
         builder.metadata.description = "Submitted by Cp2kMoleculeOptGwWorkChain."
         builder.metadata.label = 'Cp2kMoleculeOptWorkChain'
         submitted_node = self.submit(builder)
