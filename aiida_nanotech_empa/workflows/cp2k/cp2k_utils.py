@@ -504,7 +504,7 @@ def get_planes_normals(planes, points, atoms):
 
 
 def cv_dist(details):
-    """ Return the CP2K dictionary input section for the dustance CV  between atoms or points. 
+    """ Returns the CP2K dictionary input section for the distance CV  between atoms or points. 
     cv_dist('distance point fix_point 1.1 2.2 3.3 point atoms 1..6   axis xy end'.split())
     returns
     {'DISTANCE': {'POINT': [{'TYPE': 'FIX_POINT', 'XYZ': '1.1 2.2 3.3 '},
@@ -555,7 +555,7 @@ def eval_cv_dist(details, atoms):
 
 
 def cv_angle(details):
-    """ Return the CP2K dictionary input section for the angle CV  between atoms or points. 
+    """ Returns the CP2K dictionary input section for the angle CV  between atoms or points. 
     cv_angle('angle point atoms 2 3  point fix_point 8.36 6.78 5.0 point atoms 3 4 end'.split())
     returns
     {'ANGLE': {'POINT': [{'TYPE': 'GEO_CENTER', 'ATOMS': '2 3 '}, {'TYPE': 'FIX_POINT', 'XYZ': '8.36 6.78 5.0 '},
