@@ -1,10 +1,8 @@
 import numpy as np
 import pathlib
 import yaml
-import copy
 from aiida import engine, orm, plugins
-from aiida_cp2k.utils import merge_dict, merge_Dict
-from aiida_nanotech_empa import utils
+from aiida_nanotech_empa.utils import analyze_structure
 from aiida_nanotech_empa.workflows.cp2k import cp2k_utils
 
 StructureData = plugins.DataFactory('structure')
@@ -15,47 +13,46 @@ DATA_DIR = pathlib.Path(__file__).parent.absolute() / 'data'
 
 def load_protocol(fname, protocol):
     """Load a protocol from a file."""
-    with open(pathlib.Path(__file__).parent / 'protocols' / fname) as fhandle:
+    with open(pathlib.Path(__file__).parent / 'protocols' / fname,
+              encoding="utf-8") as fhandle:
         protocols = yaml.safe_load(fhandle)
-        input_dict = copy.deepcopy(protocols[protocol])
+        return protocols[protocol]
 
 
 @engine.calcfunction
 def total_charge(charges):
-    return Int(sum(charges))
+    return orm.Int(sum(charges))
 
 
-@engine.calcfunction
-def split_structure(structure, fragments, fixed_atoms, magnetisation_per_site):
+#@engine.calcfunction
+def split_structure(structure, fixed_atoms, magnetization_per_site, fragments):
     ase_geo = structure.get_ase()
 
-    return_dict = {}
     allfixed = [0 for i in ase_geo]
     mps = []
-    fix = ''
+    fixed = ''
 
     yield {
-        'label': label,
+        'label': "total",
         'structure': structure,
         'fixed_atoms': fixed_atoms,
-        'magnetization_per_site': magnetisation_per_site,
+        'magnetization_per_site': magnetization_per_site,
     }
 
-    for f in utils.analyze_structure.string_range_to_list(fixed_atoms.value,
-                                                          shift=-1)[0]:
+    for f in analyze_structure.string_range_to_list(fixed_atoms.value,
+                                                    shift=-1)[0]:
         allfixed[f] = 1
-    for i, fragment in enumerate(fragments):
-        fragment = utils.analyze_structure.string_range_to_list(fragment,
-                                                                shift=-1)[0]
-        fragment.sort()
 
-        if magnetisation_per_site or fixed_atoms.value:
+    for fragment_label, fragment in fragments.items():
+        fragment = sorted(fragment)
+
+        if magnetization_per_site or fixed_atoms.value:
             tuples = [(e, *np.round(p, 2))
                       for e, p in zip(ase_geo[fragment].get_chemical_symbols(),
                                       ase_geo[fragment].positions)]
-            if magnetisation_per_site:
+            if magnetization_per_site:
                 mps = [
-                    m for at, m in zip(ase_geo, list(magnetisation_per_site))
+                    m for at, m in zip(ase_geo, list(magnetization_per_site))
                     if (at.symbol, *np.round(at.position, 2)) in tuples
                 ]
                 if all(m == 0 for m in mps):
@@ -65,11 +62,10 @@ def split_structure(structure, fragments, fixed_atoms, magnetisation_per_site):
                     f for at, f in zip(ase_geo, allfixed)
                     if (at.symbol, *np.round(at.position, 2)) in tuples
                 ]
-                fixed = utils.analyze_structure.list_to_string_range(
-                    np.nonzero(fix)[0].tolist(), shift=1)
-        label = f"fragment_{i}"
+                fixed = analyze_structure.list_to_string_range(
+                    np.nonzero(fixed)[0].tolist(), shift=1)
         yield {
-            'label': label,
+            'label': fragment_label,
             'structure': StructureData(ase=ase_geo[fragment]),
             'fixed_atoms': orm.Str(fixed),
             'magnetization_per_site': orm.List(list=mps),
@@ -108,6 +104,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         spec.input("structure",
                    valid_type=StructureData,
                    help="A molecule on a substrate.")
+
         spec.input_namespace(
             "fragments",
             valid_type=orm.List,
@@ -136,6 +133,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             #default=lambda: orm.List(list=[]),
             help="Fixed atoms of the system.")
+
         spec.input(
             "magnetization_per_site",
             valid_type=orm.List,
@@ -151,23 +149,28 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             help="Settings to run simulations with.")
 
         spec.input_namespace(
-            "append_dict",
+            "auxilary_dictionaries",
             valid_type=orm.Dict,
-            help="Dictionary to append right before the job submission.")
+            help=
+            "Dictionaries to append to the CP2K input dictionary right before the job submission. "
+            "It is useful to add constraints and collective variables to the input."
+        )
 
-        spec.input(
+        spec.input_namespace(
             "options",
             valid_type=dict,
             non_db=True,
             required=False,
-            help="Define options for the cacluations: run time, memory, etc.")
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
 
         # Outline.
-        spec.outline(cls.setup, cls.run_scfs)
+        spec.outline(cls.setup, cls.run_scfs, cls.run_geo_opts, cls.finalize)
 
         # Dynamic outputs.
         spec.outputs.dynamic = True
 
+        # TODO: double-check the exit codes.
         # Exit code.
         spec.exit_code(
             380,
@@ -202,102 +205,139 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         #     self.report('Structure analyis failed.')
         #     return self.exit_codes.ERROR_STRUCTURE_ANALYSIS
 
-        # TODO: make sure all fragments have the same labels.
-
         self.ctx.cutoff = cp2k_utils.get_cutoff(
             structure=self.inputs.structure)
 
         self.ctx.file = {
             'basis': orm.SinglefileData(file=DATA_DIR / "BASIS_MOLOPT"),
             'pseudo': orm.SinglefileData(file=DATA_DIR / "POTENTIAL"),
-            'dftd3': orm.SinglefileData(file=DATA_DIR / "dftd3.dat"),
+            'dftd3':
+            orm.SinglefileData(file=DATA_DIR /
+                               "dftd3.dat"),  # TODO: make vdw optional
         }
 
         return engine.ExitCode(0)
 
     def run_scfs(self):
         """Run SCF calculation for the whole system and for fragments."""
-
-        input_dict = load_protocol(fname="fragment_separation.yml",
-                                   protocol=self.inputs.protocol.value)
-
         # Firt run SCF for the whole system and its fragments.
         for inputs in split_structure(
                 structure=self.inputs.structure,
                 fixed_atoms=self.inputs.fixed_atoms,
+                magnetization_per_site=self.inputs.magnetization_per_site,
                 fragments=self.inputs.fragments,
-                magnetisation_per_site=self.inputs.magnetization_per_site):
-            fragment = inputs['fragment_label']
+        ):
 
+            # Re-loading the input dictionary for the given protocol.
+            input_dict = load_protocol(fname="slab_opt_protocol.yml",
+                                       protocol=self.inputs.protocol.value)
+
+            # Fragment's label.
+            fragment = inputs['label']
+
+            # Generic inputs that are always the same.
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.code = self.inputs.code
+            builder.cp2k.metadata.options = self.inputs.options[fragment]
             builder.cp2k.file = self.ctx.file
+            input_dict['GLOBAL']['RUN_TYPE'] = 'ENERGY'
+            input_dict['FORCE_EVAL']['DFT']['MGRID'][
+                'CUTOFF'] = self.ctx.cutoff
+            builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
+
+            if "max_wallclock_seconds" in self.inputs.options[fragment]:
+                # Calculation might require up to 5 minutes to gracefully finish the calculation.
+                input_dict['GLOBAL']['WALLTIME'] = max(
+                    self.inputs.options[fragment]["max_wallclock_seconds"] -
+                    300, 300)
+
+            # Dealing with magnetization.
+            structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(
+                inputs["structure"], inputs["magnetization_per_site"])
+            builder.cp2k.structure = structure_with_tags
+            kinds_section = cp2k_utils.get_kinds_section(kinds_dict,
+                                                         protocol='gpw')
+            cp2k_utils.dict_merge(
+                input_dict, kinds_section
+            )  # appending the new kinds section to CP2K input dictionary.
 
             # If multiplicity is set and it is greater than 0, switch the UKS on.
-            if fragment in self.multiplicities and self.multiplicities[
+            if "multiplicities" in self.inputs and fragment in self.inputs.multiplicities and self.inputs.multiplicities[
                     fragment].value > 0:
                 input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
                 input_dict['FORCE_EVAL']['DFT'][
                     'MULTIPLICITY'] = self.multiplicities[fragment].value
 
             # If charge is set and it is greater than 0, add it to the corresponding section of the iput.
-            if fragment in self.charges and self.charges[fragment].value > 0:
+            if "charges" in self.inputs and fragment in self.inputs.charges and self.inputs.charges[
+                    fragment].value != 0:
                 input_dict['FORCE_EVAL']['DFT']['CHARGE'] = self.charges[
                     fragment].value
 
-            # Dealing with magnetisation.
-            structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(
-                inputs["structure"], inputs["magnetization_per_site"])
-            builder.structure = structure_with_tags
+            # Fixed atoms
+            input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS']['LIST'] = inputs[
+                "fixed_atoms"]
 
-            for append_type, value in self.inputs.append_dict.items():
-                merge_dict(input_dict, value)
+            # Finally, append auxilary dictionaries to the input dictonary.
+            if 'auxilary_dictionaries' in self.inputs:
+                for _, value in self.inputs.auxilary_dictionaries.items():
+                    cp2k_utils.dict_merge(input_dict, value)
 
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
 
-            # Walltime, memory, and resources.
-            builder.cp2k.metadata.options = self.inputs.options
-
             submitted_node = self.submit(builder)
-            self.to_context(**{fragment: submitted_node})
+            self.to_context(**{f"scf.{fragment}": submitted_node})
 
     def run_geo_opts(self):
-        for fragment in self.ctx.fragments:
-            builder = Cp2kStdOptWorkChain.get_builder()
-            builder.code = self.inputs.code
-            builder.structure = self.ctx.fragments[fragment]['structure']
-            builder.fixed_atoms = self.ctx.fragments[fragment]['fixed_atoms']
-            builder.multiplicity = self.ctx.fragments[fragment]['mult']
-            builder.charge = self.ctx.fragments[fragment]['charge']
-            builder.magnetization_per_site = self.ctx.fragments[fragment][
-                'mag']
-            builder.vdw = orm.Bool(True)
-            builder.walltime_seconds = self.inputs.walltime_seconds
-            builder.protocol = self.inputs.protocol
-            label = fragment + '_opt'
+        for fragment in self.inputs.fragments.keys():
+            # We deliberately do not run optimisation for the total structure.
+            if fragment == "total":
+                continue
+
+            # Generic inputs that are always the same.
+            builder = Cp2kBaseWorkChain.get_builder()
+            builder.cp2k.code = self.inputs.code
+            builder.cp2k.metadata.options = self.inputs.options[fragment]
+            builder.cp2k.file = self.ctx.file
+            builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
+
+            # Re-loading the input dictionary for the given protocol.
+            previous_calc = self.ctx[f"scf.{fragment}"]
+            input_dict = previous_calc.inputs.cp2k.parameters.get_dict()
+            input_dict['GLOBAL']['RUN_TYPE'] = 'GEO_OPT'
+
+            builder.cp2k.parameters = orm.Dict(dict=input_dict)
+            builder.cp2k.parent_calc_folder = previous_calc.outputs.remote_folder
+            builder.cp2k.structure = previous_calc.inputs.cp2k.structure
+
             submitted_node = self.submit(builder)
-            self.to_context(**{label: submitted_node})
+            self.to_context(**{f"opt.{fragment}": submitted_node})
 
     def finalize(self):
         energies = {}
         self.report("Finalizing...")
-        for fragment in self.ctx.fragments:
-            label = fragment + '_opt'
-            if not common_utils.check_if_calc_ok(self, getattr(
-                    self.ctx, label)):
-                return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+        energies["total"] = self.ctx["scf.total"].outputs.output_parameters[
+            'energy']
 
-            calc = getattr(self.ctx, label)
-            calc = dict(calc.outputs.output_parameters)
+        separation_energy = energies["total"]
+        unrelaxed_separation_energy = energies["total"]
+
+        for fragment in list(self.inputs.fragments.keys()):
             energies[fragment] = {
-                'unrelaxed': calc['motion_step_info']['energy_au'][0],
-                'relaxed': calc['energy']
+                'unrelaxed':
+                self.ctx[f"scf.{fragment}"].outputs.
+                output_parameters['energy'],
+                'relaxed':
+                self.ctx[f"opt.{fragment}"].outputs.output_parameters['energy']
             }
+            separation_energy -= energies[fragment]['relaxed']
+            unrelaxed_separation_energy -= energies[fragment]['unrelaxed']
 
-        scf_energy = orm.Float(
-            self.ctx.scf_whole_system.outputs.output_parameters['energy'])
-        self.out('energies', calc_energies(orm.Dict(dict=energies),
-                                           scf_energy))
+        energies["unrelaxed_separation_energy"] = unrelaxed_separation_energy
+        energies["separation_energy"] = separation_energy
+
+        energies = orm.Dict(dict=energies).store()
+        self.out('energies', energies)
 
         # Add the workchain pk to the input structure extras
         extras_label = "Cp2kAdsorptionEnergyWorkChain_pks"

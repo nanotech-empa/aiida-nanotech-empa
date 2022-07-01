@@ -22,16 +22,18 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
     builder.structure = StructureData(ase=ase_geom)
     builder.fixed_atoms = orm.Str('3..18')
 
-    builder.multiplicities = {
-        'total': orm.Int(mult),
-        'molecule': orm.Int(mult),
-        'slab': orm.Int(0),
-    }
     builder.fragments = {
         'molecule':
         orm.List(list=[0, 1]),
         'slab':
-        orm.List(list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        orm.List(
+            list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+    }
+
+    builder.multiplicities = {
+        'total': orm.Int(mult),
+        'molecule': orm.Int(mult),
+        'slab': orm.Int(0),
     }
 
     mag = []
@@ -42,12 +44,30 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
     builder.magnetization_per_site = orm.List(list=mag)
 
     builder.options = {
-        "max_wallclock_seconds": 600,
-        "resources": {
-            "num_machines": 1,
-            "num_mpiprocs_per_machine": 1,
+        'total': {
+            "max_wallclock_seconds": 600,
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 4,
+            },
+        },
+        'molecule': {
+            "max_wallclock_seconds": 600,
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+            },
+        },
+        'slab': {
+            "max_wallclock_seconds": 600,
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 4,
+            },
         },
     }
+
+    # TODO: add a function to redefine options per fragment
 
     builder.protocol = orm.Str('debug')
 
@@ -55,10 +75,10 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
 
     assert calc_node.is_finished_ok
 
-    ads_ene_out_dict = dict(calc_node.outputs.energies)
-    print()
-    for k in ads_ene_out_dict:
-        print("{}: {}".format(k, ads_ene_out_dict[k]))
+    adsorption_energy_out_dict = dict(calc_node.outputs.energies)
+
+    for k in adsorption_energy_out_dict:
+        print(f"{k}: {adsorption_energy_out_dict[k]}")
 
 
 def example_cp2k_ads_ene_rks(cp2k_code):
@@ -71,7 +91,7 @@ def example_cp2k_slabopt_uks(cp2k_code):
 
 if __name__ == '__main__':
     print("#### RKS")
-    _example_cp2k_ads_ene(orm.load_code("cp2k@localhost"), 0)
+    _example_cp2k_ads_ene(orm.load_code("cp2k-8.1@tigu"), 0)
 
     print("#### UKS")
-    _example_cp2k_ads_ene(orm.load_code("cp2k@localhost"), 1)
+    _example_cp2k_ads_ene(orm.load_code("cp2k-8.1@tigu"), 1)
