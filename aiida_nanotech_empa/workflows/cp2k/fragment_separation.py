@@ -257,9 +257,10 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             builder.cp2k.structure = structure_with_tags
             kinds_section = cp2k_utils.get_kinds_section(kinds_dict,
                                                          protocol='gpw')
+            # Append the new kinds section to CP2K input dictionary.
             cp2k_utils.dict_merge(
                 input_dict, kinds_section
-            )  # appending the new kinds section to CP2K input dictionary.
+            )
 
             # If multiplicity is set and it is greater than 0, switch the UKS on.
             if "multiplicities" in self.inputs and fragment in self.inputs.multiplicities and self.inputs.multiplicities[
