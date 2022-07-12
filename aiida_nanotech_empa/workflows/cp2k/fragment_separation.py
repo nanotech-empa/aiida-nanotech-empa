@@ -19,9 +19,6 @@ def load_protocol(fname, protocol):
         return protocols[protocol]
 
 
-@engine.calcfunction
-def total_charge(charges):
-    return orm.Int(sum(charges))
 
 
 #@engine.calcfunction
