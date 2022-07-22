@@ -20,7 +20,8 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
     builder.code = cp2k_code
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
-    builder.fixed_atoms = orm.Str('3..18')
+    builder.fixed_atoms = orm.List(
+        list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
 
     builder.fragments = {
         'molecule':
@@ -31,43 +32,43 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
     }
 
     builder.multiplicities = {
-        'total': orm.Int(mult),
+        'all': orm.Int(mult),
         'molecule': orm.Int(mult),
         'slab': orm.Int(0),
     }
 
     mag = []
     if mult == 1:
+        builder.uks = orm.Bool(True)
         mag = [0 for i in ase_geom]
         mag[0] = 1
         mag[1] = -1
+
     builder.magnetization_per_site = orm.List(list=mag)
 
     builder.options = {
-        'total': {
-            "max_wallclock_seconds": 600,
+        'all': {
+            "max_wallclock_seconds": 1200,
             "resources": {
                 "num_machines": 1,
-                "num_mpiprocs_per_machine": 4,
+                "num_mpiprocs_per_machine": 1,
             },
         },
         'molecule': {
-            "max_wallclock_seconds": 600,
+            "max_wallclock_seconds": 1200,
             "resources": {
                 "num_machines": 1,
                 "num_mpiprocs_per_machine": 1,
             },
         },
         'slab': {
-            "max_wallclock_seconds": 600,
+            "max_wallclock_seconds": 1200,
             "resources": {
                 "num_machines": 1,
-                "num_mpiprocs_per_machine": 4,
+                "num_mpiprocs_per_machine": 1,
             },
         },
     }
-
-    # TODO: add a function to redefine options per fragment
 
     builder.protocol = orm.Str('debug')
 
@@ -91,7 +92,7 @@ def example_cp2k_slabopt_uks(cp2k_code):
 
 if __name__ == '__main__':
     print("#### RKS")
-    _example_cp2k_ads_ene(orm.load_code("cp2k-8.1@tigu"), 0)
+    _example_cp2k_ads_ene(orm.load_code("cp2k@localhost"), 0)
 
     print("#### UKS")
-    _example_cp2k_ads_ene(orm.load_code("cp2k-8.1@tigu"), 1)
+    _example_cp2k_ads_ene(orm.load_code("cp2k@localhost"), 1)
