@@ -3,7 +3,7 @@ from aiida.plugins import DataFactory
 from aiida.engine import WorkChain, ToContext, ExitCode, while_, append_
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import compute_colvars
-from aiida.orm import Int, Str, Code, List
+from aiida.orm import Int, Str, Code, List, Bool
 import math
 import numpy as np
 
@@ -19,6 +19,28 @@ class Cp2kReplicaWorkChain(WorkChain):
         """Define the workflow."""
 
         # Define the inputs of the workflow
+        spec.input(
+            "charge",  # +1 means one electron removed
+            valid_type=Int,
+            default=lambda: Int(0),
+            required=False)
+        spec.input("multiplicity",
+                   valid_type=Int,
+                   default=lambda: Int(0),
+                   required=False)
+        spec.input("magnetization_per_site",
+                   valid_type=List,
+                   default=lambda: List(list=[]),
+                   required=False)
+        spec.input("vdw",
+                   valid_type=Bool,
+                   default=lambda: Bool(False),
+                   required=False)
+        spec.input("protocol",
+                   valid_type=Str,
+                   default=lambda: Str('standard'),
+                   required=False,
+                   help="Settings to run simulations with.")
         spec.input("structure", valid_type=StructureData)
         spec.input("code", valid_type=Code)
         spec.input("constraints", valid_type=Str)
