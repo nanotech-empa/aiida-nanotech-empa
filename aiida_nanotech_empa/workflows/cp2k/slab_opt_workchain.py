@@ -7,7 +7,7 @@ from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Bool, Code, Dict, List, Str
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff, get_colvars_section, get_constraints_section
 
 from aiida_nanotech_empa.utils import common_utils, analyze_structure
 
@@ -26,10 +26,14 @@ class Cp2kSlabOptWorkChain(WorkChain):
             valid_type=Int,
             default=lambda: Int(0),
             required=False)
-        spec.input("fixed_atoms",
+        spec.input("constraints",
                    valid_type=Str,
                    default=lambda: Str(''),
                    required=False)
+        spec.input("colvars",
+                   valid_type=Str,
+                   default=lambda: Str(''),
+                   required=False)                   
         spec.input("multiplicity",
                    valid_type=Int,
                    default=lambda: Int(0),
@@ -114,9 +118,12 @@ class Cp2kSlabOptWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT'][
                 'MULTIPLICITY'] = self.inputs.multiplicity.value
 
-        #fixed atoms
-        input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS'][
-            'LIST'] = self.inputs.fixed_atoms.value
+        #constraints
+        if self.inputs.constraints.value:
+            input_dict['MOTION']['CONSTRAINT'] = get_constraints_section(self.inputs.constraints.value)
+        #colvars
+        if self.inputs.colvars.value:
+            input_dict['FORCE_EVAL']['SUBSYS'].update(get_colvars_section(self.inputs.colvars.value))
 
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
