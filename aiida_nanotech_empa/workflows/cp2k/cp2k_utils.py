@@ -361,3 +361,5 @@ def get_nodes(atoms=None,
     tasks_per_node = resources[calctype][theone]['tasks_per_node']
     threads = resources[calctype][theone]['threads']
     return min(nodes, max_nodes), tasks_per_node, threads
+
+#section for constraints
