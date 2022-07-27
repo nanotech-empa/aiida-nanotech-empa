@@ -10,32 +10,6 @@ from aiida.orm import StructureData, Dict
 ang_2_bohr = 1.889725989
 
 
-def fixed_dict(label, xyz, ids):
-    return {label: {'COMPONENTS_TO_FIX:': xyz, 'LIST': ids}}
-
-
-def get_constraints_section(constraints):
-    add_fixed_blank = ''
-    constraints_dict = {}
-    constraints = constraints.split(",")
-    for const in constraints:
-        details = const.split()
-        if 'fixed' in details[0]:
-            # 'fixed xy 1..2 7 9' --> '1..2 7 9'
-            indexes = const.lower().replace('fixed', '')
-            indexes = indexes.replace('x', '')
-            indexes = indexes.replace('y', '')
-            indexes = indexes.replace('z', '')
-            xyz = 'XYZ'
-            if any(c in details[1].upper() for c in ['X', 'Y', 'Z']):
-                xyz = details[1].upper()
-            label = 'FIXED_ATOMS' + add_fixed_blank
-            constraints_dict.update(fixed_dict(label, xyz, indexes.strip()))
-            add_fixed_blank += ' '
-
-    return constraints_dict
-
-
 def get_kinds_section(kinds_dict, protocol='gapw_std'):
     """ Write the &KIND sections in gw calculations given the structure and the settings_dict"""
 
@@ -365,6 +339,7 @@ def get_nodes(atoms=None,
     threads = resources[calctype][theone]['threads']
     return min(nodes, max_nodes), tasks_per_node, threads
 
+
 #section for constraints
 
 
@@ -417,9 +392,16 @@ def fixed_dict(xyz, ids):
     return {'COMPONENTS_TO_FIX': xyz, 'LIST': ids}
 
 
-def collective_dict(cv, restraint):
+def collective_dict(details):
     """ Returns the CP2K inpt dictionary for a restratint on a CV"""
-    return {'RESTRAINT': {'K': restraint}, 'COLVAR': cv}
+    return {
+        'RESTRAINT': {
+            'K': details[1] + ' ' + details[2]
+        },
+        'COLVAR': details[0],
+        'TARGET': details[3] + ' ' + details[4],
+        'INTERMOLECULAR': ''
+    }
 
 
 def get_atoms(details):
@@ -740,7 +722,7 @@ def get_constraints_section(constraints):
                 xyz = details[1].upper()
             fixed.append(fixed_dict(xyz, indexes.strip()))
         if 'collective' in details[0].lower():
-            colvar.append(collective_dict(details[1], details[2]))
+            colvar.append(collective_dict(details[1:]))
         if fixed:
             constraints_dict.update({'FIXED_ATOMS': fixed})
         if colvar:

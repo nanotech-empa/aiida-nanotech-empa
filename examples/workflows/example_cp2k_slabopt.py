@@ -23,7 +23,10 @@ def _example_cp2k_slabopt(cp2k_code, mult):
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
     builder.max_nodes = Int(1)
-    builder.constraints = Str('fixed 3..18 , fixed xy 1')
+    builder.constraints = Str(
+        'fixed 3..18 , fixed xy 1, collective 1 [ev/angstrom^2] 40 [angstrom] 0.8'
+    )
+    builder.colvars = Str('distance atoms 1 2 ')
 
     builder.multiplicity = Int(mult)
     mag = [0 for i in ase_geom]
