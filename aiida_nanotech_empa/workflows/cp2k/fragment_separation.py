@@ -226,14 +226,10 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             input_dict['FORCE_EVAL']['DFT']['PRINT']['E_DENSITY_CUBE'][
                 'STRIDE'] = '2 2 2'
 
-            if "max_wallclock_seconds" in self.inputs.options[fragment]:
-                # Calculation might require up to 5 minutes to gracefully finish the calculation.
-                input_dict['GLOBAL']['WALLTIME'] = max(
-                    self.inputs.options[fragment]["max_wallclock_seconds"] -
-                    300, 300)
-
-            structure, kinds_dict = cp2k_utils.determine_kinds(
-                inputs['structure'])
+            # If charge is set, add it to the corresponding section of the input.
+            if "charges" in self.inputs and fragment in self.inputs.charges:
+                input_dict['FORCE_EVAL']['DFT'][
+                    'CHARGE'] = self.inputs.charges[fragment].value
 
             if self.inputs.uks:
                 input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
@@ -244,14 +240,12 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
                         'MULTIPLICITY'] = self.inputs.multiplicities[
                             fragment].value
 
-                # If charge is set add it to the corresponding section of the input.
-                if "charges" in self.inputs and fragment in self.inputs.charges:
-                    input_dict['FORCE_EVAL']['DFT'][
-                        'CHARGE'] = self.inputs.charges[fragment].value
-
-                # Dealing with magnetization.
+                # Adding magnetisation tags to the structure and to the CP2K input dictionary.
                 structure, kinds_dict = cp2k_utils.determine_kinds(
                     inputs['structure'], inputs["magnetization_per_site"])
+            else:
+                structure, kinds_dict = cp2k_utils.determine_kinds(
+                    inputs['structure'])
 
             kinds_section = cp2k_utils.get_kinds_section(kinds_dict,
                                                          protocol='gpw')
@@ -268,6 +262,12 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             if 'auxilary_dictionaries' in self.inputs:
                 for _, value in self.inputs.auxilary_dictionaries.items():
                     cp2k_utils.dict_merge(input_dict, value)
+
+            if "max_wallclock_seconds" in self.inputs.options[fragment]:
+                # Calculation might require up to 5 minutes to gracefully finish the calculation.
+                input_dict['GLOBAL']['WALLTIME'] = max(
+                    self.inputs.options[fragment]["max_wallclock_seconds"] -
+                    300, 300)
 
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
 
