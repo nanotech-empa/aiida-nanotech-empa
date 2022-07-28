@@ -1,6 +1,6 @@
 from ase import Atoms
 
-from aiida.orm import StructureData, Bool, Int, List
+from aiida.orm import StructureData, Bool, Int, List, Str
 from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
@@ -20,6 +20,10 @@ def _example_cp2k_molopt(cp2k_code, mult):
                      positions=[[0, 0, 0], [0.75, 0, 0]],
                      cell=[4.0, 4.0, 4.0])
     builder.structure = StructureData(ase=ase_geom)
+
+    builder.constraints = Str(
+        'fixed xy 1, collective 1 [ev/angstrom^2] 40 [angstrom] 0.8')
+    builder.colvars = Str('distance atoms 1 2 ')
 
     builder.multiplicity = Int(mult)
     if mult == 1:
