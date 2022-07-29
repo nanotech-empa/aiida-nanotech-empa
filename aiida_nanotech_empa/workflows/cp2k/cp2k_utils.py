@@ -553,14 +553,18 @@ def eval_cv_dist(details, atoms):
         points_xyz = get_points_coords(the_cv['DISTANCE']['POINT'], atoms)
         dist = points_xyz.get_distance(0, 1, mic=True, vector=True)
     else:
-        ids = [int(i) for i in the_cv['DISTANCE']['ATOMS'].split()]
+        ids = [int(i) - 1 for i in the_cv['DISTANCE']['ATOMS'].split()
+               ]  #indexes in ase start from 0
         dist = atoms.get_distance(ids[0], ids[1], mic=True, vector=True)
     axis = 'XYZ'
     if 'AXIS' in the_cv['DISTANCE']:
         axis = the_cv['DISTANCE']['AXIS']
 
-    return np.sqrt(
-        np.sum([np.dot(dist, np.array(j))**2 for j in projections[axis]]))
+    return [
+        'distance',
+        np.sqrt(
+            np.sum([np.dot(dist, np.array(j))**2 for j in projections[axis]]))
+    ]
 
 
 def cv_angle(details):
@@ -590,10 +594,10 @@ def eval_cv_angle(details, atoms):
     the_cv = cv_angle(details)
     if 'POINT' not in the_cv['ANGLE']:
         ids = [int(i) for i in the_cv['ANGLE']['ATOMS'].split()]
-        return atoms.get_angle(ids[0], ids[1], ids[2], mic=True)
+        return ['angle', atoms.get_angle(ids[0], ids[1], ids[2], mic=True)]
     #else:
     points_xyz = get_points_coords(the_cv['ANGLE']['POINT'], atoms)
-    return points_xyz.get_angle(0, 1, 2, mic=True)
+    return ['angle', points_xyz.get_angle(0, 1, 2, mic=True)]
 
 
 def cv_angle_plane_plane(details):
@@ -623,7 +627,7 @@ def eval_cv_angle_plane_plane(details, atoms):
         points = the_cv['ANGLE_PLANE_PLANE']['POINT']
     normals = get_planes_normals(the_cv['ANGLE_PLANE_PLANE']['PLANE'], points,
                                  atoms)
-    return angle_between(normals[0], normals[1])
+    return ['angle', angle_between(normals[0], normals[1])]
 
 
 def cv_bond_rotation(details):
@@ -674,13 +678,19 @@ def eval_cv_bond_rotation(details, atoms):
             int(the_cv['BOND_ROTATION']['P1_BOND2']),
             int(the_cv['BOND_ROTATION']['P2_BOND2'])
         ]
-        return angle_between(
-            atoms.get_distance(ids[0], ids[1], mic=True, vector=True),
-            atoms.get_distance(ids[2], ids[3], mic=True, vector=True))
+        return [
+            'angle',
+            angle_between(
+                atoms.get_distance(ids[0], ids[1], mic=True, vector=True),
+                atoms.get_distance(ids[2], ids[3], mic=True, vector=True))
+        ]
     #else:
     points_xyz = get_points_coords(the_cv['BOND_ROTATION']['POINT'], atoms)
-    return angle_between(points_xyz.get_distance(0, 1, mic=True, vector=True),
-                         points_xyz.get_distance(2, 3, mic=True, vector=True))
+    return [
+        'angle',
+        angle_between(points_xyz.get_distance(0, 1, mic=True, vector=True),
+                      points_xyz.get_distance(2, 3, mic=True, vector=True))
+    ]
 
 
 def get_colvars_section(colvars):

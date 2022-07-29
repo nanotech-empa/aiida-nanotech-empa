@@ -7,7 +7,8 @@ from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Bool, Code, Dict, List, Str
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_colvars_section, get_constraints_section, dict_merge, get_nodes, get_cutoff
 
 from aiida_nanotech_empa.utils import common_utils
 
@@ -26,7 +27,11 @@ class Cp2kBulkOptWorkChain(WorkChain):
             valid_type=Int,
             default=lambda: Int(0),
             required=False)
-        spec.input("fixed_atoms",
+        spec.input("constraints",
+                   valid_type=Str,
+                   default=lambda: Str(''),
+                   required=False)
+        spec.input("colvars",
                    valid_type=Str,
                    default=lambda: Str(''),
                    required=False)
@@ -132,9 +137,14 @@ class Cp2kBulkOptWorkChain(WorkChain):
 
         # only bulk opt
         if not self.inputs.cell_opt.value:
-            # fixed atoms
-            input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS'][
-                'LIST'] = self.inputs.fixed_atoms.value
+            #constraints
+            if self.inputs.constraints.value:
+                input_dict['MOTION']['CONSTRAINT'] = get_constraints_section(
+                    self.inputs.constraints.value)
+            #colvars
+            if self.inputs.colvars.value:
+                input_dict['FORCE_EVAL']['SUBSYS'].update(
+                    get_colvars_section(self.inputs.colvars.value))
             if self.inputs.debug:
                 input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.1
                 input_dict['MOTION']['GEO_OPT']['RMS_DR'] = 0.1
