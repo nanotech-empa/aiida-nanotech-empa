@@ -593,7 +593,8 @@ def eval_cv_angle(details, atoms):
     """ Evaluates the CV angle between the atoms defined in the CV. """
     the_cv = cv_angle(details)
     if 'POINT' not in the_cv['ANGLE']:
-        ids = [int(i) for i in the_cv['ANGLE']['ATOMS'].split()]
+        ids = [int(i) - 1 for i in the_cv['ANGLE']['ATOMS'].split()
+               ]  # shift -1 atom indexes
         return ['angle', atoms.get_angle(ids[0], ids[1], ids[2], mic=True)]
     #else:
     points_xyz = get_points_coords(the_cv['ANGLE']['POINT'], atoms)
