@@ -1,4 +1,3 @@
-"""Workflow to run Replica Chain calculations with CP2K."""
 import os
 import pathlib
 import copy
@@ -8,14 +7,14 @@ from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, det
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import dict_merge, get_nodes, get_cutoff, get_colvars_section, get_constraints_section
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import compute_colvars
-from aiida.plugins import DataFactory
+from aiida.plugins import DataFactory, WorkflowFactory
 from aiida.engine import WorkChain, ToContext, ExitCode, while_, append_
 from aiida.orm import SinglefileData,Int, Str, Code, Dict, List, Bool
 import math
 import numpy as np
 
 StructureData = DataFactory("structure")
-Cp2kBaseWorkChain = DataFactory("cp2k.base")
+Cp2kBaseWorkChain = WorkflowFactory("cp2k.base")
 #Cp2kOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.opt')
 
 
@@ -24,12 +23,13 @@ class Cp2kReplicaWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         """Define the workflow."""
+        super().define(spec)
 
         # Define the inputs of the workflow
         spec.input(
             "charge",  # +1 means one electron removed
             valid_type=Int,
-            default=lambda: Int(0),
+            default=lambda:         Int(0),
             required=False)
         spec.input("multiplicity",
                    valid_type=Int,
@@ -48,6 +48,14 @@ class Cp2kReplicaWorkChain(WorkChain):
                    default=lambda: Str('standard'),
                    required=False,
                    help="Settings to run simulations with.")
+        spec.input("walltime_seconds",
+                   valid_type=Int,
+                   default=lambda: Int(7200),
+                   required=False)     
+        spec.input("max_nodes",
+                   valid_type=Int,
+                   default=lambda: Int(48),
+                   required=False)                                 
         spec.input("structure", valid_type=StructureData)
         spec.input("code", valid_type=Code)
         spec.input("constraints", valid_type=Str)
@@ -75,8 +83,12 @@ class Cp2kReplicaWorkChain(WorkChain):
         """Initialise the workchain process."""
         self.ctx.latest_structure = self.inputs.structure
         self.ctx.should_run_simulations = True
-        self.propagation_step = 0
+        self.ctx.propagation_step = 0
 
+    def should_run_simulations(self):
+        """Function that returnns whetehr targets have been reached or not"""
+        return self.ctx.should_run_simulations
+    
     def first_scf(self):
         """Run scf on the initial geometry."""
         with open(pathlib.Path(__file__).parent /
@@ -100,8 +112,8 @@ class Cp2kReplicaWorkChain(WorkChain):
         ase_atoms = structure_with_tags.get_ase()
 
         builder = Cp2kBaseWorkChain.get_builder()
-        builder.structure = StructureData(ase=ase_atoms)
-        builder.code = self.inputs.code
+        builder.cp2k.structure = StructureData(ase=ase_atoms)
+        builder.cp2k.code = self.inputs.code
 
         builder.cp2k.file = {
             'basis':
@@ -113,6 +125,10 @@ class Cp2kReplicaWorkChain(WorkChain):
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                   ".", "data", "POTENTIAL")),
         }
+
+        #charge
+        if self.inputs.charge != 0:
+            input_dict['FORCE_EVAL']['DFT']['CHARGE'] = self.inputs.charge
 
         # vdw
         if not self.inputs.vdw.value:
@@ -166,23 +182,24 @@ class Cp2kReplicaWorkChain(WorkChain):
         return ToContext(initial_scf=submitted_calculation)
 
     def update_colvars_values(self):
+        """Compute actual value of CVs."""
         ase_structure = self.ctx.latest_structure.get_ase()
         colvars = self.inputs.colvars.value
-        self.ctx.colvars_values = compute_colvars(colvars, ase_structure)
+        self.ctx.colvars_values = [cv[1] for cv in compute_colvars(colvars, ase_structure)]
 
     def update_colvars_increments(self):
-        """Increment/decrement the colvars according to deviation from target. 
-        If the target value is reached, set increment to 0."""
-        self.ctx.colvar_increments = []
+        """Computes teh increments for the CVs according to deviation from target. 
+        If the target value is reached wihtin the increment, set increment to 0."""
+        self.ctx.colvars_increments = []
         for index, colvar in enumerate(self.ctx.colvars_values):
             if math.fabs(self.inputs.colvars_targets[index] -
                         colvar) > self.inputs.colvars_increments[index]:
                 self.ctx.colvars_increments.append(
                     math.fabs(self.inputs.colvars_increments[index]) *
-                    np.sign(self.inputs.colvar_targets[index] - colvar))
+                    np.sign(self.inputs.colvars_targets[index] - colvar))
             else:
                 self.ctx.colvars_increments.append(0)
-        if all(i == 0 for i in self.ctx.colvar_increments):
+        if all(i == 0 for i in self.ctx.colvars_increments):
             self.ctx.should_run_simulations = False
 
     def run_constrained_geo_opts(self):
@@ -208,8 +225,8 @@ class Cp2kReplicaWorkChain(WorkChain):
 
                 ase_atoms = structure_with_tags.get_ase()        
                 builder = Cp2kBaseWorkChain.get_builder()
-                builder.structure = StructureData(ase=ase_atoms)
-                builder.code = self.inputs.code
+                builder.cp2k.structure = StructureData(ase=ase_atoms)
+                builder.cp2k.code = self.inputs.code
 
                 builder.cp2k.file = {
                     'basis':
@@ -222,6 +239,10 @@ class Cp2kReplicaWorkChain(WorkChain):
                                         ".", "data", "POTENTIAL")),
                 }
 
+                #charge
+                if self.inputs.charge != 0:
+                    input_dict['FORCE_EVAL']['DFT']['CHARGE'] = self.inputs.charge
+
                 # vdw
                 if not self.inputs.vdw.value:
                     input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
@@ -233,14 +254,15 @@ class Cp2kReplicaWorkChain(WorkChain):
                         'MULTIPLICITY'] = self.inputs.multiplicity.value
 
                 #constraints
-                if self.inputs.constraints.value:
-                    input_dict['MOTION']['CONSTRAINT'] = get_constraints_section(self.inputs.constraints.value)
-                    for icv, cvval in enumerate(self.ctx.colvars_values):
-                        target = self.ctx.colvars_values
-                        units = input_dict['MOTION']['CONSTRAINT'][icv]['TARGET'].split(' ')[0]
-                        if icv == index:                       
-                            target += self.ctx.colvars_increments[icv]
-                        input_dict['MOTION']['CONSTRAINT'][icv]['TARGET'] = units + ' ' + str(target)
+                input_dict['MOTION']['CONSTRAINT'] = get_constraints_section(self.inputs.constraints.value)
+                submitted_CVs=''
+                for icv, cvval in enumerate(self.ctx.colvars_values):
+                    target = cvval
+                    units = input_dict['MOTION']['CONSTRAINT']['COLLECTIVE'][icv]['TARGET'].split(' ')[0]
+                    if icv == index:                       
+                        target += self.ctx.colvars_increments[icv]
+                    input_dict['MOTION']['CONSTRAINT']['COLLECTIVE'][icv]['TARGET'] = units + ' ' + str(target)
+                    submitted_CVs += ' ' + str(target)
 
                 #colvars
                 if self.inputs.colvars.value:
@@ -280,34 +302,45 @@ class Cp2kReplicaWorkChain(WorkChain):
                 builder.handler_overrides = Dict(
                     dict={'resubmit_unconverged_geometry': True})
 
+                #wfn restart folder
+                if self.ctx.propagation_step == 0:
+                    builder.cp2k.parent_calc_folder = self.ctx.initial_scf.outputs.remote_folder 
+                else:
+                    builder.cp2k.parent_calc_folder = self.ctx.restart_folder
+
                 #cp2k input dictionary
                 builder.cp2k.parameters = Dict(dict=input_dict)
 
 
                 submitted_calculation = self.submit(builder)
                 self.report(
-                    f"Submitted constrained geometry optimization: {submitted_calculation}"
+                    f"Submitted geo opt: {submitted_calculation}, with {submitted_CVs}"
                 )
                 self.to_context(
-                    **{f"run_{self.propagation_step}": append_(submitted_calculation)})
+                    **{f"run_{self.ctx.propagation_step}": append_(submitted_calculation)})
 
     def update_latest_structure(self):
-        """Update the latest structure as teh one with minimum energy from the constrained 
+        """Update the latest structure as the one with minimum energy from the constrained 
         geometry optimizations."""
         results = []
         for index, calculation in enumerate(
-                getattr(self.ctx, f"run_{self.propagation_step}")):
+                getattr(self.ctx, f"run_{self.ctx.propagation_step}")):
             #check if the calculation is finished
             if not common_utils.check_if_calc_ok(self,calculation):
                 return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
-            results.append((calculation.outputs.total_energy, index))
-        results.sort(key=lambda x: x[0])[0][1]  #pylint: disable=expression-not-assigned
+            results.append((calculation.outputs.output_parameters['energy_scf'], index))
+        self.report(f"energies {results}")
+        results.sort(key=lambda x: x[0])  #pylint: disable=expression-not-assigned
         lowest_energy_calc = results[0][1]
         self.ctx.latest_structure = getattr(
-            self.ctx, f"run_{self.propagation_step}"
+            self.ctx, f"run_{self.ctx.propagation_step}"
         )[lowest_energy_calc].outputs.structure
         self.report(
             f"The lowest energy at step {self.ctx.propagation_step} is {results[0][0]}"
         )
         self.ctx.propagation_step += 1
+        self.ctx.restart_folder = getattr(
+            self.ctx, f"run_{self.ctx.propagation_step}"
+        )[lowest_energy_calc].outputs.remote_folder
+        self.report(f"set restart folder to {self.ctx.restart_folder}")
         return ExitCode(0)

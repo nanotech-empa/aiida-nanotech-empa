@@ -140,7 +140,7 @@ debug:
     GLOBAL:
         EXTENDED_FFT_LENGTHS: '' 
         PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
+        RUN_TYPE: ENERGY
         WALLTIME: 600
     FORCE_EVAL:
         METHOD: Quickstep

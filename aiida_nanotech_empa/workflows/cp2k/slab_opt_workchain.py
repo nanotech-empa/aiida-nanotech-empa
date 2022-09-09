@@ -171,7 +171,7 @@ class Cp2kSlabOptWorkChain(WorkChain):
         self.report("Finalizing...")
 
         if not common_utils.check_if_calc_ok(self, self.ctx.opt):
-            return self.exit_codes.ERROR_TERMINATION
+            return self.exit_codes.ERROR_TERMINATION # pylint: disable=no-member
 
         for out in self.ctx.opt.outputs:
             self.out(out, self.ctx.opt.outputs[out])

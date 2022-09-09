@@ -20,10 +20,10 @@ def _example_cp2k_replicachain(cp2k_code):
     builder.metadata.label = 'Cp2kReplicaWorkChain'
     builder.metadata.description = 'test description'
     builder.code = cp2k_code
-    builder.walltime_seconds = Int(600)
+    #builder.walltime_seconds = Int(600)
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
-    builder.max_nodes = Int(1)
+    builder.max_nodes = Int(2)
     builder.constraints = Str(
         'fixed 1 , collective 1 [ev/angstrom^2] 40 [angstrom] 1.33 , collective 2 [ev/angstrom^2] 40 [angstrom] 1.09'
     )
