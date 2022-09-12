@@ -186,6 +186,18 @@ class Cp2kReplicaWorkChain(WorkChain):
         ase_structure = self.ctx.latest_structure.get_ase()
         colvars = self.inputs.colvars.value
         self.ctx.colvars_values = [cv[1] for cv in compute_colvars(colvars, ase_structure)]
+        self.report(f"actual CVs values: {self.ctx.colvars_values}")
+        #if self.ctx.propagation_step == 0 :
+        #    self.ctx.outenes = [self.ctx.initial_scf.outputs.output_parameters['energy_scf']]
+        #    self.ctx.outcvs = self.ctx.colvars_values
+        #    self.ctx.outstructure = [self.ctx.latest_structure.pk]
+        #else:
+        #    self.ctx.outenes.append(self.ctx.lowest_energy)
+        #    self.ctx.outcvs.append(self.ctx.colvars_values)
+        #    self.ctx.outstructure.append(self.ctx.latest_structure.pk)
+        #self.out('energies',List(list=self.ctx.outenes))
+        #self.out('cvs',List(list=self.ctx.outcvs))
+        #self.out('structure',List(list=self.ctx.outstructure))
 
     def update_colvars_increments(self):
         """Computes teh increments for the CVs according to deviation from target. 
@@ -334,13 +346,16 @@ class Cp2kReplicaWorkChain(WorkChain):
         lowest_energy_calc = results[0][1]
         self.ctx.latest_structure = getattr(
             self.ctx, f"run_{self.ctx.propagation_step}"
-        )[lowest_energy_calc].outputs.structure
+        )[lowest_energy_calc].outputs.output_structure
+        self.ctx.lowest_energy = results[0][0]
         self.report(
-            f"The lowest energy at step {self.ctx.propagation_step} is {results[0][0]}"
+            f"The lowest energy at step {self.ctx.propagation_step} is {results[0][0]} for geometry {self.ctx.latest_structure.pk}"
         )
-        self.ctx.propagation_step += 1
+        #define restart folder
         self.ctx.restart_folder = getattr(
             self.ctx, f"run_{self.ctx.propagation_step}"
         )[lowest_energy_calc].outputs.remote_folder
         self.report(f"set restart folder to {self.ctx.restart_folder}")
+        #increment step index
+        self.ctx.propagation_step += 1
         return ExitCode(0)

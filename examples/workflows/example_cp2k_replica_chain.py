@@ -27,7 +27,7 @@ def _example_cp2k_replicachain(cp2k_code):
     builder.constraints = Str(
         'fixed 1 , collective 1 [ev/angstrom^2] 40 [angstrom] 1.33 , collective 2 [ev/angstrom^2] 40 [angstrom] 1.09'
     )
-    builder.colvars = Str('distance atoms 1 2 , distance atoms 2 5 ')
+    builder.colvars = Str('distance atoms 1 2 , distance atoms 1 3 ')
 
     builder.multiplicity = Int(0)
 
