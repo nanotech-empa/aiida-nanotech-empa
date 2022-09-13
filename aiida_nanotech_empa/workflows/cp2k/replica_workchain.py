@@ -183,25 +183,32 @@ class Cp2kReplicaWorkChain(WorkChain):
 
     def update_colvars_values(self):
         """Compute actual value of CVs."""
+
         ase_structure = self.ctx.latest_structure.get_ase()
         colvars = self.inputs.colvars.value
         self.ctx.colvars_values = [cv[1] for cv in compute_colvars(colvars, ase_structure)]
         self.report(f"actual CVs values: {self.ctx.colvars_values}")
-        #if self.ctx.propagation_step == 0 :
-        #    self.ctx.outenes = [self.ctx.initial_scf.outputs.output_parameters['energy_scf']]
-        #    self.ctx.outcvs = self.ctx.colvars_values
-        #    self.ctx.outstructure = [self.ctx.latest_structure.pk]
-        #else:
-        #    self.ctx.outenes.append(self.ctx.lowest_energy)
-        #    self.ctx.outcvs.append(self.ctx.colvars_values)
-        #    self.ctx.outstructure.append(self.ctx.latest_structure.pk)
-        #self.out('energies',List(list=self.ctx.outenes))
-        #self.out('cvs',List(list=self.ctx.outcvs))
-        #self.out('structure',List(list=self.ctx.outstructure))
+        if self.ctx.propagation_step == 0 :
+            self.ctx.CVs_to_increment = self.ctx.colvars_values
+        else:
+            self.ctx.CVs_to_increment = self.ctx.CVs_cases[self.ctx.lowest_energy_calc]
+            self.report(f"will add increments to this set of CVs: {self.ctx.CVs_to_increment}")
+      #if self.ctx.propagation_step == 0 :
+      #    self.ctx.outenes = [self.ctx.initial_scf.outputs.output_parameters['energy_scf']]
+      #    self.ctx.outcvs = [self.ctx.colvars_values]
+      #    self.ctx.outstructures = [self.ctx.latest_structure.pk]
+      #else:
+      #    self.ctx.outenes.append(self.ctx.lowest_energy)
+      #    self.ctx.outcvs.append(self.ctx.colvars_values)
+      #    self.ctx.outstructures.append(self.ctx.latest_structure.pk)
+      #self.out('output_values',Dict(dict={'energies':self.ctx.outenes, 'cvs':self.ctx.outcvs, 'structures':self.ctx.outstructures}))
 
     def update_colvars_increments(self):
         """Computes teh increments for the CVs according to deviation from target. 
-        If the target value is reached wihtin the increment, set increment to 0."""
+        If the target value is reached wihtin the increment, set increment to 0.
+        Deviation from target is computed wrt actual value of CVs while new CVs 
+        are computed as previous target plus increment to avoid slow diverging deviations 
+        from targets"""
         self.ctx.colvars_increments = []
         for index, colvar in enumerate(self.ctx.colvars_values):
             if math.fabs(self.inputs.colvars_targets[index] -
@@ -217,7 +224,8 @@ class Cp2kReplicaWorkChain(WorkChain):
     def run_constrained_geo_opts(self):
         """Run a constrained geometry optimization for each non 0 increment of colvars."""
         #pylint: disable=unused-variable
-        for index, value in enumerate(self.ctx.colvars_values):
+        self.ctx.CVs_cases=[]
+        for index, value in enumerate(self.ctx.CVs_to_increment): #(self.ctx.colvars_values):
             if self.ctx.colvars_increments[index] != 0:
                 with open(pathlib.Path(__file__).parent /
                         './protocols/geo_opt_protocol.yml',
@@ -268,14 +276,16 @@ class Cp2kReplicaWorkChain(WorkChain):
                 #constraints
                 input_dict['MOTION']['CONSTRAINT'] = get_constraints_section(self.inputs.constraints.value)
                 submitted_CVs=''
-                for icv, cvval in enumerate(self.ctx.colvars_values):
+                current_CVs_targets=[]
+                for icv, cvval in enumerate(self.ctx.CVs_to_increment):
                     target = cvval
                     units = input_dict['MOTION']['CONSTRAINT']['COLLECTIVE'][icv]['TARGET'].split(' ')[0]
                     if icv == index:                       
                         target += self.ctx.colvars_increments[icv]
+                    current_CVs_targets.append(target)
                     input_dict['MOTION']['CONSTRAINT']['COLLECTIVE'][icv]['TARGET'] = units + ' ' + str(target)
                     submitted_CVs += ' ' + str(target)
-
+                self.ctx.CVs_cases.append(current_CVs_targets)
                 #colvars
                 if self.inputs.colvars.value:
                     input_dict['FORCE_EVAL']['SUBSYS'].update(
@@ -343,10 +353,10 @@ class Cp2kReplicaWorkChain(WorkChain):
             results.append((calculation.outputs.output_parameters['energy_scf'], index))
         self.report(f"energies {results}")
         results.sort(key=lambda x: x[0])  #pylint: disable=expression-not-assigned
-        lowest_energy_calc = results[0][1]
+        self.ctx.lowest_energy_calc = results[0][1]
         self.ctx.latest_structure = getattr(
             self.ctx, f"run_{self.ctx.propagation_step}"
-        )[lowest_energy_calc].outputs.output_structure
+        )[self.ctx.lowest_energy_calc].outputs.output_structure
         self.ctx.lowest_energy = results[0][0]
         self.report(
             f"The lowest energy at step {self.ctx.propagation_step} is {results[0][0]} for geometry {self.ctx.latest_structure.pk}"
@@ -354,8 +364,8 @@ class Cp2kReplicaWorkChain(WorkChain):
         #define restart folder
         self.ctx.restart_folder = getattr(
             self.ctx, f"run_{self.ctx.propagation_step}"
-        )[lowest_energy_calc].outputs.remote_folder
-        self.report(f"set restart folder to {self.ctx.restart_folder}")
+        )[self.ctx.lowest_energy_calc].outputs.remote_folder
+
         #increment step index
         self.ctx.propagation_step += 1
         return ExitCode(0)

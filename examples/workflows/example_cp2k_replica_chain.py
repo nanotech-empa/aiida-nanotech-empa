@@ -31,7 +31,7 @@ def _example_cp2k_replicachain(cp2k_code):
 
     builder.multiplicity = Int(0)
 
-    builder.protocol = Str('debug')
+    builder.protocol = Str('low_accuracy')
     builder.colvars_targets = List(list=[1.45,1.29])
     builder.colvars_increments = List(list=[0.06,0.05])
 
