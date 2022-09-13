@@ -31,18 +31,18 @@ def _example_cp2k_replicachain(cp2k_code):
 
     builder.multiplicity = Int(0)
 
-    builder.protocol = Str('low_accuracy')
-    builder.colvars_targets = List(list=[1.45,1.29])
+    builder.protocol = Str('debug')
+    builder.colvars_targets = List(list=[1.40,1.21])
     builder.colvars_increments = List(list=[0.06,0.05])
 
     _, calc_node = run_get_node(builder)
 
     assert calc_node.is_finished_ok
 
-    replicachain_out_dict = dict(calc_node.outputs.output_parameters)
-    print()
-    for k in replicachain_out_dict:
-        print("  {}: {}".format(k, replicachain_out_dict[k]))
+    #replicachain_out_dict = dict(calc_node.outputs.output_parameters)
+    #print()
+    #for k in replicachain_out_dict:
+    #    print("  {}: {}".format(k, replicachain_out_dict[k]))
 
 
 def example_cp2k_replicachain_rks(cp2k_code):

@@ -8,7 +8,7 @@ from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import dict_merge, get_nodes,
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import compute_colvars
 from aiida.plugins import DataFactory, WorkflowFactory
-from aiida.engine import WorkChain, ToContext, ExitCode, while_, append_
+from aiida.engine import WorkChain, ToContext, ExitCode, while_, append_, calcfunction
 from aiida.orm import SinglefileData,Int, Str, Code, Dict, List, Bool
 import math
 import numpy as np
@@ -17,6 +17,14 @@ StructureData = DataFactory("structure")
 Cp2kBaseWorkChain = WorkflowFactory("cp2k.base")
 #Cp2kOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.opt')
 
+@calcfunction
+def output_dict(enes,cvs,structures):
+
+    return Dict(dict={
+        'energies': enes,
+        'cvs': listcvs,
+        'structures':structures
+    })
 
 class Cp2kReplicaWorkChain(WorkChain):
     """Workflow to run Replica Chain calculations with CP2K."""
@@ -75,8 +83,10 @@ class Cp2kReplicaWorkChain(WorkChain):
                 cls.update_latest_structure,
                 cls.update_colvars_values,
                 cls.update_colvars_increments,
-            ))
+            ),
+            cls.finalize)
 
+        spec.outputs.dynamic = True
         spec.exit_code(390, "ERROR_TERMINATION", message="One geo opt failed")
 
     def start(self):
@@ -192,16 +202,15 @@ class Cp2kReplicaWorkChain(WorkChain):
             self.ctx.CVs_to_increment = self.ctx.colvars_values
         else:
             self.ctx.CVs_to_increment = self.ctx.CVs_cases[self.ctx.lowest_energy_calc]
-            self.report(f"will add increments to this set of CVs: {self.ctx.CVs_to_increment}")
-      #if self.ctx.propagation_step == 0 :
-      #    self.ctx.outenes = [self.ctx.initial_scf.outputs.output_parameters['energy_scf']]
-      #    self.ctx.outcvs = [self.ctx.colvars_values]
-      #    self.ctx.outstructures = [self.ctx.latest_structure.pk]
-      #else:
-      #    self.ctx.outenes.append(self.ctx.lowest_energy)
-      #    self.ctx.outcvs.append(self.ctx.colvars_values)
-      #    self.ctx.outstructures.append(self.ctx.latest_structure.pk)
-      #self.out('output_values',Dict(dict={'energies':self.ctx.outenes, 'cvs':self.ctx.outcvs, 'structures':self.ctx.outstructures}))
+            #self.report(f"will add increments to this set of CVs: {self.ctx.CVs_to_increment}")
+        if self.ctx.propagation_step == 0:
+            self.ctx.outenes = [self.ctx.initial_scf.outputs.output_parameters['energy_scf']]
+            self.ctx.outcvs = [self.ctx.colvars_values]
+            self.ctx.outstructures = [self.ctx.latest_structure.pk]
+        else:
+            self.ctx.outenes.append(self.ctx.lowest_energy)
+            self.ctx.outcvs.append(self.ctx.colvars_values)
+            self.ctx.outstructures.append(self.ctx.latest_structure.pk)
 
     def update_colvars_increments(self):
         """Computes teh increments for the CVs according to deviation from target. 
@@ -336,7 +345,7 @@ class Cp2kReplicaWorkChain(WorkChain):
 
                 submitted_calculation = self.submit(builder)
                 self.report(
-                    f"Submitted geo opt: {submitted_calculation}, with {submitted_CVs}"
+                    f"Submitted geo opt: {submitted_calculation.pk}, with {submitted_CVs}"
                 )
                 self.to_context(
                     **{f"run_{self.ctx.propagation_step}": append_(submitted_calculation)})
@@ -359,8 +368,11 @@ class Cp2kReplicaWorkChain(WorkChain):
         )[self.ctx.lowest_energy_calc].outputs.output_structure
         self.ctx.lowest_energy = results[0][0]
         self.report(
-            f"The lowest energy at step {self.ctx.propagation_step} is {results[0][0]} for geometry {self.ctx.latest_structure.pk}"
+            f"The lowest energy at step {self.ctx.propagation_step} is {self.ctx.lowest_energy}"
         )
+        self.report(f"geometry: {self.ctx.latest_structure.pk}")
+        self.report(f"target CVs {self.ctx.CVs_cases[self.ctx.lowest_energy_calc]}")
+        self.out(f"step_{self.ctx.propagation_step}",Dict(dict={'energies':self.ctx.outenes,'cvs':self.ctx.outcvs,'structures':self.ctx.outstructures}).store())
         #define restart folder
         self.ctx.restart_folder = getattr(
             self.ctx, f"run_{self.ctx.propagation_step}"
@@ -369,3 +381,8 @@ class Cp2kReplicaWorkChain(WorkChain):
         #increment step index
         self.ctx.propagation_step += 1
         return ExitCode(0)
+
+    def finalize(self):
+        self.report("Finalizing...")
+        self.out('output_parameters',Dict(dict={'energies':self.ctx.outenes,'cvs':self.ctx.outcvs,'structures':self.ctx.outstructures}).store())
+        return ExitCode(0)        
