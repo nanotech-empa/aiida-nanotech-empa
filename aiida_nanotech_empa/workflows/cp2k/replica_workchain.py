@@ -104,7 +104,7 @@ class Cp2kReplicaWorkChain(WorkChain):
             previous_structures=[struc for struc in previous_replica.outputs.structures]
             
             previous_structures.sort()
-            self.ctx.latest_structure = previous_replica.outputs.structures[previous_structures[-1]]
+            self.ctx.lowest_energy_structure = previous_replica.outputs.structures[previous_structures[-1]]
             for struc in previous_structures:
                 self.out(f"structures.{struc}",previous_replica.outputs.structures[struc])
                 self.out(f"details.{struc}",previous_replica.outputs.details[struc])
@@ -114,14 +114,14 @@ class Cp2kReplicaWorkChain(WorkChain):
             self.ctx.propagation_step = len(previous_structures) - 1 # continue form this step
             self.update_colvars_increments()
             self.ctx.should_run_simulations = True
-            self.ctx.restart_folder = list(self.ctx.latest_structure.get_incoming(node_class = CalcJobNode))[-1][0].outputs.remote_folder
+            self.ctx.restart_folder = list(self.ctx.lowest_energy_structure.get_incoming(node_class = CalcJobNode))[-1][0].outputs.remote_folder
             self.report(f"data from workchain: {previous_replica.pk}")
             self.report(f"actual CVs: {self.ctx.colvars_values}")
             self.report(f"CVs to increment: {self.ctx.CVs_to_increment}")
-            self.report(f"starting from geometry: {self.ctx.latest_structure.pk}")
+            self.report(f"starting from geometry: {self.ctx.lowest_energy_structure.pk}")
             self.report(f"retrieved the following steps: {previous_structures} ")
         else:
-            self.ctx.latest_structure = self.inputs.structure
+            self.ctx.lowest_energy_structure = self.inputs.structure
             self.ctx.should_run_scf = True
             self.ctx.should_run_simulations = True
             self.ctx.propagation_step = 0
@@ -138,12 +138,12 @@ class Cp2kReplicaWorkChain(WorkChain):
     def to_outputs(self):
         """Function to update step by step the workcain output """
         if self.ctx.propagation_step == 0 :
-            self.out('details.initial_scf',Dict(dict={'energy_scf':self.ctx.initial_scf.outputs.output_parameters['energy_scf'],'cvs_target':self.ctx.colvars_values,'cvs_actual':self.ctx.colvars_values}).store())
-            self.out('structures.initial_scf',self.ctx.latest_structure)
+            self.out('details.initial_scf',Dict(dict={'output_parameters': dict(self.ctx.initial_scf.outputs.output_parameters),'cvs_target':self.ctx.colvars_values,'cvs_actual':self.ctx.colvars_values}).store())
+            self.out('structures.initial_scf',self.ctx.lowest_energy_structure)
             self.report(f"Updated output for the initial_scf step")
         else:
-            self.out(f"details.step_{self.ctx.propagation_step - 1 :04}",Dict(dict={'energy_scf':self.ctx.lowest_energy,'cvs_target': self.ctx.CVs_cases[self.ctx.lowest_energy_calc],'cvs_actual':self.ctx.colvars_values}).store())
-            self.out(f"structures.step_{self.ctx.propagation_step - 1 :04}",self.ctx.latest_structure)
+            self.out(f"details.step_{self.ctx.propagation_step - 1 :04}",Dict(dict={'output_parameters': dict(self.ctx.lowest_energy_output_parameters),'cvs_target': self.ctx.CVs_cases[self.ctx.lowest_energy_calc],'cvs_actual':self.ctx.colvars_values}).store())
+            self.out(f"structures.step_{self.ctx.propagation_step - 1 :04}",self.ctx.lowest_energy_structure)
             self.report(f"Updated output for step {self.ctx.propagation_step - 1 :04}")
         return ExitCode(0)
 
@@ -157,7 +157,7 @@ class Cp2kReplicaWorkChain(WorkChain):
 
 
 
-        structure = self.ctx.latest_structure
+        structure = self.ctx.lowest_energy_structure
         #cutoff
         self.ctx.cutoff = get_cutoff(structure=structure)
 
@@ -242,7 +242,7 @@ class Cp2kReplicaWorkChain(WorkChain):
     def update_colvars_values(self):
         """Compute actual value of CVs."""
 
-        ase_structure = self.ctx.latest_structure.get_ase()
+        ase_structure = self.ctx.lowest_energy_structure.get_ase()
         colvars = self.inputs.colvars.value
         self.ctx.colvars_values = [cv[1] for cv in compute_colvars(colvars, ase_structure)]
         self.report(f"actual CVs values: {self.ctx.colvars_values}")
@@ -282,7 +282,7 @@ class Cp2kReplicaWorkChain(WorkChain):
                     protocols = yaml.safe_load(handle)
                     input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
 
-                structure = self.ctx.latest_structure
+                structure = self.ctx.lowest_energy_structure
                 #cutoff
                 self.ctx.cutoff = get_cutoff(structure=structure)
 
@@ -403,14 +403,14 @@ class Cp2kReplicaWorkChain(WorkChain):
         self.report(f"energies {results}")
         results.sort(key=lambda x: x[0])  #pylint: disable=expression-not-assigned
         self.ctx.lowest_energy_calc = results[0][1]
-        self.ctx.latest_structure = getattr(
-            self.ctx, f"run_{self.ctx.propagation_step :04}"
-        )[self.ctx.lowest_energy_calc].outputs.output_structure
+        lowest_energy_base_workchain = getattr(self.ctx, f"run_{self.ctx.propagation_step :04}")[self.ctx.lowest_energy_calc]
+        self.ctx.lowest_energy_structure = lowest_energy_base_workchain.outputs.output_structure 
+        self.ctx.lowest_energy_output_parameters = lowest_energy_base_workchain.outputs.output_parameters
         self.ctx.lowest_energy = results[0][0]
         self.report(
             f"The lowest energy at step {self.ctx.propagation_step :04} is {self.ctx.lowest_energy}"
         )
-        self.report(f"geometry: {self.ctx.latest_structure.pk}")
+        self.report(f"geometry: {self.ctx.lowest_energy_structure.pk}")
         self.report(f"target CVs {self.ctx.CVs_cases[self.ctx.lowest_energy_calc]}")
         #define restart folder
         self.ctx.restart_folder = getattr(
