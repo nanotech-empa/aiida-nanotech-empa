@@ -8,8 +8,8 @@ from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import dict_merge, get_nodes,
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import compute_colvars
 from aiida.plugins import DataFactory, WorkflowFactory
-from aiida.engine import WorkChain, ToContext, ExitCode, while_, append_, calcfunction
-from aiida.orm import SinglefileData,Int, Str, Code, Dict, List, Bool
+from aiida.engine import WorkChain, ToContext, ExitCode, while_, if_, append_, calcfunction
+from aiida.orm import SinglefileData,Int, Str, Code, Dict, List, Bool, load_node, CalcJobNode
 import math
 import numpy as np
 
@@ -76,29 +76,77 @@ class Cp2kReplicaWorkChain(WorkChain):
                    required=False)
 
         spec.outline(
-            cls.start, cls.first_scf, cls.update_colvars_values,
+            cls.start, 
+            if_(cls.should_run_scf)(cls.first_scf, cls.update_colvars_values,
             cls.update_colvars_increments,
+            cls.to_outputs),
             while_(cls.should_run_simulations)(
                 cls.run_constrained_geo_opts,
                 cls.update_latest_structure,
                 cls.update_colvars_values,
                 cls.update_colvars_increments,
+                cls.to_outputs,
             ),
             cls.finalize)
 
         spec.outputs.dynamic = True
+        spec.output_namespace("structures",valid_type=StructureData)
+        spec.output_namespace("details",valid_type=Dict) 
         spec.exit_code(390, "ERROR_TERMINATION", message="One geo opt failed")
 
     def start(self):
-        """Initialise the workchain process."""
-        self.ctx.latest_structure = self.inputs.structure
-        self.ctx.should_run_simulations = True
-        self.ctx.propagation_step = 0
+        """Initialize the workchain process."""
+        self.report(f"Initialization")
+        # restart from previous workchain
+        if self.inputs.continuation_of.value !=0 :
+            self.report(f"Retrieving previous steps from {self.inputs.continuation_of.value} and continuing")
+            previous_replica=load_node(self.inputs.continuation_of.value)
+            previous_structures=[struc for struc in previous_replica.outputs.structures]
+            
+            previous_structures.sort()
+            self.ctx.latest_structure = previous_replica.outputs.structures[previous_structures[-1]]
+            for struc in previous_structures:
+                self.out(f"structures.{struc}",previous_replica.outputs.structures[struc])
+                self.out(f"details.{struc}",previous_replica.outputs.details[struc])
+            self.ctx.CVs_to_increment = previous_replica.outputs.details[struc]['cvs_target']
+            self.ctx.colvars_values = previous_replica.outputs.details[struc]['cvs_actual']
+            self.ctx.should_run_scf = False           
+            self.ctx.propagation_step = len(previous_structures) - 1 # continue form this step
+            self.update_colvars_increments()
+            self.ctx.should_run_simulations = True
+            self.ctx.restart_folder = list(self.ctx.latest_structure.get_incoming(node_class = CalcJobNode))[-1][0].outputs.remote_folder
+            self.report(f"data from workchain: {previous_replica.pk}")
+            self.report(f"actual CVs: {self.ctx.colvars_values}")
+            self.report(f"CVs to increment: {self.ctx.CVs_to_increment}")
+            self.report(f"starting from geometry: {self.ctx.latest_structure.pk}")
+            self.report(f"retrieved the following steps: {previous_structures} ")
+        else:
+            self.ctx.latest_structure = self.inputs.structure
+            self.ctx.should_run_scf = True
+            self.ctx.should_run_simulations = True
+            self.ctx.propagation_step = 0
+        return ExitCode(0)
+
+    def should_run_scf(self):
+        """Function that returnns whether to run or not the first scf step"""
+        return self.ctx.should_run_scf        
 
     def should_run_simulations(self):
-        """Function that returnns whetehr targets have been reached or not"""
+        """Function that returnns whether targets have been reached or not"""
         return self.ctx.should_run_simulations
-    
+
+    def to_outputs(self):
+        """Function to update step by step the workcain output """
+        if self.ctx.propagation_step == 0 :
+            self.out('details.initial_scf',Dict(dict={'energy_scf':self.ctx.initial_scf.outputs.output_parameters['energy_scf'],'cvs_target':self.ctx.colvars_values,'cvs_actual':self.ctx.colvars_values}).store())
+            self.out('structures.initial_scf',self.ctx.latest_structure)
+            self.report(f"Updated output for the initial_scf step")
+        else:
+            self.out(f"details.step_{self.ctx.propagation_step - 1 :04}",Dict(dict={'energy_scf':self.ctx.lowest_energy,'cvs_target': self.ctx.CVs_cases[self.ctx.lowest_energy_calc],'cvs_actual':self.ctx.colvars_values}).store())
+            self.out(f"structures.step_{self.ctx.propagation_step - 1 :04}",self.ctx.latest_structure)
+            self.report(f"Updated output for step {self.ctx.propagation_step - 1 :04}")
+        return ExitCode(0)
+
     def first_scf(self):
         """Run scf on the initial geometry."""
         with open(pathlib.Path(__file__).parent /
@@ -188,7 +236,7 @@ class Cp2kReplicaWorkChain(WorkChain):
 
         submitted_calculation = self.submit(builder)
         self.report(
-            f"Submitted scf of the initial geometry: {submitted_calculation}")
+            f"Submitted scf of the initial geometry: {submitted_calculation.pk}")
         return ToContext(initial_scf=submitted_calculation)
 
     def update_colvars_values(self):
@@ -203,14 +251,6 @@ class Cp2kReplicaWorkChain(WorkChain):
         else:
             self.ctx.CVs_to_increment = self.ctx.CVs_cases[self.ctx.lowest_energy_calc]
             #self.report(f"will add increments to this set of CVs: {self.ctx.CVs_to_increment}")
-        if self.ctx.propagation_step == 0:
-            self.ctx.outenes = [self.ctx.initial_scf.outputs.output_parameters['energy_scf']]
-            self.ctx.outcvs = [self.ctx.colvars_values]
-            self.ctx.outstructures = [self.ctx.latest_structure.pk]
-        else:
-            self.ctx.outenes.append(self.ctx.lowest_energy)
-            self.ctx.outcvs.append(self.ctx.colvars_values)
-            self.ctx.outstructures.append(self.ctx.latest_structure.pk)
 
     def update_colvars_increments(self):
         """Computes teh increments for the CVs according to deviation from target. 
@@ -221,7 +261,7 @@ class Cp2kReplicaWorkChain(WorkChain):
         self.ctx.colvars_increments = []
         for index, colvar in enumerate(self.ctx.colvars_values):
             if math.fabs(self.inputs.colvars_targets[index] -
-                        colvar) > self.inputs.colvars_increments[index]:
+                        colvar) > self.inputs.colvars_increments[index] and math.fabs(self.inputs.colvars_increments[index]) > 0.0001:
                 self.ctx.colvars_increments.append(
                     math.fabs(self.inputs.colvars_increments[index]) *
                     np.sign(self.inputs.colvars_targets[index] - colvar))
@@ -348,14 +388,14 @@ class Cp2kReplicaWorkChain(WorkChain):
                     f"Submitted geo opt: {submitted_calculation.pk}, with {submitted_CVs}"
                 )
                 self.to_context(
-                    **{f"run_{self.ctx.propagation_step}": append_(submitted_calculation)})
+                    **{f"run_{self.ctx.propagation_step :04}": append_(submitted_calculation)})
 
     def update_latest_structure(self):
         """Update the latest structure as the one with minimum energy from the constrained 
         geometry optimizations."""
         results = []
         for index, calculation in enumerate(
-                getattr(self.ctx, f"run_{self.ctx.propagation_step}")):
+                getattr(self.ctx, f"run_{self.ctx.propagation_step :04}")):
             #check if the calculation is finished
             if not common_utils.check_if_calc_ok(self,calculation):
                 return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
@@ -364,18 +404,17 @@ class Cp2kReplicaWorkChain(WorkChain):
         results.sort(key=lambda x: x[0])  #pylint: disable=expression-not-assigned
         self.ctx.lowest_energy_calc = results[0][1]
         self.ctx.latest_structure = getattr(
-            self.ctx, f"run_{self.ctx.propagation_step}"
+            self.ctx, f"run_{self.ctx.propagation_step :04}"
         )[self.ctx.lowest_energy_calc].outputs.output_structure
         self.ctx.lowest_energy = results[0][0]
         self.report(
-            f"The lowest energy at step {self.ctx.propagation_step} is {self.ctx.lowest_energy}"
+            f"The lowest energy at step {self.ctx.propagation_step :04} is {self.ctx.lowest_energy}"
         )
         self.report(f"geometry: {self.ctx.latest_structure.pk}")
         self.report(f"target CVs {self.ctx.CVs_cases[self.ctx.lowest_energy_calc]}")
-        self.out(f"step_{self.ctx.propagation_step}",Dict(dict={'energies':self.ctx.outenes,'cvs':self.ctx.outcvs,'structures':self.ctx.outstructures}).store())
         #define restart folder
         self.ctx.restart_folder = getattr(
-            self.ctx, f"run_{self.ctx.propagation_step}"
+            self.ctx, f"run_{self.ctx.propagation_step :04}"
         )[self.ctx.lowest_energy_calc].outputs.remote_folder
 
         #increment step index
@@ -384,5 +423,5 @@ class Cp2kReplicaWorkChain(WorkChain):
 
     def finalize(self):
         self.report("Finalizing...")
-        self.out('output_parameters',Dict(dict={'energies':self.ctx.outenes,'cvs':self.ctx.outcvs,'structures':self.ctx.outstructures}).store())
+        #self.out('output_parameters',Dict(dict={'energies':self.ctx.outenes,'cvs':self.ctx.outcvs,'structures':self.ctx.outstructures}).store())
         return ExitCode(0)        
