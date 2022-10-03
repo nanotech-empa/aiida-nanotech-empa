@@ -7,7 +7,7 @@ from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Bool, Code, Dict, List, Str
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
 
 from aiida_nanotech_empa.utils import common_utils, analyze_structure
 
@@ -47,9 +47,14 @@ class Cp2kSlabOptWorkChain(WorkChain):
                    default=lambda: Str('standard'),
                    required=False,
                    help="Settings to run simulations with.")
-        spec.input("max_nodes",
-                   valid_type=Int,
-                   default=lambda: Int(48),
+        spec.input("resources",
+                   valid_type=Dict,
+                   default=lambda: Dict(
+                       dict={
+                           'num_machines': 1,
+                           'num_mpiprocs_per_machine': 1,
+                           'num_cores_per_mpiproc': 1
+                       }),
                    required=False)
         spec.input("walltime_seconds",
                    valid_type=Int,
@@ -126,18 +131,8 @@ class Cp2kSlabOptWorkChain(WorkChain):
         dict_merge(input_dict, self.ctx.kinds_section)
 
         #computational resources
-        nodes, tasks_per_node, threads = get_nodes(
-            atoms=ase_atoms,
-            calctype='slab',
-            computer=self.inputs.code.computer,
-            max_nodes=self.inputs.max_nodes.value,
-            uks=self.inputs.multiplicity.value > 0)
 
-        builder.cp2k.metadata.options.resources = {
-            'num_machines': nodes,
-            'num_mpiprocs_per_machine': tasks_per_node,
-            'num_cores_per_mpiproc': threads
-        }
+        builder.cp2k.metadata.options.resources = self.inputs.resources
 
         #walltime
         input_dict['GLOBAL']['WALLTIME'] = max(
