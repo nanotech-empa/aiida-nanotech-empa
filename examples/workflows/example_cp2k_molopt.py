@@ -1,6 +1,6 @@
 from ase import Atoms
 
-from aiida.orm import StructureData, Bool, Int, List
+from aiida.orm import StructureData, Int, List, Str, Dict
 from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
@@ -25,7 +25,13 @@ def _example_cp2k_molopt(cp2k_code, mult):
     if mult == 1:
         builder.magnetization_per_site = List(list=[-1, 1])
 
-    builder.debug = Bool(True)
+    builder.resources = Dict(
+        dict={
+            'num_machines': 1,
+            'num_mpiprocs_per_machine': 1,
+            'num_cores_per_mpiproc': 1
+        })
+    builder.protocol = Str('debug')
 
     _, calc_node = run_get_node(builder)
 

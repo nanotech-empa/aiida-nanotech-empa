@@ -5,10 +5,10 @@ import copy
 import numpy as np
 
 from aiida.engine import WorkChain, ToContext, ExitCode
-from aiida.orm import Int, Bool, Code, Dict, List
+from aiida.orm import Int, Bool, Code, Dict, List, Str
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
 
 from aiida_nanotech_empa.utils import common_utils
 
@@ -39,15 +39,24 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
                    valid_type=Bool,
                    default=lambda: Bool(False),
                    required=False)
+        spec.input("protocol",
+                   valid_type=Str,
+                   default=lambda: Str('standard'),
+                   required=False,
+                   help="Settings to run simulations with.")
+        spec.input("resources",
+                   valid_type=Dict,
+                   default=lambda: Dict(
+                       dict={
+                           'num_machines': 1,
+                           'num_mpiprocs_per_machine': 1,
+                           'num_cores_per_mpiproc': 1
+                       }),
+                   required=False)
         spec.input("walltime_seconds",
                    valid_type=Int,
                    default=lambda: Int(7200),
                    required=False)
-        spec.input("debug",
-                   valid_type=Bool,
-                   default=lambda: Bool(False),
-                   required=False,
-                   help="Run with fast parameters for debugging.")
 
         #workchain outline
         spec.outline(cls.setup, cls.submit_calc, cls.finalize)
@@ -71,7 +80,7 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
                   './protocols/molecule_opt_protocol.yml',
                   encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(protocols['default'])
+            input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
 
         structure = self.inputs.structure
         #cutoff
@@ -84,7 +93,7 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
             structure, magnetization_per_site)
 
         #make sure cell is big enough for MT poisson solver
-        if self.inputs.debug:
+        if self.inputs.protocol.value == "debug":
             extra_cell = 5.0
         else:
             extra_cell = 15.0
@@ -123,29 +132,13 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
-        if self.inputs.debug:
-            input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.001
-            input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-6
-            input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
-                'EPS_SCF'] = 1e-6
-
         # KINDS section
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
         dict_merge(input_dict, self.ctx.kinds_section)
 
         #computational resources
-        nodes, tasks_per_node, threads = get_nodes(
-            atoms=ase_atoms,
-            calctype='default',
-            computer=self.inputs.code.computer,
-            max_nodes=48,
-            uks=self.inputs.multiplicity.value > 0)
-
-        builder.cp2k.metadata.options.resources = {
-            'num_machines': nodes,
-            'num_mpiprocs_per_machine': tasks_per_node,
-            'num_cores_per_mpiproc': threads
-        }
+        builder.cp2k.metadata.options.resources = self.inputs.resources.get_dict(
+        )
 
         #walltime
         input_dict['GLOBAL']['WALLTIME'] = max(

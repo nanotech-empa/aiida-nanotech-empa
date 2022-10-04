@@ -22,14 +22,12 @@ def _example_cp2k_slabopt(cp2k_code, mult):
     builder.walltime_seconds = Int(600)
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
-    print("Test1")
     builder.resources = Dict(
         dict={
             'num_machines': 1,
             'num_mpiprocs_per_machine': 1,
             'num_cores_per_mpiproc': 1
         })
-    print("Test2")
     builder.fixed_atoms = Str('3..18')
 
     builder.multiplicity = Int(mult)

@@ -1,7 +1,7 @@
 import os
 import ase.io
 
-from aiida.orm import StructureData, Bool, Int, List, Str
+from aiida.orm import StructureData, Bool, Int, List, Str, Dict
 from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
@@ -22,7 +22,13 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
     builder.walltime_seconds = Int(600)
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
-    builder.max_nodes = Int(1)
+    builder.resources = Dict(
+        dict={
+            'num_machines': 1,
+            'num_mpiprocs_per_machine': 1,
+            'num_cores_per_mpiproc': 1
+        })
+    builder.protocol = Str('debug')
     if cell_opt:
         builder.cell_opt = Bool(True)
         builder.symmetry = Str('ORTHORHOMBIC')
@@ -33,8 +39,6 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
         mag[0] = 1
         mag[1] = -1
         builder.magnetization_per_site = List(list=mag)
-
-    builder.debug = Bool(True)
 
     _, calc_node = run_get_node(builder)
 

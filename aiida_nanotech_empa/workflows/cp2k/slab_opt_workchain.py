@@ -131,8 +131,8 @@ class Cp2kSlabOptWorkChain(WorkChain):
         dict_merge(input_dict, self.ctx.kinds_section)
 
         #computational resources
-
-        builder.cp2k.metadata.options.resources = self.inputs.resources
+        builder.cp2k.metadata.options.resources = self.inputs.resources.get_dict(
+        )
 
         #walltime
         input_dict['GLOBAL']['WALLTIME'] = max(

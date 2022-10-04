@@ -7,7 +7,7 @@ from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Bool, Code, Dict, List, Str
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
 
 from aiida_nanotech_empa.utils import common_utils
 
@@ -54,19 +54,24 @@ class Cp2kBulkOptWorkChain(WorkChain):
                    valid_type=Bool,
                    default=lambda: Bool(False),
                    required=False)
-        spec.input("max_nodes",
-                   valid_type=Int,
-                   default=lambda: Int(48),
+        spec.input("protocol",
+                   valid_type=Str,
+                   default=lambda: Str('standard'),
+                   required=False,
+                   help="Settings to run simulations with.")
+        spec.input("resources",
+                   valid_type=Dict,
+                   default=lambda: Dict(
+                       dict={
+                           'num_machines': 1,
+                           'num_mpiprocs_per_machine': 1,
+                           'num_cores_per_mpiproc': 1
+                       }),
                    required=False)
         spec.input("walltime_seconds",
                    valid_type=Int,
                    default=lambda: Int(7200),
                    required=False)
-        spec.input("debug",
-                   valid_type=Bool,
-                   default=lambda: Bool(False),
-                   required=False,
-                   help="Run with fast parameters for debugging.")
 
         #workchain outline
         spec.outline(cls.setup, cls.submit_calc, cls.finalize)
@@ -92,7 +97,7 @@ class Cp2kBulkOptWorkChain(WorkChain):
         with open(pathlib.Path(__file__).parent / the_protocol,
                   encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(protocols['default'])
+            input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
 
         structure = self.inputs.structure
         #cutoff
@@ -135,14 +140,7 @@ class Cp2kBulkOptWorkChain(WorkChain):
             # fixed atoms
             input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS'][
                 'LIST'] = self.inputs.fixed_atoms.value
-            if self.inputs.debug:
-                input_dict['MOTION']['GEO_OPT']['MAX_FORCE'] = 0.1
-                input_dict['MOTION']['GEO_OPT']['RMS_DR'] = 0.1
-                input_dict['MOTION']['GEO_OPT']['RMS_FORCE'] = 0.1
-                input_dict['MOTION']['GEO_OPT']['MAX_DR'] = 0.1
-                input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
-                input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
-                    'EPS_SCF'] = 1e-4
+
         # cell opt
         else:
             #cell symmetry
@@ -154,15 +152,6 @@ class Cp2kBulkOptWorkChain(WorkChain):
                 input_dict['MOTION']['CELL_OPT']['KEEP_SYMMETRY'] = ''
             elif self.inputs.cell_freedom.value == 'KEEP_ANGLES':
                 input_dict['MOTION']['CELL_OPT']['KEEP_ANGLES'] = ''
-            if self.inputs.debug:
-                input_dict['MOTION']['CELL_OPT']['MAX_FORCE'] = 0.1
-                input_dict['MOTION']['CELL_OPT']['RMS_DR'] = 0.1
-                input_dict['MOTION']['CELL_OPT']['RMS_FORCE'] = 0.1
-                input_dict['MOTION']['CELL_OPT']['MAX_DR'] = 0.1
-                input_dict['MOTION']['CELL_OPT']['PRESSURE_TOLERANCE'] = 500
-                input_dict['FORCE_EVAL']['DFT']['SCF']['EPS_SCF'] = 1e-4
-                input_dict['FORCE_EVAL']['DFT']['SCF']['OUTER_SCF'][
-                    'EPS_SCF'] = 1e-4
 
         #cutoff
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
@@ -172,18 +161,8 @@ class Cp2kBulkOptWorkChain(WorkChain):
         dict_merge(input_dict, self.ctx.kinds_section)
 
         #computational resources
-        nodes, tasks_per_node, threads = get_nodes(
-            atoms=ase_atoms,
-            calctype='slab',
-            computer=self.inputs.code.computer,
-            max_nodes=self.inputs.max_nodes.value,
-            uks=self.inputs.multiplicity.value > 0)
-
-        builder.cp2k.metadata.options.resources = {
-            'num_machines': nodes,
-            'num_mpiprocs_per_machine': tasks_per_node,
-            'num_cores_per_mpiproc': threads
-        }
+        builder.cp2k.metadata.options.resources = self.inputs.resources.get_dict(
+        )
 
         #walltime
         input_dict['GLOBAL']['WALLTIME'] = max(
