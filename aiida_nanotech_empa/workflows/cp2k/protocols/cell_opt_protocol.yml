@@ -129,13 +129,13 @@ low_accuracy:
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 1.0E-7
+                EPS_SCF: 1.0E-6
                 MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 1.0E-7
+                    EPS_SCF: 1.0E-6
                     MAX_SCF: 50
                 PRINT:
                     RESTART:
@@ -180,8 +180,8 @@ debug:
         WALLTIME: 600   
     MOTION:
         CELL_OPT:
-            EXTERNAL_PRESSURE: 95000
-            PRESSURE_TOLERANCE: 1000
+            EXTERNAL_PRESSURE: 90000
+            PRESSURE_TOLERANCE: 15000
             BFGS:
                 TRUST_RADIUS: '[bohr] 0.1'
             MAX_FORCE: 0.1
@@ -216,13 +216,13 @@ debug:
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 1.0E-7
+                EPS_SCF: 1.0E-2
                 MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 1.0E-7
+                    EPS_SCF: 1.0E-2
                     MAX_SCF: 50
                 PRINT:
                     RESTART:

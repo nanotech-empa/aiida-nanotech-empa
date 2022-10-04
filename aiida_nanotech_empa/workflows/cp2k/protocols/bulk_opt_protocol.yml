@@ -210,13 +210,13 @@ debug:
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 1.0E-4
+                EPS_SCF: 1.0E-2
                 MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 1.0E-4
+                    EPS_SCF: 1.0E-2
                     MAX_SCF: 50
                 PRINT:
                     RESTART:
