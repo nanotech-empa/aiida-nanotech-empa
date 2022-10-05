@@ -154,13 +154,36 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
                    valid_type=List,
                    default=lambda: List(list=[]),
                    required=False)
+        spec.input("resources_scf",
+                   valid_type=Dict,
+                   default=lambda: Dict(
+                       dict={
+                           'num_machines': 1,
+                           'num_mpiprocs_per_machine': 1,
+                           'num_cores_per_mpiproc': 1
+                       }),
+                   required=False)
+        spec.input("resources_gw",
+                   valid_type=Dict,
+                   default=lambda: Dict(
+                       dict={
+                           'num_machines': 1,
+                           'num_mpiprocs_per_machine': 1,
+                           'num_cores_per_mpiproc': 1
+                       }),
+                   required=False)
+        spec.input("resources_ic",
+                   valid_type=Dict,
+                   default=lambda: Dict(
+                       dict={
+                           'num_machines': 1,
+                           'num_mpiprocs_per_machine': 1,
+                           'num_cores_per_mpiproc': 1
+                       }),
+                   required=False)
         spec.input("walltime_seconds",
                    valid_type=Int,
                    default=lambda: Int(600),
-                   required=False)
-        spec.input("max_nodes",
-                   valid_type=Int,
-                   default=lambda: Int(2056),
                    required=False)
         spec.input("debug",
                    valid_type=Bool,
@@ -239,8 +262,10 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.vdw = Bool(True)
         builder.walltime_seconds = self.inputs.walltime_seconds
-        builder.debug = self.inputs.debug
-
+        builder.protocol = 'standard'
+        if self.inputs.debug.value:
+            builder.protocol = 'debug'
+        builder.resources = self.inputs.resources_scf
         builder.metadata.description = "gas_opt"
         submitted_node = self.submit(builder)
         return ToContext(gas_opt=submitted_node)
@@ -271,19 +296,11 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
 
         builder.debug = self.inputs.debug
         builder.walltime_seconds = self.inputs.walltime_seconds
-        builder.max_nodes = self.inputs.max_nodes
 
         builder.image_charge = Bool(True)
         builder.z_ic_plane = self.ctx.image_plane_z
-
-        builder.options = Dict(
-            dict={
-                'resources': {
-                    'num_mpiprocs_per_machine': 1,
-                    'num_cores_per_mpiproc': 6,
-                }
-            })
-
+        builder.resources_scf = self.inputs.resources_scf
+        builder.resources_ic = self.inputs.resources_ic
         builder.metadata.description = "ic"
         submitted_node = self.submit(builder)
         return ToContext(ic=submitted_node)
@@ -304,15 +321,8 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
 
         builder.debug = self.inputs.debug
         builder.walltime_seconds = self.inputs.walltime_seconds
-        builder.max_nodes = self.inputs.max_nodes
-
-        builder.options = Dict(
-            dict={
-                'resources': {
-                    'num_mpiprocs_per_machine': 1,
-                    'num_cores_per_mpiproc': 6,
-                }
-            })
+        builder.resources_scf = self.inputs.resources_scf
+        builder.resources_gw = self.inputs.resources_gw
 
         builder.metadata.description = "gw"
         submitted_node = self.submit(builder)

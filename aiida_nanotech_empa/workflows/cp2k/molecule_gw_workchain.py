@@ -8,7 +8,7 @@ from aiida.engine import WorkChain, ToContext, ExitCode, while_
 from aiida.orm import Int, Float, Str, Code, Dict, List, Bool
 from aiida.orm import SinglefileData, StructureData
 
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
 from aiida_nanotech_empa.utils import common_utils
 
 from aiida_cp2k.calculations import Cp2kCalculation
@@ -47,26 +47,42 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    valid_type=List,
                    default=lambda: List(list=[]),
                    required=False)
+        spec.input("resources_scf",
+                   valid_type=Dict,
+                   default=lambda: Dict(
+                       dict={
+                           'num_machines': 1,
+                           'num_mpiprocs_per_machine': 1,
+                           'num_cores_per_mpiproc': 1
+                       }),
+                   required=False)
+        spec.input("resources_gw",
+                   valid_type=Dict,
+                   default=lambda: Dict(
+                       dict={
+                           'num_machines': 1,
+                           'num_mpiprocs_per_machine': 1,
+                           'num_cores_per_mpiproc': 1
+                       }),
+                   required=False)
+        spec.input("resources_ic",
+                   valid_type=Dict,
+                   default=lambda: Dict(
+                       dict={
+                           'num_machines': 1,
+                           'num_mpiprocs_per_machine': 1,
+                           'num_cores_per_mpiproc': 1
+                       }),
+                   required=False)
         spec.input("walltime_seconds",
                    valid_type=Int,
                    default=lambda: Int(600),
-                   required=False)
-        spec.input("max_nodes",
-                   valid_type=Int,
-                   default=lambda: Int(2056),
                    required=False)
         spec.input("debug",
                    valid_type=Bool,
                    default=lambda: Bool(False),
                    required=False,
                    help="Run with fast parameters for debugging.")
-
-        spec.input(
-            'options',
-            valid_type=Dict,
-            required=False,
-            help=
-            "User-defined metadata.options that override the automatic ones.")
 
         spec.outline(
             cls.setup,
@@ -209,32 +225,22 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         input_dict['FORCE_EVAL']['DFT']['PRINT']['E_DENSITY_CUBE'][
             'STRIDE'] = '6 6 6'
 
-    def _get_resources(self, calctype, max_nodes_cap):
-        nodes, tasks_per_node, threads = get_nodes(
-            atoms=self.ctx.structure.get_ase(),
-            calctype=calctype,
-            computer=self.inputs.code.computer,
-            max_nodes=min(max_nodes_cap, self.inputs.max_nodes.value),
-            uks=self.inputs.multiplicity.value > 0)
-
-        res = {
-            'num_machines': nodes,
-            'num_mpiprocs_per_machine': tasks_per_node,
-            'num_cores_per_mpiproc': threads
-        }
+    def _get_resources(self, calctype):
+        if calctype == 'scf':
+            res = self.inputs.resources_scf.get_dict()
+        elif calctype == 'gw':
+            res = self.inputs.resources_gw.get_dict()
+        else:
+            res = self.inputs.resources_ic.get_dict()
 
         return res
 
-    def _get_metadata_options(self, calctype, max_nodes_cap):
-        # automatically determined metadata_options
-        options = {
-            'resources': self._get_resources(calctype, max_nodes_cap),
+    def _get_metadata_options(self, calctype):
+        # metadata_options
+        return {
+            'resources': self._get_resources(calctype),
             'max_wallclock_seconds': self.inputs.walltime_seconds.value,
         }
-        # If user specified any, overwrite those:
-        if 'options' in self.inputs:
-            dict_merge(options, dict(self.inputs.options))
-        return options
 
     def submit_scf(self):
 
@@ -290,9 +296,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                 'RESTART_FILE_NAME'] = './parent_calc/aiida-RESTART.wfn'
 
         builder.parameters = Dict(dict=input_dict)
-
-        builder.metadata.options = self._get_metadata_options(
-            calctype='default', max_nodes_cap=48)
+        builder.metadata.options = self._get_metadata_options(calctype='scf')
         builder.metadata.options['parser_name'] = "cp2k_advanced_parser"
 
         submitted_node = self.submit(builder)
@@ -344,8 +348,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         builder.parent_calc_folder = self.ctx.scf.outputs.remote_folder
 
         builder.metadata.options = self._get_metadata_options(
-            calctype='gw_ic' if self.inputs.image_charge.value else 'gw',
-            max_nodes_cap=2048)
+            calctype='gw_ic' if self.inputs.image_charge.value else 'gw')
         builder.metadata.options[
             'parser_name'] = "nanotech_empa.cp2k_gw_parser"
 

@@ -3,7 +3,7 @@ import os
 import ase.io
 from ase import Atoms
 
-from aiida.orm import StructureData, Bool, Str, Int, List, Float
+from aiida.orm import StructureData, Bool, Str, Int, List, Float, Dict
 from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
@@ -44,7 +44,24 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
 
     builder.debug = Bool(True)
     builder.walltime_seconds = Int(5 * 60)
-    builder.max_nodes = Int(1)
+    builder.resources_scf = Dict(
+        dict={
+            'num_machines': 1,
+            'num_mpiprocs_per_machine': 1,
+            'num_cores_per_mpiproc': 1
+        })
+    builder.resources_gw = Dict(
+        dict={
+            'num_machines': 1,
+            'num_mpiprocs_per_machine': 1,
+            'num_cores_per_mpiproc': 1
+        })
+    builder.resources_ic = Dict(
+        dict={
+            'num_machines': 1,
+            'num_mpiprocs_per_machine': 1,
+            'num_cores_per_mpiproc': 1
+        })
 
     _, calc_node = run_get_node(builder)
 
@@ -67,6 +84,6 @@ def example_cp2k_ads_gw_ic_implicit_slab(cp2k_code):
 
 if __name__ == '__main__':
     print("# Slab in geometry explicitly #")
-    example_cp2k_ads_gw_ic_explicit_slab(load_code("cp2k@localhost"))
+    _example_cp2k_ads_gw_ic(load_code("cp2k@localhost"), slab_included=True)
     print("# Slab specified implicitly #")
-    example_cp2k_ads_gw_ic_implicit_slab(load_code("cp2k@localhost"))
+    _example_cp2k_ads_gw_ic(load_code("cp2k@localhost"), slab_included=False)

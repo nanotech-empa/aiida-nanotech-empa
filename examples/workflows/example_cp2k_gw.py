@@ -1,6 +1,6 @@
 from ase import Atoms
 
-from aiida.orm import StructureData, Bool, Str, Int, Float, List
+from aiida.orm import StructureData, Bool, Str, Int, Float, List, Dict
 from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
@@ -31,7 +31,24 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
     builder.z_ic_plane = Float(0.8)
 
     builder.debug = Bool(True)
-    builder.max_nodes = Int(1)
+    builder.resources_scf = Dict(
+        dict={
+            'num_machines': 1,
+            'num_mpiprocs_per_machine': 1,
+            'num_cores_per_mpiproc': 1
+        })
+    builder.resources_gw = Dict(
+        dict={
+            'num_machines': 1,
+            'num_mpiprocs_per_machine': 1,
+            'num_cores_per_mpiproc': 1
+        })
+    builder.resources_gw_ic = Dict(
+        dict={
+            'num_machines': 1,
+            'num_mpiprocs_per_machine': 1,
+            'num_cores_per_mpiproc': 1
+        })
 
     _, calc_node = run_get_node(builder)
 
