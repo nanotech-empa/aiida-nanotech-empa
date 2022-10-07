@@ -262,9 +262,9 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.vdw = Bool(True)
         builder.walltime_seconds = self.inputs.walltime_seconds
-        builder.protocol = 'standard'
+        builder.protocol = Str('standard')
         if self.inputs.debug.value:
-            builder.protocol = 'debug'
+            builder.protocol = Str('debug')
         builder.resources = self.inputs.resources_scf
         builder.metadata.description = "gas_opt"
         submitted_node = self.submit(builder)
