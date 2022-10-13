@@ -29,7 +29,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    required=False,
                    help="Either 'gapw_std', 'gapw_hq', 'gpw_std'")
 
-        spec.input("image_charge",
+        spec.input("run_image_charge",
                    valid_type=Bool,
                    default=lambda: Bool(False),
                    required=False,
@@ -47,37 +47,30 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    valid_type=List,
                    default=lambda: List(list=[]),
                    required=False)
-        spec.input("resources_scf",
-                   valid_type=Dict,
-                   default=lambda: Dict(
-                       dict={
-                           'num_machines': 1,
-                           'num_mpiprocs_per_machine': 1,
-                           'num_cores_per_mpiproc': 1
-                       }),
-                   required=False)
-        spec.input("resources_gw",
-                   valid_type=Dict,
-                   default=lambda: Dict(
-                       dict={
-                           'num_machines': 1,
-                           'num_mpiprocs_per_machine': 1,
-                           'num_cores_per_mpiproc': 1
-                       }),
-                   required=False)
-        spec.input("resources_ic",
-                   valid_type=Dict,
-                   default=lambda: Dict(
-                       dict={
-                           'num_machines': 1,
-                           'num_mpiprocs_per_machine': 1,
-                           'num_cores_per_mpiproc': 1
-                       }),
-                   required=False)
-        spec.input("walltime_seconds",
-                   valid_type=Int,
-                   default=lambda: Int(600),
-                   required=False)
+        spec.input_namespace("options",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc."
+        )
+
+        spec.input("options.scf",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the SCF cacluation: walltime, memory, CPUs, etc."
+        )
+
+        spec.input("options.gw",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the GW cacluation: walltime, memory, CPUs, etc."
+        ) 
+
         spec.input("debug",
                    valid_type=Bool,
                    default=lambda: Bool(False),
@@ -131,8 +124,8 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             self.inputs.magnetization_per_site)
         ghost_per_site = None
 
-        #add ghost atoms in case of gw-ic
-        if self.inputs.image_charge.value:
+        # Add ghost atoms in case of gw-ic
+        if self.inputs.run_image_charge:
             atoms = self.inputs.structure.get_ase()
             image = atoms.copy()
             image.positions[:, 2] = (2 * self.inputs.z_ic_plane.value -
@@ -159,7 +152,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         atoms.center()
         self.ctx.structure = StructureData(ase=atoms)
 
-        # --------------------------------------------------
         # Determine which basis and pseudo files to include
         if self.inputs.protocol in ['gapw_std', 'gapw_hq']:
             basis = "GW_BASIS_SET"
@@ -178,7 +170,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                   ".", "data", potential)),
         }
-        # --------------------------------------------------
 
         self.ctx.current_scf_protocol = None
         self.ctx.scf_restart_from_last = False
@@ -225,23 +216,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         input_dict['FORCE_EVAL']['DFT']['PRINT']['E_DENSITY_CUBE'][
             'STRIDE'] = '6 6 6'
 
-    def _get_resources(self, calctype):
-        if calctype == 'scf':
-            res = self.inputs.resources_scf.get_dict()
-        elif calctype == 'gw':
-            res = self.inputs.resources_gw.get_dict()
-        else:
-            res = self.inputs.resources_ic.get_dict()
-
-        return res
-
-    def _get_metadata_options(self, calctype):
-        # metadata_options
-        return {
-            'resources': self._get_resources(calctype),
-            'max_wallclock_seconds': self.inputs.walltime_seconds.value,
-        }
-
     def submit_scf(self):
 
         # Try the next SCF section:
@@ -261,9 +235,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         self.report(
             f"Submitting SCF (protocol {self.ctx.current_scf_protocol})")
 
-        # -------------------------------------------------------
         # Build the input dictionary
-
         step_protocol = self.inputs.protocol.value + "_scf_step"
         input_dict = copy.deepcopy(self.ctx.protocols[step_protocol])
 
@@ -275,16 +247,12 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
         dict_merge(input_dict, self.ctx.kinds_section)
 
-        input_dict['GLOBAL']['WALLTIME'] = max(
-            self.inputs.walltime_seconds.value - 600, 600)
-
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
         if self.inputs.debug:
             self._set_debug(input_dict)
 
-        # -------------------------------------------------------
-
+        # Prepare the builder.
         builder = Cp2kCalculation.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.structure
@@ -295,17 +263,19 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT'][
                 'RESTART_FILE_NAME'] = './parent_calc/aiida-RESTART.wfn'
 
-        builder.parameters = Dict(dict=input_dict)
-        builder.metadata.options = self._get_metadata_options(calctype='scf')
+        # Options.
+        builder.metadata.options = self.inputs.options.scf
+        if 'max_wallclock_seconds' in self.inputs.options:
+            input_dict['GLOBAL']['WALLTIME'] = max(self.inputs.options['max_wallclock_seconds'] - 600, 600)
         builder.metadata.options['parser_name'] = "cp2k_advanced_parser"
+
+        builder.parameters = Dict(dict=input_dict)
 
         submitted_node = self.submit(builder)
         return ToContext(scf=submitted_node)
 
     def check_scf(self):
-        if not common_utils.check_if_calc_ok(self, self.ctx.scf):
-            return self.exit_codes.ERROR_TERMINATION
-        return ExitCode(0)
+        return ExitCode(0) if self.ctx.scf.is_finished_ok else self.exit_codes.ERROR_TERMINATION
 
     def submit_gw(self):
 
@@ -314,7 +284,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         # -------------------------------------------------------
         # Build the input dictionary
 
-        if self.inputs.image_charge.value:
+        if self.inputs.run_image_charge:
             step_protocol = self.inputs.protocol.value + "_ic_step"
         else:
             step_protocol = self.inputs.protocol.value + "_gw_step"
@@ -329,28 +299,26 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
         dict_merge(input_dict, self.ctx.kinds_section)
 
-        input_dict['GLOBAL']['WALLTIME'] = max(
-            self.inputs.walltime_seconds.value - 600, 600)
-
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
         if self.inputs.debug:
             self._set_debug(input_dict)
 
-        # -------------------------------------------------------
-
+        # Prepare the builder.
         builder = Cp2kCalculation.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.structure
         builder.file = self.ctx.files
 
-        #restart from wfn of step1
+        # Restart from the wavefunction of the SCF obtained previously.
         builder.parent_calc_folder = self.ctx.scf.outputs.remote_folder
 
-        builder.metadata.options = self._get_metadata_options(
-            calctype='gw_ic' if self.inputs.image_charge.value else 'gw')
-        builder.metadata.options[
-            'parser_name'] = "nanotech_empa.cp2k_gw_parser"
+        # Options.
+        builder.metadata.options = self.inputs.options.gw
+        if 'max_wallclock_seconds' in self.inputs.options:
+            input_dict['GLOBAL']['WALLTIME'] = max(self.inputs.options['max_wallclock_seconds'] - 600, 600)
+
+        builder.metadata.options['parser_name'] = "nanotech_empa.cp2k_gw_parser"
 
         builder.parameters = Dict(dict=input_dict)
 

@@ -27,28 +27,27 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
     if mult == 1:
         builder.magnetization_per_site = List(list=[-1, 1])
 
-    builder.image_charge = Bool(ic)
+    builder.run_image_charge = Bool(ic)
     builder.z_ic_plane = Float(0.8)
 
     builder.debug = Bool(True)
-    builder.resources_scf = Dict(
-        dict={
-            'num_machines': 1,
-            'num_mpiprocs_per_machine': 1,
-            'num_cores_per_mpiproc': 1
-        })
-    builder.resources_gw = Dict(
-        dict={
-            'num_machines': 1,
-            'num_mpiprocs_per_machine': 1,
-            'num_cores_per_mpiproc': 1
-        })
-    builder.resources_gw_ic = Dict(
-        dict={
-            'num_machines': 1,
-            'num_mpiprocs_per_machine': 1,
-            'num_cores_per_mpiproc': 1
-        })
+    builder.options.scf = {
+        "max_wallclock_seconds": 2000,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+            },
+        }
+
+    builder.options.gw = {
+        "max_wallclock_seconds": 2000,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+            },
+        }
 
     _, calc_node = run_get_node(builder)
 
@@ -117,4 +116,4 @@ if __name__ == '__main__':
                 print("####################################")
                 print("#### ic={}; {}; mult={}".format(ic, pc, mult))
                 print("####################################")
-                _example_cp2k_gw(load_code("cp2k@localhost"), ic, pc, mult)
+                _example_cp2k_gw(load_code("cp2k-8.1@tigu-mpirun"), ic, pc, mult)

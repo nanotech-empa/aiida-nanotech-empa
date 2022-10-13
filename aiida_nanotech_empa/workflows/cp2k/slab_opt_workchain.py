@@ -47,19 +47,13 @@ class Cp2kSlabOptWorkChain(WorkChain):
                    default=lambda: Str('standard'),
                    required=False,
                    help="Settings to run simulations with.")
-        spec.input("resources",
-                   valid_type=Dict,
-                   default=lambda: Dict(
-                       dict={
-                           'num_machines': 1,
-                           'num_mpiprocs_per_machine': 1,
-                           'num_cores_per_mpiproc': 1
-                       }),
-                   required=False)
-        spec.input("walltime_seconds",
-                   valid_type=Int,
-                   default=lambda: Int(7200),
-                   required=False)
+        spec.input("options",
+        valid_type=dict,
+        non_db=True,
+        required=False,
+        help=
+        "Define options for the cacluations: walltime, memory, CPUs, etc."
+        )
 
         #workchain outline
         spec.outline(cls.setup, cls.submit_calc, cls.finalize)
@@ -130,14 +124,13 @@ class Cp2kSlabOptWorkChain(WorkChain):
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
         dict_merge(input_dict, self.ctx.kinds_section)
 
-        #computational resources
-        builder.cp2k.metadata.options.resources = self.inputs.resources.get_dict(
-        )
+        # Setup options.
+        if 'options' in self.inputs:
+            builder.cp2k.metadata.options = self.inputs.options
 
-        #walltime
-        input_dict['GLOBAL']['WALLTIME'] = max(
-            self.inputs.walltime_seconds.value - 600, 600)
-        builder.cp2k.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
+        # Setup walltime.
+        if 'max_wallclock_seconds' in self.inputs.options:
+            input_dict['GLOBAL']['WALLTIME'] = max(self.inputs.options['max_wallclock_seconds'] - 600, 600)
 
         #parser
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"

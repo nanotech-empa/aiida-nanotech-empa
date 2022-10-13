@@ -30,9 +30,23 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
     if geo_opt:
         builder.geo_opt = Bool(True)
 
-    builder.debug = Bool(True)
-    builder.walltime_seconds = Int(60 * 60)
-    builder.max_nodes = Int(1)
+    builder.options.geo_opt = {
+        "max_wallclock_seconds": 2000,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+            },
+        }
+
+    builder.options.gw = {
+        "max_wallclock_seconds": 2000,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+            },
+        }
 
     _, calc_node = run_get_node(builder)
 
