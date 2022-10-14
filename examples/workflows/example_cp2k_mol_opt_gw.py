@@ -31,7 +31,7 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
         builder.geo_opt = Bool(True)
 
     builder.options.geo_opt = {
-        "max_wallclock_seconds": 2000,
+        "max_wallclock_seconds": 600,
         "resources": {
             "num_machines": 1,
             "num_mpiprocs_per_machine": 1,
@@ -40,7 +40,7 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
     }
 
     builder.options.gw = {
-        "max_wallclock_seconds": 2000,
+        "max_wallclock_seconds": 600,
         "resources": {
             "num_machines": 1,
             "num_mpiprocs_per_machine": 1,
@@ -69,6 +69,6 @@ def example_cp2k_mol_opt_gw_no_geo_opt(cp2k_code):
 
 if __name__ == '__main__':
     print("# Run geometry optimization and then run GW #")
-    example_cp2k_mol_opt_gw_geo_opt(load_code("cp2k-8.1@tigu-mpirun"))
+    example_cp2k_mol_opt_gw_geo_opt(load_code("cp2k@localhost"))
     print("# Run GW only #")
-    example_cp2k_mol_opt_gw_no_geo_opt(load_code("cp2k-8.1@tigu-mpirun"))
+    example_cp2k_mol_opt_gw_no_geo_opt(load_code("cp2k@localhost"))

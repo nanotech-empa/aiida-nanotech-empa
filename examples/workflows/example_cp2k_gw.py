@@ -32,7 +32,7 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
 
     builder.debug = Bool(True)
     builder.options.scf = {
-        "max_wallclock_seconds": 2000,
+        "max_wallclock_seconds": 600,
         "resources": {
             "num_machines": 1,
             "num_mpiprocs_per_machine": 1,
@@ -41,7 +41,7 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
     }
 
     builder.options.gw = {
-        "max_wallclock_seconds": 2000,
+        "max_wallclock_seconds": 600,
         "resources": {
             "num_machines": 1,
             "num_mpiprocs_per_machine": 1,
@@ -116,5 +116,4 @@ if __name__ == '__main__':
                 print("####################################")
                 print(f"#### ic={ic}; {pc}; mult={mult}")
                 print("####################################")
-                _example_cp2k_gw(load_code("cp2k-8.1@tigu-mpirun"), ic, pc,
-                                 mult)
+                _example_cp2k_gw(load_code("cp2k@localhost"), ic, pc, mult)

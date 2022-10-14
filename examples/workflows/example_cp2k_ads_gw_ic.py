@@ -3,7 +3,7 @@ import os
 import ase.io
 from ase import Atoms
 
-from aiida.orm import StructureData, Bool, Str, Int, List, Float, Dict
+from aiida.orm import StructureData, Bool, Str, Int, List, Float
 from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
@@ -44,25 +44,30 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
 
     builder.debug = Bool(True)
     builder.walltime_seconds = Int(5 * 60)
-    builder.resources_scf = Dict(
-        dict={
-            'num_machines': 1,
-            'num_mpiprocs_per_machine': 1,
-            'num_cores_per_mpiproc': 1
-        })
-    builder.resources_gw = Dict(
-        dict={
-            'num_machines': 1,
-            'num_mpiprocs_per_machine': 1,
-            'num_cores_per_mpiproc': 1
-        })
-    builder.resources_ic = Dict(
-        dict={
-            'num_machines': 1,
-            'num_mpiprocs_per_machine': 1,
-            'num_cores_per_mpiproc': 1
-        })
-
+    builder.options.scf = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
+    builder.options.gw = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
+    builder.options.ic = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
     _, calc_node = run_get_node(builder)
 
     assert calc_node.is_finished_ok
@@ -70,7 +75,7 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
     gw_ic_res = dict(calc_node.outputs.gw_ic_parameters)
     print()
     for k in gw_ic_res:
-        print("  {}: {}".format(k, gw_ic_res[k]))
+        print(f"  {k}: {gw_ic_res[k]}")
     print()
 
 
