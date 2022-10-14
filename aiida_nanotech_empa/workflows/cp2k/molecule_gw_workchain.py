@@ -9,7 +9,6 @@ from aiida.orm import Int, Float, Str, Code, Dict, List, Bool
 from aiida.orm import SinglefileData, StructureData
 
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
-from aiida_nanotech_empa.utils import common_utils
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
@@ -47,15 +46,16 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    valid_type=List,
                    default=lambda: List(list=[]),
                    required=False)
-        spec.input_namespace("options",
+        spec.input_namespace(
+            "options",
             valid_type=dict,
             non_db=True,
             required=False,
             help=
-            "Define options for the cacluations: walltime, memory, CPUs, etc."
-        )
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
 
-        spec.input("options.scf",
+        spec.input(
+            "options.scf",
             valid_type=dict,
             non_db=True,
             required=False,
@@ -63,13 +63,14 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             "Define options for the SCF cacluation: walltime, memory, CPUs, etc."
         )
 
-        spec.input("options.gw",
+        spec.input(
+            "options.gw",
             valid_type=dict,
             non_db=True,
             required=False,
             help=
             "Define options for the GW cacluation: walltime, memory, CPUs, etc."
-        ) 
+        )
 
         spec.input("debug",
                    valid_type=Bool,
@@ -266,7 +267,8 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         # Options.
         builder.metadata.options = self.inputs.options.scf
         if 'max_wallclock_seconds' in self.inputs.options:
-            input_dict['GLOBAL']['WALLTIME'] = max(self.inputs.options['max_wallclock_seconds'] - 600, 600)
+            input_dict['GLOBAL']['WALLTIME'] = max(
+                self.inputs.options['max_wallclock_seconds'] - 600, 600)
         builder.metadata.options['parser_name'] = "cp2k_advanced_parser"
 
         builder.parameters = Dict(dict=input_dict)
@@ -275,7 +277,9 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         return ToContext(scf=submitted_node)
 
     def check_scf(self):
-        return ExitCode(0) if self.ctx.scf.is_finished_ok else self.exit_codes.ERROR_TERMINATION
+        return ExitCode(
+            0
+        ) if self.ctx.scf.is_finished_ok else self.exit_codes.ERROR_TERMINATION
 
     def submit_gw(self):
 
@@ -316,9 +320,11 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         # Options.
         builder.metadata.options = self.inputs.options.gw
         if 'max_wallclock_seconds' in self.inputs.options:
-            input_dict['GLOBAL']['WALLTIME'] = max(self.inputs.options['max_wallclock_seconds'] - 600, 600)
+            input_dict['GLOBAL']['WALLTIME'] = max(
+                self.inputs.options['max_wallclock_seconds'] - 600, 600)
 
-        builder.metadata.options['parser_name'] = "nanotech_empa.cp2k_gw_parser"
+        builder.metadata.options[
+            'parser_name'] = "nanotech_empa.cp2k_gw_parser"
 
         builder.parameters = Dict(dict=input_dict)
 
@@ -328,7 +334,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
     def finalize(self):
         self.report("Finalizing...")
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.second_step):
+        if not self.ctx.second_step.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
         if not self.ctx.second_step.outputs.std_output_parameters[
                 'motion_step_info']['scf_converged'][-1]:

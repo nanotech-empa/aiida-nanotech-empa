@@ -1,5 +1,3 @@
-from aiida_nanotech_empa.utils import common_utils
-
 import numpy as np
 
 from aiida.engine import WorkChain, ExitCode, calcfunction, ToContext, if_
@@ -261,17 +259,16 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         builder.multiplicity = self.inputs.geometry_opt_mult
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.vdw = Bool(True)
-        builder.walltime_seconds = self.inputs.walltime_seconds
         builder.protocol = Str('standard')
         if self.inputs.debug.value:
             builder.protocol = Str('debug')
-        builder.resources = self.inputs.resources_scf
+        builder.options = self.inputs.options.scf
         builder.metadata.description = "gas_opt"
         submitted_node = self.submit(builder)
         return ToContext(gas_opt=submitted_node)
 
     def check_gas_opt(self):
-        if not common_utils.check_if_calc_ok(self, self.ctx.gas_opt):
+        if not self.ctx.gas_opt.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
         # set the optimized geometrical center to the adsorbed conf geometrical center
         ads_mol_ase = self.ctx.mol_struct.get_ase()
@@ -293,21 +290,18 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         builder.structure = self.ctx.mol_struct
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.multiplicity = self.inputs.multiplicity
-
         builder.debug = self.inputs.debug
-        builder.walltime_seconds = self.inputs.walltime_seconds
-
         builder.image_charge = Bool(True)
         builder.z_ic_plane = self.ctx.image_plane_z
-        builder.resources_scf = self.inputs.resources_scf
-        builder.resources_ic = self.inputs.resources_ic
+        builder.options.scf = self.inputs.options.scf
+        builder.options.gw = self.inputs.options.ic
         builder.metadata.description = "ic"
         submitted_node = self.submit(builder)
         return ToContext(ic=submitted_node)
 
     def gw(self):
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.ic):
+        if not self.ctx.ic.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
 
         self.report("Submitting GW.")
@@ -318,20 +312,16 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         builder.structure = self.ctx.mol_struct
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.multiplicity = self.inputs.multiplicity
-
         builder.debug = self.inputs.debug
-        builder.walltime_seconds = self.inputs.walltime_seconds
-        builder.resources_scf = self.inputs.resources_scf
-        builder.resources_gw = self.inputs.resources_gw
-
+        builder.options.scf = self.inputs.options.scf
+        builder.options.gw = self.inputs.opetions.gw
         builder.metadata.description = "gw"
         submitted_node = self.submit(builder)
         return ToContext(gw=submitted_node)
 
     def finalize(self):
         self.report("Finalizing...")
-
-        if not common_utils.check_if_calc_ok(self, self.ctx.gw):
+        if not self.ctx.gw.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
 
         gw_out_params = self.ctx.gw.outputs.gw_output_parameters

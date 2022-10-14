@@ -47,13 +47,13 @@ class Cp2kSlabOptWorkChain(WorkChain):
                    default=lambda: Str('standard'),
                    required=False,
                    help="Settings to run simulations with.")
-        spec.input("options",
-        valid_type=dict,
-        non_db=True,
-        required=False,
-        help=
-        "Define options for the cacluations: walltime, memory, CPUs, etc."
-        )
+        spec.input(
+            "options",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
 
         #workchain outline
         spec.outline(cls.setup, cls.submit_calc, cls.finalize)
@@ -130,7 +130,8 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         # Setup walltime.
         if 'max_wallclock_seconds' in self.inputs.options:
-            input_dict['GLOBAL']['WALLTIME'] = max(self.inputs.options['max_wallclock_seconds'] - 600, 600)
+            input_dict['GLOBAL']['WALLTIME'] = max(
+                self.inputs.options['max_wallclock_seconds'] - 600, 600)
 
         #parser
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
@@ -148,7 +149,7 @@ class Cp2kSlabOptWorkChain(WorkChain):
     def finalize(self):
         self.report("Finalizing...")
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.opt):
+        if not self.ctx.opt.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
 
         for out in self.ctx.opt.outputs:

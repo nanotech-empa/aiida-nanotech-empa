@@ -36,8 +36,8 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
             "num_machines": 1,
             "num_mpiprocs_per_machine": 1,
             "num_cores_per_mpiproc": 1,
-            },
-        }
+        },
+    }
 
     builder.options.gw = {
         "max_wallclock_seconds": 2000,
@@ -45,8 +45,8 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
             "num_machines": 1,
             "num_mpiprocs_per_machine": 1,
             "num_cores_per_mpiproc": 1,
-            },
-        }
+        },
+    }
 
     _, calc_node = run_get_node(builder)
 
@@ -55,7 +55,7 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
     gw_res = dict(calc_node.outputs.gw_output_parameters)
     print()
     for k in gw_res:
-        print("  {}: {}".format(k, gw_res[k]))
+        print(f"  {k}: {gw_res[k]}")
     print()
 
 
@@ -69,6 +69,6 @@ def example_cp2k_mol_opt_gw_no_geo_opt(cp2k_code):
 
 if __name__ == '__main__':
     print("# Run geometry optimization and then run GW #")
-    example_cp2k_mol_opt_gw_geo_opt(load_code("cp2k@localhost"))
+    example_cp2k_mol_opt_gw_geo_opt(load_code("cp2k-8.1@tigu-mpirun"))
     print("# Run GW only #")
-    example_cp2k_mol_opt_gw_no_geo_opt(load_code("cp2k@localhost"))
+    example_cp2k_mol_opt_gw_no_geo_opt(load_code("cp2k-8.1@tigu-mpirun"))
