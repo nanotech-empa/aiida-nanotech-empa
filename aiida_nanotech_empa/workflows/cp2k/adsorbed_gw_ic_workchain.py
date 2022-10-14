@@ -152,37 +152,37 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
                    valid_type=List,
                    default=lambda: List(list=[]),
                    required=False)
-        spec.input("resources_scf",
-                   valid_type=Dict,
-                   default=lambda: Dict(
-                       dict={
-                           'num_machines': 1,
-                           'num_mpiprocs_per_machine': 1,
-                           'num_cores_per_mpiproc': 1
-                       }),
-                   required=False)
-        spec.input("resources_gw",
-                   valid_type=Dict,
-                   default=lambda: Dict(
-                       dict={
-                           'num_machines': 1,
-                           'num_mpiprocs_per_machine': 1,
-                           'num_cores_per_mpiproc': 1
-                       }),
-                   required=False)
-        spec.input("resources_ic",
-                   valid_type=Dict,
-                   default=lambda: Dict(
-                       dict={
-                           'num_machines': 1,
-                           'num_mpiprocs_per_machine': 1,
-                           'num_cores_per_mpiproc': 1
-                       }),
-                   required=False)
-        spec.input("walltime_seconds",
-                   valid_type=Int,
-                   default=lambda: Int(600),
-                   required=False)
+        spec.input_namespace(
+            "options",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
+        spec.input(
+            "options.scf",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the SCF cacluation: walltime, memory, CPUs, etc."
+        )
+        spec.input(
+            "options.gw",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the GW cacluation: walltime, memory, CPUs, etc."
+        )
+        spec.input(
+            "options.ic",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the GW cacluation: walltime, memory, CPUs, etc."
+        )
         spec.input("debug",
                    valid_type=Bool,
                    default=lambda: Bool(False),
