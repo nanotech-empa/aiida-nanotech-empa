@@ -1,6 +1,6 @@
 from ase import Atoms
 
-from aiida.orm import StructureData, Bool, Str, Int, Float, List, Dict
+from aiida.orm import StructureData, Bool, Str, Int, Float, List
 from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
@@ -37,8 +37,8 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
             "num_machines": 1,
             "num_mpiprocs_per_machine": 1,
             "num_cores_per_mpiproc": 1,
-            },
-        }
+        },
+    }
 
     builder.options.gw = {
         "max_wallclock_seconds": 2000,
@@ -46,8 +46,8 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
             "num_machines": 1,
             "num_mpiprocs_per_machine": 1,
             "num_cores_per_mpiproc": 1,
-            },
-        }
+        },
+    }
 
     _, calc_node = run_get_node(builder)
 
@@ -56,7 +56,7 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
     gw_out_dict = dict(calc_node.outputs.gw_output_parameters)
     print()
     for k in gw_out_dict:
-        print("  {}: {}".format(k, gw_out_dict[k]))
+        print(f"  {k}: {gw_out_dict[k]}")
 
 
 def example_cp2k_gw_gpw_std_rks(cp2k_code):
@@ -114,6 +114,7 @@ if __name__ == '__main__':
             for mult in [0, 1]:
                 print()
                 print("####################################")
-                print("#### ic={}; {}; mult={}".format(ic, pc, mult))
+                print(f"#### ic={ic}; {pc}; mult={mult}")
                 print("####################################")
-                _example_cp2k_gw(load_code("cp2k-8.1@tigu-mpirun"), ic, pc, mult)
+                _example_cp2k_gw(load_code("cp2k-8.1@tigu-mpirun"), ic, pc,
+                                 mult)

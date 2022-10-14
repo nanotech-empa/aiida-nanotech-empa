@@ -40,7 +40,7 @@ def _example_cp2k_molopt(cp2k_code, mult):
     molopt_out_dict = dict(calc_node.outputs.output_parameters)
     print()
     for k in molopt_out_dict:
-        print("  {}: {}".format(k, molopt_out_dict[k]))
+        print(f"  {k}: {molopt_out_dict[k]}")
 
 
 def example_cp2k_molopt_rks(cp2k_code):
@@ -55,6 +55,6 @@ if __name__ == '__main__':
     for mult in [0, 1]:
         print()
         print("####################################")
-        print("####  mult={}".format(mult))
+        print(f"####  mult={mult}")
         print("####################################")
         _example_cp2k_molopt(load_code("cp2k@localhost"), mult)

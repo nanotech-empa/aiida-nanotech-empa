@@ -46,7 +46,7 @@ def _example_cp2k_slabopt(cp2k_code, mult):
     slabopt_out_dict = dict(calc_node.outputs.output_parameters)
     print()
     for k in slabopt_out_dict:
-        print("  {}: {}".format(k, slabopt_out_dict[k]))
+        print(f"  {k}: {slabopt_out_dict[k]}")
 
 
 def example_cp2k_slabopt_rks(cp2k_code):

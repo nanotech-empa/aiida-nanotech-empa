@@ -47,7 +47,7 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
     bulkopt_out_dict = dict(calc_node.outputs.output_parameters)
     print()
     for k in bulkopt_out_dict:
-        print("  {}: {}".format(k, bulkopt_out_dict[k]))
+        print(f"  {k}: {bulkopt_out_dict[k]}")
 
 
 def example_cp2k_bulkopt_rks(cp2k_code):
