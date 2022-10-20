@@ -291,7 +291,7 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.multiplicity = self.inputs.multiplicity
         builder.debug = self.inputs.debug
-        builder.image_charge = Bool(True)
+        builder.run_image_charge = Bool(True)
         builder.z_ic_plane = self.ctx.image_plane_z
         builder.options.scf = self.inputs.options.scf
         builder.options.gw = self.inputs.options.ic
