@@ -314,7 +314,7 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         builder.multiplicity = self.inputs.multiplicity
         builder.debug = self.inputs.debug
         builder.options.scf = self.inputs.options.scf
-        builder.options.gw = self.inputs.opetions.gw
+        builder.options.gw = self.inputs.options.gw
         builder.metadata.description = "gw"
         submitted_node = self.submit(builder)
         return ToContext(gw=submitted_node)
