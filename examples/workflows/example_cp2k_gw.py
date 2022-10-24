@@ -27,11 +27,27 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
     if mult == 1:
         builder.magnetization_per_site = List(list=[-1, 1])
 
-    builder.image_charge = Bool(ic)
+    builder.run_image_charge = Bool(ic)
     builder.z_ic_plane = Float(0.8)
 
     builder.debug = Bool(True)
-    builder.max_nodes = Int(1)
+    builder.options.scf = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
+
+    builder.options.gw = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
 
     _, calc_node = run_get_node(builder)
 
@@ -40,7 +56,7 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
     gw_out_dict = dict(calc_node.outputs.gw_output_parameters)
     print()
     for k in gw_out_dict:
-        print("  {}: {}".format(k, gw_out_dict[k]))
+        print(f"  {k}: {gw_out_dict[k]}")
 
 
 def example_cp2k_gw_gpw_std_rks(cp2k_code):
@@ -98,6 +114,6 @@ if __name__ == '__main__':
             for mult in [0, 1]:
                 print()
                 print("####################################")
-                print("#### ic={}; {}; mult={}".format(ic, pc, mult))
+                print(f"#### ic={ic}; {pc}; mult={mult}")
                 print("####################################")
                 _example_cp2k_gw(load_code("cp2k@localhost"), ic, pc, mult)

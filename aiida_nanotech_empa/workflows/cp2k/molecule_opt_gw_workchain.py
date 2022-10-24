@@ -1,9 +1,7 @@
-from aiida_nanotech_empa.utils import common_utils
-
 import numpy as np
 
 from aiida.engine import WorkChain, ExitCode, calcfunction, ToContext, if_
-from aiida.orm import Int, Str, Bool, Code, List, Dict
+from aiida.orm import Int, Str, Bool, Code, List
 from aiida.orm import StructureData
 
 from aiida.plugins import WorkflowFactory
@@ -61,23 +59,31 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
                    valid_type=List,
                    default=lambda: List(list=[]),
                    required=False)
-        spec.input("walltime_seconds",
-                   valid_type=Int,
-                   default=lambda: Int(600),
-                   required=False)
-        spec.input("max_nodes",
-                   valid_type=Int,
-                   default=lambda: Int(2056),
-                   required=False)
-        spec.input("gw_options",
-                   valid_type=Dict,
-                   default=lambda: Dict(
-                       dict={
-                           'resources': {
-                               'num_mpiprocs_per_machine': 1,
-                               'num_cores_per_mpiproc': 6,
-                           }
-                       }))
+        spec.input_namespace(
+            "options",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
+
+        spec.input(
+            "options.geo_opt",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the GEO_OPT cacluation: walltime, memory, CPUs, etc."
+        )
+
+        spec.input(
+            "options.gw",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the GW cacluation: walltime, memory, CPUs, etc."
+        )
         spec.input("debug",
                    valid_type=Bool,
                    default=lambda: Bool(False),
@@ -133,15 +139,17 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         builder.multiplicity = self.inputs.geometry_opt_mult
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.vdw = Bool(True)
-        builder.walltime_seconds = self.inputs.walltime_seconds
-        builder.debug = self.inputs.debug
+        builder.protocol = Str('standard')
+        if self.inputs.debug.value:
+            builder.protocol = Str('debug')
+        builder.options = self.inputs.options.geo_opt
         builder.metadata.description = "Submitted by Cp2kMoleculeOptGwWorkChain."
         builder.metadata.label = 'Cp2kMoleculeOptWorkChain'
         submitted_node = self.submit(builder)
         return ToContext(gas_opt=submitted_node)
 
     def check_gas_opt(self):
-        if not common_utils.check_if_calc_ok(self, self.ctx.gas_opt):
+        if not self.ctx.gas_opt.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
         # set the optimized geometry as ctx geometry
 
@@ -159,9 +167,8 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.multiplicity = self.inputs.multiplicity
         builder.debug = self.inputs.debug
-        builder.walltime_seconds = self.inputs.walltime_seconds
-        builder.max_nodes = self.inputs.max_nodes
-        builder.options = self.inputs.gw_options
+        builder.options.scf = self.inputs.options.geo_opt
+        builder.options.gw = self.inputs.options.gw
         builder.metadata.description = "gw"
         submitted_node = self.submit(builder)
         return ToContext(gw=submitted_node)
@@ -169,7 +176,7 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
     def finalize(self):
         self.report("Finalizing...")
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.gw):
+        if not self.ctx.gw.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
 
         gw_out_params = self.ctx.gw.outputs.gw_output_parameters

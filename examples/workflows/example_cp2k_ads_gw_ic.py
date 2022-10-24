@@ -43,9 +43,30 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
     builder.geometry_mode = Str('ads_geo')
 
     builder.debug = Bool(True)
-    builder.walltime_seconds = Int(5 * 60)
-    builder.max_nodes = Int(1)
-
+    builder.options.scf = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
+    builder.options.gw = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
+    builder.options.ic = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
     _, calc_node = run_get_node(builder)
 
     assert calc_node.is_finished_ok
@@ -53,7 +74,7 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
     gw_ic_res = dict(calc_node.outputs.gw_ic_parameters)
     print()
     for k in gw_ic_res:
-        print("  {}: {}".format(k, gw_ic_res[k]))
+        print(f"  {k}: {gw_ic_res[k]}")
     print()
 
 
@@ -67,6 +88,6 @@ def example_cp2k_ads_gw_ic_implicit_slab(cp2k_code):
 
 if __name__ == '__main__':
     print("# Slab in geometry explicitly #")
-    example_cp2k_ads_gw_ic_explicit_slab(load_code("cp2k@localhost"))
+    _example_cp2k_ads_gw_ic(load_code("cp2k@localhost"), slab_included=True)
     print("# Slab specified implicitly #")
-    example_cp2k_ads_gw_ic_implicit_slab(load_code("cp2k@localhost"))
+    _example_cp2k_ads_gw_ic(load_code("cp2k@localhost"), slab_included=False)

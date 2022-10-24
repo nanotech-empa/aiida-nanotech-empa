@@ -19,10 +19,17 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
     builder.metadata.label = 'Cp2kBulkOptWorkChain'
     builder.metadata.description = 'test description'
     builder.code = cp2k_code
-    builder.walltime_seconds = Int(600)
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
-    builder.max_nodes = Int(1)
+    builder.options = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
+    builder.protocol = Str('debug')
     if cell_opt:
         builder.cell_opt = Bool(True)
         builder.symmetry = Str('ORTHORHOMBIC')
@@ -34,8 +41,6 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
         mag[1] = -1
         builder.magnetization_per_site = List(list=mag)
 
-    builder.debug = Bool(True)
-
     _, calc_node = run_get_node(builder)
 
     assert calc_node.is_finished_ok
@@ -43,7 +48,7 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
     bulkopt_out_dict = dict(calc_node.outputs.output_parameters)
     print()
     for k in bulkopt_out_dict:
-        print("  {}: {}".format(k, bulkopt_out_dict[k]))
+        print(f"  {k}: {bulkopt_out_dict[k]}")
 
 
 def example_cp2k_bulkopt_rks(cp2k_code):

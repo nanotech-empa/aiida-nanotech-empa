@@ -8,8 +8,7 @@ from aiida.engine import WorkChain, ToContext, ExitCode, while_
 from aiida.orm import Int, Float, Str, Code, Dict, List, Bool
 from aiida.orm import SinglefileData, StructureData
 
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_nodes, get_cutoff
-from aiida_nanotech_empa.utils import common_utils
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
@@ -29,7 +28,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    required=False,
                    help="Either 'gapw_std', 'gapw_hq', 'gpw_std'")
 
-        spec.input("image_charge",
+        spec.input("run_image_charge",
                    valid_type=Bool,
                    default=lambda: Bool(False),
                    required=False,
@@ -47,26 +46,37 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                    valid_type=List,
                    default=lambda: List(list=[]),
                    required=False)
-        spec.input("walltime_seconds",
-                   valid_type=Int,
-                   default=lambda: Int(600),
-                   required=False)
-        spec.input("max_nodes",
-                   valid_type=Int,
-                   default=lambda: Int(2056),
-                   required=False)
+        spec.input_namespace(
+            "options",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
+
+        spec.input(
+            "options.scf",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the SCF cacluation: walltime, memory, CPUs, etc."
+        )
+
+        spec.input(
+            "options.gw",
+            valid_type=dict,
+            non_db=True,
+            required=False,
+            help=
+            "Define options for the GW cacluation: walltime, memory, CPUs, etc."
+        )
+
         spec.input("debug",
                    valid_type=Bool,
                    default=lambda: Bool(False),
                    required=False,
                    help="Run with fast parameters for debugging.")
-
-        spec.input(
-            'options',
-            valid_type=Dict,
-            required=False,
-            help=
-            "User-defined metadata.options that override the automatic ones.")
 
         spec.outline(
             cls.setup,
@@ -115,8 +125,8 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             self.inputs.magnetization_per_site)
         ghost_per_site = None
 
-        #add ghost atoms in case of gw-ic
-        if self.inputs.image_charge.value:
+        # Add ghost atoms in case of gw-ic
+        if self.inputs.run_image_charge:
             atoms = self.inputs.structure.get_ase()
             image = atoms.copy()
             image.positions[:, 2] = (2 * self.inputs.z_ic_plane.value -
@@ -143,7 +153,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         atoms.center()
         self.ctx.structure = StructureData(ase=atoms)
 
-        # --------------------------------------------------
         # Determine which basis and pseudo files to include
         if self.inputs.protocol in ['gapw_std', 'gapw_hq']:
             basis = "GW_BASIS_SET"
@@ -162,7 +171,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                 file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                   ".", "data", potential)),
         }
-        # --------------------------------------------------
 
         self.ctx.current_scf_protocol = None
         self.ctx.scf_restart_from_last = False
@@ -209,33 +217,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         input_dict['FORCE_EVAL']['DFT']['PRINT']['E_DENSITY_CUBE'][
             'STRIDE'] = '6 6 6'
 
-    def _get_resources(self, calctype, max_nodes_cap):
-        nodes, tasks_per_node, threads = get_nodes(
-            atoms=self.ctx.structure.get_ase(),
-            calctype=calctype,
-            computer=self.inputs.code.computer,
-            max_nodes=min(max_nodes_cap, self.inputs.max_nodes.value),
-            uks=self.inputs.multiplicity.value > 0)
-
-        res = {
-            'num_machines': nodes,
-            'num_mpiprocs_per_machine': tasks_per_node,
-            'num_cores_per_mpiproc': threads
-        }
-
-        return res
-
-    def _get_metadata_options(self, calctype, max_nodes_cap):
-        # automatically determined metadata_options
-        options = {
-            'resources': self._get_resources(calctype, max_nodes_cap),
-            'max_wallclock_seconds': self.inputs.walltime_seconds.value,
-        }
-        # If user specified any, overwrite those:
-        if 'options' in self.inputs:
-            dict_merge(options, dict(self.inputs.options))
-        return options
-
     def submit_scf(self):
 
         # Try the next SCF section:
@@ -255,9 +236,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         self.report(
             f"Submitting SCF (protocol {self.ctx.current_scf_protocol})")
 
-        # -------------------------------------------------------
         # Build the input dictionary
-
         step_protocol = self.inputs.protocol.value + "_scf_step"
         input_dict = copy.deepcopy(self.ctx.protocols[step_protocol])
 
@@ -269,16 +248,12 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
         dict_merge(input_dict, self.ctx.kinds_section)
 
-        input_dict['GLOBAL']['WALLTIME'] = max(
-            self.inputs.walltime_seconds.value - 600, 600)
-
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
         if self.inputs.debug:
             self._set_debug(input_dict)
 
-        # -------------------------------------------------------
-
+        # Prepare the builder.
         builder = Cp2kCalculation.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.structure
@@ -289,19 +264,22 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             input_dict['FORCE_EVAL']['DFT'][
                 'RESTART_FILE_NAME'] = './parent_calc/aiida-RESTART.wfn'
 
-        builder.parameters = Dict(dict=input_dict)
-
-        builder.metadata.options = self._get_metadata_options(
-            calctype='default', max_nodes_cap=48)
+        # Options.
+        builder.metadata.options = self.inputs.options.scf
+        if 'max_wallclock_seconds' in self.inputs.options:
+            input_dict['GLOBAL']['WALLTIME'] = max(
+                self.inputs.options['max_wallclock_seconds'] - 600, 600)
         builder.metadata.options['parser_name'] = "cp2k_advanced_parser"
+
+        builder.parameters = Dict(dict=input_dict)
 
         submitted_node = self.submit(builder)
         return ToContext(scf=submitted_node)
 
     def check_scf(self):
-        if not common_utils.check_if_calc_ok(self, self.ctx.scf):
-            return self.exit_codes.ERROR_TERMINATION
-        return ExitCode(0)
+        return ExitCode(
+            0
+        ) if self.ctx.scf.is_finished_ok else self.exit_codes.ERROR_TERMINATION
 
     def submit_gw(self):
 
@@ -310,7 +288,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         # -------------------------------------------------------
         # Build the input dictionary
 
-        if self.inputs.image_charge.value:
+        if self.inputs.run_image_charge:
             step_protocol = self.inputs.protocol.value + "_ic_step"
         else:
             step_protocol = self.inputs.protocol.value + "_gw_step"
@@ -325,27 +303,26 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
         dict_merge(input_dict, self.ctx.kinds_section)
 
-        input_dict['GLOBAL']['WALLTIME'] = max(
-            self.inputs.walltime_seconds.value - 600, 600)
-
         input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
         if self.inputs.debug:
             self._set_debug(input_dict)
 
-        # -------------------------------------------------------
-
+        # Prepare the builder.
         builder = Cp2kCalculation.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.structure
         builder.file = self.ctx.files
 
-        #restart from wfn of step1
+        # Restart from the wavefunction of the SCF obtained previously.
         builder.parent_calc_folder = self.ctx.scf.outputs.remote_folder
 
-        builder.metadata.options = self._get_metadata_options(
-            calctype='gw_ic' if self.inputs.image_charge.value else 'gw',
-            max_nodes_cap=2048)
+        # Options.
+        builder.metadata.options = self.inputs.options.gw
+        if 'max_wallclock_seconds' in self.inputs.options:
+            input_dict['GLOBAL']['WALLTIME'] = max(
+                self.inputs.options['max_wallclock_seconds'] - 600, 600)
+
         builder.metadata.options[
             'parser_name'] = "nanotech_empa.cp2k_gw_parser"
 
@@ -357,7 +334,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
     def finalize(self):
         self.report("Finalizing...")
 
-        if not common_utils.check_if_calc_ok(self, self.ctx.second_step):
+        if not self.ctx.second_step.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
         if not self.ctx.second_step.outputs.std_output_parameters[
                 'motion_step_info']['scf_converged'][-1]:

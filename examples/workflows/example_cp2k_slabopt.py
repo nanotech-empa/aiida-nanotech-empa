@@ -19,10 +19,16 @@ def _example_cp2k_slabopt(cp2k_code, mult):
     builder.metadata.label = 'Cp2kSlabOptWorkChain'
     builder.metadata.description = 'test description'
     builder.code = cp2k_code
-    builder.walltime_seconds = Int(600)
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
-    builder.max_nodes = Int(1)
+    builder.options = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
     builder.fixed_atoms = Str('3..18')
 
     builder.multiplicity = Int(mult)
@@ -41,7 +47,7 @@ def _example_cp2k_slabopt(cp2k_code, mult):
     slabopt_out_dict = dict(calc_node.outputs.output_parameters)
     print()
     for k in slabopt_out_dict:
-        print("  {}: {}".format(k, slabopt_out_dict[k]))
+        print(f"  {k}: {slabopt_out_dict[k]}")
 
 
 def example_cp2k_slabopt_rks(cp2k_code):

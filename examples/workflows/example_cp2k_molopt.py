@@ -1,6 +1,6 @@
 from ase import Atoms
 
-from aiida.orm import StructureData, Bool, Int, List
+from aiida.orm import StructureData, Int, List, Str
 from aiida.orm import load_code
 from aiida.engine import run_get_node
 from aiida.plugins import WorkflowFactory
@@ -15,7 +15,6 @@ def _example_cp2k_molopt(cp2k_code, mult):
     builder.metadata.label = 'Cp2kMoleculeOptWorkChain'
     builder.metadata.description = 'test description'
     builder.code = cp2k_code
-    builder.walltime_seconds = Int(600)
     ase_geom = Atoms('HH',
                      positions=[[0, 0, 0], [0.75, 0, 0]],
                      cell=[4.0, 4.0, 4.0])
@@ -25,7 +24,15 @@ def _example_cp2k_molopt(cp2k_code, mult):
     if mult == 1:
         builder.magnetization_per_site = List(list=[-1, 1])
 
-    builder.debug = Bool(True)
+    builder.options = {
+        "max_wallclock_seconds": 600,
+        "resources": {
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,
+        },
+    }
+    builder.protocol = Str('debug')
 
     _, calc_node = run_get_node(builder)
 
@@ -34,7 +41,7 @@ def _example_cp2k_molopt(cp2k_code, mult):
     molopt_out_dict = dict(calc_node.outputs.output_parameters)
     print()
     for k in molopt_out_dict:
-        print("  {}: {}".format(k, molopt_out_dict[k]))
+        print(f"  {k}: {molopt_out_dict[k]}")
 
 
 def example_cp2k_molopt_rks(cp2k_code):
@@ -49,6 +56,6 @@ if __name__ == '__main__':
     for mult in [0, 1]:
         print()
         print("####################################")
-        print("####  mult={}".format(mult))
+        print(f"####  mult={mult}")
         print("####################################")
         _example_cp2k_molopt(load_code("cp2k@localhost"), mult)
