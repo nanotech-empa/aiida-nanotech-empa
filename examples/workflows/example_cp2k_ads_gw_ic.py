@@ -43,7 +43,6 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
     builder.geometry_mode = Str('ads_geo')
 
     builder.debug = Bool(True)
-    builder.walltime_seconds = Int(5 * 60)
     builder.options.scf = {
         "max_wallclock_seconds": 600,
         "resources": {
