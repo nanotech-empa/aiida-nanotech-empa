@@ -94,11 +94,6 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
                    default=lambda: Bool(True),
                    required=False,
                    help="Perform geo opt step.")
-        spec.input("geometry_opt_mult",
-                   valid_type=Int,
-                   default=lambda: Int(0),
-                   required=False,
-                   help="Multiplicity in case of 'gas opt' is selected.")
 
         spec.outline(cls.setup,
                      if_(cls.gas_opt_selected)(cls.gas_opt, cls.check_gas_opt),
@@ -136,7 +131,7 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         builder = Cp2kMoleculeOptWorkChain.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.mol_struct
-        builder.multiplicity = self.inputs.geometry_opt_mult
+        builder.multiplicity = self.inputs.multiplicity
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.vdw = Bool(True)
         builder.protocol = Str('standard')
