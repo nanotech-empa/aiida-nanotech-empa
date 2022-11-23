@@ -119,6 +119,8 @@ class Cp2kBulkOptWorkChain(WorkChain):
                                   ".", "data", "POTENTIAL")),
         }
 
+        #charge
+        input_dict['FORCE_EVAL']['DFT']['CHARGE'] = self.inputs.charge.value
         # vdw
         if not self.inputs.vdw.value:
             input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
