@@ -39,13 +39,10 @@ testing = [
     "pytest~=6.0",
     "pytest-cov",
 ]
-pre-commit = [
+dev = [
     "astroid>=2.4.0",
     "pre-commit>=2.19",
     "prospector==1.5.*",
-    
-]
-dev = [
     "bumpver==2022.1119", 
     "wheel~=0.31",
     "coverage",
