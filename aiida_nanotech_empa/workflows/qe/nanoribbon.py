@@ -254,7 +254,7 @@ class NanoribbonWorkChain(WorkChain):
 
         previous_nodes = int(prev_calc.base.attributes.all['resources']['num_machines'])
         previous_pools = int(
-            prev_calc.inputs.settings.get_dict()['cmdline'][1])
+            prev_calc.inputs.parallelization.get_dict()['npool'])
         if natoms < 60:
             nnodes = min(int(2), previous_nodes)
             npools = min(int(2), previous_pools)
@@ -588,7 +588,7 @@ class NanoribbonWorkChain(WorkChain):
             "max_wallclock_seconds": wallhours * 60 * 60,
         }
 
-        builder.settings = Dict({'cmdline': ["-npools", str(npools)]})
+        builder.parallelization = Dict({'npool': int(npools)})
 
         future = self.submit(builder)
         return ToContext(**{label: future})
