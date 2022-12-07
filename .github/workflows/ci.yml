@@ -9,7 +9,7 @@ jobs:
     timeout-minutes: 120
     services:
       postgres:
-        image: postgres:10
+        image: postgres:12
         ports:
           - 5432:5432
       rabbitmq:
@@ -18,7 +18,7 @@ jobs:
           - 5672:5672
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.9]
         backend: ['django']
     steps:
     - uses: actions/checkout@v2
