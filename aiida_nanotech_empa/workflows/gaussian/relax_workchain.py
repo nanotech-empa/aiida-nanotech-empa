@@ -181,7 +181,7 @@ class GaussianRelaxWorkChain(WorkChain):
         self.report("Running UKS WFN Stability")
 
         parameters = Dict(
-            dict={
+            {
                 'link0_parameters': self.ctx.link0.copy(),
                 'dieze_tag': '#P',
                 'functional': self.ctx.functional,
@@ -214,7 +214,7 @@ class GaussianRelaxWorkChain(WorkChain):
         self.report("Submitting optimization")
 
         parameters = Dict(
-            dict={
+            {
                 'link0_parameters': self.ctx.link0.copy(),
                 'dieze_tag': '#P',
                 'functional': self.ctx.functional,

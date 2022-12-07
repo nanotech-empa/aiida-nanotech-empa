@@ -39,7 +39,7 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
     if mult == 1:
         mag[0] = 1
         mag[1] = -1
-        builder.magnetization_per_site = List(list=mag)
+        builder.magnetization_per_site = List(mag)
 
     _, calc_node = run_get_node(builder)
 

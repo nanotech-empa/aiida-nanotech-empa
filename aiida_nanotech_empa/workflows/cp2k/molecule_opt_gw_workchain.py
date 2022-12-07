@@ -26,7 +26,7 @@ def analyze_structure(structure, mag_per_site):
 
     return {
         'mol_struct': StructureData(ase=mol_atoms),
-        'mol_mag_per_site': List(list=mps),
+        'mol_mag_per_site': List(mps),
     }
 
 
@@ -182,11 +182,11 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
 
         struc_to_label = self.ctx.mol_struct
         extras_label = "Cp2kMoleculeOptGwWorkChain_pks"
-        if extras_label not in struc_to_label.extras:
+        if extras_label not in struc_to_label.base.extras.all:
             extras_list = []
         else:
-            extras_list = struc_to_label.extras[extras_label]
+            extras_list = struc_to_label.base.extras.all[extras_label]
         extras_list.append(self.node.pk)
-        struc_to_label.set_extra(extras_label, extras_list)
+        struc_to_label.base.extras.set(extras_label, extras_list)
 
         return ExitCode(0)

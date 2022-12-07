@@ -136,7 +136,7 @@ class GaussianConstrOptChainWorkChain(WorkChain):
 
         builder.tight = self.inputs.tight
 
-        builder.constraints = List(list=cur_constr)
+        builder.constraints = List(cur_constr)
 
         if 'options' in self.inputs:
             builder.options = self.inputs.options

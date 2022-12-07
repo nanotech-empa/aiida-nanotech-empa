@@ -22,7 +22,7 @@ def _example_cp2k_molopt(cp2k_code, mult):
 
     builder.multiplicity = Int(mult)
     if mult == 1:
-        builder.magnetization_per_site = List(list=[-1, 1])
+        builder.magnetization_per_site = List([-1, 1])
 
     builder.options = {
         "max_wallclock_seconds": 600,

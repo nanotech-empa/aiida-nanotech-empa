@@ -17,6 +17,7 @@ classifiers = [
 dependencies = [
     "aiida-core>=2.0.0,<3.0.0",
     "aiida-quantumespresso>=4.1.0",
+    "aiida-pseudo>=0.8.0",
     "aiida-cp2k>=2.0.0b0",
     "ase",
     "aiida-gaussian>=2.0.0",
@@ -35,18 +36,21 @@ Homepage = "https://github.com/nanotech-empa/aiida-nanotech-empa"
 [project.optional-dependencies]
 testing = [
     "pgtest~=1.3.1",
-    "wheel~=0.31",
-    "coverage",
-    "pytest~=6",
+    "pytest~=6.0",
     "pytest-cov",
 ]
 pre-commit = [
     "astroid>=2.4.0",
     "pre-commit>=2.19",
     "prospector==1.5.*",
+    
+]
+dev = [
+    "bumpver==2022.1119", 
+    "wheel~=0.31",
+    "coverage",
     "pylint==2.10.*",
 ]
-dev = ["bumpver==2022.1119"]
 
 [project.entry-points."aiida.parsers"]
 "nanotech_empa.pp" = "aiida_nanotech_empa.parsers.pp_parser:PpParser"

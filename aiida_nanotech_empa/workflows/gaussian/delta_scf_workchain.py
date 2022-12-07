@@ -112,7 +112,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
         # --------------------------------------------------
 
         parameters = Dict(
-            dict={
+            {
                 'link0_parameters': self.ctx.link0.copy(),
                 'functional': self.ctx.functional,
                 'basis_set': self.inputs.basis_set.value,
@@ -158,7 +158,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
             functional = 'u' + self.ctx.functional
 
         parameters = Dict(
-            dict={
+            {
                 'link0_parameters': self.ctx.link0.copy(),
                 'functional': functional,
                 'basis_set': self.inputs.basis_set.value,
@@ -197,7 +197,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
 
         for neg_mult in self.ctx.neg_mults:
             parameters = Dict(
-                dict={
+                {
                     'link0_parameters': self.ctx.link0.copy(),
                     'functional': functional,
                     'basis_set': self.inputs.basis_set.value,

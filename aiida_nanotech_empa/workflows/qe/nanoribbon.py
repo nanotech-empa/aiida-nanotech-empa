@@ -3,7 +3,7 @@
 import numpy as np
 
 # AiiDA imports
-from aiida.orm import Bool, Code, Dict, Float, Int, KpointsData, Str, StructureData
+from aiida.orm import Bool, Code, Dict, Float, Int, KpointsData, Str, StructureData, load_group
 from aiida.engine import WorkChain, ToContext, while_
 #from aiida.orm.nodes.data.upf import get_pseudos_dict, get_pseudos_from_structure
 
@@ -11,7 +11,7 @@ from aiida.engine import WorkChain, ToContext, while_
 from aiida_quantumespresso.calculations.pw import PwCalculation
 from aiida_quantumespresso.calculations.pp import PpCalculation
 from aiida_quantumespresso.calculations.projwfc import ProjwfcCalculation
-from aiida_quantumespresso.utils.pseudopotential import validate_and_prepare_pseudos_inputs
+
 
 from aiida_nanotech_empa.utils import common_utils
 
@@ -160,7 +160,7 @@ class NanoribbonWorkChain(WorkChain):
         cell_c = structure.cell[2][2]
 
         builder.parameters = Dict(
-            dict={
+            {
                 'INPUTPP': {
                     'plot_num': 11,  # the V_bare + V_H potential
                 },
@@ -182,7 +182,7 @@ class NanoribbonWorkChain(WorkChain):
                 },
             })
 
-        natoms = len(prev_calc.inputs.structure.attributes['sites'])
+        natoms = len(prev_calc.inputs.structure.base.attributes.all['sites'])
         nnodes = min(self.inputs.max_nodes.value,
                      (1 + int(natoms / self.inputs.mem_node.value)))
         # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
@@ -201,7 +201,7 @@ class NanoribbonWorkChain(WorkChain):
             "max_wallclock_seconds": 1200,  # 30 minutes
             "withmpi": True,
         }
-        builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})
+        builder.settings = Dict({'cmdline': ["-npools", str(npools)]})
 
         #        builder.metadata.options = {
         #            "resources": {
@@ -248,11 +248,11 @@ class NanoribbonWorkChain(WorkChain):
         builder = ProjwfcCalculation.get_builder()
         builder.code = self.inputs.projwfc_code
 
-        natoms = len(prev_calc.inputs.structure.attributes['sites'])
+        natoms = len(prev_calc.inputs.structure.base.attributes.all['sites'])
         nproc_mach = min(
             4, builder.code.computer.get_default_mpiprocs_per_machine())
 
-        previous_nodes = int(prev_calc.attributes['resources']['num_machines'])
+        previous_nodes = int(prev_calc.base.attributes.all['resources']['num_machines'])
         previous_pools = int(
             prev_calc.inputs.settings.get_dict()['cmdline'][1])
         if natoms < 60:
@@ -272,7 +272,7 @@ class NanoribbonWorkChain(WorkChain):
 
         # use the same number of pools as in bands calculation
         builder.parameters = Dict(
-            dict={
+            {
                 'projwfc': {
                     'ngauss': 1,
                     'degauss': 0.007,
@@ -292,7 +292,7 @@ class NanoribbonWorkChain(WorkChain):
         }
 
         builder.settings = Dict(
-            dict={
+            {
                 'additional_retrieve_list':
                 ['./out/aiida.save/*.xml', '*_up', '*_down', '*_tot'],
                 'cmdline': ["-npools", str(npools)],
@@ -356,7 +356,7 @@ class NanoribbonWorkChain(WorkChain):
 
         nhours = int(2 + min(22, 2 * int(prev_calc.res.volume / 1500)))
         # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
-        natoms = len(prev_calc.inputs.structure.attributes['sites'])
+        natoms = len(prev_calc.inputs.structure.base.attributes.all['sites'])
         nnodes = min(self.inputs.max_nodes.value,
                      (1 + int(natoms / self.inputs.mem_node.value)))
         npools = 1
@@ -376,7 +376,7 @@ class NanoribbonWorkChain(WorkChain):
         }
         #npools = int(prev_calc.inputs.settings['cmdline'][1])
         self.ctx.export_orbitals_settings = Dict(
-            dict={'cmdline': ["-npools", str(npools)]})
+            {'cmdline': ["-npools", str(npools)]})
 
         kband1 = max(
             int(prev_calc.res.number_of_electrons / 2) -
@@ -418,7 +418,7 @@ class NanoribbonWorkChain(WorkChain):
             'kband(1)'] = self.ctx.export_orbitals_band_number
         self.ctx.export_orbitals_parameters['INPUTPP'][
             'kband(2)'] = self.ctx.export_orbitals_band_number
-        builder.parameters = Dict(dict=self.ctx.export_orbitals_parameters)
+        builder.parameters = Dict(self.ctx.export_orbitals_parameters)
 
         # Running the calculation.
         running = self.submit(builder)
@@ -444,7 +444,7 @@ class NanoribbonWorkChain(WorkChain):
         builder.parent_folder = prev_calc.outputs.remote_folder
 
         nspin = prev_calc.res.number_of_spin_components
-        natoms = len(prev_calc.inputs.structure.attributes['sites'])
+        natoms = len(prev_calc.inputs.structure.base.attributes.all['sites'])
         nnodes = min(self.inputs.max_nodes.value,
                      (1 + int(natoms / self.inputs.mem_node.value)))
         # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
@@ -456,7 +456,7 @@ class NanoribbonWorkChain(WorkChain):
             return
 
         builder.parameters = Dict(
-            dict={
+            {
                 'INPUTPP': {
                     'plot_num': 6,  # spin polarization (rho(up)-rho(down))
                 },
@@ -476,7 +476,7 @@ class NanoribbonWorkChain(WorkChain):
             "parser_name": "nanotech_empa.pp",
         }
 
-        builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})
+        builder.settings = Dict({'cmdline': ["-npools", str(npools)]})
 
         future = self.submit(builder)
         return ToContext(**{label: future})
@@ -521,8 +521,11 @@ class NanoribbonWorkChain(WorkChain):
         builder.structure = structure
         builder.parameters = self._get_parameters(structure, tot_charge,
                                                   runtype, label)
-        builder.pseudos = validate_and_prepare_pseudos_inputs(
-            structure, None, self.inputs.pseudo_family)
+        #builder.pseudos = validate_and_prepare_pseudos_inputs(
+        #    structure, None, self.inputs.pseudo_family)
+        #loading family from input
+        family_pseudo = load_group(self.inputs.pseudo_family.value)
+        builder.pseudos = family_pseudo.get_pseudos(structure=structure)
 
         if parent_folder:
             builder.parent_folder = parent_folder
@@ -585,7 +588,7 @@ class NanoribbonWorkChain(WorkChain):
             "max_wallclock_seconds": wallhours * 60 * 60,
         }
 
-        builder.settings = Dict(dict={'cmdline': ["-npools", str(npools)]})
+        builder.settings = Dict({'cmdline': ["-npools", str(npools)]})
 
         future = self.submit(builder)
         return ToContext(**{label: future})
@@ -628,7 +631,7 @@ class NanoribbonWorkChain(WorkChain):
             params['SYSTEM']['nspin'] = 2
             params['SYSTEM']['starting_magnetization'] = start_mag
 
-        return Dict(dict=params)
+        return Dict(params)
 
     # =========================================================================
     def _get_kpoints(self, nx, use_symmetry=True):

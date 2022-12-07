@@ -79,7 +79,7 @@ def tags_and_magnetization(structure, magnetization_per_site):
             str(value): float(key.split('_')[1])
             for key, value in combined.items()
         }
-        return StructureData(ase=ase_structure), Dict(dict=tags_correspondance)
+        return StructureData(ase=ase_structure), Dict(tags_correspondance)
 
     # we force tags to be 0 if magnetization vector is not provided, this ensures we do not get a structure with unnecessary labels
 

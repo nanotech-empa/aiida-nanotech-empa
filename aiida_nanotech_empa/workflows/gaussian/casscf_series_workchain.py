@@ -141,7 +141,7 @@ class GaussianCasscfSeriesWorkChain(WorkChain):
         self.ctx.init_mult = list(self.inputs.multiplicity_list)[0]
 
         parameters = Dict(
-            dict={
+            {
                 'link0_parameters': self.ctx.link0.copy(),
                 'dieze_tag': '#P',
                 'functional': self.inputs.init_functional.value,

@@ -9,7 +9,7 @@ from aiida.engine import run_get_node
 from aiida_nanotech_empa.utils.cube_utils import cube_from_qe_pp_arraydata
 
 # AiiDA classes.
-StructureData = DataFactory('structure')
+StructureData = DataFactory('core.structure')
 NanoribbonWorkChain = WorkflowFactory('nanotech_empa.nanoribbon')
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +38,8 @@ def _example_nanoribbon(opt_cell, qe_pw_code, qe_pp_code, qe_projwfc_code,
 
     # Inputs
     builder.structure = StructureData(ase=read(geo_file))
-    builder.pseudo_family = Str("SSSP_modified")
+    #builder.pseudo_family = Str("SSSP_modified")
+    builder.pseudo_family = Str("SSSP/1.1/PBE/efficiency") #It requires aiida-pseudo install sssp! 
 
     # Metadata
     builder.metadata = {
@@ -76,10 +77,10 @@ def example_nanoribbon_no_cell(qe_pw_code, qe_pp_code, qe_projwfc_code):
 
 
 if __name__ == '__main__':
-    set_of_codes = (load_code('pw@localhost'), load_code('pp@localhost'),
-                    load_code('projwfc@localhost'))
+    set_of_codes = (load_code('qe-7.1-pw@localhost'), load_code('qe-7.1-pp@localhost'),
+                    load_code('qe-7.1-projwfc@localhost'))
     example_nanoribbon_no_cell(*set_of_codes)
 
-    example_nanoribbon_no_spin(*set_of_codes)
+    #example_nanoribbon_no_spin(*set_of_codes)
 
-    example_nanoribbon_spin(*set_of_codes)
+    #example_nanoribbon_spin(*set_of_codes)

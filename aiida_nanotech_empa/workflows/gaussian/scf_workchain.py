@@ -174,7 +174,7 @@ class GaussianScfWorkChain(WorkChain):
         self.report("Submitting minimal basis stable opt")
 
         parameters = Dict(
-            dict={
+            {
                 'link0_parameters': self.ctx.link0.copy(),
                 'dieze_tag': '#P',
                 'functional': self.ctx.functional,
@@ -212,7 +212,7 @@ class GaussianScfWorkChain(WorkChain):
         self.report("Submitting SCF")
 
         parameters = Dict(
-            dict={
+            {
                 'link0_parameters': self.ctx.link0.copy(),
                 'dieze_tag': '#P',
                 'functional': self.ctx.functional,

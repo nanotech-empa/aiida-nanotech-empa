@@ -1,6 +1,6 @@
 from aiida.plugins import SchedulerFactory
 
-LsfScheduler = SchedulerFactory("lsf")
+LsfScheduler = SchedulerFactory("core.lsf")
 
 
 class ETHZEulerLsfScheduler(LsfScheduler):

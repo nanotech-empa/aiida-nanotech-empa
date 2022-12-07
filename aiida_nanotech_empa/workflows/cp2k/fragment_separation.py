@@ -5,7 +5,7 @@ from aiida import engine, orm, plugins
 from aiida_nanotech_empa.utils import analyze_structure
 from aiida_nanotech_empa.workflows.cp2k import cp2k_utils
 
-StructureData = plugins.DataFactory('structure')
+StructureData = plugins.DataFactory('core.structure')
 Cp2kBaseWorkChain = plugins.WorkflowFactory('cp2k.base')
 
 DATA_DIR = pathlib.Path(__file__).parent.absolute() / 'data'
@@ -273,8 +273,10 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             submitted_node = self.submit(builder)
             self.to_context(**{f"scf.{fragment}": submitted_node})
+            
 
     def run_geo_opts(self):
+        
         for fragment in self.inputs.fragments.keys():
             # We deliberately do not run optimisation for the full structure.
             if fragment == "all":
@@ -288,7 +290,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
             # Re-loading the input dictionary for the given protocol.
-            previous_calc = self.ctx[f"scf.{fragment}"]
+            previous_calc = self.ctx.scf[fragment]
             input_dict = previous_calc.inputs.cp2k.parameters.get_dict()
             input_dict['GLOBAL']['RUN_TYPE'] = 'GEO_OPT'
 
@@ -306,7 +308,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
     def finalize(self):
         energies = {}
         self.report("Finalizing...")
-        energies["all"] = self.ctx["scf.all"].outputs.output_parameters[
+        energies["all"] = self.ctx.scf["all"].outputs.output_parameters[
             'energy']
 
         separation_energy = energies["all"]
@@ -320,10 +322,10 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             energies[fragment] = {
                 'unrelaxed':
-                self.ctx[f"scf.{fragment}"].outputs.
+                self.ctx.scf[fragment].outputs.
                 output_parameters['energy'],
                 'relaxed':
-                self.ctx[f"opt.{fragment}"].outputs.output_parameters['energy']
+                self.ctx.opt[fragment].outputs.output_parameters['energy']
             }
             separation_energy -= energies[fragment]['relaxed']
             unrelaxed_separation_energy -= energies[fragment]['unrelaxed']
@@ -336,9 +338,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
         # Add the workchain pk to the input structure extras
         extras_label = "Cp2kAdsorptionEnergyWorkChain_pks"
-        if extras_label not in self.inputs.structure.extras:
+        if extras_label not in self.inputs.structure.base.extras.all:
             extras_list = []
         else:
-            extras_list = self.inputs.structure.extras[extras_label]
+            extras_list = self.inputs.structure.base.extras.all[extras_label]
         extras_list.append(self.node.pk)
-        self.inputs.structure.set_extra(extras_label, extras_list)
+        self.inputs.structure.base.extras.set(extras_label, extras_list)
