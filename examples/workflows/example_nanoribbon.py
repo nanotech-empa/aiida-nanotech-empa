@@ -78,10 +78,10 @@ def example_nanoribbon_no_cell(qe_pw_code, qe_pp_code, qe_projwfc_code):
 
 
 if __name__ == '__main__':
-    set_of_codes = (load_code('pw@localhost'), load_code('pp@localhost'),
-                    load_code('projwfc@localhost'))
+    set_of_codes = (load_code('qe-7.1-pw@localhost'), load_code('qe-7.1-pp@localhost'),
+                    load_code('qe-7.1-projwfc@localhost'))
     example_nanoribbon_no_cell(*set_of_codes)
 
-    example_nanoribbon_no_spin(*set_of_codes)
+    #example_nanoribbon_no_spin(*set_of_codes)
 
-    example_nanoribbon_spin(*set_of_codes)
+    #example_nanoribbon_spin(*set_of_codes)
