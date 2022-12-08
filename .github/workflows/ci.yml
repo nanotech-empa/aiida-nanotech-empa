@@ -32,7 +32,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -e .[dev]
-      
+        aiida-pseudo install sssp
     - name: Install CP2K
       run: |
         bash .github/install_cp2k.sh
