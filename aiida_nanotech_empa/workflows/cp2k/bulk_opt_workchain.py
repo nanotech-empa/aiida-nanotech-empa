@@ -167,9 +167,11 @@ class Cp2kBulkOptWorkChain(WorkChain):
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
         #handlers
-   
+
         builder.handler_overrides = Dict(
-            {'restart_incomplete_calculation': {'enabled': True}})
+            {'restart_incomplete_calculation': {
+                'enabled': True
+            }})
 
         #cp2k input dictionary
         builder.cp2k.parameters = Dict(input_dict)
@@ -190,7 +192,7 @@ class Cp2kBulkOptWorkChain(WorkChain):
         struc = self.ctx.opt.outputs.output_structure
         ase_geom = struc.get_ase()
         self.node.base.extras.set('thumbnail',
-                            common_utils.thumbnail(ase_struc=ase_geom))
+                                  common_utils.thumbnail(ase_struc=ase_geom))
         self.node.base.extras.set('formula', struc.get_formula())
 
         return ExitCode(0)

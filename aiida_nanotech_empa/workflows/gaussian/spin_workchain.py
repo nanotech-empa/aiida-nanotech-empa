@@ -178,12 +178,11 @@ class GaussianSpinWorkChain(WorkChain):
         builder.orbital_indexes = List(cubes_orb_indexes)
         builder.edge_space = Float(max(cubes_heights))
         builder.cubegen_parser_name = 'nanotech_empa.gaussian.cubegen_pymol'
-        builder.cubegen_parser_params = Dict(
-            {
-                'isovalues': cubes_isovalues,
-                'heights': cubes_heights,
-                'orient_cube': True,
-            })
+        builder.cubegen_parser_params = Dict({
+            'isovalues': cubes_isovalues,
+            'heights': cubes_heights,
+            'orient_cube': True,
+        })
 
         submitted_node = self.submit(builder)
         submitted_node.description = "gs cubes"
@@ -230,12 +229,11 @@ class GaussianSpinWorkChain(WorkChain):
                 opt_label].outputs.remote_folder
             builder.cubes_n_occ = Int(cubes_n_occ)
             builder.cubes_n_virt = Int(cubes_n_virt)
-            builder.cubegen_parser_params = Dict(
-                {
-                    'isovalues': cubes_isovalues,
-                    'heights': cubes_heights,
-                    'orient_cube': True,
-                })
+            builder.cubegen_parser_params = Dict({
+                'isovalues': cubes_isovalues,
+                'heights': cubes_heights,
+                'orient_cube': True,
+            })
 
             if 'options' in self.inputs:
                 builder.options = self.inputs.options

@@ -138,7 +138,9 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         #handlers
         builder.handler_overrides = Dict(
-            {'restart_incomplete_calculation': {'enabled': True}})
+            {'restart_incomplete_calculation': {
+                'enabled': True
+            }})
 
         #cp2k input dictionary
         builder.cp2k.parameters = Dict(input_dict)
@@ -159,7 +161,7 @@ class Cp2kSlabOptWorkChain(WorkChain):
         struc = self.ctx.opt.outputs.output_structure
         ase_geom = struc.get_ase()
         self.node.base.extras.set('thumbnail',
-                            common_utils.thumbnail(ase_struc=ase_geom))
+                                  common_utils.thumbnail(ase_struc=ase_geom))
 
         # add formula to extra as molecule@surface
         try:  #mainly for debug cases where the analyzer could crash due to odd geometries

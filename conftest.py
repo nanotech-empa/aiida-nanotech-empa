@@ -5,16 +5,17 @@ import pytest
 import pathlib
 from aiida.common import exceptions
 from aiida.orm import Code, Computer, QueryBuilder
-
+from aiida.plugins import GroupFactory
 pytest_plugins = ['aiida.manage.tests.pytest_fixtures']
 
 SSSP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "examples/data/sssp_minimal")
 
+
 @pytest.fixture(scope='session', autouse=True)
-def setup_sssp_pseudos(aiida_profile):
+def setup_sssp_pseudos():
     """Create an SSSP pseudo potential family from scratch."""
-    from aiida.plugins import GroupFactory
+
     SsspFamily = GroupFactory('pseudo.family.sssp')
     label = 'SSSP/1.1/PBE/efficiency'
     #label = 'SSSP_modified'
@@ -22,7 +23,8 @@ def setup_sssp_pseudos(aiida_profile):
     family = SsspFamily.create_from_folder(my_path, label)
     family.store()
     #return family
- 
+
+
 @pytest.fixture
 def fixture_localhost(aiida_localhost):
     """Return a localhost `Computer`."""
@@ -32,6 +34,7 @@ def fixture_localhost(aiida_localhost):
     # Disable this, as multiple processes are not supported by e.g. cp2k.ssmp
     localhost.set_mpirun_command([])
     return localhost
+
 
 @pytest.fixture(scope='function')
 def local_code_factory(fixture_localhost):

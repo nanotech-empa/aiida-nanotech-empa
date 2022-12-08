@@ -33,15 +33,14 @@ def _example_gaussian_casscf(gaussian_code, formchk_code, cubegen_code):
     builder.multiplicity_list = List([1, 3])
     builder.mp2 = Bool(True)
 
-    builder.options = Dict(
-        {
-            'resources': {
-                "tot_num_mpiprocs": 1,
-                "num_machines": 1,
-            },
-            'max_wallclock_seconds': 1 * 60 * 60,
-            'max_memory_kb': 2 * 1024 * 1024,
-        })
+    builder.options = Dict({
+        'resources': {
+            "tot_num_mpiprocs": 1,
+            "num_machines": 1,
+        },
+        'max_wallclock_seconds': 1 * 60 * 60,
+        'max_memory_kb': 2 * 1024 * 1024,
+    })
 
     _, wc_node = run_get_node(builder)
 

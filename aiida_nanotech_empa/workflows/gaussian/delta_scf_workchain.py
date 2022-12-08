@@ -111,21 +111,20 @@ class GaussianDeltaScfWorkChain(WorkChain):
         self.report("Submitting NEUTRAL SCF")
         # --------------------------------------------------
 
-        parameters = Dict(
-            {
-                'link0_parameters': self.ctx.link0.copy(),
-                'functional': self.ctx.functional,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.ctx.mult,
-                'route_parameters': {
-                    'scf': {
-                        'conver': 7,
-                        'maxcycle': 140
-                    },
-                    'sp': None,
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'functional': self.ctx.functional,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 0,
+            'multiplicity': self.ctx.mult,
+            'route_parameters': {
+                'scf': {
+                    'conver': 7,
+                    'maxcycle': 140
                 },
-            })
+                'sp': None,
+            },
+        })
 
         builder = GaussianBaseWorkChain.get_builder()
 
@@ -157,21 +156,20 @@ class GaussianDeltaScfWorkChain(WorkChain):
         else:
             functional = 'u' + self.ctx.functional
 
-        parameters = Dict(
-            {
-                'link0_parameters': self.ctx.link0.copy(),
-                'functional': functional,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 1,
-                'multiplicity': pos_mult,
-                'route_parameters': {
-                    'scf': {
-                        'conver': 7,
-                        'maxcycle': 140
-                    },
-                    'sp': None,
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'functional': functional,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 1,
+            'multiplicity': pos_mult,
+            'route_parameters': {
+                'scf': {
+                    'conver': 7,
+                    'maxcycle': 140
                 },
-            })
+                'sp': None,
+            },
+        })
 
         builder = GaussianBaseWorkChain.get_builder()
 
@@ -196,21 +194,20 @@ class GaussianDeltaScfWorkChain(WorkChain):
             self.ctx.neg_mults = [self.ctx.mult - 1, self.ctx.mult + 1]
 
         for neg_mult in self.ctx.neg_mults:
-            parameters = Dict(
-                {
-                    'link0_parameters': self.ctx.link0.copy(),
-                    'functional': functional,
-                    'basis_set': self.inputs.basis_set.value,
-                    'charge': -1,
-                    'multiplicity': neg_mult,
-                    'route_parameters': {
-                        'scf': {
-                            'conver': 7,
-                            'maxcycle': 140
-                        },
-                        'sp': None,
+            parameters = Dict({
+                'link0_parameters': self.ctx.link0.copy(),
+                'functional': functional,
+                'basis_set': self.inputs.basis_set.value,
+                'charge': -1,
+                'multiplicity': neg_mult,
+                'route_parameters': {
+                    'scf': {
+                        'conver': 7,
+                        'maxcycle': 140
                     },
-                })
+                    'sp': None,
+                },
+            })
 
             builder = GaussianBaseWorkChain.get_builder()
 

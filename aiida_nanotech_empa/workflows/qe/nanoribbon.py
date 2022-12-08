@@ -12,7 +12,6 @@ from aiida_quantumespresso.calculations.pw import PwCalculation
 from aiida_quantumespresso.calculations.pp import PpCalculation
 from aiida_quantumespresso.calculations.projwfc import ProjwfcCalculation
 
-
 from aiida_nanotech_empa.utils import common_utils
 
 
@@ -159,28 +158,27 @@ class NanoribbonWorkChain(WorkChain):
         cell_b = structure.cell[1][1]
         cell_c = structure.cell[2][2]
 
-        builder.parameters = Dict(
-            {
-                'INPUTPP': {
-                    'plot_num': 11,  # the V_bare + V_H potential
-                },
-                'PLOT': {
-                    'iflag': 2,
-                    'x0(1)': 0.0,
-                    'x0(2)': 0.0,
-                    'x0(3)': cell_c / cell_a,
-                    # 3D vectors which determine the plotting plane
-                    # in alat units)
-                    'e1(1)': cell_a / cell_a,
-                    'e1(2)': 0.0,
-                    'e1(3)': 0.0,
-                    'e2(1)': 0.0,
-                    'e2(2)': cell_b / cell_a,
-                    'e2(3)': 0.0,
-                    'nx': 10,  # Number of points in the plane
-                    'ny': 10,
-                },
-            })
+        builder.parameters = Dict({
+            'INPUTPP': {
+                'plot_num': 11,  # the V_bare + V_H potential
+            },
+            'PLOT': {
+                'iflag': 2,
+                'x0(1)': 0.0,
+                'x0(2)': 0.0,
+                'x0(3)': cell_c / cell_a,
+                # 3D vectors which determine the plotting plane
+                # in alat units)
+                'e1(1)': cell_a / cell_a,
+                'e1(2)': 0.0,
+                'e1(3)': 0.0,
+                'e2(1)': 0.0,
+                'e2(2)': cell_b / cell_a,
+                'e2(3)': 0.0,
+                'nx': 10,  # Number of points in the plane
+                'ny': 10,
+            },
+        })
 
         natoms = len(prev_calc.inputs.structure.base.attributes.all['sites'])
         nnodes = min(self.inputs.max_nodes.value,
@@ -252,7 +250,8 @@ class NanoribbonWorkChain(WorkChain):
         nproc_mach = min(
             4, builder.code.computer.get_default_mpiprocs_per_machine())
 
-        previous_nodes = int(prev_calc.base.attributes.all['resources']['num_machines'])
+        previous_nodes = int(
+            prev_calc.base.attributes.all['resources']['num_machines'])
         previous_pools = int(
             prev_calc.inputs.parallelization.get_dict()['npool'])
         if natoms < 60:
@@ -271,15 +270,14 @@ class NanoribbonWorkChain(WorkChain):
         builder.parent_folder = prev_calc.outputs.remote_folder
 
         # use the same number of pools as in bands calculation
-        builder.parameters = Dict(
-            {
-                'projwfc': {
-                    'ngauss': 1,
-                    'degauss': 0.007,
-                    'DeltaE': 0.01,
-                    'filproj': 'projection.out',
-                },
-            })
+        builder.parameters = Dict({
+            'projwfc': {
+                'ngauss': 1,
+                'degauss': 0.007,
+                'DeltaE': 0.01,
+                'filproj': 'projection.out',
+            },
+        })
 
         builder.metadata.label = label
         builder.metadata.options = {
@@ -291,12 +289,11 @@ class NanoribbonWorkChain(WorkChain):
             "withmpi": True,
         }
 
-        builder.settings = Dict(
-            {
-                'additional_retrieve_list':
-                ['./out/aiida.save/*.xml', '*_up', '*_down', '*_tot'],
-                'cmdline': ["-npools", str(npools)],
-            })
+        builder.settings = Dict({
+            'additional_retrieve_list':
+            ['./out/aiida.save/*.xml', '*_up', '*_down', '*_tot'],
+            'cmdline': ["-npools", str(npools)],
+        })
 
         future = self.submit(builder)
         return ToContext(**{label: future})
@@ -455,15 +452,14 @@ class NanoribbonWorkChain(WorkChain):
             self.report("Skipping, got only one spin channel")
             return
 
-        builder.parameters = Dict(
-            {
-                'INPUTPP': {
-                    'plot_num': 6,  # spin polarization (rho(up)-rho(down))
-                },
-                'PLOT': {
-                    'iflag': 3,  # 3D plot
-                },
-            })
+        builder.parameters = Dict({
+            'INPUTPP': {
+                'plot_num': 6,  # spin polarization (rho(up)-rho(down))
+            },
+            'PLOT': {
+                'iflag': 3,  # 3D plot
+            },
+        })
 
         builder.metadata.label = label
         builder.metadata.options = {

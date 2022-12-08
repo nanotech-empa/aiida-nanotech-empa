@@ -273,10 +273,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             submitted_node = self.submit(builder)
             self.to_context(**{f"scf.{fragment}": submitted_node})
-            
 
     def run_geo_opts(self):
-        
+
         for fragment in self.inputs.fragments.keys():
             # We deliberately do not run optimisation for the full structure.
             if fragment == "all":
@@ -322,8 +321,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             energies[fragment] = {
                 'unrelaxed':
-                self.ctx.scf[fragment].outputs.
-                output_parameters['energy'],
+                self.ctx.scf[fragment].outputs.output_parameters['energy'],
                 'relaxed':
                 self.ctx.opt[fragment].outputs.output_parameters['energy']
             }

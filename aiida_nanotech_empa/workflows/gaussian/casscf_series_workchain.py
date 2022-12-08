@@ -140,21 +140,20 @@ class GaussianCasscfSeriesWorkChain(WorkChain):
 
         self.ctx.init_mult = list(self.inputs.multiplicity_list)[0]
 
-        parameters = Dict(
-            {
-                'link0_parameters': self.ctx.link0.copy(),
-                'dieze_tag': '#P',
-                'functional': self.inputs.init_functional.value,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.ctx.init_mult,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 128,
-                    },
-                    'stable': 'opt',
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'dieze_tag': '#P',
+            'functional': self.inputs.init_functional.value,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 0,
+            'multiplicity': self.ctx.init_mult,
+            'route_parameters': {
+                'scf': {
+                    'maxcycle': 128,
                 },
-            })
+                'stable': 'opt',
+            },
+        })
 
         if self.ctx.init_mult == 1:
             parameters['route_parameters']['guess'] = "mix"

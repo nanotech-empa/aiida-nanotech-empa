@@ -173,21 +173,20 @@ class GaussianScfWorkChain(WorkChain):
     def min_basis_stable_opt(self):
         self.report("Submitting minimal basis stable opt")
 
-        parameters = Dict(
-            {
-                'link0_parameters': self.ctx.link0.copy(),
-                'dieze_tag': '#P',
-                'functional': self.ctx.functional,
-                'basis_set': 'STO-3G',
-                'charge': 0,
-                'multiplicity': self.ctx.mult,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 140
-                    },
-                    'stable': 'opt',
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'dieze_tag': '#P',
+            'functional': self.ctx.functional,
+            'basis_set': 'STO-3G',
+            'charge': 0,
+            'multiplicity': self.ctx.mult,
+            'route_parameters': {
+                'scf': {
+                    'maxcycle': 140
                 },
-            })
+                'stable': 'opt',
+            },
+        })
 
         builder = GaussianBaseWorkChain.get_builder()
 
@@ -211,20 +210,19 @@ class GaussianScfWorkChain(WorkChain):
     def scf(self):
         self.report("Submitting SCF")
 
-        parameters = Dict(
-            {
-                'link0_parameters': self.ctx.link0.copy(),
-                'dieze_tag': '#P',
-                'functional': self.ctx.functional,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.ctx.mult,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 140
-                    },
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'dieze_tag': '#P',
+            'functional': self.ctx.functional,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 0,
+            'multiplicity': self.ctx.mult,
+            'route_parameters': {
+                'scf': {
+                    'maxcycle': 140
                 },
-            })
+            },
+        })
         if self.inputs.wfn_stable_opt:
             parameters['route_parameters']['stable'] = "opt"
         else:

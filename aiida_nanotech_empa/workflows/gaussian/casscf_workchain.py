@@ -143,24 +143,23 @@ class GaussianCasscfWorkChain(WorkChain):
                                             self.inputs.m.value,
                                             ",UNO" if self.inputs.uno else "")
 
-        parameters = Dict(
-            {
-                'link0_parameters': self.ctx.link0.copy(),
-                'dieze_tag': '#P',
-                'functional': func_str,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.inputs.multiplicity.value,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 512,
-                    },
-                    'geom': 'checkpoint',
-                    'guess': 'read',
-                    'pop': 'naturalorbital',
-                    'sp': None
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'dieze_tag': '#P',
+            'functional': func_str,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 0,
+            'multiplicity': self.inputs.multiplicity.value,
+            'route_parameters': {
+                'scf': {
+                    'maxcycle': 512,
                 },
-            })
+                'geom': 'checkpoint',
+                'guess': 'read',
+                'pop': 'naturalorbital',
+                'sp': None
+            },
+        })
 
         builder = GaussianBaseWorkChain.get_builder()
         builder.gaussian.parameters = parameters
@@ -183,24 +182,23 @@ class GaussianCasscfWorkChain(WorkChain):
         func_str = 'CASSCF({},{})'.format(self.inputs.n.value,
                                           self.inputs.m.value)
 
-        parameters = Dict(
-            {
-                'link0_parameters': self.ctx.link0.copy(),
-                'dieze_tag': '#P',
-                'functional': func_str,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.inputs.multiplicity.value,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 512,
-                    },
-                    'geom': 'checkpoint',
-                    'guess': 'read',
-                    'sp': None,
-                    'mp2': None,
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'dieze_tag': '#P',
+            'functional': func_str,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 0,
+            'multiplicity': self.inputs.multiplicity.value,
+            'route_parameters': {
+                'scf': {
+                    'maxcycle': 512,
                 },
-            })
+                'geom': 'checkpoint',
+                'guess': 'read',
+                'sp': None,
+                'mp2': None,
+            },
+        })
 
         builder = GaussianBaseWorkChain.get_builder()
         builder.gaussian.parameters = parameters

@@ -27,7 +27,8 @@ class Cp2kGWParser(Cp2kBaseParser):
             raise OutputParsingError("Cp2k output file not retrieved")
 
         try:
-            output_string = self.retrieved.base.repository.get_object_content(fname)
+            output_string = self.retrieved.base.repository.get_object_content(
+                fname)
         except IOError:
             return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
 
