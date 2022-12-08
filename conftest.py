@@ -13,9 +13,9 @@ SSSP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 
 @pytest.fixture(scope='session', autouse=True)
-def setup_sssp_pseudos():
+def setup_sssp_pseudos(aiida_profile):
     """Create an SSSP pseudo potential family from scratch."""
-
+    aiida_profile.clear_profile()
     SsspFamily = GroupFactory('pseudo.family.sssp')
     label = 'SSSP/1.1/PBE/efficiency'
     #label = 'SSSP_modified'
