@@ -1,35 +1,28 @@
 """pytest fixtures for simplified testing."""
 import os
 import shutil
-
 import pytest
-
+import pathlib
 from aiida.common import exceptions
 from aiida.orm import Code, Computer, QueryBuilder
-
-from aiida.orm.nodes.data.upf import upload_upf_family
 
 pytest_plugins = ['aiida.manage.tests.pytest_fixtures']
 
 SSSP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "examples/data/sssp_minimal")
 
-#@pytest.fixture(scope='function', autouse=True)
-#def clear_database_auto(clear_database):
-#    """Automatically clear database in between tests."""
-
-
 @pytest.fixture(scope='session', autouse=True)
-def setup_sssp_pseudos(aiida_profile):  # pylint: disable=unused-argument
-    upload_upf_family(SSSP_DIR, "SSSP_modified", "SSSP modified")
-
-
-# --------------------------------------------------------------------------------------
-# Define alternatives to aiida_localhost and aiida_local_code_factory
-# 1) to have localhost.set_default_mpiprocs_per_machine(1)
-# 2) no mpirun command
-
-
+def setup_sssp_pseudos(aiida_profile):
+    """Create an SSSP pseudo potential family from scratch."""
+    from aiida.plugins import GroupFactory
+    SsspFamily = GroupFactory('pseudo.family.sssp')
+    label = 'SSSP/1.1/PBE/efficiency'
+    #label = 'SSSP_modified'
+    my_path = pathlib.Path(SSSP_DIR)
+    family = SsspFamily.create_from_folder(my_path, label)
+    family.store()
+    #return family
+ 
 @pytest.fixture
 def fixture_localhost(aiida_localhost):
     """Return a localhost `Computer`."""
@@ -39,7 +32,6 @@ def fixture_localhost(aiida_localhost):
     # Disable this, as multiple processes are not supported by e.g. cp2k.ssmp
     localhost.set_mpirun_command([])
     return localhost
-
 
 @pytest.fixture(scope='function')
 def local_code_factory(fixture_localhost):

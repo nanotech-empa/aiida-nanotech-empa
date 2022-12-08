@@ -43,11 +43,6 @@ jobs:
         bash .github/install_qe.sh
         echo "$PWD/qe/bin" >> $GITHUB_PATH
     
-    - name: Install SSSP pseudos
-      run: |
-        echo "aiida-pseudo install sssp"
-
-    
     - name: Run pytest
       run: |
         pytest --cov-report=xml --cov=aiida_nanotech_empa

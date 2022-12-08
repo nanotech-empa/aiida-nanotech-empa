@@ -39,8 +39,7 @@ def _example_nanoribbon(opt_cell, qe_pw_code, qe_pp_code, qe_projwfc_code,
     # Inputs
     builder.structure = StructureData(ase=read(geo_file))
     #builder.pseudo_family = Str("SSSP_modified")
-    builder.pseudo_family = Str(
-        "SSSP/1.1/PBE/efficiency")  #It requires aiida-pseudo install sssp!
+    builder.pseudo_family = Str("SSSP/1.1/PBE/efficiency")  #It requires aiida-pseudo install sssp!
 
     # Metadata
     builder.metadata = {
