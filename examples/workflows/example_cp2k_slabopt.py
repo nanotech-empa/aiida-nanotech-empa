@@ -36,7 +36,7 @@ def _example_cp2k_slabopt(cp2k_code, mult):
     if mult == 1:
         mag[0] = 1
         mag[1] = -1
-        builder.magnetization_per_site = List(list=mag)
+        builder.magnetization_per_site = List(mag)
 
     builder.protocol = Str('debug')
 

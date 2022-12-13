@@ -140,10 +140,12 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         #handlers
         builder.handler_overrides = Dict(
-            dict={'resubmit_unconverged_geometry': True})
+            {'restart_incomplete_calculation': {
+                'enabled': True
+            }})
 
         #cp2k input dictionary
-        builder.cp2k.parameters = Dict(dict=input_dict)
+        builder.cp2k.parameters = Dict(input_dict)
 
         submitted_node = self.submit(builder)
         return ToContext(opt=submitted_node)
@@ -160,8 +162,8 @@ class Cp2kSlabOptWorkChain(WorkChain):
         # Add extras
         struc = self.ctx.opt.outputs.output_structure
         ase_geom = struc.get_ase()
-        self.node.set_extra('thumbnail',
-                            common_utils.thumbnail(ase_struc=ase_geom))
+        self.node.base.extras.set('thumbnail',
+                                  common_utils.thumbnail(ase_struc=ase_geom))
 
         # add formula to extra as molecule@surface
         try:  #mainly for debug cases where the analyzer could crash due to odd geometries
@@ -184,6 +186,6 @@ class Cp2kSlabOptWorkChain(WorkChain):
         except ValueError:
             mol_formula = struc.get_formula()
 
-        self.node.set_extra('formula', mol_formula)
+        self.node.base.extras.set('formula', mol_formula)
 
         return ExitCode(0)

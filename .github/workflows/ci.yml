@@ -18,7 +18,7 @@ jobs:
           - 5672:5672
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.9]
         backend: ['django']
     steps:
     - uses: actions/checkout@v2
@@ -31,9 +31,8 @@ jobs:
     - name: Install python dependencies
       run: |
         pip install --upgrade pip
-        pip install -e .[testing]
-        reentry scan -r aiida
-      
+        pip install -e .[dev]
+
     - name: Install CP2K
       run: |
         bash .github/install_cp2k.sh
@@ -59,15 +58,15 @@ jobs:
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v1
-    - name: Set up Python 3.8
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
     - name: Install python dependencies
       run: |
         pip install --upgrade pip
-        pip install -e .[pre-commit,testing]
-        reentry scan -r aiida
+        pip install -e .[dev]
+     
     - name: Run pre-commit
       run: |
         pre-commit install

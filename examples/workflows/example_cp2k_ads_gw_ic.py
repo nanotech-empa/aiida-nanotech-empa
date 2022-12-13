@@ -35,7 +35,7 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
         builder.ads_height = Float(3.0)
 
     builder.structure = StructureData(ase=ase_geom)
-    builder.magnetization_per_site = List(list=mag_list)
+    builder.magnetization_per_site = List(mag_list)
 
     builder.protocol = Str('gpw_std')
     builder.multiplicity = Int(1)

@@ -86,15 +86,14 @@ def process_natural_orb_occupations(natorb_parameters):
     i_homo = natorb_parameters['homos'][0]
     no_occs_sp = list(spin_proj_nakano(np.array(no_occs), i_hono=i_homo))
 
-    return Dict(
-        dict={
-            'no_occs': no_occs,
-            'no_occs_sp': no_occs_sp,
-            'std_num_odd': standard_num_odd(no_occs),
-            'std_num_odd_sp': standard_num_odd(no_occs_sp),
-            'hg_num_odd': head_gordon_num_odd(no_occs),
-            'hg_num_odd_sp': head_gordon_num_odd(no_occs_sp),
-        })
+    return Dict({
+        'no_occs': no_occs,
+        'no_occs_sp': no_occs_sp,
+        'std_num_odd': standard_num_odd(no_occs),
+        'std_num_odd_sp': standard_num_odd(no_occs_sp),
+        'hg_num_odd': head_gordon_num_odd(no_occs),
+        'hg_num_odd_sp': head_gordon_num_odd(no_occs_sp),
+    })
 
 
 ## --------------------------------------------------------------------
@@ -223,7 +222,7 @@ class GaussianNatOrbWorkChain(WorkChain):
             'multiplicity': -1,  # ignored
         }
 
-        builder.gaussian.parameters = Dict(dict=parameters)
+        builder.gaussian.parameters = Dict(parameters)
 
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
@@ -266,7 +265,7 @@ class GaussianNatOrbWorkChain(WorkChain):
             'multiplicity': -1,  # ignored
         }
 
-        builder.gaussian.parameters = Dict(dict=parameters)
+        builder.gaussian.parameters = Dict(parameters)
 
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
@@ -292,7 +291,7 @@ class GaussianNatOrbWorkChain(WorkChain):
         builder.cubegen_code = self.inputs.cubegen_code
         builder.gaussian_calc_folder = self.ctx.natorb_save.outputs.remote_folder
         builder.gaussian_output_params = self.ctx.natorb.outputs.output_parameters
-        builder.orbital_indexes = List(list=list(range(-n_d + 1, n_u + 1)))
+        builder.orbital_indexes = List(list(range(-n_d + 1, n_u + 1)))
         builder.natural_orbitals = Bool(True)
         builder.edge_space = self.inputs.edge_space
         builder.dx = Float(0.15)

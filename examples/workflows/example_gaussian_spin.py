@@ -30,7 +30,7 @@ def _example_gaussian_spin(gaussian_code, formchk_code, cubegen_code):
     builder.empirical_dispersion = Str('GD3')
     builder.basis_set_opt = Str('STO-3G')
     builder.basis_set_scf = Str('STO-3G')
-    builder.multiplicity_list = List(list=[0, 1, 3])
+    builder.multiplicity_list = List([0, 1, 3])
 
     _, wc_node = run_get_node(builder)
 

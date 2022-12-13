@@ -147,10 +147,12 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
 
         #handlers
         builder.handler_overrides = Dict(
-            dict={'restart_incomplete_calculation': True})
+            {'restart_incomplete_calculation': {
+                'enabled': True
+            }})
 
         #cp2k input dictionary
-        builder.cp2k.parameters = Dict(dict=input_dict)
+        builder.cp2k.parameters = Dict(input_dict)
 
         submitted_node = self.submit(builder)
         return ToContext(opt=submitted_node)
@@ -166,8 +168,8 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
 
         # Add extras
         struc = self.ctx.opt.outputs.output_structure
-        self.node.set_extra('thumbnail',
-                            common_utils.thumbnail(ase_struc=struc.get_ase()))
-        self.node.set_extra('formula', struc.get_formula())
+        self.node.base.extras.set(
+            'thumbnail', common_utils.thumbnail(ase_struc=struc.get_ase()))
+        self.node.base.extras.set('formula', struc.get_formula())
 
         return ExitCode(0)

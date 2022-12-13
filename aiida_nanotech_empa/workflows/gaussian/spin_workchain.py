@@ -97,7 +97,7 @@ class GaussianSpinWorkChain(WorkChain):
             builder.cubes_n_occ = Int(2)
             builder.cubes_n_virt = Int(2)
             builder.cubes_edge_space = Float(4.0)
-            builder.cubegen_parser_params = Dict(dict={
+            builder.cubegen_parser_params = Dict({
                 'heights': [4.0],
                 'orient_cube': True,
                 'isovalues': [0.01],
@@ -175,15 +175,14 @@ class GaussianSpinWorkChain(WorkChain):
         builder.cubegen_code = self.inputs.cubegen_code
         builder.gaussian_calc_folder = self.ctx.gs_scf_remote_folder
         builder.gaussian_output_params = self.ctx.gs_out_params
-        builder.orbital_indexes = List(list=cubes_orb_indexes)
+        builder.orbital_indexes = List(cubes_orb_indexes)
         builder.edge_space = Float(max(cubes_heights))
         builder.cubegen_parser_name = 'nanotech_empa.gaussian.cubegen_pymol'
-        builder.cubegen_parser_params = Dict(
-            dict={
-                'isovalues': cubes_isovalues,
-                'heights': cubes_heights,
-                'orient_cube': True,
-            })
+        builder.cubegen_parser_params = Dict({
+            'isovalues': cubes_isovalues,
+            'heights': cubes_heights,
+            'orient_cube': True,
+        })
 
         submitted_node = self.submit(builder)
         submitted_node.description = "gs cubes"
@@ -230,12 +229,11 @@ class GaussianSpinWorkChain(WorkChain):
                 opt_label].outputs.remote_folder
             builder.cubes_n_occ = Int(cubes_n_occ)
             builder.cubes_n_virt = Int(cubes_n_virt)
-            builder.cubegen_parser_params = Dict(
-                dict={
-                    'isovalues': cubes_isovalues,
-                    'heights': cubes_heights,
-                    'orient_cube': True,
-                })
+            builder.cubegen_parser_params = Dict({
+                'isovalues': cubes_isovalues,
+                'heights': cubes_heights,
+                'orient_cube': True,
+            })
 
             if 'options' in self.inputs:
                 builder.options = self.inputs.options

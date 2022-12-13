@@ -21,7 +21,7 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
     mag_list = [-1, 1]
 
     builder.structure = StructureData(ase=ase_geom)
-    builder.magnetization_per_site = List(list=mag_list)
+    builder.magnetization_per_site = List(mag_list)
 
     builder.protocol = Str('gpw_std')
     builder.multiplicity = Int(1)

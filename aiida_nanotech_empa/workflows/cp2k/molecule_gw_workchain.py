@@ -271,7 +271,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
                 self.inputs.options['max_wallclock_seconds'] - 600, 600)
         builder.metadata.options['parser_name'] = "cp2k_advanced_parser"
 
-        builder.parameters = Dict(dict=input_dict)
+        builder.parameters = Dict(input_dict)
 
         submitted_node = self.submit(builder)
         return ToContext(scf=submitted_node)
@@ -326,7 +326,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         builder.metadata.options[
             'parser_name'] = "nanotech_empa.cp2k_gw_parser"
 
-        builder.parameters = Dict(dict=input_dict)
+        builder.parameters = Dict(input_dict)
 
         submitted_node = self.submit(builder)
         return ToContext(second_step=submitted_node)

@@ -15,7 +15,7 @@ GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
 def add_mp2_to_out_params(out_params, mp2_energy):
     new_params = dict(out_params)
     new_params['casmp2_energy_ev'] = mp2_energy.value
-    return Dict(dict=new_params)
+    return Dict(new_params)
 
 
 class GaussianCasscfWorkChain(WorkChain):
@@ -143,24 +143,23 @@ class GaussianCasscfWorkChain(WorkChain):
                                             self.inputs.m.value,
                                             ",UNO" if self.inputs.uno else "")
 
-        parameters = Dict(
-            dict={
-                'link0_parameters': self.ctx.link0.copy(),
-                'dieze_tag': '#P',
-                'functional': func_str,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.inputs.multiplicity.value,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 512,
-                    },
-                    'geom': 'checkpoint',
-                    'guess': 'read',
-                    'pop': 'naturalorbital',
-                    'sp': None
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'dieze_tag': '#P',
+            'functional': func_str,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 0,
+            'multiplicity': self.inputs.multiplicity.value,
+            'route_parameters': {
+                'scf': {
+                    'maxcycle': 512,
                 },
-            })
+                'geom': 'checkpoint',
+                'guess': 'read',
+                'pop': 'naturalorbital',
+                'sp': None
+            },
+        })
 
         builder = GaussianBaseWorkChain.get_builder()
         builder.gaussian.parameters = parameters
@@ -183,24 +182,23 @@ class GaussianCasscfWorkChain(WorkChain):
         func_str = 'CASSCF({},{})'.format(self.inputs.n.value,
                                           self.inputs.m.value)
 
-        parameters = Dict(
-            dict={
-                'link0_parameters': self.ctx.link0.copy(),
-                'dieze_tag': '#P',
-                'functional': func_str,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.inputs.multiplicity.value,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 512,
-                    },
-                    'geom': 'checkpoint',
-                    'guess': 'read',
-                    'sp': None,
-                    'mp2': None,
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'dieze_tag': '#P',
+            'functional': func_str,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 0,
+            'multiplicity': self.inputs.multiplicity.value,
+            'route_parameters': {
+                'scf': {
+                    'maxcycle': 512,
                 },
-            })
+                'geom': 'checkpoint',
+                'guess': 'read',
+                'sp': None,
+                'mp2': None,
+            },
+        })
 
         builder = GaussianBaseWorkChain.get_builder()
         builder.gaussian.parameters = parameters
@@ -223,11 +221,11 @@ class GaussianCasscfWorkChain(WorkChain):
         builder.cubegen_code = self.inputs.cubegen_code
         builder.gaussian_calc_folder = self.ctx.casscf.outputs.remote_folder
         builder.gaussian_output_params = self.ctx.casscf.outputs.output_parameters
-        builder.orbital_indexes = List(list=list(range(-n_d + 1, n_u + 1)))
+        builder.orbital_indexes = List(list(range(-n_d + 1, n_u + 1)))
         builder.natural_orbitals = Bool(True)
 
         builder.cubegen_parser_name = 'nanotech_empa.gaussian.cubegen_pymol'
-        builder.cubegen_parser_params = Dict(dict={
+        builder.cubegen_parser_params = Dict({
             'isovalues': [0.050],
             'orient_cube': True
         })

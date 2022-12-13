@@ -2,7 +2,7 @@ import os
 import ase.io
 from aiida import orm, engine, plugins
 
-StructureData = plugins.DataFactory('structure')
+StructureData = plugins.DataFactory('core.structure')
 Cp2kFragmentSeparationWorkChain = plugins.WorkflowFactory(
     'nanotech_empa.cp2k.fragment_separation')
 

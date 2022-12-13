@@ -9,7 +9,7 @@ from aiida.engine import run_get_node
 from aiida_nanotech_empa.utils.cube_utils import cube_from_qe_pp_arraydata
 
 # AiiDA classes.
-StructureData = DataFactory('structure')
+StructureData = DataFactory('core.structure')
 NanoribbonWorkChain = WorkflowFactory('nanotech_empa.nanoribbon')
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +38,9 @@ def _example_nanoribbon(opt_cell, qe_pw_code, qe_pp_code, qe_projwfc_code,
 
     # Inputs
     builder.structure = StructureData(ase=read(geo_file))
-    builder.pseudo_family = Str("SSSP_modified")
+    #builder.pseudo_family = Str("SSSP_modified")
+    builder.pseudo_family = Str(
+        "SSSP/1.1/PBE/efficiency")  #It requires aiida-pseudo install sssp!
 
     # Metadata
     builder.metadata = {

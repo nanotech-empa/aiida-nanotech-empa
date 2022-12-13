@@ -180,21 +180,20 @@ class GaussianRelaxWorkChain(WorkChain):
 
         self.report("Running UKS WFN Stability")
 
-        parameters = Dict(
-            dict={
-                'link0_parameters': self.ctx.link0.copy(),
-                'dieze_tag': '#P',
-                'functional': self.ctx.functional,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.ctx.mult,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 140,
-                    },
-                    'Stable': 'opt',
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'dieze_tag': '#P',
+            'functional': self.ctx.functional,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 0,
+            'multiplicity': self.ctx.mult,
+            'route_parameters': {
+                'scf': {
+                    'maxcycle': 140,
                 },
-            })
+                'Stable': 'opt',
+            },
+        })
 
         if self.ctx.mult == 1:
             parameters['route_parameters']['guess'] = "mix"
@@ -213,21 +212,20 @@ class GaussianRelaxWorkChain(WorkChain):
 
         self.report("Submitting optimization")
 
-        parameters = Dict(
-            dict={
-                'link0_parameters': self.ctx.link0.copy(),
-                'dieze_tag': '#P',
-                'functional': self.ctx.functional,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': 0,
-                'multiplicity': self.ctx.mult,
-                'route_parameters': {
-                    'scf': {
-                        'maxcycle': 140
-                    },
-                    'opt': None,
+        parameters = Dict({
+            'link0_parameters': self.ctx.link0.copy(),
+            'dieze_tag': '#P',
+            'functional': self.ctx.functional,
+            'basis_set': self.inputs.basis_set.value,
+            'charge': 0,
+            'multiplicity': self.ctx.mult,
+            'route_parameters': {
+                'scf': {
+                    'maxcycle': 140
                 },
-            })
+                'opt': None,
+            },
+        })
 
         builder = GaussianBaseWorkChain.get_builder()
 

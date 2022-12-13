@@ -23,11 +23,12 @@ class Cp2kGWParser(Cp2kBaseParser):
     def _parse_stdout(self):
 
         fname = self.node.process_class._DEFAULT_OUTPUT_FILE  # pylint: disable=protected-access
-        if fname not in self.retrieved.list_object_names():
+        if fname not in self.retrieved.base.repository.list_object_names():
             raise OutputParsingError("Cp2k output file not retrieved")
 
         try:
-            output_string = self.retrieved.get_object_content(fname)
+            output_string = self.retrieved.base.repository.get_object_content(
+                fname)
         except IOError:
             return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
 

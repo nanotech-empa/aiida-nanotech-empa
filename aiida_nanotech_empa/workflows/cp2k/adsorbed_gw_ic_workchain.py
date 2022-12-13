@@ -69,7 +69,7 @@ def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
     return {
         'mol_struct': StructureData(ase=mol_atoms),
         'image_plane_z': Float(imag_plane_z),
-        'mol_mag_per_site': List(list=mps),
+        'mol_mag_per_site': List(mps),
     }
 
 
@@ -111,7 +111,7 @@ def calc_gw_ic_parameters(gw_params, ic_params):
         'scf_levels': gw_params['g0w0_e_scf'],
     }
 
-    return Dict(dict=gw_ic_params)
+    return Dict(gw_ic_params)
 
 
 class Cp2kAdsorbedGwIcWorkChain(WorkChain):
@@ -331,11 +331,11 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
 
         # Add the workchain pk to the input structure extras
         extras_label = "Cp2kAdsorbedGwIcWorkChain_pks"
-        if extras_label not in self.inputs.structure.extras:
+        if extras_label not in self.inputs.structure.base.extras.all:
             extras_list = []
         else:
-            extras_list = self.inputs.structure.extras[extras_label]
+            extras_list = self.inputs.structure.base.extras.all[extras_label]
         extras_list.append(self.node.pk)
-        self.inputs.structure.set_extra(extras_label, extras_list)
+        self.inputs.structure.base.extras.set(extras_label, extras_list)
 
         return ExitCode(0)

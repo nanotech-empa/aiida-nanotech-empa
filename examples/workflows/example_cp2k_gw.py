@@ -25,7 +25,7 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
 
     builder.multiplicity = Int(mult)
     if mult == 1:
-        builder.magnetization_per_site = List(list=[-1, 1])
+        builder.magnetization_per_site = List([-1, 1])
 
     builder.run_image_charge = Bool(ic)
     builder.z_ic_plane = Float(0.8)
