@@ -5,13 +5,13 @@ from aiida.plugins import WorkflowFactory
 
 from aiida_nanotech_empa.utils import common_utils
 
-GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
-GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
+GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
+GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
 
-GaussianScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf')
-GaussianRelaxWorkChain = WorkflowFactory('nanotech_empa.gaussian.relax')
-GaussianDeltaScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.delta_scf')
-GaussianNatOrbWorkChain = WorkflowFactory('nanotech_empa.gaussian.natorb')
+GaussianScfWorkChain = WorkflowFactory("nanotech_empa.gaussian.scf")
+GaussianRelaxWorkChain = WorkflowFactory("nanotech_empa.gaussian.relax")
+GaussianDeltaScfWorkChain = WorkflowFactory("nanotech_empa.gaussian.delta_scf")
+GaussianNatOrbWorkChain = WorkflowFactory("nanotech_empa.gaussian.natorb")
 
 
 class GaussianSpinWorkChain(WorkChain):
@@ -23,46 +23,47 @@ class GaussianSpinWorkChain(WorkChain):
         spec.input("formchk_code", valid_type=Code)
         spec.input("cubegen_code", valid_type=Code)
 
-        spec.input('structure',
-                   valid_type=StructureData,
-                   required=True,
-                   help='input geometry')
-        spec.input('functional',
-                   valid_type=Str,
-                   required=True,
-                   help='xc functional')
-        spec.input('empirical_dispersion',
-                   valid_type=Str,
-                   required=False,
-                   default=lambda: Str(""),
-                   help=('Include empirical dispersion corrections'
-                         '(e.g. "GD3", "GD3BJ")'))
-
-        spec.input('basis_set_opt',
-                   valid_type=Str,
-                   required=True,
-                   help='basis_set for opt')
-        spec.input('basis_set_scf',
-                   valid_type=Str,
-                   required=True,
-                   help='basis_set for scf')
-
-        spec.input('multiplicity_list',
-                   valid_type=List,
-                   required=True,
-                   help='spin multiplicities')
+        spec.input(
+            "structure", valid_type=StructureData, required=True, help="input geometry"
+        )
+        spec.input("functional", valid_type=Str, required=True, help="xc functional")
+        spec.input(
+            "empirical_dispersion",
+            valid_type=Str,
+            required=False,
+            default=lambda: Str(""),
+            help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
+        )
 
         spec.input(
-            'options',
+            "basis_set_opt", valid_type=Str, required=True, help="basis_set for opt"
+        )
+        spec.input(
+            "basis_set_scf", valid_type=Str, required=True, help="basis_set for scf"
+        )
+
+        spec.input(
+            "multiplicity_list",
+            valid_type=List,
+            required=True,
+            help="spin multiplicities",
+        )
+
+        spec.input(
+            "options",
             valid_type=Dict,
             required=False,
-            help="Use custom metadata.options instead of the automatic ones.")
+            help="Use custom metadata.options instead of the automatic ones.",
+        )
 
         spec.outline(
-            cls.submit_opts, cls.inspect_opts, cls.submit_next_steps,
+            cls.submit_opts,
+            cls.inspect_opts,
+            cls.submit_next_steps,
             cls.inspect_next_steps,
-            if_(cls.is_gs_oss)(cls.submit_nat_orb,
-                               cls.inspect_nat_orb), cls.finalize)
+            if_(cls.is_gs_oss)(cls.submit_nat_orb, cls.inspect_nat_orb),
+            cls.finalize,
+        )
 
         spec.outputs.dynamic = True
 
@@ -94,13 +95,15 @@ class GaussianSpinWorkChain(WorkChain):
             builder.cubes_n_occ = Int(2)
             builder.cubes_n_virt = Int(2)
             builder.cubes_edge_space = Float(4.0)
-            builder.cubegen_parser_params = Dict({
-                'heights': [4.0],
-                'orient_cube': True,
-                'isovalues': [0.01],
-            })
+            builder.cubegen_parser_params = Dict(
+                {
+                    "heights": [4.0],
+                    "orient_cube": True,
+                    "isovalues": [0.01],
+                }
+            )
 
-            if 'options' in self.inputs:
+            if "options" in self.inputs:
                 builder.options = self.inputs.options
 
             submitted_node = self.submit(builder)
@@ -121,23 +124,26 @@ class GaussianSpinWorkChain(WorkChain):
             opt_energy = self.ctx[label].outputs.scf_energy_ev
             opt_energies.append(opt_energy)
             self.out(f"m{mult}_opt_energy", opt_energy)
-            self.out(f"m{mult}_opt_structure",
-                     self.ctx[label].outputs.output_structure)
-            self.out(f"m{mult}_opt_out_params",
-                     self.ctx[label].outputs.scf_output_parameters)
-            self.out(f"m{mult}_opt_cube_images",
-                     self.ctx[label].outputs.cube_image_folder)
-            self.out(f"m{mult}_opt_cube_planes",
-                     self.ctx[label].outputs.cube_planes_array)
+            self.out(f"m{mult}_opt_structure", self.ctx[label].outputs.output_structure)
+            self.out(
+                f"m{mult}_opt_out_params", self.ctx[label].outputs.scf_output_parameters
+            )
+            self.out(
+                f"m{mult}_opt_cube_images", self.ctx[label].outputs.cube_image_folder
+            )
+            self.out(
+                f"m{mult}_opt_cube_planes", self.ctx[label].outputs.cube_planes_array
+            )
 
         gs_i = np.argmin(opt_energies)
 
         # if open-shell singlet is degenerate with closed-shell solution, prefer closed-shell
-        if self.inputs.multiplicity_list[
-                gs_i] == 1 and 0 in self.inputs.multiplicity_list:
+        if (
+            self.inputs.multiplicity_list[gs_i] == 1
+            and 0 in self.inputs.multiplicity_list
+        ):
             cs_i = self.inputs.multiplicity_list.index(0)
-            if np.abs(opt_energies[cs_i].value -
-                      opt_energies[gs_i].value) < 1e-6:
+            if np.abs(opt_energies[cs_i].value - opt_energies[gs_i].value) < 1e-6:
                 gs_i = cs_i
 
         self.ctx.gs_mult = Int(self.inputs.multiplicity_list[gs_i]).store()
@@ -145,10 +151,8 @@ class GaussianSpinWorkChain(WorkChain):
         gs_opt_label = f"m{self.ctx.gs_mult.value}_opt"
         self.ctx.gs_structure = self.ctx[gs_opt_label].outputs.output_structure
 
-        self.ctx.gs_out_params = self.ctx[
-            gs_opt_label].outputs.scf_output_parameters
-        self.ctx.gs_scf_remote_folder = self.ctx[
-            gs_opt_label].outputs.scf_remote_folder
+        self.ctx.gs_out_params = self.ctx[gs_opt_label].outputs.scf_output_parameters
+        self.ctx.gs_scf_remote_folder = self.ctx[gs_opt_label].outputs.scf_remote_folder
 
         self.out("gs_multiplicity", self.ctx.gs_mult)
         self.out("gs_energy", self.ctx.gs_energy)
@@ -174,12 +178,14 @@ class GaussianSpinWorkChain(WorkChain):
         builder.gaussian_output_params = self.ctx.gs_out_params
         builder.orbital_indexes = List(cubes_orb_indexes)
         builder.edge_space = Float(max(cubes_heights))
-        builder.cubegen_parser_name = 'nanotech_empa.gaussian.cubegen_pymol'
-        builder.cubegen_parser_params = Dict({
-            'isovalues': cubes_isovalues,
-            'heights': cubes_heights,
-            'orient_cube': True,
-        })
+        builder.cubegen_parser_name = "nanotech_empa.gaussian.cubegen_pymol"
+        builder.cubegen_parser_params = Dict(
+            {
+                "isovalues": cubes_isovalues,
+                "heights": cubes_heights,
+                "orient_cube": True,
+            }
+        )
 
         submitted_node = self.submit(builder)
         submitted_node.description = "gs cubes"
@@ -195,7 +201,7 @@ class GaussianSpinWorkChain(WorkChain):
         builder.basis_set = self.inputs.basis_set_scf
         builder.multiplicity = self.ctx.gs_mult
         builder.parent_calc_folder = self.ctx.gs_scf_remote_folder
-        if 'options' in self.inputs:
+        if "options" in self.inputs:
             builder.options = self.inputs.options
 
         submitted_node = self.submit(builder)
@@ -222,17 +228,18 @@ class GaussianSpinWorkChain(WorkChain):
             builder.empirical_dispersion = self.inputs.empirical_dispersion
             builder.basis_set = self.inputs.basis_set_scf
             builder.multiplicity = Int(mult)
-            builder.parent_calc_folder = self.ctx[
-                opt_label].outputs.remote_folder
+            builder.parent_calc_folder = self.ctx[opt_label].outputs.remote_folder
             builder.cubes_n_occ = Int(cubes_n_occ)
             builder.cubes_n_virt = Int(cubes_n_virt)
-            builder.cubegen_parser_params = Dict({
-                'isovalues': cubes_isovalues,
-                'heights': cubes_heights,
-                'orient_cube': True,
-            })
+            builder.cubegen_parser_params = Dict(
+                {
+                    "isovalues": cubes_isovalues,
+                    "heights": cubes_heights,
+                    "orient_cube": True,
+                }
+            )
 
-            if 'options' in self.inputs:
+            if "options" in self.inputs:
                 builder.options = self.inputs.options
 
             submitted_node = self.submit(builder)
@@ -252,10 +259,8 @@ class GaussianSpinWorkChain(WorkChain):
         if not common_utils.check_if_calc_ok(self, self.ctx.dscf):
             return self.exit_codes.ERROR_TERMINATION
 
-        self.out("gs_ionization_potential",
-                 self.ctx.dscf.outputs.ionization_potential)
-        self.out("gs_electron_affinity",
-                 self.ctx.dscf.outputs.electron_affinity)
+        self.out("gs_ionization_potential", self.ctx.dscf.outputs.ionization_potential)
+        self.out("gs_electron_affinity", self.ctx.dscf.outputs.electron_affinity)
 
         # ------------------------------------------------------
         for mult in self.inputs.multiplicity_list:
@@ -271,17 +276,20 @@ class GaussianSpinWorkChain(WorkChain):
 
             vert_energy = self.ctx[label].outputs.energy_ev
             self.out(f"m{mult}_vert_energy", vert_energy)
-            self.out(f"m{mult}_vert_out_params",
-                     self.ctx[label].outputs.output_parameters)
-            self.out(f"m{mult}_vert_cube_images",
-                     self.ctx[label].outputs.cube_image_folder)
-            self.out(f"m{mult}_vert_cube_planes",
-                     self.ctx[label].outputs.cube_planes_array)
+            self.out(
+                f"m{mult}_vert_out_params", self.ctx[label].outputs.output_parameters
+            )
+            self.out(
+                f"m{mult}_vert_cube_images", self.ctx[label].outputs.cube_image_folder
+            )
+            self.out(
+                f"m{mult}_vert_cube_planes", self.ctx[label].outputs.cube_planes_array
+            )
 
         return ExitCode(0)
 
     def is_gs_oss(self):
-        """ Is ground state an open-shell singlet? """
+        """Is ground state an open-shell singlet?"""
         return self.ctx.gs_mult == 1
 
     def submit_nat_orb(self):
@@ -292,7 +300,7 @@ class GaussianSpinWorkChain(WorkChain):
         builder.gaussian_code = self.inputs.gaussian_code
         builder.parent_calc_folder = self.ctx.gs_scf_remote_folder
         builder.parent_calc_params = self.ctx.gs_out_params
-        if 'options' in self.inputs:
+        if "options" in self.inputs:
             builder.options = self.inputs.options
 
         submitted_node = self.submit(builder)
@@ -304,8 +312,7 @@ class GaussianSpinWorkChain(WorkChain):
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
             return self.exit_codes.ERROR_TERMINATION
 
-        self.out("gs_natorb_params",
-                 self.ctx.natorb.outputs.natorb_proc_parameters)
+        self.out("gs_natorb_params", self.ctx.natorb.outputs.natorb_proc_parameters)
 
         return ExitCode(0)
 

@@ -13,7 +13,7 @@ from aiida_gaussian.utils.cube import Cube
 from PIL import Image, ImageOps
 
 _stdouterr = sys.stdout, sys.stderr
-pymol.finish_launching(['pymol', '-qc'])
+pymol.finish_launching(["pymol", "-qc"])
 sys.stdout, sys.stderr = _stdouterr
 
 # pylint: disable=import-error,useless-suppression,wrong-import-position
@@ -25,13 +25,13 @@ def _crop_image_bbox(filename):
     image = Image.open(filename)
 
     try:
-        image = image.convert('RGBa')
+        image = image.convert("RGBa")
         image = image.crop(image.getbbox())
     except ValueError:
         inv_image = ImageOps.invert(image)
         image = image.crop(inv_image.getbbox())
 
-    image = image.convert('RGBA')
+    image = image.convert("RGBA")
     image.save(filename)
 
 
@@ -51,7 +51,7 @@ def _save_and_crop(fname, max_w, view):
             break
 
     if not os.path.isfile(fname):
-        raise FileNotFoundError(f'Pymol render did not create {fname}')
+        raise FileNotFoundError(f"Pymol render did not create {fname}")
 
     cmd.set_view(view)  # reset the view
     # Sleep a bit more to make sure the image is finished
@@ -61,17 +61,18 @@ def _save_and_crop(fname, max_w, view):
 
 
 def make_pymol_png(  # noqa
-        input_file,
-        isov=0.05,
-        colors=('brightorange', 'marine'),
-        output_folder='.',
-        output_name=None,
-        orientations=('z', 'y', 'x')):
+    input_file,
+    isov=0.05,
+    colors=("brightorange", "marine"),
+    output_folder=".",
+    output_name=None,
+    orientations=("z", "y", "x"),
+):
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
 
-    cmd.delete('all')
+    cmd.delete("all")
 
     # ------------------------------------
     # General PYMOL settings
@@ -86,9 +87,9 @@ def make_pymol_png(  # noqa
     # Ray tracing options (https://pymolwiki.org/index.php/Ray)
     cmd.set(name="ray_trace_mode", value=0)
     # outline
-    #cmd.set(name="ray_trace_mode", value=1)
+    # cmd.set(name="ray_trace_mode", value=1)
     # outline and "cartoony" appearance
-    #cmd.set(name="ray_trace_mode", value=3)
+    # cmd.set(name="ray_trace_mode", value=3)
 
     # ------------------------------------
 
@@ -99,14 +100,14 @@ def make_pymol_png(  # noqa
     filepath, ext = os.path.splitext(input_file)
     filename = os.path.basename(filepath)
 
-    if ext == '.cube':
+    if ext == ".cube":
 
         # Geometry from cube
         ase_geom = Cube.from_file(input_file, read_data=False).ase_atoms
-        with tempfile.NamedTemporaryFile(delete=False, mode='w') as tempf:
-            ase_geom.write(tempf.name, format='xyz')
+        with tempfile.NamedTemporaryFile(delete=False, mode="w") as tempf:
+            ase_geom.write(tempf.name, format="xyz")
             tempf.close()
-            cmd.load(tempf.name, format='xyz')
+            cmd.load(tempf.name, format="xyz")
 
         # Load the cube data & draw isosurfaces
         cmd.load(input_file, "cube")
@@ -119,7 +120,7 @@ def make_pymol_png(  # noqa
         cmd.set(name="surface_color", value=colors[1], selection="%neg_1")
         cmd.set(name="transparency", value=0.0, selection="%neg_1")
 
-    elif ext == '.xyz':
+    elif ext == ".xyz":
 
         ase_geom = ase.io.read(input_file)
         cmd.load(input_file)
@@ -137,7 +138,7 @@ def make_pymol_png(  # noqa
     cmd.show("spheres")
 
     cmd.set("stick_h_scale", 1.0)
-    cmd.set_bond("stick_radius", 0.105, "all", 'all')
+    cmd.set_bond("stick_radius", 0.105, "all", "all")
 
     cmd.set("sphere_scale", 0.21, "all")
     cmd.set("sphere_scale", 0.16, "elem H")
@@ -167,28 +168,28 @@ def make_pymol_png(  # noqa
     else:
         out_filepath += output_name
 
-    if ext == '.cube':
+    if ext == ".cube":
         out_filepath += f"_iv{isov:.3f}"
 
     for orient in orientations:
-        if orient in ('z', 'z+'):
+        if orient in ("z", "z+"):
             _save_and_crop(out_filepath + "_z+.png", max_w, view)
-        elif orient == 'z-':
+        elif orient == "z-":
             cmd.turn("x", 180)
             cmd.turn("y", 180)
             _save_and_crop(out_filepath + "_z-.png", max_w, view)
-        elif orient in ('y', 'y+'):
+        elif orient in ("y", "y+"):
             cmd.turn("x", -90)
             _save_and_crop(out_filepath + "_y+.png", max_w, view)
-        elif orient == 'y-':
+        elif orient == "y-":
             cmd.turn("x", 90)
             cmd.turn("z", 180)
             _save_and_crop(out_filepath + "_y-.png", max_w, view)
-        elif orient in ('x', 'x+'):
+        elif orient in ("x", "x+"):
             cmd.turn("x", -90)
             cmd.turn("y", 90)
             _save_and_crop(out_filepath + "_x+.png", max_w, view)
-        elif orient == 'x-':
+        elif orient == "x-":
             cmd.turn("x", -90)
             cmd.turn("y", -90)
             cmd.turn("z", 180)

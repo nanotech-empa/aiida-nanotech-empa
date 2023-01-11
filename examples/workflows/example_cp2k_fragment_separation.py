@@ -3,9 +3,10 @@ import os
 import ase.io
 from aiida import engine, orm, plugins
 
-StructureData = plugins.DataFactory('core.structure')
+StructureData = plugins.DataFactory("core.structure")
 Cp2kFragmentSeparationWorkChain = plugins.WorkflowFactory(
-    'nanotech_empa.cp2k.fragment_separation')
+    "nanotech_empa.cp2k.fragment_separation"
+)
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 GEO_FILE = "h2_on_hbn.xyz"
@@ -16,26 +17,24 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
 
     builder = Cp2kFragmentSeparationWorkChain.get_builder()
 
-    builder.metadata.label = 'Cp2kFragmentSeparationWorkChain'
-    builder.metadata.description = 'test description'
+    builder.metadata.label = "Cp2kFragmentSeparationWorkChain"
+    builder.metadata.description = "test description"
     builder.code = cp2k_code
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
     builder.fixed_atoms = orm.List(
-        list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
+        list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    )
 
     builder.fragments = {
-        'molecule':
-        orm.List(list=[0, 1]),
-        'slab':
-        orm.List(
-            list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        "molecule": orm.List(list=[0, 1]),
+        "slab": orm.List(list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
     }
 
     builder.multiplicities = {
-        'all': orm.Int(mult),
-        'molecule': orm.Int(mult),
-        'slab': orm.Int(0),
+        "all": orm.Int(mult),
+        "molecule": orm.Int(mult),
+        "slab": orm.Int(0),
     }
 
     mag = []
@@ -48,21 +47,21 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
     builder.magnetization_per_site = orm.List(list=mag)
 
     builder.options = {
-        'all': {
+        "all": {
             "max_wallclock_seconds": 1200,
             "resources": {
                 "num_machines": 1,
                 "num_mpiprocs_per_machine": 1,
             },
         },
-        'molecule': {
+        "molecule": {
             "max_wallclock_seconds": 1200,
             "resources": {
                 "num_machines": 1,
                 "num_mpiprocs_per_machine": 1,
             },
         },
-        'slab': {
+        "slab": {
             "max_wallclock_seconds": 1200,
             "resources": {
                 "num_machines": 1,
@@ -71,7 +70,7 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
         },
     }
 
-    builder.protocol = orm.Str('debug')
+    builder.protocol = orm.Str("debug")
 
     _, calc_node = engine.run_get_node(builder)
 
@@ -91,7 +90,7 @@ def example_cp2k_slabopt_uks(cp2k_code):
     _example_cp2k_ads_ene(cp2k_code, 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("#### RKS")
     _example_cp2k_ads_ene(orm.load_code("cp2k@localhost"), 0)
 

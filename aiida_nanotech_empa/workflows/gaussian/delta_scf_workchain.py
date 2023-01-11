@@ -5,7 +5,7 @@ from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.gaussian import common
 
-GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
+GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
 
 
 @calcfunction
@@ -20,36 +20,34 @@ class GaussianDeltaScfWorkChain(WorkChain):
 
         spec.input("gaussian_code", valid_type=Code)
 
-        spec.input('structure',
-                   valid_type=StructureData,
-                   required=True,
-                   help='input geometry')
-        spec.input('functional',
-                   valid_type=Str,
-                   required=True,
-                   help='xc functional')
+        spec.input(
+            "structure", valid_type=StructureData, required=True, help="input geometry"
+        )
+        spec.input("functional", valid_type=Str, required=True, help="xc functional")
 
-        spec.input('basis_set',
-                   valid_type=Str,
-                   required=True,
-                   help='basis_set')
-
-        spec.input('multiplicity',
-                   valid_type=Int,
-                   required=False,
-                   default=lambda: Int(1),
-                   help='spin multiplicity; 0 means RKS')
-
-        spec.input('parent_calc_folder',
-                   valid_type=RemoteData,
-                   required=False,
-                   help="the folder of a completed gaussian calculation")
+        spec.input("basis_set", valid_type=Str, required=True, help="basis_set")
 
         spec.input(
-            'options',
+            "multiplicity",
+            valid_type=Int,
+            required=False,
+            default=lambda: Int(1),
+            help="spin multiplicity; 0 means RKS",
+        )
+
+        spec.input(
+            "parent_calc_folder",
+            valid_type=RemoteData,
+            required=False,
+            help="the folder of a completed gaussian calculation",
+        )
+
+        spec.input(
+            "options",
             valid_type=Dict,
             required=False,
-            help="Use custom metadata.options instead of the automatic ones.")
+            help="Use custom metadata.options instead of the automatic ones.",
+        )
 
         spec.outline(cls.setup, cls.submit_scfs, cls.finalize)
 
@@ -89,12 +87,13 @@ class GaussianDeltaScfWorkChain(WorkChain):
             return self.exit_codes.ERROR_OPTIONS
 
         num_cores, memory_mb = common.get_gaussian_cores_and_memory(
-            self.ctx.metadata_options, self.ctx.comp)
+            self.ctx.metadata_options, self.ctx.comp
+        )
 
         self.ctx.link0 = {
-            '%chk': 'aiida.chk',
-            '%mem': "%dMB" % memory_mb,
-            '%nprocshared': str(num_cores),
+            "%chk": "aiida.chk",
+            "%mem": "%dMB" % memory_mb,
+            "%nprocshared": str(num_cores),
         }
 
         return ExitCode(0)
@@ -109,31 +108,30 @@ class GaussianDeltaScfWorkChain(WorkChain):
         self.report("Submitting NEUTRAL SCF")
         # --------------------------------------------------
 
-        parameters = Dict({
-            'link0_parameters': self.ctx.link0.copy(),
-            'functional': self.ctx.functional,
-            'basis_set': self.inputs.basis_set.value,
-            'charge': 0,
-            'multiplicity': self.ctx.mult,
-            'route_parameters': {
-                'scf': {
-                    'conver': 7,
-                    'maxcycle': 140
+        parameters = Dict(
+            {
+                "link0_parameters": self.ctx.link0.copy(),
+                "functional": self.ctx.functional,
+                "basis_set": self.inputs.basis_set.value,
+                "charge": 0,
+                "multiplicity": self.ctx.mult,
+                "route_parameters": {
+                    "scf": {"conver": 7, "maxcycle": 140},
+                    "sp": None,
                 },
-                'sp': None,
-            },
-        })
+            }
+        )
 
         builder = GaussianBaseWorkChain.get_builder()
 
         if "parent_calc_folder" in self.inputs:
             # Read WFN from parent calc
-            parameters['link0_parameters']['%oldchk'] = "parent_calc/aiida.chk"
-            parameters['route_parameters']['guess'] = "read"
+            parameters["link0_parameters"]["%oldchk"] = "parent_calc/aiida.chk"
+            parameters["route_parameters"]["guess"] = "read"
             builder.gaussian.parent_calc_folder = self.inputs.parent_calc_folder
         elif self.is_uks() and self.ctx.mult == 1:
             # For open-shell singlet, mix homo & lumo
-            parameters['route_parameters']['guess'] = "mix"
+            parameters["route_parameters"]["guess"] = "mix"
 
         builder.gaussian.parameters = parameters
         self.setup_common_builder_params(builder)
@@ -152,28 +150,27 @@ class GaussianDeltaScfWorkChain(WorkChain):
         if self.is_uks():
             functional = self.ctx.functional
         else:
-            functional = 'u' + self.ctx.functional
+            functional = "u" + self.ctx.functional
 
-        parameters = Dict({
-            'link0_parameters': self.ctx.link0.copy(),
-            'functional': functional,
-            'basis_set': self.inputs.basis_set.value,
-            'charge': 1,
-            'multiplicity': pos_mult,
-            'route_parameters': {
-                'scf': {
-                    'conver': 7,
-                    'maxcycle': 140
+        parameters = Dict(
+            {
+                "link0_parameters": self.ctx.link0.copy(),
+                "functional": functional,
+                "basis_set": self.inputs.basis_set.value,
+                "charge": 1,
+                "multiplicity": pos_mult,
+                "route_parameters": {
+                    "scf": {"conver": 7, "maxcycle": 140},
+                    "sp": None,
                 },
-                'sp': None,
-            },
-        })
+            }
+        )
 
         builder = GaussianBaseWorkChain.get_builder()
 
         if pos_mult == 1:
             # For open-shell singlet, mix homo & lumo
-            parameters['route_parameters']['guess'] = "mix"
+            parameters["route_parameters"]["guess"] = "mix"
 
         builder.gaussian.parameters = parameters
         self.setup_common_builder_params(builder)
@@ -192,26 +189,25 @@ class GaussianDeltaScfWorkChain(WorkChain):
             self.ctx.neg_mults = [self.ctx.mult - 1, self.ctx.mult + 1]
 
         for neg_mult in self.ctx.neg_mults:
-            parameters = Dict({
-                'link0_parameters': self.ctx.link0.copy(),
-                'functional': functional,
-                'basis_set': self.inputs.basis_set.value,
-                'charge': -1,
-                'multiplicity': neg_mult,
-                'route_parameters': {
-                    'scf': {
-                        'conver': 7,
-                        'maxcycle': 140
+            parameters = Dict(
+                {
+                    "link0_parameters": self.ctx.link0.copy(),
+                    "functional": functional,
+                    "basis_set": self.inputs.basis_set.value,
+                    "charge": -1,
+                    "multiplicity": neg_mult,
+                    "route_parameters": {
+                        "scf": {"conver": 7, "maxcycle": 140},
+                        "sp": None,
                     },
-                    'sp': None,
-                },
-            })
+                }
+            )
 
             builder = GaussianBaseWorkChain.get_builder()
 
             if neg_mult == 1:
                 # For open-shell singlet, mix homo & lumo
-                parameters['route_parameters']['guess'] = "mix"
+                parameters["route_parameters"]["guess"] = "mix"
 
             builder.gaussian.parameters = parameters
             self.setup_common_builder_params(builder)
@@ -221,8 +217,9 @@ class GaussianDeltaScfWorkChain(WorkChain):
 
     def finalize(self):
 
-        if (not common_utils.check_if_calc_ok(self, self.ctx.neutral)
-                or not common_utils.check_if_calc_ok(self, self.ctx.pos)):
+        if not common_utils.check_if_calc_ok(
+            self, self.ctx.neutral
+        ) or not common_utils.check_if_calc_ok(self, self.ctx.pos):
             return self.exit_codes.ERROR_TERMINATION
 
         anion_energies = []
@@ -235,8 +232,7 @@ class GaussianDeltaScfWorkChain(WorkChain):
             anion_energies.append(self.ctx[label].outputs.energy_ev)
 
             if len(self.ctx.neg_mults) > 1:
-                self.out(f"anion_energy_m{neg_mult}",
-                         self.ctx[label].outputs.energy_ev)
+                self.out(f"anion_energy_m{neg_mult}", self.ctx[label].outputs.energy_ev)
 
         anion_energy = min(anion_energies)
 
@@ -244,8 +240,9 @@ class GaussianDeltaScfWorkChain(WorkChain):
         self.out("cation_energy", self.ctx.pos.outputs.energy_ev)
         self.out("anion_energy", anion_energy)
 
-        ip = subtract(self.ctx.pos.outputs.energy_ev,
-                      self.ctx.neutral.outputs.energy_ev)
+        ip = subtract(
+            self.ctx.pos.outputs.energy_ev, self.ctx.neutral.outputs.energy_ev
+        )
         ea = subtract(self.ctx.neutral.outputs.energy_ev, anion_energy)
 
         self.out("ionization_potential", ip)

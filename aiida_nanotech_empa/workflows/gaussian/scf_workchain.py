@@ -5,8 +5,8 @@ from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.gaussian import common
 
-GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
-GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
+GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
+GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
 
 # -------------------------------------------------------------
 # Work Chain to run SCF and possibly CUBES
@@ -20,50 +20,52 @@ class GaussianScfWorkChain(WorkChain):
 
         spec.input("gaussian_code", valid_type=Code)
 
-        spec.input('structure',
-                   valid_type=StructureData,
-                   required=True,
-                   help='input geometry')
+        spec.input(
+            "structure", valid_type=StructureData, required=True, help="input geometry"
+        )
 
-        spec.input('functional',
-                   valid_type=Str,
-                   required=True,
-                   help='xc functional')
+        spec.input("functional", valid_type=Str, required=True, help="xc functional")
 
-        spec.input('basis_set',
-                   valid_type=Str,
-                   required=True,
-                   help='basis_set')
+        spec.input("basis_set", valid_type=Str, required=True, help="basis_set")
 
-        spec.input('multiplicity',
-                   valid_type=Int,
-                   required=False,
-                   default=lambda: Int(1),
-                   help='spin multiplicity; 0 means RKS')
+        spec.input(
+            "multiplicity",
+            valid_type=Int,
+            required=False,
+            default=lambda: Int(1),
+            help="spin multiplicity; 0 means RKS",
+        )
 
-        spec.input('wfn_stable_opt',
-                   valid_type=Bool,
-                   required=False,
-                   default=lambda: Bool(False),
-                   help='if true, perform wfn stability optimization')
+        spec.input(
+            "wfn_stable_opt",
+            valid_type=Bool,
+            required=False,
+            default=lambda: Bool(False),
+            help="if true, perform wfn stability optimization",
+        )
 
-        spec.input('wfn_stable_opt_min_basis',
-                   valid_type=Bool,
-                   required=False,
-                   default=lambda: Bool(False),
-                   help='if true, perform first a minimal basis stability opt')
+        spec.input(
+            "wfn_stable_opt_min_basis",
+            valid_type=Bool,
+            required=False,
+            default=lambda: Bool(False),
+            help="if true, perform first a minimal basis stability opt",
+        )
 
-        spec.input('empirical_dispersion',
-                   valid_type=Str,
-                   required=False,
-                   default=lambda: Str(""),
-                   help=('Include empirical dispersion corrections'
-                         '(e.g. "GD3", "GD3BJ")'))
+        spec.input(
+            "empirical_dispersion",
+            valid_type=Str,
+            required=False,
+            default=lambda: Str(""),
+            help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
+        )
 
-        spec.input('parent_calc_folder',
-                   valid_type=RemoteData,
-                   required=False,
-                   help="the folder of a completed gaussian calculation")
+        spec.input(
+            "parent_calc_folder",
+            valid_type=RemoteData,
+            required=False,
+            help="the folder of a completed gaussian calculation",
+        )
 
         # -------------------------------------------------------------------
         # CUBE GENERATION INPUTS
@@ -71,48 +73,61 @@ class GaussianScfWorkChain(WorkChain):
         spec.input("formchk_code", valid_type=Code, required=False)
         spec.input("cubegen_code", valid_type=Code, required=False)
 
-        spec.input('cubes_n_occ',
-                   valid_type=Int,
-                   required=False,
-                   default=lambda: Int(0),
-                   help='Number of occupied orbital cubes to generate')
+        spec.input(
+            "cubes_n_occ",
+            valid_type=Int,
+            required=False,
+            default=lambda: Int(0),
+            help="Number of occupied orbital cubes to generate",
+        )
 
-        spec.input('cubes_n_virt',
-                   valid_type=Int,
-                   required=False,
-                   default=lambda: Int(0),
-                   help='Number of virtual orbital cubes to generate')
+        spec.input(
+            "cubes_n_virt",
+            valid_type=Int,
+            required=False,
+            default=lambda: Int(0),
+            help="Number of virtual orbital cubes to generate",
+        )
 
-        spec.input('cubes_edge_space',
-                   valid_type=Float,
-                   required=False,
-                   default=lambda: Float(3.0),
-                   help='Extra cube space in addition to bounding box [ang].')
+        spec.input(
+            "cubes_edge_space",
+            valid_type=Float,
+            required=False,
+            default=lambda: Float(3.0),
+            help="Extra cube space in addition to bounding box [ang].",
+        )
 
-        spec.input('cubegen_parser_name',
-                   valid_type=str,
-                   default='nanotech_empa.gaussian.cubegen_pymol',
-                   non_db=True)
+        spec.input(
+            "cubegen_parser_name",
+            valid_type=str,
+            default="nanotech_empa.gaussian.cubegen_pymol",
+            non_db=True,
+        )
 
-        spec.input("cubegen_parser_params",
-                   valid_type=Dict,
-                   required=False,
-                   default=lambda: Dict(dict={}),
-                   help='Additional parameters to cubegen parser.')
+        spec.input(
+            "cubegen_parser_params",
+            valid_type=Dict,
+            required=False,
+            default=lambda: Dict(dict={}),
+            help="Additional parameters to cubegen parser.",
+        )
         # -------------------------------------------------------------------
 
         spec.input(
-            'options',
+            "options",
             valid_type=Dict,
             required=False,
-            help="Use custom metadata.options instead of the automatic ones.")
+            help="Use custom metadata.options instead of the automatic ones.",
+        )
 
         spec.outline(
             cls.setup,
             if_(cls.should_do_min_basis_stable_opt)(cls.min_basis_stable_opt),
             cls.scf,
             if_(cls.did_scf_fail)(cls.scf),
-            if_(cls.should_do_cubes)(cls.cubes), cls.finalize)
+            if_(cls.should_do_cubes)(cls.cubes),
+            cls.finalize,
+        )
 
         spec.outputs.dynamic = True
 
@@ -150,18 +165,19 @@ class GaussianScfWorkChain(WorkChain):
             return self.exit_codes.ERROR_OPTIONS
 
         num_cores, memory_mb = common.get_gaussian_cores_and_memory(
-            self.ctx.metadata_options, self.ctx.comp)
+            self.ctx.metadata_options, self.ctx.comp
+        )
 
         self.ctx.link0 = {
-            '%chk': 'aiida.chk',
-            '%mem': "%dMB" % memory_mb,
-            '%nprocshared': str(num_cores),
+            "%chk": "aiida.chk",
+            "%mem": "%dMB" % memory_mb,
+            "%nprocshared": str(num_cores),
         }
 
         # Use default convergence criterion at the start
         # but switch to conver=7 in case of failure
         self.ctx.conver = None
-        self.ctx.scf_label = 'scf'
+        self.ctx.scf_label = "scf"
 
         return ExitCode(0)
 
@@ -171,31 +187,31 @@ class GaussianScfWorkChain(WorkChain):
     def min_basis_stable_opt(self):
         self.report("Submitting minimal basis stable opt")
 
-        parameters = Dict({
-            'link0_parameters': self.ctx.link0.copy(),
-            'dieze_tag': '#P',
-            'functional': self.ctx.functional,
-            'basis_set': 'STO-3G',
-            'charge': 0,
-            'multiplicity': self.ctx.mult,
-            'route_parameters': {
-                'scf': {
-                    'maxcycle': 140
+        parameters = Dict(
+            {
+                "link0_parameters": self.ctx.link0.copy(),
+                "dieze_tag": "#P",
+                "functional": self.ctx.functional,
+                "basis_set": "STO-3G",
+                "charge": 0,
+                "multiplicity": self.ctx.mult,
+                "route_parameters": {
+                    "scf": {"maxcycle": 140},
+                    "stable": "opt",
                 },
-                'stable': 'opt',
-            },
-        })
+            }
+        )
 
         builder = GaussianBaseWorkChain.get_builder()
 
         if "parent_calc_folder" in self.inputs:
             # Read WFN from parent calc
-            parameters['link0_parameters']['%oldchk'] = "parent_calc/aiida.chk"
-            parameters['route_parameters']['guess'] = "read"
+            parameters["link0_parameters"]["%oldchk"] = "parent_calc/aiida.chk"
+            parameters["route_parameters"]["guess"] = "read"
             builder.gaussian.parent_calc_folder = self.inputs.parent_calc_folder
         elif self.is_uks() and self.ctx.mult == 1:
             # For open-shell singlet, mix homo & lumo
-            parameters['route_parameters']['guess'] = "mix"
+            parameters["route_parameters"]["guess"] = "mix"
 
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
@@ -208,46 +224,49 @@ class GaussianScfWorkChain(WorkChain):
     def scf(self):
         self.report("Submitting SCF")
 
-        parameters = Dict({
-            'link0_parameters': self.ctx.link0.copy(),
-            'dieze_tag': '#P',
-            'functional': self.ctx.functional,
-            'basis_set': self.inputs.basis_set.value,
-            'charge': 0,
-            'multiplicity': self.ctx.mult,
-            'route_parameters': {
-                'scf': {
-                    'maxcycle': 140
+        parameters = Dict(
+            {
+                "link0_parameters": self.ctx.link0.copy(),
+                "dieze_tag": "#P",
+                "functional": self.ctx.functional,
+                "basis_set": self.inputs.basis_set.value,
+                "charge": 0,
+                "multiplicity": self.ctx.mult,
+                "route_parameters": {
+                    "scf": {"maxcycle": 140},
                 },
-            },
-        })
+            }
+        )
         if self.inputs.wfn_stable_opt:
-            parameters['route_parameters']['stable'] = "opt"
+            parameters["route_parameters"]["stable"] = "opt"
         else:
-            parameters['route_parameters']['sp'] = None
+            parameters["route_parameters"]["sp"] = None
 
         builder = GaussianBaseWorkChain.get_builder()
 
         if self.should_do_min_basis_stable_opt():
             # Read WFN from min basis stable opt
-            parameters['link0_parameters']['%oldchk'] = "parent_calc/aiida.chk"
-            parameters['route_parameters']['guess'] = "read"
-            builder.gaussian.parent_calc_folder = self.ctx.min_stable.outputs.remote_folder
+            parameters["link0_parameters"]["%oldchk"] = "parent_calc/aiida.chk"
+            parameters["route_parameters"]["guess"] = "read"
+            builder.gaussian.parent_calc_folder = (
+                self.ctx.min_stable.outputs.remote_folder
+            )
         elif "parent_calc_folder" in self.inputs:
             # Read WFN from parent calc
-            parameters['link0_parameters']['%oldchk'] = "parent_calc/aiida.chk"
-            parameters['route_parameters']['guess'] = "read"
+            parameters["link0_parameters"]["%oldchk"] = "parent_calc/aiida.chk"
+            parameters["route_parameters"]["guess"] = "read"
             builder.gaussian.parent_calc_folder = self.inputs.parent_calc_folder
         elif self.is_uks() and self.ctx.mult == 1:
             # For open-shell singlet, mix homo & lumo
-            parameters['route_parameters']['guess'] = "mix"
+            parameters["route_parameters"]["guess"] = "mix"
 
         if self.inputs.empirical_dispersion.value != "":
-            parameters['route_parameters'][
-                'empiricaldispersion'] = self.inputs.empirical_dispersion.value
+            parameters["route_parameters"][
+                "empiricaldispersion"
+            ] = self.inputs.empirical_dispersion.value
 
         if self.ctx.conver is not None:
-            parameters['route_parameters']['scf']['conver'] = self.ctx.conver
+            parameters["route_parameters"]["scf"]["conver"] = self.ctx.conver
 
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
@@ -266,14 +285,15 @@ class GaussianScfWorkChain(WorkChain):
             self.report("SCF failed with default convergence criterion!")
             self.report("Switching to a looser threshold.")
             self.ctx.conver = 7
-            self.ctx.scf_label = f'scf_c{self.ctx.conver}'
+            self.ctx.scf_label = f"scf_c{self.ctx.conver}"
             return True
         return False
 
     def should_do_cubes(self):
-        codes_set = 'formchk_code' in self.inputs and 'cubegen_code' in self.inputs
-        non_zero_num = (self.inputs.cubes_n_occ.value > 0
-                        and self.inputs.cubes_n_virt.value > 0)
+        codes_set = "formchk_code" in self.inputs and "cubegen_code" in self.inputs
+        non_zero_num = (
+            self.inputs.cubes_n_occ.value > 0 and self.inputs.cubes_n_virt.value > 0
+        )
         return codes_set and non_zero_num
 
     def cubes(self):
@@ -286,22 +306,25 @@ class GaussianScfWorkChain(WorkChain):
         self.report("Generating cubes")
 
         orb_index_list = list(
-            range(-self.inputs.cubes_n_occ.value + 1,
-                  self.inputs.cubes_n_virt.value + 1))
+            range(
+                -self.inputs.cubes_n_occ.value + 1, self.inputs.cubes_n_virt.value + 1
+            )
+        )
 
         future = self.submit(
             GaussianCubesWorkChain,
             formchk_code=self.inputs.formchk_code,
             cubegen_code=self.inputs.cubegen_code,
             gaussian_calc_folder=scf_node.outputs.remote_folder,
-            gaussian_output_params=scf_node.outputs['output_parameters'],
+            gaussian_output_params=scf_node.outputs["output_parameters"],
             orbital_indexes=List(list=orb_index_list),
-            orbital_index_ref=Str('half_num_el'),
+            orbital_index_ref=Str("half_num_el"),
             edge_space=self.inputs.cubes_edge_space,
             dx=Float(0.15),
             retrieve_cubes=Bool(False),
             cubegen_parser_name=self.inputs.cubegen_parser_name,
-            cubegen_parser_params=self.inputs.cubegen_parser_params)
+            cubegen_parser_params=self.inputs.cubegen_parser_params,
+        )
         return ToContext(cubes=future)
 
     def finalize(self):
@@ -319,13 +342,12 @@ class GaussianScfWorkChain(WorkChain):
             for cubes_out in list(self.ctx.cubes.outputs):
                 if cubes_out.startswith("cube"):
                     self.out(cubes_out, self.ctx.cubes.outputs[cubes_out])
-                elif cubes_out == 'retrieved':
-                    self.out("cubes_retrieved",
-                             self.ctx.cubes.outputs[cubes_out])
+                elif cubes_out == "retrieved":
+                    self.out("cubes_retrieved", self.ctx.cubes.outputs[cubes_out])
 
         self.out("energy_ev", scf_node.outputs.energy_ev)
-        self.out("output_parameters", scf_node.outputs['output_parameters'])
+        self.out("output_parameters", scf_node.outputs["output_parameters"])
 
-        self.out("remote_folder", scf_node.outputs['remote_folder'])
+        self.out("remote_folder", scf_node.outputs["remote_folder"])
 
         return ExitCode(0)

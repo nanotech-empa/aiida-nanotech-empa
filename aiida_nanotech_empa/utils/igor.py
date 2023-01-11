@@ -23,7 +23,7 @@ def read_wave(lines):
     if "N=" in line:
         d2 = True
         match = re.search(r"WAVES/N=\(([\d, ]+)\)", line)
-        grid = match.group(1).split(',')
+        grid = match.group(1).split(",")
         grid = np.array(grid, dtype=int)
         name = line.split(")")[-1].strip()
     else:
@@ -74,7 +74,7 @@ def igor_wave_factory(fname):
     """
     Returns either wave1d or wave2d, corresponding to the input file
     """
-    with open(fname, encoding='utf-8') as f:
+    with open(fname, encoding="utf-8") as f:
         lines = f.readlines()
 
     line = lines.pop(0).strip()
@@ -93,8 +93,9 @@ def igor_wave_factory(fname):
     return waves
 
 
-class Axis():
+class Axis:
     """Represents an axis of an IGOR wave"""
+
     def __init__(self, symbol, min_, delta, unit, wavename=None):
         # pylint: disable=too-many-arguments
         self.symbol = symbol
@@ -108,9 +109,13 @@ class Axis():
         Note: SetScale/P expects minimum value and step-size
         """
         delta = 0 if self.delta is None else self.delta
-        s = "X SetScale/P {symb} {min},{delta}, \"{unit}\", {name};\n"\
-              .format(symb=self.symbol, min=self.min, delta=delta,\
-                      unit=self.unit, name=self.wavename)
+        s = 'X SetScale/P {symb} {min},{delta}, "{unit}", {name};\n'.format(
+            symb=self.symbol,
+            min=self.min,
+            delta=delta,
+            unit=self.unit,
+            name=self.wavename,
+        )
         return s
 
     def read(self, string):
@@ -120,8 +125,8 @@ class Axis():
         SetScale d 0,0,"V", data_00381_Up
         """
         match = re.search(
-            r"SetScale/?P? (.) ([+-\.\de]+),([+-\.\de]+),[ ]*\"(.*)\",\s*(\w+)",
-            string)
+            r"SetScale/?P? (.) ([+-\.\de]+),([+-\.\de]+),[ ]*\"(.*)\",\s*(\w+)", string
+        )
         self.symbol = match.group(1)
         self.min = float(match.group(2))
         self.delta = float(match.group(3))
@@ -129,8 +134,9 @@ class Axis():
         self.wavename = match.group(5)
 
 
-class Wave():
+class Wave:
     """A class template for IGOR waves of generic dimension"""
+
     def __init__(self, data, axes, name=None):
         """Initialize IGOR wave of generic dimension"""
         self.data = data
@@ -157,8 +163,7 @@ class Wave():
 
     @classmethod
     def read(cls, fname):
-        """Read IGOR wave
-        """
+        """Read IGOR wave"""
         with open(fname, encoding="utf-8") as f:
             lines = f.readlines()
 
@@ -175,7 +180,7 @@ class Wave():
         if "N=" in waves_str:
             d2 = True
             match = re.search(r"WAVES/N=\(([\d,]+)\)", waves_str)
-            grid = match.group(1).split(',')
+            grid = match.group(1).split(",")
             grid = np.array(grid, dtype=int)
 
         line = lines.pop(0).strip()
@@ -221,8 +226,9 @@ class Wave():
         """Determines how to print the data block.
 
         To be implemented by subclasses."""
+
     def write(self, fname):
-        with open(fname, 'w', encoding="utf-8") as f:
+        with open(fname, "w", encoding="utf-8") as f:
             f.write(str(self))
 
     def csv_header(self):
@@ -233,16 +239,18 @@ class Wave():
             if header != "":
                 header += "\n"
             header += "axis %d: %s [unit: %s] [%.6e, %.6e], delta=%.6e, n=%d" % (
-                i_ax, ax.symbol, ax.unit, ax.min, ax.min + ax.delta *
-                (s - 1), ax.delta, s)
+                i_ax,
+                ax.symbol,
+                ax.unit,
+                ax.min,
+                ax.min + ax.delta * (s - 1),
+                ax.delta,
+                s,
+            )
         return header
 
     def write_csv(self, fname, fmt="%.6e"):
-        np.savetxt(fname,
-                   self.data,
-                   delimiter=",",
-                   header=self.csv_header(),
-                   fmt=fmt)
+        np.savetxt(fname, self.data, delimiter=",", header=self.csv_header(), fmt=fmt)
 
 
 class Wave1d(Wave):
@@ -251,8 +259,8 @@ class Wave1d(Wave):
     default_parameters = dict(
         xmin=0.0,
         xdelta=None,
-        xlabel='x',
-        ylabel='y',
+        xlabel="x",
+        ylabel="y",
     )
 
     def __init__(self, data=None, axes=None, name="1d", **kwargs):
@@ -268,11 +276,13 @@ class Wave1d(Wave):
 
         if axes is None:
             p = self.parameters
-            x = Axis(symbol='x',
-                     min_=p['xmin'],
-                     delta=p['xdelta'],
-                     unit=p['xlabel'],
-                     wavename=self.name)
+            x = Axis(
+                symbol="x",
+                min_=p["xmin"],
+                delta=p["xdelta"],
+                unit=p["xlabel"],
+                wavename=self.name,
+            )
             self.axes = [x]
 
     def print_data(self):
@@ -290,11 +300,11 @@ class Wave2d(Wave):
         xmin=0.0,
         xdelta=None,
         xmax=None,
-        xlabel='x',
+        xlabel="x",
         ymin=0.0,
         ydelta=None,
         ymax=None,
-        ylabel='y',
+        ylabel="y",
     )
 
     def __init__(self, data=None, axes=None, name=None, **kwargs):
@@ -320,26 +330,30 @@ class Wave2d(Wave):
             p = self.parameters
 
             nx, ny = self.data.shape
-            if p['xmax'] is None:
-                p['xmax'] = p['xdelta'] * nx
-            elif p['xdelta'] is None:
-                p['xdelta'] = p['xmax'] / nx
+            if p["xmax"] is None:
+                p["xmax"] = p["xdelta"] * nx
+            elif p["xdelta"] is None:
+                p["xdelta"] = p["xmax"] / nx
 
-            if p['ymax'] is None:
-                p['ymax'] = p['ydelta'] * ny
-            elif p['ydelta'] is None:
-                p['ydelta'] = p['ymax'] / ny
+            if p["ymax"] is None:
+                p["ymax"] = p["ydelta"] * ny
+            elif p["ydelta"] is None:
+                p["ydelta"] = p["ymax"] / ny
 
-            x = Axis(symbol='x',
-                     min_=p['xmin'],
-                     delta=p['xdelta'],
-                     unit=p['xlabel'],
-                     wavename=self.name)
-            y = Axis(symbol='y',
-                     min_=p['ymin'],
-                     delta=p['ydelta'],
-                     unit=p['ylabel'],
-                     wavename=self.name)
+            x = Axis(
+                symbol="x",
+                min_=p["xmin"],
+                delta=p["xdelta"],
+                unit=p["xlabel"],
+                wavename=self.name,
+            )
+            y = Axis(
+                symbol="y",
+                min_=p["ymin"],
+                delta=p["ydelta"],
+                unit=p["ylabel"],
+                wavename=self.name,
+            )
             self.axes = [x, y]
 
     def print_data(self):

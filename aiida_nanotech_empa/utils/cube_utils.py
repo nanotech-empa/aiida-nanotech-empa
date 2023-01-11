@@ -66,8 +66,9 @@ def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
     crop_e = cube.data.shape - ((i_p1 - c_p1) / dv).astype(int)
 
     # Update the cube
-    cube.data = cube.data[crop_s[0]:crop_e[0], crop_s[1]:crop_e[1], crop_s[2]:
-                          crop_e[2]]
+    cube.data = cube.data[
+        crop_s[0] : crop_e[0], crop_s[1] : crop_e[1], crop_s[2] : crop_e[2]
+    ]
 
     cube.origin = c_p0
     cube.cell = (np.atleast_2d(cube.data.shape).T * np.diag(dv)) * ANG_TO_BOHR
@@ -76,24 +77,26 @@ def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
 
 def cube_from_qe_pp_arraydata(ad):
 
-    data_units = str(ad.get_array('data_units'))
-    coord_units = str(ad.get_array('coordinates_units'))
-    data = ad.get_array('data')
+    data_units = str(ad.get_array("data_units"))
+    coord_units = str(ad.get_array("coordinates_units"))
+    data = ad.get_array("data")
 
-    coords = ad.get_array('coordinates')
-    dv = ad.get_array('voxel')
+    coords = ad.get_array("coordinates")
+    dv = ad.get_array("voxel")
 
     # make coords and dv [au] if in [angstrom]
-    if coord_units in ('angstrom', 'ang'):
+    if coord_units in ("angstrom", "ang"):
         coords *= ANG_TO_BOHR
         dv *= ANG_TO_BOHR
 
-    ase_atoms = ase.Atoms(ad.get_array('atomic_numbers'), coords / ANG_TO_BOHR)
+    ase_atoms = ase.Atoms(ad.get_array("atomic_numbers"), coords / ANG_TO_BOHR)
 
     cell = dv * np.atleast_2d(data.shape).T
 
-    return Cube(title="from arraydata node",
-                comment=f"data units: {data_units}",
-                ase_atoms=ase_atoms,
-                cell=cell,
-                data=data)
+    return Cube(
+        title="from arraydata node",
+        comment=f"data units: {data_units}",
+        ase_atoms=ase_atoms,
+        cell=cell,
+        data=data,
+    )

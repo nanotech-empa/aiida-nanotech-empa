@@ -19,8 +19,7 @@ def check_if_calc_ok(self_, prev_calc):
         if prev_calc.exit_status is not None and prev_calc.exit_status >= 500:
             self_.report("Warning: previous step: " + prev_calc.exit_message)
         else:
-            self_.report("ERROR: previous step: " +
-                         str(prev_calc.exit_message))
+            self_.report("ERROR: previous step: " + str(prev_calc.exit_message))
             return False
 
     return True
@@ -29,7 +28,7 @@ def check_if_calc_ok(self_, prev_calc):
 def thumbnail(ase_struc, file_format=None):
     """Prepare binary information."""
 
-    file_format = file_format if file_format else 'png'
+    file_format = file_format if file_format else "png"
     with NamedTemporaryFile() as tmp:
         ase_struc.write(tmp.name, format=file_format)
         with open(tmp.name, "rb") as raw:

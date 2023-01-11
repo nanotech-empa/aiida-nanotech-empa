@@ -10,10 +10,10 @@ class ETHZEulerLsfScheduler(LsfScheduler):
     #BSUB -R "rusage[mem=X,scratch=Y]"
     where X and Y are specified in units of MB per cpu
     """
+
     def _get_submit_script_header(self, job_tmpl):
         if job_tmpl.max_memory_kb:
-            lsf_script_lines = super()._get_submit_script_header(
-                job_tmpl).splitlines()
+            lsf_script_lines = super()._get_submit_script_header(job_tmpl).splitlines()
 
             physical_memory_kb = int(job_tmpl.max_memory_kb)
             num_mpiprocs = job_tmpl.job_resource.get_tot_num_mpiprocs()
@@ -25,10 +25,11 @@ class ETHZEulerLsfScheduler(LsfScheduler):
                 if line.startswith("#BSUB -M"):
                     # Skip the BSUB -M line
                     continue
-                if not line.startswith('#') and not rusage_added:
+                if not line.startswith("#") and not rusage_added:
                     # Add the rusage line after the other #BSUB commands
-                    rusage_line = '#BSUB -R \"rusage[mem={},scratch={}]\"'.format(
-                        mem_per_proc_mb, 2 * mem_per_proc_mb)
+                    rusage_line = '#BSUB -R "rusage[mem={},scratch={}]"'.format(
+                        mem_per_proc_mb, 2 * mem_per_proc_mb
+                    )
                     new_lines.append(rusage_line)
                     rusage_added = True
 
