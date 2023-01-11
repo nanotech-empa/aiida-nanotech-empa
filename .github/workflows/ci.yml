@@ -40,7 +40,7 @@ jobs:
       run: |
         bash .github/install_qe.sh
         echo "$PWD/qe/bin" >> $GITHUB_PATH
-    
+
     - name: Run pytest
       run: |
         pytest --cov-report=xml --cov=aiida_nanotech_empa
@@ -69,7 +69,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -e .[dev]
-     
+
     - name: Run pre-commit
       run: |
         pre-commit install

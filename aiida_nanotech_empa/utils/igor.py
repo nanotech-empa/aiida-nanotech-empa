@@ -114,7 +114,7 @@ class Axis():
 
     def read(self, string):
         """Read axis from string
-        Format: 
+        Format:
         X SetScale/P x 0,2.01342281879195e-11,"m", data_00381_Up;
         SetScale d 0,0,"V", data_00381_Up
         """
@@ -218,7 +218,7 @@ class Wave():
 
     def print_data(self):
         """Determines how to print the data block.
-        
+
         To be implemented by subclasses."""
     def write(self, fname):
         with open(fname, 'w', encoding="utf-8") as f:
@@ -300,11 +300,11 @@ class Wave2d(Wave):
         """Initialize 2d Igor wave
         Parameters
         ----------
-        
-         * data 
-         * name 
-         * xmin, xdelta, xlabel         
-         * ymin, ydelta, ylabel         
+
+         * data
+         * name
+         * xmin, xdelta, xlabel
+         * ymin, ydelta, ylabel
         """
         super().__init__(data, axes=axes, name=name)
 

@@ -6,7 +6,7 @@ LsfScheduler = SchedulerFactory("core.lsf")
 class ETHZEulerLsfScheduler(LsfScheduler):
     """
     The ETHZ Euler LSF scheduler requires memory and scratch space to be
-    reserved with the line 
+    reserved with the line
     #BSUB -R "rusage[mem=X,scratch=Y]"
     where X and Y are specified in units of MB per cpu
     """

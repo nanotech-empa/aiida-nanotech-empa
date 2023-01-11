@@ -15,7 +15,7 @@ IC_PLANE_HEIGHTS = {
 
 
 def geometrical_analysis(ase_geo, substr_elem):
-    """Simple geometry analysis that returns in the case of 
+    """Simple geometry analysis that returns in the case of
     1) an isolated molecule -> geometry, None
     2) adsorbed system -> molecular geometry, top substr. layer z
     """

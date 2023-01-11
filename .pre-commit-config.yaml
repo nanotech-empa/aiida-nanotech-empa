@@ -1,21 +1,14 @@
-# Install pre-commit hooks via:
-# pre-commit install
+---
+ci:
+    autoupdate_schedule: quarterly
 
-# yapf = yet another python formatter
 repos:
-- repo: https://github.com/pre-commit/mirrors-yapf
-  rev: v0.28.0
-  hooks:
-  - id: yapf
-    name: yapf
-    args: ["-i"]
-
-- repo: local
-  hooks:
-  # prospector: collection of linters
-  - id: prospector
-    language: system
-    types: [file, python]
-    name: prospector
-    description: "This hook runs Prospector: https://github.com/landscapeio/prospector"
-    entry: prospector
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v4.4.0
+      hooks:
+          - id: end-of-file-fixer
+            exclude: ^.*data/
+          - id: trailing-whitespace
+            exclude: ^.*.upf
+          - id: check-yaml
+          - id: check-added-large-files
