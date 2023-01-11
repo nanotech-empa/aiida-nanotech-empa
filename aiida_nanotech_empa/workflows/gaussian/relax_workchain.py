@@ -258,7 +258,7 @@ class GaussianRelaxWorkChain(WorkChain):
                 if c[0] == 'distance':
                     constr_str += "{} {} ={:.4f} B\n".format(
                         c[1] + 1, c[2] + 1, c[3])
-                    constr_str += "{} {} F\n".format(c[1] + 1, c[2] + 1)
+                    constr_str += f"{c[1] + 1} {c[2] + 1} F\n"
                 else:
                     self.report(f"Unsupported constraint {c[0]}, skipping.")
             if constr_str != "":

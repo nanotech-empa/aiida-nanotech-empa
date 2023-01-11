@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """AiiDA-CP2K output parser for GW calculations."""
 
 from aiida.common import OutputParsingError
@@ -28,7 +27,7 @@ class Cp2kGWParser(Cp2kBaseParser):
         try:
             output_string = self.retrieved.base.repository.get_object_content(
                 fname)
-        except IOError:
+        except OSError:
             return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
 
         # CP2K advanced parsing provided by aiida-cp2k

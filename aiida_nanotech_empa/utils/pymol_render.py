@@ -168,7 +168,7 @@ def make_pymol_png(  # noqa
         out_filepath += output_name
 
     if ext == '.cube':
-        out_filepath += "_iv{:.3f}".format(isov)
+        out_filepath += f"_iv{isov:.3f}"
 
     for orient in orientations:
         if orient in ('z', 'z+'):

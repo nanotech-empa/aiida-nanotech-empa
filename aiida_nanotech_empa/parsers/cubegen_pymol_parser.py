@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """AiiDA-Gaussian output parser"""
 
 import os

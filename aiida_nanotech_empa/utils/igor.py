@@ -31,7 +31,7 @@ def read_wave(lines):
 
     line = lines.pop(0).strip()
     if not line == "BEGIN":
-        raise IOError("Missing 'BEGIN' statement of data block")
+        raise OSError("Missing 'BEGIN' statement of data block")
 
     # read data
     datastring = ""
@@ -74,12 +74,12 @@ def igor_wave_factory(fname):
     """
     Returns either wave1d or wave2d, corresponding to the input file
     """
-    with open(fname, 'r', encoding='utf-8') as f:
+    with open(fname, encoding='utf-8') as f:
         lines = f.readlines()
 
     line = lines.pop(0).strip()
     if not line == "IGOR":
-        raise IOError("Files does not begin with 'IGOR'")
+        raise OSError("Files does not begin with 'IGOR'")
 
     waves = []
     while len(lines) != 0:
@@ -144,10 +144,10 @@ class Wave():
 
         dimstring = "("
         for sh in self.data.shape:
-            dimstring += "{}, ".format(sh)
+            dimstring += f"{sh}, "
         dimstring = dimstring[:-2] + ")"
 
-        s += "WAVES/N={}  {}\n".format(dimstring, self.name)
+        s += f"WAVES/N={dimstring}  {self.name}\n"
         s += "BEGIN\n"
         s += self.print_data()
         s += "END\n"
@@ -159,12 +159,12 @@ class Wave():
     def read(cls, fname):
         """Read IGOR wave
         """
-        with open(fname, 'r', encoding="utf-8") as f:
+        with open(fname, encoding="utf-8") as f:
             lines = f.readlines()
 
         line = lines.pop(0).strip()
         if not line == "IGOR":
-            raise IOError("Files does not begin with 'IGOR'")
+            raise OSError("Files does not begin with 'IGOR'")
 
         line = lines.pop(0)
         while not re.match("WAVES", line):
@@ -180,7 +180,7 @@ class Wave():
 
         line = lines.pop(0).strip()
         if not line == "BEGIN":
-            raise IOError("Missing 'BEGIN' statement of data block")
+            raise OSError("Missing 'BEGIN' statement of data block")
 
         # read data
         datastring = ""
@@ -264,7 +264,7 @@ class Wave1d(Wave):
             if key in self.parameters:
                 self.parameters[key] = value
             else:
-                raise KeyError("Unknown parameter {}".format(key))
+                raise KeyError(f"Unknown parameter {key}")
 
         if axes is None:
             p = self.parameters
@@ -278,7 +278,7 @@ class Wave1d(Wave):
     def print_data(self):
         s = ""
         for line in self.data:
-            s += "{:12.6e}\n".format(float(line))
+            s += f"{float(line):12.6e}\n"
 
         return s
 
@@ -314,7 +314,7 @@ class Wave2d(Wave):
             if key in self.parameters:
                 self.parameters[key] = value
             else:
-                raise KeyError("Unknown parameter {}".format(key))
+                raise KeyError(f"Unknown parameter {key}")
 
         if axes is None:
             p = self.parameters
@@ -347,7 +347,7 @@ class Wave2d(Wave):
         s = ""
         for line in self.data:
             for x in line:
-                s += "{:12.6e} ".format(x)
+                s += f"{x:12.6e} "
             s += "\n"
 
         return s

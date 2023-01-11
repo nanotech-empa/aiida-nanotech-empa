@@ -42,7 +42,7 @@ def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
 
         if i_crop:
 
-            if isinstance(i_crop, collections.Iterable):
+            if isinstance(i_crop, collections.abc.Iterable):
                 i_crop_ = i_crop
             else:
                 i_crop_ = [i_crop, i_crop]

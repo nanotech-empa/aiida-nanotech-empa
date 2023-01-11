@@ -98,9 +98,9 @@ def _get_spin_exp_values_str(out_params):
     if ("spin_expectation_values" in out_params
             and len(out_params["spin_expectation_values"]) > 0):
         s_e = get_spin_exp_values(out_params)
-        s += "S**2: {0:.3f}, ideal: {1:.2f}\n".format(s_e['S**2'],
+        s += "S**2: {:.3f}, ideal: {:.2f}\n".format(s_e['S**2'],
                                                       s_e['S**2_ideal'])
-        s += "S:    {0:.3f}, ideal: {1:.2f}".format(s_e['S'], s_e['S_ideal'])
+        s += "S:    {:.3f}, ideal: {:.2f}".format(s_e['S'], s_e['S_ideal'])
     return s
 
 
@@ -161,7 +161,7 @@ def plot_cube_images(cube_image_folder,
     image_names = cube_image_folder.list_object_names()
     for imag_name in image_names:
 
-        if not all((e in imag_name for e in name_contains)):
+        if not all(e in imag_name for e in name_contains):
             continue
 
         label = imag_name.split("_")[0]
@@ -227,7 +227,7 @@ def make_report(wc_node, nb=False, save_image_loc=None):
 
     print()
     print("##############################################################")
-    print("#### GROUND STATE: MULTIPLICITY {}".format(gs_multiplicity))
+    print(f"#### GROUND STATE: MULTIPLICITY {gs_multiplicity}")
     print("##############################################################")
 
     _show_spin_density(wc_node.outputs.gs_cube_images,
@@ -283,7 +283,7 @@ def make_report(wc_node, nb=False, save_image_loc=None):
             continue
 
         print("##############################################################")
-        print("#### MULTIPLICITY {}".format(mult))
+        print(f"#### MULTIPLICITY {mult}")
         print("##############################################################")
 
         cube_label = f"m{mult}_vert_cube_images"
