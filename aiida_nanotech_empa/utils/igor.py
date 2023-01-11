@@ -256,12 +256,12 @@ class Wave:
 class Wave1d(Wave):
     """1d Igor wave"""
 
-    default_parameters = dict(
-        xmin=0.0,
-        xdelta=None,
-        xlabel="x",
-        ylabel="y",
-    )
+    default_parameters = {
+        "xmin": 0.0,
+        "xdelta": None,
+        "xlabel": "x",
+        "ylabel": "y",
+    }
 
     def __init__(self, data=None, axes=None, name="1d", **kwargs):
         """Initialize 1d IGOR wave"""
@@ -296,16 +296,16 @@ class Wave1d(Wave):
 class Wave2d(Wave):
     """2d Igor wave"""
 
-    default_parameters = dict(
-        xmin=0.0,
-        xdelta=None,
-        xmax=None,
-        xlabel="x",
-        ymin=0.0,
-        ydelta=None,
-        ymax=None,
-        ylabel="y",
-    )
+    default_parameters = {
+        "xmin": 0.0,
+        "xdelta": None,
+        "xlabel": "x",
+        "xmax": None,
+        "ymin": 0.0,
+        "ydelta": None,
+        "ylabel": "y",
+        "ymax": None,
+    }
 
     def __init__(self, data=None, axes=None, name=None, **kwargs):
         """Initialize 2d Igor wave

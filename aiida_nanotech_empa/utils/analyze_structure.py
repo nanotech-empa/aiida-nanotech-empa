@@ -50,13 +50,13 @@ def string_range_to_list(strng, shift=-1):
 
 
 def conne_matrix(atoms):
-    cutOff = neighborlist.natural_cutoffs(atoms)
-    neighborList = neighborlist.NeighborList(
-        cutOff, self_interaction=False, bothways=False
+    cutoff = neighborlist.natural_cutoffs(atoms)
+    neighbor_list = neighborlist.NeighborList(
+        cutoff, self_interaction=False, bothways=False
     )
-    neighborList.update(atoms)
+    neighbor_list.update(atoms)
 
-    return neighborList.get_connectivity_matrix()
+    return neighbor_list.get_connectivity_matrix()
 
 
 def clusters(matrix):
@@ -85,11 +85,8 @@ class StructureAnalyzer(HasTraits):
     def boxfilter(self, x, thr):
         return np.asarray([1 if i < thr else 0 for i in x])
 
-    ## Piero Gasparotto
-    def get_types(
-        self, frame
-    ):  # pylint: disable=(too-many-statements,too-many-locals) # noqa: C901
-        # classify the atmos in:
+    # Piero Gasparotto
+    def get_types(self, frame):  # classify the atmos in:
         # 0=molecule
         # 1=slab atoms
         # 2=adatoms
@@ -110,11 +107,12 @@ class StructureAnalyzer(HasTraits):
             maxz += (1.0 - (maxz - minz)) / 2
             minz -= (1.0 - (maxz - minz)) / 2
 
-        ##WHICH VALUES SHOULD WE USE BELOW??????
+        # Which values should we use below?
         sigma = 0.2  # thr
         peak_rel_height = 0.5
         layer_tol = 1.0 * sigma
-        # quack estimate number atoms in a layer:
+
+        # Quick estimate number atoms in a layer:
         nbins = int(np.ceil((maxz - minz) / 0.15))
         hist, _ = np.histogram(frame.positions[:, 2], density=False, bins=nbins)
         max_atoms_in_a_layer = max(hist)
@@ -146,19 +144,19 @@ class StructureAnalyzer(HasTraits):
         )
         layersg = z_values[peaks[0].tolist()]
 
-        ##check top and bottom layers should be documented better
+        # Check top and bottom layers should be documented better
 
         found_top_surf = False
         while not found_top_surf:
             iz = layersg[-1]
-            twoD_atoms = [
+            two_d_atoms = [
                 frame.positions[i, 0:2]
                 for i in range(nat)
                 if np.abs(frame.positions[i, 2] - iz) < layer_tol
             ]
             coverage = 0
-            if len(twoD_atoms) > max_atoms_in_a_layer / 4:
-                hull = ConvexHull(twoD_atoms)  ##
+            if len(two_d_atoms) > max_atoms_in_a_layer / 4:
+                hull = ConvexHull(two_d_atoms)
                 coverage = hull.volume / area
             if coverage > 0.3:
                 found_top_surf = True
@@ -168,16 +166,16 @@ class StructureAnalyzer(HasTraits):
         found_bottom_surf = False
         while not found_bottom_surf:
             iz = layersg[0]
-            twoD_atoms = [
+            two_d_atoms = [
                 frame.positions[i, 0:2]
                 for i in range(nat)
                 if np.abs(frame.positions[i, 2] - iz) < layer_tol
             ]
             coverage = 0
-            if len(twoD_atoms) > max_atoms_in_a_layer / 4:
-                hull = ConvexHull(twoD_atoms)  ##
+            if len(two_d_atoms) > max_atoms_in_a_layer / 4:
+                hull = ConvexHull(two_d_atoms)
                 coverage = hull.volume / area
-            if coverage > 0.3 and len(twoD_atoms) > max_atoms_in_a_layer / 4:
+            if coverage > 0.3 and len(two_d_atoms) > max_atoms_in_a_layer / 4:
                 found_bottom_surf = True
             else:
                 layersg = layersg[1:]
@@ -186,16 +184,16 @@ class StructureAnalyzer(HasTraits):
         top_z = layersg[-1]
 
         # check if there is a bottom layer of H
-        found_layer_of_H = True
+        found_layer_of_h = True
         for i in range(nat):
             iz = frame.positions[i, 2]
             if (layer_tol + iz) > bottom_z and iz < (bottom_z + layer_tol):
                 if lbls[i] == "H":
                     atype[i] = 3
                 else:
-                    found_layer_of_H = False
+                    found_layer_of_h = False
                     break
-        if found_layer_of_H:
+        if found_layer_of_h:
             layersg = layersg[1:]
             # bottom_z=layersg[0]
 
@@ -208,13 +206,13 @@ class StructureAnalyzer(HasTraits):
         for i in range(nat):
             iz = frame.positions[i, 2]
             if (layer_tol + iz) > bottom_z and iz < (top_z + layer_tol):
-                if not (atype[i] == 3 and found_layer_of_H):
+                if not (atype[i] == 3 and found_layer_of_h):
                     atype[i] = 1
             else:
                 if np.min([np.abs(iz - top_z), np.abs(iz - bottom_z)]) < np.max(
                     layers_dist
                 ):
-                    if not (atype[i] == 3 and found_layer_of_H):
+                    if not (atype[i] == 3 and found_layer_of_h):
                         atype[i] = 2
 
         # assign the other types
@@ -276,7 +274,7 @@ class StructureAnalyzer(HasTraits):
         atoms.set_pbc([True, True, True])
 
         total_charge = np.sum(atoms.get_atomic_numbers())
-        bottom_H = []
+        bottom_h = []
         adatoms = []
         bulkatoms = []
         wireatoms = []
@@ -292,21 +290,15 @@ class StructureAnalyzer(HasTraits):
         spins_up = [the_a.index for the_a in atoms if the_a.tag == 1]
         spins_down = [the_a.index for the_a in atoms if the_a.tag == 2]
         other_tags = [the_a.index for the_a in atoms if the_a.tag > 2]
-        #### check if there is vacuum otherwise classify as bulk and skip
 
+        # Check if there is vacuum otherwise classify as bulk and skip.
         vacuum_x = sys_size[0] + 4 < atoms.cell[0][0]
         vacuum_y = sys_size[1] + 4 < atoms.cell[1][1]
         vacuum_z = sys_size[2] + 4 < atoms.cell[2][2]
-        # do not use a set in the following line list(set(atoms.get_chemical_symbols()))
+
+        # Do not use a set in the following line list(set(atoms.get_chemical_symbols()))
         # need ALL atoms and elements for spin guess and for cost calculation
         all_elements = atoms.get_chemical_symbols()
-        # cov_radii = [covalent_radii[a.number] for a in atoms]
-
-        # nl = NeighborList(cov_radii, bothways = True, self_interaction = False)
-        # nl.update(atoms)
-
-        # metalating_atoms=['Ag','Au','Cu','Co','Ni','Fe']
-
         summary = ""
         cases = []
         if len(spins_up) > 0:
@@ -355,7 +347,7 @@ class StructureAnalyzer(HasTraits):
             summary += "Wire along y contains: \n"
             slabatoms = list(range(len(atoms)))
             wireatoms = slabatoms
-        ####END check
+        # END check
         is_a_slab = not (is_a_bulk or is_a_molecule or is_a_wire)
 
         if is_a_slab:
@@ -374,22 +366,16 @@ class StructureAnalyzer(HasTraits):
             metalatings = np.where(tipii == 6)[0].tolist()
             mol_atoms += metalatings
 
-            ## bottom_H
-            bottom_H = np.where(tipii == 3)[0].tolist()
-
-            ## unclassified
+            bottom_h = np.where(tipii == 3)[0].tolist()
             unclassified = np.where(tipii == 5)[0].tolist()
-
             slabatoms = np.where(tipii == 1)[0].tolist()
             adatoms = np.where(tipii == 2)[0].tolist()
-
-            ##slab layers
             slab_layers = [[] for i in range(len(layersg))]
             for ia in slabatoms:
                 idx = (np.abs(layersg - atoms.positions[ia, 2])).argmin()
                 slab_layers[idx].append(ia)
 
-            ##end slab layers
+            # End slab layers
             summary += "Slab " + slabtype + " contains: \n"
         summary += (
             "Cell: " + " ".join([str(i) for i in atoms.cell.diagonal().tolist()]) + "\n"
@@ -399,8 +385,8 @@ class StructureAnalyzer(HasTraits):
         else:
             slab_elements = set(atoms[slabatoms].get_chemical_symbols())
 
-        if len(bottom_H) > 0:
-            summary += "bottom H: " + list_to_string_range(bottom_H) + "\n"
+        if len(bottom_h) > 0:
+            summary += "bottom H: " + list_to_string_range(bottom_h) + "\n"
         if len(slabatoms) > 0:
             summary += "slab atoms: " + list_to_string_range(slabatoms) + "\n"
         for nlayer, the_layer in enumerate(slab_layers):
@@ -430,8 +416,7 @@ class StructureAnalyzer(HasTraits):
             cases.append("u")
             summary += "unclassified: " + list_to_string_range(unclassified)
 
-        ## INDEXES FROM 0 if mol_ids_range is not called
-
+        # Indexes from 0 if mol_ids_range is not called.
         cell_str = " ".join([str(i) for i in itertools.chain(*atoms.cell.tolist())])
 
         return {
@@ -439,7 +424,7 @@ class StructureAnalyzer(HasTraits):
             "system_type": sys_type,
             "cell": cell_str,
             "slab_layers": slab_layers,
-            "bottom_H": sorted(bottom_H),
+            "bottom_H": sorted(bottom_h),
             "bulkatoms": sorted(bulkatoms),
             "wireatoms": sorted(wireatoms),
             "slabatoms": sorted(slabatoms),

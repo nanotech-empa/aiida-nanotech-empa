@@ -19,11 +19,11 @@ SSSP_DIR = os.path.join(
 def setup_sssp_pseudos(aiida_profile):
     """Create an SSSP pseudo potential family from scratch."""
     aiida_profile.clear_profile()
-    SsspFamily = GroupFactory("pseudo.family.sssp")
+    sssp_family = GroupFactory("pseudo.family.sssp")
     label = "SSSP/1.1/PBE/efficiency"
     # label = 'SSSP_modified'
     my_path = pathlib.Path(SSSP_DIR)
-    family = SsspFamily.create_from_folder(my_path, label)
+    family = sssp_family.create_from_folder(my_path, label)
     family.store()
     # return family
 

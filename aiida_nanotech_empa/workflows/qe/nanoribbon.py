@@ -557,30 +557,22 @@ class NanoribbonWorkChain(WorkChain):
                 + " k-points, using "
                 + str(min_kpoints)
             )
-            nkpoints = self.inputs.max_kpoints.value  ## for test runs minimal memory
+            nkpoints = self.inputs.max_kpoints.value  # for test runs minimal memory
 
         use_symmetry = runtype != "bands"
         kpoints = self._get_kpoints(nkpoints, use_symmetry=use_symmetry)
         builder.kpoints = kpoints
 
         # parallelization settings
-        ## TEMPORARY double pools in case of spin
+        # Temporary double pools in case of spin
         spinpools = int(1)
         start_mag = self._get_magnetization(structure)
         if any(m != 0 for m in start_mag.values()):
             spinpools = int(2)
 
         natoms = len(structure.sites)
-        #        npools = spinpools * min(
-        #            1 + int(nkpoints * 2.4 /
-        #                    builder.code.computer.get_default_mpiprocs_per_machine()),
-        #            int(5))
         max_npools = spinpools * min(1 + int(nkpoints / 4), int(6))
         nnodes_base = min(max_nodes, (1 + int(natoms / mem_node)))
-        # nnodes = (1 + int(
-        #    natoms * 0.2 /
-        #    builder.code.computer.get_default_mpiprocs_per_machine())) * npools
-        # nnodes = (1 + int(natoms / 60)) * npools
 
         guess_nnodes = max_npools * nnodes_base
         if guess_nnodes <= max_nodes:

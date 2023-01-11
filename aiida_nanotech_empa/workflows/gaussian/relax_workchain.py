@@ -71,9 +71,7 @@ class GaussianRelaxWorkChain(WorkChain):
             help='Supported constraints: ("distance", n1, n2, d)',
         )
 
-        #### ------------------------------------------------------------------
-        #### Do an extra SCF step at the end and potentially create cubes
-
+        # Do an extra SCF step at the end and potentially create cubes.
         spec.input(
             "basis_set_scf",
             valid_type=Str,
@@ -122,8 +120,6 @@ class GaussianRelaxWorkChain(WorkChain):
             default=lambda: Dict(dict={}),
             help="Additional parameters to cubegen parser.",
         )
-
-        #### ------------------------------------------------------------------
 
         spec.input(
             "options",

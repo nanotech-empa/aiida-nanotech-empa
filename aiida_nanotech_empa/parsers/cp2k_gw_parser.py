@@ -11,9 +11,9 @@ HART_2_EV = 27.21138602
 def is_number(s):
     try:
         float(s)
-        return True
     except ValueError:
         return False
+    return True
 
 
 class Cp2kGWParser(Cp2kBaseParser):

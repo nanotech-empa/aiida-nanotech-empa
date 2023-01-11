@@ -189,7 +189,7 @@ def plot_cube_images(
             print(f"saved {image_file_name}")
 
     if show:
-        for label, val in rows.items():
+        for val in rows.values():
             n_imag_row = len(val)
             plt.figure(figsize=(5 * n_imag_row, 5))
             for i, pi in enumerate(val):

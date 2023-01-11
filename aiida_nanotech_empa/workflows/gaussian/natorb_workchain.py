@@ -9,8 +9,7 @@ from aiida_nanotech_empa.workflows.gaussian import common
 GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
 GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
 
-## --------------------------------------------------------------------
-## Natural orbital processing:
+# Natural orbital processing:
 
 
 def standard_num_odd(no_occs):
@@ -100,9 +99,6 @@ def process_natural_orb_occupations(natorb_parameters):
             "hg_num_odd_sp": head_gordon_num_odd(no_occs_sp),
         }
     )
-
-
-## --------------------------------------------------------------------
 
 
 class GaussianNatOrbWorkChain(WorkChain):
