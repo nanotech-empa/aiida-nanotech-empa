@@ -2,14 +2,14 @@
 
 Register parsers via the "aiida.parsers" entry point in setup.json.
 """
-import numpy as np
 import io
 
+import numpy as np
 from aiida import orm
 from aiida.plugins import ParserFactory
+from aiida_gaussian.utils.cube import Cube
 
 from aiida_nanotech_empa.utils.cube_utils import crop_cube
-from aiida_gaussian.utils.cube import Cube
 
 BasePpParser = ParserFactory('quantumespresso.pp')
 

@@ -5,12 +5,10 @@ import os
 import tempfile
 
 from aiida.orm import FolderData
+from aiida.plugins import ParserFactory
+from aiida_gaussian.utils.cube import Cube
 
 import aiida_nanotech_empa.utils.pymol_render as pr
-
-from aiida.plugins import ParserFactory
-
-from aiida_gaussian.utils.cube import Cube
 
 CubegenBaseParser = ParserFactory('gaussian.cubegen_base')
 

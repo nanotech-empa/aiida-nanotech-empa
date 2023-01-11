@@ -1,10 +1,9 @@
 import os
 
-from ase.io import read
-from aiida.orm import Bool, Float, Int, Str
-from aiida.orm import load_code
-from aiida.plugins import DataFactory, WorkflowFactory
 from aiida.engine import run_get_node
+from aiida.orm import Bool, Float, Int, Str, load_code
+from aiida.plugins import DataFactory, WorkflowFactory
+from ase.io import read
 
 from aiida_nanotech_empa.utils.cube_utils import cube_from_qe_pp_arraydata
 

@@ -1,16 +1,29 @@
+import copy
 import os
 import pathlib
-import yaml
-import copy
+
 import numpy as np
-
-from aiida.engine import WorkChain, ToContext, ExitCode, while_
-from aiida.orm import Int, Float, Str, Code, Dict, List, Bool
-from aiida.orm import SinglefileData, StructureData
-
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
-
+import yaml
+from aiida.engine import ExitCode, ToContext, WorkChain, while_
+from aiida.orm import (
+    Bool,
+    Code,
+    Dict,
+    Float,
+    Int,
+    List,
+    SinglefileData,
+    Str,
+    StructureData,
+)
 from aiida_cp2k.calculations import Cp2kCalculation
+
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
+    determine_kinds,
+    dict_merge,
+    get_cutoff,
+    get_kinds_section,
+)
 
 ALLOWED_PROTOCOLS = ['gapw_std', 'gapw_hq', 'gpw_std']
 

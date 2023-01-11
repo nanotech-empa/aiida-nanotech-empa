@@ -1,11 +1,13 @@
 """pytest fixtures for simplified testing."""
 import os
-import shutil
-import pytest
 import pathlib
+import shutil
+
+import pytest
 from aiida.common import exceptions
 from aiida.orm import Code, Computer, QueryBuilder
 from aiida.plugins import GroupFactory
+
 pytest_plugins = ['aiida.manage.tests.pytest_fixtures']
 
 SSSP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),

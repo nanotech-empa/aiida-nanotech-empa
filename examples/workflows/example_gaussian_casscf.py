@@ -1,11 +1,9 @@
 import os
-import numpy as np
 
 import ase.io
-
-from aiida.orm import StructureData, List, Str, Bool, Dict
-from aiida.orm import load_code
+import numpy as np
 from aiida.engine import run_get_node
+from aiida.orm import Bool, Dict, List, Str, StructureData, load_code
 from aiida.plugins import WorkflowFactory
 
 GaussianCasscfSeriesWorkChain = WorkflowFactory(

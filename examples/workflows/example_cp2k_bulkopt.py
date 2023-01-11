@@ -1,9 +1,8 @@
 import os
-import ase.io
 
-from aiida.orm import StructureData, Bool, Int, List, Str
-from aiida.orm import load_code
+import ase.io
 from aiida.engine import run_get_node
+from aiida.orm import Bool, Int, List, Str, StructureData, load_code
 from aiida.plugins import WorkflowFactory
 
 Cp2kBulkOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.bulk_opt')

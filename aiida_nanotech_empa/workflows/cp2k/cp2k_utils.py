@@ -1,8 +1,9 @@
 # pylint: disable=too-many-locals
-import pathlib
-import yaml
 import collections
-from aiida.orm import StructureData, Dict
+import pathlib
+
+import yaml
+from aiida.orm import Dict, StructureData
 
 ang_2_bohr = 1.889725989
 

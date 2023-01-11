@@ -2,11 +2,10 @@
 Routines regarding gaussian cube files
 """
 
-import numpy as np
-import ase
-
 import collections
 
+import ase
+import numpy as np
 from aiida_gaussian.utils.cube import Cube
 
 ANG_TO_BOHR = 1.8897259886

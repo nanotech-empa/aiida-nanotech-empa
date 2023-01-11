@@ -1,6 +1,7 @@
 import os
+
 import ase.io
-from aiida import orm, engine, plugins
+from aiida import engine, orm, plugins
 
 StructureData = plugins.DataFactory('core.structure')
 Cp2kFragmentSeparationWorkChain = plugins.WorkflowFactory(

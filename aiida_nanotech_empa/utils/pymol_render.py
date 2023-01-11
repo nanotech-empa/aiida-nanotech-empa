@@ -1,19 +1,16 @@
 import os
 import os.path
 import sys
-import time
 import tempfile
-
-import numpy as np
+import time
 
 import ase.io
-
-from PIL import Image, ImageOps
-
-from aiida_gaussian.utils.cube import Cube
+import numpy as np
 
 # PYMOL asynchronous mode (pymolwiki.org/index.php/Jupyter)
 import pymol  # pylint: disable=import-error,useless-suppression
+from aiida_gaussian.utils.cube import Cube
+from PIL import Image, ImageOps
 
 _stdouterr = sys.stdout, sys.stderr
 pymol.finish_launching(['pymol', '-qc'])

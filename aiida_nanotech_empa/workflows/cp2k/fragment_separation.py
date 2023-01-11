@@ -1,7 +1,9 @@
-import numpy as np
 import pathlib
+
+import numpy as np
 import yaml
 from aiida import engine, orm, plugins
+
 from aiida_nanotech_empa.utils import analyze_structure
 from aiida_nanotech_empa.workflows.cp2k import cp2k_utils
 

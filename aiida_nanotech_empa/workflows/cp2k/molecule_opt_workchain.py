@@ -1,16 +1,20 @@
+import copy
 import os
 import pathlib
-import yaml
-import copy
-import numpy as np
 
-from aiida.engine import WorkChain, ToContext, ExitCode
-from aiida.orm import Int, Bool, Code, Dict, List, Str
-from aiida.orm import SinglefileData, StructureData
+import numpy as np
+import yaml
+from aiida.engine import ExitCode, ToContext, WorkChain
+from aiida.orm import Bool, Code, Dict, Int, List, SinglefileData, Str, StructureData
 from aiida.plugins import WorkflowFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
 
 from aiida_nanotech_empa.utils import common_utils
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
+    determine_kinds,
+    dict_merge,
+    get_cutoff,
+    get_kinds_section,
+)
 
 Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 

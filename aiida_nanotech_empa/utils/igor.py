@@ -7,6 +7,7 @@ Code is based on asetk module by Leopold Talirz
 """
 
 import re
+
 import numpy as np
 
 

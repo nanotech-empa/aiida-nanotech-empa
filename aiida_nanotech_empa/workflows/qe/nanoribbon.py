@@ -1,18 +1,31 @@
 # pylint: disable=too-many-locals,inconsistent-return-statements
 
 import numpy as np
+from aiida.engine import ToContext, WorkChain, while_
 
 # AiiDA imports
-from aiida.orm import Bool, Code, Dict, Float, Int, KpointsData, Str, StructureData, load_group
-from aiida.engine import WorkChain, ToContext, while_
-#from aiida.orm.nodes.data.upf import get_pseudos_dict, get_pseudos_from_structure
-
-# aiida_quantumespresso imports
-from aiida_quantumespresso.calculations.pw import PwCalculation
+from aiida.orm import (
+    Bool,
+    Code,
+    Dict,
+    Float,
+    Int,
+    KpointsData,
+    Str,
+    StructureData,
+    load_group,
+)
 from aiida_quantumespresso.calculations.pp import PpCalculation
 from aiida_quantumespresso.calculations.projwfc import ProjwfcCalculation
 
+# aiida_quantumespresso imports
+from aiida_quantumespresso.calculations.pw import PwCalculation
+
 from aiida_nanotech_empa.utils import common_utils
+
+#from aiida.orm.nodes.data.upf import get_pseudos_dict, get_pseudos_from_structure
+
+
 
 
 class NanoribbonWorkChain(WorkChain):

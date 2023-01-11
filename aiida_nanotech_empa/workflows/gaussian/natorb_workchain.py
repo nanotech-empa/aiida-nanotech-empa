@@ -1,12 +1,10 @@
-from aiida_nanotech_empa.workflows.gaussian import common
-from aiida_nanotech_empa.utils import common_utils
-
 import numpy as np
-
-from aiida.engine import WorkChain, ToContext, calcfunction, ExitCode, if_
-from aiida.orm import Code, Dict, RemoteData, Bool, Int, List, Float
-
+from aiida.engine import ExitCode, ToContext, WorkChain, calcfunction, if_
+from aiida.orm import Bool, Code, Dict, Float, Int, List, RemoteData
 from aiida.plugins import WorkflowFactory
+
+from aiida_nanotech_empa.utils import common_utils
+from aiida_nanotech_empa.workflows.gaussian import common
 
 GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
 GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')

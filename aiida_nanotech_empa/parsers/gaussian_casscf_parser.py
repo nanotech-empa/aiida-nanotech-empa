@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from aiida.orm import Dict, Float
-
 from aiida.plugins import ParserFactory
 
 GaussianBaseParser = ParserFactory('gaussian.base')

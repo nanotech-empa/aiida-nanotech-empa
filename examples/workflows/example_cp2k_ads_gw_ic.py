@@ -1,12 +1,10 @@
 import os
 
 import ase.io
-from ase import Atoms
-
-from aiida.orm import StructureData, Bool, Str, Int, List, Float
-from aiida.orm import load_code
 from aiida.engine import run_get_node
+from aiida.orm import Bool, Float, Int, List, Str, StructureData, load_code
 from aiida.plugins import WorkflowFactory
+from ase import Atoms
 
 Cp2kAdsorbedGwIcWorkChain = WorkflowFactory('nanotech_empa.cp2k.ads_gw_ic')
 

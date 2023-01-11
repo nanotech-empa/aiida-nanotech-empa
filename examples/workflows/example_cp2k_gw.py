@@ -1,9 +1,7 @@
-from ase import Atoms
-
-from aiida.orm import StructureData, Bool, Str, Int, Float, List
-from aiida.orm import load_code
 from aiida.engine import run_get_node
+from aiida.orm import Bool, Float, Int, List, Str, StructureData, load_code
 from aiida.plugins import WorkflowFactory
+from ase import Atoms
 
 Cp2kMoleculeGwWorkChain = WorkflowFactory('nanotech_empa.cp2k.molecule_gw')
 

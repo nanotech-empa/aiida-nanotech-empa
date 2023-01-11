@@ -3,9 +3,8 @@
 
 from aiida.common import OutputParsingError
 from aiida.orm import Dict
-
-from aiida_cp2k.utils import parse_cp2k_output_advanced
 from aiida_cp2k.parsers import Cp2kBaseParser
+from aiida_cp2k.utils import parse_cp2k_output_advanced
 
 HART_2_EV = 27.21138602
 

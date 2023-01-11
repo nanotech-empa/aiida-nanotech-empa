@@ -1,14 +1,13 @@
-import numpy as np
-import more_itertools as mit
-from ase import Atoms
-from ase import neighborlist
-from scipy import sparse
 import itertools
-from scipy.signal import find_peaks
-from scipy.spatial import ConvexHull
 from copy import deepcopy
 
-from traitlets import HasTraits, Instance, Dict, observe
+import more_itertools as mit
+import numpy as np
+from ase import Atoms, neighborlist
+from scipy import sparse
+from scipy.signal import find_peaks
+from scipy.spatial import ConvexHull
+from traitlets import Dict, HasTraits, Instance, observe
 
 
 def find_ranges(iterable):

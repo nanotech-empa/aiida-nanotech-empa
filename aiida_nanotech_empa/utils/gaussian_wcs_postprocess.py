@@ -4,11 +4,9 @@ By default, a compact report is generated together with images of spin
 densities for different spin solutions
 """
 
-import numpy as np
-
-from PIL import Image
-
 import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
 
 
 def select_frontier_orbital_energies(out_params, n_orb=4):

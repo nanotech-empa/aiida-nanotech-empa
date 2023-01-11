@@ -1,9 +1,6 @@
 import numpy as np
-
-from aiida.engine import WorkChain, ExitCode, calcfunction, ToContext, if_
-from aiida.orm import Int, Str, Bool, Code, List, Float, Dict
-from aiida.orm import StructureData
-
+from aiida.engine import ExitCode, ToContext, WorkChain, calcfunction, if_
+from aiida.orm import Bool, Code, Dict, Float, Int, List, Str, StructureData
 from aiida.plugins import WorkflowFactory
 
 Cp2kMoleculeGwWorkChain = WorkflowFactory('nanotech_empa.cp2k.molecule_gw')
