@@ -6,12 +6,10 @@ import io
 
 import numpy as np
 from aiida import orm
-from aiida.plugins import ParserFactory
 from aiida_gaussian.utils.cube import Cube
+from aiida_quantumespresso.parsers.pp import PpParser as BasePpParser
 
 from aiida_nanotech_empa.utils.cube_utils import crop_cube
-
-BasePpParser = ParserFactory("quantumespresso.pp")
 
 ANG_TO_BOHR = 1.8897259886
 

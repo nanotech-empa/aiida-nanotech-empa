@@ -1,7 +1,5 @@
 from aiida.orm import Dict, Float
-from aiida.plugins import ParserFactory
-
-GaussianBaseParser = ParserFactory("gaussian.base")
+from aiida_gaussian.parsers.gaussian import GaussianBaseParser
 
 HART_2_EV = 27.21138602
 
