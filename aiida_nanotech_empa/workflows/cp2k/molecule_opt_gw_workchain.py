@@ -1,13 +1,9 @@
 import numpy as np
+from aiida.engine import ExitCode, ToContext, WorkChain, calcfunction, if_
+from aiida.orm import Bool, Code, Int, List, Str, StructureData
 
-from aiida.engine import WorkChain, ExitCode, calcfunction, ToContext, if_
-from aiida.orm import Int, Str, Bool, Code, List
-from aiida.orm import StructureData
-
-from aiida.plugins import WorkflowFactory
-
-Cp2kMoleculeGwWorkChain = WorkflowFactory('nanotech_empa.cp2k.molecule_gw')
-Cp2kMoleculeOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.molecule_opt')
+from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
+from .molecule_opt_workchain import Cp2kMoleculeOptWorkChain
 
 
 @calcfunction
@@ -17,63 +13,67 @@ def analyze_structure(structure, mag_per_site):
 
     mps = []
     if list(mag_per_site):
-        mol_at_tuples = [(e, *np.round(p, 2)) for e, p in zip(
-            mol_atoms.get_chemical_symbols(), mol_atoms.positions)]
+        mol_at_tuples = [
+            (e, *np.round(p, 2))
+            for e, p in zip(mol_atoms.get_chemical_symbols(), mol_atoms.positions)
+        ]
         mps = [
-            m for at, m in zip(mol_atoms, list(mag_per_site))
+            m
+            for at, m in zip(mol_atoms, list(mag_per_site))
             if (at.symbol, *np.round(at.position, 2)) in mol_at_tuples
         ]
 
     return {
-        'mol_struct': StructureData(ase=mol_atoms),
-        'mol_mag_per_site': List(mps),
+        "mol_struct": StructureData(ase=mol_atoms),
+        "mol_mag_per_site": List(mps),
     }
 
 
 class Cp2kMoleculeOptGwWorkChain(WorkChain):
     """
-    WorkChain to  optimize molecule and run GW 
+    WorkChain to  optimize molecule and run GW
 
     Two different ways to run:
     1) optimize geo and run gw
     2) run gw
     """
+
     @classmethod
     def define(cls, spec):
         super().define(spec)
         spec.input("code", valid_type=Code)
 
-        spec.input("structure",
-                   valid_type=StructureData,
-                   help="An isolated molecule.")
-        spec.input("protocol",
-                   valid_type=Str,
-                   default=lambda: Str('gpw_std'),
-                   required=False,
-                   help="Protocol supported by the GW workchain.")
-        spec.input("multiplicity",
-                   valid_type=Int,
-                   default=lambda: Int(0),
-                   required=False)
-        spec.input("magnetization_per_site",
-                   valid_type=List,
-                   default=lambda: List(list=[]),
-                   required=False)
+        spec.input("structure", valid_type=StructureData, help="An isolated molecule.")
+        spec.input(
+            "protocol",
+            valid_type=Str,
+            default=lambda: Str("gpw_std"),
+            required=False,
+            help="Protocol supported by the GW workchain.",
+        )
+        spec.input(
+            "multiplicity", valid_type=Int, default=lambda: Int(0), required=False
+        )
+        spec.input(
+            "magnetization_per_site",
+            valid_type=List,
+            default=lambda: List(list=[]),
+            required=False,
+        )
         spec.input_namespace(
             "options",
             valid_type=dict,
             non_db=True,
             required=False,
-            help=
-            "Define options for the cacluations: walltime, memory, CPUs, etc.")
+            help="Define options for the cacluations: walltime, memory, CPUs, etc.",
+        )
 
         spec.input(
             "options.geo_opt",
             valid_type=dict,
             non_db=True,
             required=False,
-            help=
-            "Define options for the GEO_OPT cacluation: walltime, memory, CPUs, etc."
+            help="Define options for the GEO_OPT cacluation: walltime, memory, CPUs, etc.",
         )
 
         spec.input(
@@ -81,23 +81,29 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
             valid_type=dict,
             non_db=True,
             required=False,
-            help=
-            "Define options for the GW cacluation: walltime, memory, CPUs, etc."
+            help="Define options for the GW cacluation: walltime, memory, CPUs, etc.",
         )
-        spec.input("debug",
-                   valid_type=Bool,
-                   default=lambda: Bool(False),
-                   required=False,
-                   help="Run with fast parameters for debugging.")
-        spec.input("geo_opt",
-                   valid_type=Bool,
-                   default=lambda: Bool(True),
-                   required=False,
-                   help="Perform geo opt step.")
+        spec.input(
+            "debug",
+            valid_type=Bool,
+            default=lambda: Bool(False),
+            required=False,
+            help="Run with fast parameters for debugging.",
+        )
+        spec.input(
+            "geo_opt",
+            valid_type=Bool,
+            default=lambda: Bool(True),
+            required=False,
+            help="Perform geo opt step.",
+        )
 
-        spec.outline(cls.setup,
-                     if_(cls.gas_opt_selected)(cls.gas_opt, cls.check_gas_opt),
-                     cls.gw, cls.finalize)
+        spec.outline(
+            cls.setup,
+            if_(cls.gas_opt_selected)(cls.gas_opt, cls.check_gas_opt),
+            cls.gw,
+            cls.finalize,
+        )
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -112,15 +118,15 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         n_atoms = len(self.inputs.structure.get_ase())
         n_mags = len(list(self.inputs.magnetization_per_site))
         if n_mags not in (0, n_atoms):
-            self.report(
-                "If set, magnetization_per_site needs a value for every atom.")
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            self.report("If set, magnetization_per_site needs a value for every atom.")
+            return self.exit_codes.ERROR_TERMINATION
 
-        an_out = analyze_structure(self.inputs.structure,
-                                   self.inputs.magnetization_per_site)
+        an_out = analyze_structure(
+            self.inputs.structure, self.inputs.magnetization_per_site
+        )
 
-        self.ctx.mol_struct = an_out['mol_struct']
-        self.ctx.mol_mag_per_site = an_out['mol_mag_per_site']
+        self.ctx.mol_struct = an_out["mol_struct"]
+        self.ctx.mol_mag_per_site = an_out["mol_mag_per_site"]
 
         return ExitCode(0)
 
@@ -134,18 +140,18 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         builder.multiplicity = self.inputs.multiplicity
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.vdw = Bool(True)
-        builder.protocol = Str('standard')
+        builder.protocol = Str("standard")
         if self.inputs.debug.value:
-            builder.protocol = Str('debug')
+            builder.protocol = Str("debug")
         builder.options = self.inputs.options.geo_opt
         builder.metadata.description = "Submitted by Cp2kMoleculeOptGwWorkChain."
-        builder.metadata.label = 'Cp2kMoleculeOptWorkChain'
+        builder.metadata.label = "Cp2kMoleculeOptWorkChain"
         submitted_node = self.submit(builder)
         return ToContext(gas_opt=submitted_node)
 
     def check_gas_opt(self):
         if not self.ctx.gas_opt.is_finished_ok:
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
         # set the optimized geometry as ctx geometry
 
         self.ctx.mol_struct = self.ctx.gas_opt.outputs.output_structure
@@ -172,12 +178,12 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         self.report("Finalizing...")
 
         if not self.ctx.gw.is_finished_ok:
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
 
         gw_out_params = self.ctx.gw.outputs.gw_output_parameters
-        self.out('gw_output_parameters', gw_out_params)
+        self.out("gw_output_parameters", gw_out_params)
 
-        self.out('output_structure', self.ctx.mol_struct)
+        self.out("output_structure", self.ctx.mol_struct)
         # Add the workchain pk to the input/geo_opt structure extras
 
         struc_to_label = self.ctx.mol_struct

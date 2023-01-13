@@ -1,10 +1,5 @@
-# -*- coding: utf-8 -*-
-
 from aiida.orm import Dict, Float
-
-from aiida.plugins import ParserFactory
-
-GaussianBaseParser = ParserFactory('gaussian.base')
+from aiida_gaussian.parsers.gaussian import GaussianBaseParser
 
 HART_2_EV = 27.21138602
 
@@ -13,8 +8,9 @@ class GaussianCasscfParser(GaussianBaseParser):
     """
     CASSCF AiiDA parser for the output of Gaussian
     """
+
     def _parse_log(self, log_file_string, _inputs):
-        """ Overwrite the basic log parser """
+        """Overwrite the basic log parser"""
 
         # parse with cclib
         property_dict = self._parse_log_cclib(log_file_string)
@@ -28,12 +24,10 @@ class GaussianCasscfParser(GaussianBaseParser):
 
         self.out("output_parameters", Dict(dict=property_dict))
 
-        if 'casscf_energy_ev' in property_dict:
-            self.out("casscf_energy_ev",
-                     Float(property_dict['casscf_energy_ev']))
-        if 'casmp2_energy_ev' in property_dict:
-            self.out("casmp2_energy_ev",
-                     Float(property_dict['casmp2_energy_ev']))
+        if "casscf_energy_ev" in property_dict:
+            self.out("casscf_energy_ev", Float(property_dict["casscf_energy_ev"]))
+        if "casmp2_energy_ev" in property_dict:
+            self.out("casmp2_energy_ev", Float(property_dict["casmp2_energy_ev"]))
 
         exit_code = self._final_checks_on_log(log_file_string, property_dict)
         if exit_code is not None:
@@ -47,10 +41,12 @@ class GaussianCasscfParser(GaussianBaseParser):
 
         for line in log_file_string.splitlines():
             if "     eigenvalue " in line.lower():
-                parsed_data['casscf_energy_ev'] = float(
-                    line.split()[-1].replace('D', 'E')) * HART_2_EV
-            if 'EUMP2 =' in line:
-                parsed_data['casmp2_energy_ev'] = float(
-                    line.split()[-1].replace('D', 'E')) * HART_2_EV
+                parsed_data["casscf_energy_ev"] = (
+                    float(line.split()[-1].replace("D", "E")) * HART_2_EV
+                )
+            if "EUMP2 =" in line:
+                parsed_data["casmp2_energy_ev"] = (
+                    float(line.split()[-1].replace("D", "E")) * HART_2_EV
+                )
 
         return parsed_data

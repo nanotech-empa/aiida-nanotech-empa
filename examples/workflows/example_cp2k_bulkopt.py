@@ -1,12 +1,11 @@
 import os
-import ase.io
 
-from aiida.orm import StructureData, Bool, Int, List, Str
-from aiida.orm import load_code
+import ase.io
 from aiida.engine import run_get_node
+from aiida.orm import Bool, Int, List, Str, StructureData, load_code
 from aiida.plugins import WorkflowFactory
 
-Cp2kBulkOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.bulk_opt')
+Cp2kBulkOptWorkChain = WorkflowFactory("nanotech_empa.cp2k.bulk_opt")
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 GEO_FILE = "si_bulk.xyz"
@@ -16,8 +15,8 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
 
     builder = Cp2kBulkOptWorkChain.get_builder()
 
-    builder.metadata.label = 'Cp2kBulkOptWorkChain'
-    builder.metadata.description = 'test description'
+    builder.metadata.label = "Cp2kBulkOptWorkChain"
+    builder.metadata.description = "test description"
     builder.code = cp2k_code
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
@@ -29,11 +28,11 @@ def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
             "num_cores_per_mpiproc": 1,
         },
     }
-    builder.protocol = Str('debug')
+    builder.protocol = Str("debug")
     if cell_opt:
         builder.cell_opt = Bool(True)
-        builder.symmetry = Str('ORTHORHOMBIC')
-        builder.cell_freedom = Str('KEEP_SYMMETRY')
+        builder.symmetry = Str("ORTHORHOMBIC")
+        builder.cell_freedom = Str("KEEP_SYMMETRY")
     builder.multiplicity = Int(mult)
     mag = [0 for i in ase_geom]
     if mult == 1:
@@ -63,7 +62,7 @@ def example_cp2k_cellopt_uks(cp2k_code):
     _example_cp2k_bulkopt(cp2k_code, True, 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("#### Bulk opt  RKS")
     _example_cp2k_bulkopt(load_code("cp2k@localhost"), False, 0)
 

@@ -1,22 +1,18 @@
-# -*- coding: utf-8 -*-
 """AiiDA-Gaussian output parser"""
 
 import os
 import tempfile
 
 from aiida.orm import FolderData
-
-import aiida_nanotech_empa.utils.pymol_render as pr
-
-from aiida.plugins import ParserFactory
-
+from aiida_gaussian.parsers.cubegen import CubegenBaseParser
 from aiida_gaussian.utils.cube import Cube
 
-CubegenBaseParser = ParserFactory('gaussian.cubegen_base')
+import aiida_nanotech_empa.utils.pymol_render as pr
 
 
 class CubegenPymolParser(CubegenBaseParser):
     """Cubegen parser based on pymol."""
+
     def _parse_folders(self, retrieved_folders, parser_params):
 
         # Parse constant-height planes based on the base parser
@@ -24,11 +20,11 @@ class CubegenPymolParser(CubegenBaseParser):
 
         # By default, don't re-orient cube
         orient_cube = False
-        if 'orient_cube' in parser_params:
-            orient_cube = parser_params['orient_cube']
+        if "orient_cube" in parser_params:
+            orient_cube = parser_params["orient_cube"]
 
-        if 'isovalues' in parser_params:
-            isovalues = parser_params['isovalues']
+        if "isovalues" in parser_params:
+            isovalues = parser_params["isovalues"]
         else:
             isovalues = [0.01]
 
@@ -48,9 +44,9 @@ class CubegenPymolParser(CubegenBaseParser):
                         if orient_cube:
                             self._orient_cube(cube)
 
-                        with tempfile.NamedTemporaryFile(mode='w+',
-                                                         encoding='utf-8',
-                                                         suffix='.cube') as tf:
+                        with tempfile.NamedTemporaryFile(
+                            mode="w+", encoding="utf-8", suffix=".cube"
+                        ) as tf:
                             cube.write_cube_file(tf.name)
 
                             for iv in isovalues:
@@ -61,9 +57,10 @@ class CubegenPymolParser(CubegenBaseParser):
                                         (1.0, 0.2, 0.2),  # red
                                         (0.0, 0.4, 1.0),  # blue
                                     ],
-                                    orientations=('z'),
+                                    orientations=("z"),
                                     output_folder=image_folder,
-                                    output_name=os.path.splitext(filename)[0])
+                                    output_name=os.path.splitext(filename)[0],
+                                )
 
             image_folder_node = FolderData(tree=image_folder)
 

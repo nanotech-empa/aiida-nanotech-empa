@@ -1,29 +1,25 @@
+from aiida.engine import run_get_node
+from aiida.orm import Bool, Int, List, Str, StructureData, load_code
+from aiida.plugins import WorkflowFactory
 from ase import Atoms
 
-from aiida.orm import StructureData, Bool, Str, Int, List
-from aiida.orm import load_code
-from aiida.engine import run_get_node
-from aiida.plugins import WorkflowFactory
-
-Cp2kMoleculeOptGwWorkChain = WorkflowFactory('nanotech_empa.cp2k.mol_opt_gw')
+Cp2kMoleculeOptGwWorkChain = WorkflowFactory("nanotech_empa.cp2k.mol_opt_gw")
 
 
 def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
 
     builder = Cp2kMoleculeOptGwWorkChain.get_builder()
 
-    builder.metadata.description = 'H2 gas'
+    builder.metadata.description = "H2 gas"
     builder.code = cp2k_code
 
-    ase_geom = Atoms('HH',
-                     positions=[[0, 0, 0], [0.75, 0, 0]],
-                     cell=[4.0, 4.0, 4.0])
+    ase_geom = Atoms("HH", positions=[[0, 0, 0], [0.75, 0, 0]], cell=[4.0, 4.0, 4.0])
     mag_list = [-1, 1]
 
     builder.structure = StructureData(ase=ase_geom)
     builder.magnetization_per_site = List(mag_list)
 
-    builder.protocol = Str('gpw_std')
+    builder.protocol = Str("gpw_std")
     builder.multiplicity = Int(1)
 
     builder.geo_opt = Bool(False)
@@ -67,7 +63,7 @@ def example_cp2k_mol_opt_gw_no_geo_opt(cp2k_code):
     _example_cp2k_mol_opt_gw(cp2k_code, geo_opt=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("# Run geometry optimization and then run GW #")
     example_cp2k_mol_opt_gw_geo_opt(load_code("cp2k@localhost"))
     print("# Run GW only #")
