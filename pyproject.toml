@@ -38,11 +38,8 @@ dev = [
     "pgtest~=1.3.1",
     "pytest~=6.0",
     "pytest-cov",
-    "astroid>=2.4.0",
     "pre-commit>=2.19",
-    "prospector==1.5.*",
     "bumpver==2022.1119",
-    "wheel~=0.31",
     "coverage",
 ]
 
