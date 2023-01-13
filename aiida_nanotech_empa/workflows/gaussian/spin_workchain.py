@@ -5,13 +5,13 @@ from aiida.plugins import WorkflowFactory
 
 from aiida_nanotech_empa.utils import common_utils
 
+from .delta_scf_workchain import GaussianDeltaScfWorkChain
+from .natorb_workchain import GaussianNatOrbWorkChain
+from .relax_workchain import GaussianRelaxWorkChain
+from .scf_workchain import GaussianScfWorkChain
+
 GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
 GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
-
-GaussianScfWorkChain = WorkflowFactory("nanotech_empa.gaussian.scf")
-GaussianRelaxWorkChain = WorkflowFactory("nanotech_empa.gaussian.relax")
-GaussianDeltaScfWorkChain = WorkflowFactory("nanotech_empa.gaussian.delta_scf")
-GaussianNatOrbWorkChain = WorkflowFactory("nanotech_empa.gaussian.natorb")
 
 
 class GaussianSpinWorkChain(WorkChain):

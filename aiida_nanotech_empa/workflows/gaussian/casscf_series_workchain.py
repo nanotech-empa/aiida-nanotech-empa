@@ -5,12 +5,10 @@ from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.gaussian import common
 
+from .casscf_workchain import GaussianCasscfWorkChain
+
 GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
 GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
-
-GaussianCasscfWorkChain = WorkflowFactory("nanotech_empa.gaussian.casscf")
-
-GaussianHfMp2WorkChain = WorkflowFactory("nanotech_empa.gaussian.hf_mp2")
 
 
 class GaussianCasscfSeriesWorkChain(WorkChain):

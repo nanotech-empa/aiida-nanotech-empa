@@ -4,9 +4,10 @@ from aiida.plugins import WorkflowFactory
 
 from aiida_nanotech_empa.utils import common_utils
 
+from .scf_workchain import GaussianScfWorkChain
+
 GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
 GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
-GaussianScfWorkChain = WorkflowFactory("nanotech_empa.gaussian.scf")
 
 # -------------------------------------------------------------
 # Work Chain to run HF and MP2

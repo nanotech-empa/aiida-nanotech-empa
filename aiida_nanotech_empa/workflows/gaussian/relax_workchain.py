@@ -5,8 +5,9 @@ from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.gaussian import common
 
+from .scf_workchain import GaussianScfWorkChain
+
 GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
-GaussianScfWorkChain = WorkflowFactory("nanotech_empa.gaussian.scf")
 
 
 class GaussianRelaxWorkChain(WorkChain):

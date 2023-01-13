@@ -54,3 +54,4 @@ repos:
                 - types-requests
                 - types-tabulate
                 - types-toml
+                - types-pyyaml
