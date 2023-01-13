@@ -139,7 +139,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
         spec.input_namespace(
             "options",
-            valid_type=dict,
             non_db=True,
             required=False,
             help=
