@@ -218,8 +218,6 @@ def _show_spin_density(cube_image_folder, nb, save_image_loc=None, save_prefix="
 
 def make_report(wc_node, nb=False, save_image_loc=None):
     """Function that generates a report for a gaussian spin workchain run"""
-    # pylint: disable=too-many-locals
-    # pylint: disable=too-many-statements
     print("Functional:", wc_node.inputs.functional.value)
     print("Basis set OPT:", wc_node.inputs.basis_set_opt.value)
     print("Basis set SCF:", wc_node.inputs.basis_set_scf.value)

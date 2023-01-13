@@ -8,7 +8,7 @@ import ase.io
 import numpy as np
 
 # PYMOL asynchronous mode (pymolwiki.org/index.php/Jupyter)
-import pymol  # pylint: disable=import-error,useless-suppression
+import pymol
 from aiida_gaussian.utils.cube import Cube
 from PIL import Image, ImageOps
 
@@ -65,9 +65,6 @@ def make_pymol_png(  # noqa
     output_name=None,
     orientations=("z", "y", "x"),
 ):
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-locals
-    # pylint: disable=too-many-statements
 
     pymol.cmd.delete("all")
 

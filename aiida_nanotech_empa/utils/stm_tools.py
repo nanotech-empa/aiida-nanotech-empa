@@ -93,8 +93,6 @@ def gaussian(x, fwhm):
 
 
 def get_orb_mapping(i_mo, i_spin, h, extrap_h, cpa_dict, extrap_energy):
-    # pylint: disable=too-many-arguments
-
     if h > extrap_h:
         plane_h = extrap_h
     else:
@@ -123,8 +121,6 @@ def get_orb_mapping(i_mo, i_spin, h, extrap_h, cpa_dict, extrap_energy):
 
 
 def get_sts_mapping(energy, fwhm, h, extrap_h, cpa_dict, sop):
-    # pylint: disable=too-many-arguments
-
     energies = sop["moenergies"]
     nspin = len(sop["moenergies"])
 
@@ -199,7 +195,6 @@ def plot_mapping(
     ax=None,
     kind="orb",
 ):
-    # pylint: disable=too-many-arguments,too-many-locals
     """
     kind: ['orb', 'orb2', 'sts']
     """
@@ -263,7 +258,6 @@ def plot_mapping(
 def plot_no_mapping(
     nop, cpa, i_no, h=3.0, extrap_h=3.0, save_dir=None, ax=None, kind="orb"
 ):
-    # pylint: disable=too-many-arguments,too-many-locals
     """
     kind: ['orb', 'orb2']
     """

@@ -18,8 +18,6 @@ OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 def _example_nanoribbon(
     opt_cell, qe_pw_code, qe_pp_code, qe_projwfc_code, geo_file, description
 ):
-    # pylint: disable=too-many-arguments
-
     builder = NanoribbonWorkChain.get_builder()
 
     # Calculation settings.

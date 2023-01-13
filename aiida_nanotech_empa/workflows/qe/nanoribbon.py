@@ -1,5 +1,3 @@
-# pylint: disable=too-many-locals,inconsistent-return-statements
-
 import numpy as np
 from aiida.engine import ToContext, WorkChain, while_
 
@@ -517,7 +515,7 @@ class NanoribbonWorkChain(WorkChain):
         return
 
     # =========================================================================
-    def _submit_pw_calc(  # pylint: disable=too-many-arguments
+    def _submit_pw_calc(
         self,
         structure,
         tot_charge,

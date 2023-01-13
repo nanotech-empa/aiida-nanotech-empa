@@ -237,7 +237,7 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         n_mags = len(list(self.inputs.magnetization_per_site))
         if n_mags not in (0, n_atoms):
             self.report("If set, magnetization_per_site needs a value for every atom.")
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
 
         if self.inputs.substrate.value not in IC_PLANE_HEIGHTS:
             return self.exit_codes.ERROR_SUBSTR_NOT_SUPPORTED
@@ -279,7 +279,7 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
 
     def check_gas_opt(self):
         if not self.ctx.gas_opt.is_finished_ok:
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
         # set the optimized geometrical center to the adsorbed conf geometrical center
         ads_mol_ase = self.ctx.mol_struct.get_ase()
         ads_mol_geo_center = np.mean(ads_mol_ase.positions, axis=0)
@@ -312,7 +312,7 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
     def gw(self):
 
         if not self.ctx.ic.is_finished_ok:
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
 
         self.report("Submitting GW.")
 
@@ -332,7 +332,7 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
     def finalize(self):
         self.report("Finalizing...")
         if not self.ctx.gw.is_finished_ok:
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
 
         gw_out_params = self.ctx.gw.outputs.gw_output_parameters
         ic_out_params = self.ctx.ic.outputs.gw_output_parameters

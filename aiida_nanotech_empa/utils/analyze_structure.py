@@ -258,7 +258,7 @@ class StructureAnalyzer(HasTraits):
 
     def analyze(
         self,
-    ):  # pylint: disable=(too-many-statements,too-many-locals) # noqa: C901
+    ):
         if self.structure is None:
             return {}
 

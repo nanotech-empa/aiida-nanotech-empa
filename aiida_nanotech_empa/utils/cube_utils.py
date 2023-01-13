@@ -12,7 +12,6 @@ ANG_TO_BOHR = 1.8897259886
 
 
 def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
-    # pylint: disable=too-many-locals
     """
     Crops the extent of the cube file
 

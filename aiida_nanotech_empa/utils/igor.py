@@ -97,7 +97,6 @@ class Axis:
     """Represents an axis of an IGOR wave"""
 
     def __init__(self, symbol, min_, delta, unit, wavename=None):
-        # pylint: disable=too-many-arguments
         self.symbol = symbol
         self.min = min_
         self.delta = delta

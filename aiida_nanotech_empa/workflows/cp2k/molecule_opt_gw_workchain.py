@@ -119,7 +119,7 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         n_mags = len(list(self.inputs.magnetization_per_site))
         if n_mags not in (0, n_atoms):
             self.report("If set, magnetization_per_site needs a value for every atom.")
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
 
         an_out = analyze_structure(
             self.inputs.structure, self.inputs.magnetization_per_site
@@ -151,7 +151,7 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
 
     def check_gas_opt(self):
         if not self.ctx.gas_opt.is_finished_ok:
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
         # set the optimized geometry as ctx geometry
 
         self.ctx.mol_struct = self.ctx.gas_opt.outputs.output_structure
@@ -178,7 +178,7 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         self.report("Finalizing...")
 
         if not self.ctx.gw.is_finished_ok:
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
 
         gw_out_params = self.ctx.gw.outputs.gw_output_parameters
         self.out("gw_output_parameters", gw_out_params)

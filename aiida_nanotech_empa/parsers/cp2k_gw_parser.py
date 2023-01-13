@@ -21,9 +21,7 @@ class Cp2kGWParser(Cp2kBaseParser):
 
     def _parse_stdout(self):
 
-        fname = (
-            self.node.process_class._DEFAULT_OUTPUT_FILE
-        )  # pylint: disable=protected-access
+        fname = self.node.process_class._DEFAULT_OUTPUT_FILE
         if fname not in self.retrieved.base.repository.list_object_names():
             raise OutputParsingError("Cp2k output file not retrieved")
 
@@ -53,9 +51,6 @@ class Cp2kGWParser(Cp2kBaseParser):
         return None
 
     def _parse_cp2k_gw_output(self, output_string):  # noqa
-        # pylint: disable=too-many-locals
-        # pylint: disable=too-many-statements
-
         lines = output_string.splitlines()
 
         results = {}
