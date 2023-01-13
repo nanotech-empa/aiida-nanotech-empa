@@ -8,6 +8,16 @@ from aiida_cp2k.utils import parse_cp2k_output_advanced
 HART_2_EV = 27.21138602
 
 
+class Cp2kNoOutputFileError(OutputParsingError):
+    def __init__(self):
+        super().__init__("CP2K output file  not retrieved")
+
+
+class Cp2kDidNotFinishProperlyError(OutputParsingError):
+    def __init__(self):
+        super().__init__("CP2K did not finish properly")
+
+
 def is_number(s):
     try:
         float(s)
@@ -23,7 +33,7 @@ class Cp2kGWParser(Cp2kBaseParser):
 
         fname = self.node.process_class._DEFAULT_OUTPUT_FILE
         if fname not in self.retrieved.base.repository.list_object_names():
-            raise OutputParsingError("Cp2k output file not retrieved")
+            raise Cp2kNoOutputFileError()
 
         try:
             output_string = self.retrieved.base.repository.get_object_content(fname)
@@ -36,7 +46,7 @@ class Cp2kGWParser(Cp2kBaseParser):
         # nwarnings is the last thing to be printed in th eCP2K output file:
         # if it is not there, CP2K didn't finish properly
         if "nwarnings" not in result_dict:
-            raise OutputParsingError("CP2K did not finish properly.")
+            raise Cp2kDidNotFinishProperlyError()
 
         if "aborted" in result_dict:
             return self.exit_codes.ERROR_OUTPUT_CONTAINS_ABORT

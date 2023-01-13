@@ -11,7 +11,17 @@ import re
 import numpy as np
 
 
-def read_wave(lines):
+class FileNotBeginsWithIgorError(OSError):
+    def __init__(self, fname):
+        super().__init__(f"File {fname} does not begin with 'IGOR'.")
+
+
+class MissingBeginError(OSError):
+    def __init__(self, fname):
+        super().__init__(f"Missing 'BEGIN' statement in {fname}.")
+
+
+def read_wave(lines, fname=None):
 
     line = lines.pop(0)
     while not re.match("WAVES", line):
@@ -31,7 +41,7 @@ def read_wave(lines):
 
     line = lines.pop(0).strip()
     if not line == "BEGIN":
-        raise OSError("Missing 'BEGIN' statement of data block")
+        raise MissingBeginError(fname)
 
     # read data
     datastring = ""
@@ -79,12 +89,12 @@ def igor_wave_factory(fname):
 
     line = lines.pop(0).strip()
     if not line == "IGOR":
-        raise OSError("Files does not begin with 'IGOR'")
+        raise FileNotBeginsWithIgorError(fname)
 
     waves = []
     while len(lines) != 0:
         try:
-            wave = read_wave(lines)
+            wave = read_wave(lines, fname)
             if wave is not None:
                 waves.append(wave)
         except Exception as e:
@@ -168,7 +178,7 @@ class Wave:
 
         line = lines.pop(0).strip()
         if not line == "IGOR":
-            raise OSError("Files does not begin with 'IGOR'")
+            raise FileNotBeginsWithIgorError(fname)
 
         line = lines.pop(0)
         while not re.match("WAVES", line):
@@ -184,7 +194,7 @@ class Wave:
 
         line = lines.pop(0).strip()
         if not line == "BEGIN":
-            raise OSError("Missing 'BEGIN' statement of data block")
+            raise MissingBeginError(fname)
 
         # read data
         datastring = ""

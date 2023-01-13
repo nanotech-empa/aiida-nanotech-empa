@@ -7,6 +7,13 @@ from aiida.orm import Dict, StructureData
 ang_2_bohr = 1.889725989
 
 
+class SizeDifferentFromNumberOfAtoms(ValueError):
+    def __init__(self, size_of):
+        super().__init__(
+            f"The size of `{size_of}` is different from the number of atoms."
+        )
+
+
 def get_kinds_section(kinds_dict, protocol="gapw_std"):
     """Write the &KIND sections in gw calculations given the structure and the settings_dict"""
 
@@ -57,9 +64,7 @@ def tags_and_magnetization(structure, magnetization_per_site):
     ase_structure = structure.get_ase()
     if magnetization_per_site:
         if len(magnetization_per_site) != len(ase_structure.numbers):
-            raise ValueError(
-                "The size of `magnetization_per_site` is different from the number of atoms."
-            )
+            raise SizeDifferentFromNumberOfAtoms(size_of="magnetization_per_site")
 
         # Combine atom type with magnetizations.
         complex_symbols = [
@@ -99,13 +104,10 @@ def determine_kinds(structure, magnetization_per_site=None, ghost_per_site=None)
         ghost_per_site = [0 for i in range(len(ase_structure))]
 
     if len(magnetization_per_site) != len(ase_structure.numbers):
-        raise ValueError(
-            "The size of `magnetization_per_site` is different from the number of atoms."
-        )
+        raise SizeDifferentFromNumberOfAtoms(size_of="magnetization_per_site")
+
     if len(ghost_per_site) != len(ase_structure.numbers):
-        raise ValueError(
-            "The size of `ghost_per_site` is different from the number of atoms."
-        )
+        raise SizeDifferentFromNumberOfAtoms(size_of="ghost_per_site")
 
     # Combine atom type with magnetizations and ghost_type
     complex_symbols = [
