@@ -146,6 +146,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
         spec.input_namespace(
             "options",
+            valid_type=int,
             non_db=True,
             required=False,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
