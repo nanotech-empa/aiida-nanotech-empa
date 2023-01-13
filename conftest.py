@@ -1,28 +1,31 @@
 """pytest fixtures for simplified testing."""
 import os
-import shutil
-import pytest
 import pathlib
+import shutil
+
+import pytest
 from aiida.common import exceptions
 from aiida.orm import Code, Computer, QueryBuilder
 from aiida.plugins import GroupFactory
-pytest_plugins = ['aiida.manage.tests.pytest_fixtures']
 
-SSSP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "examples/data/sssp_minimal")
+pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
+
+SSSP_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "examples/data/sssp_minimal"
+)
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def setup_sssp_pseudos(aiida_profile):
     """Create an SSSP pseudo potential family from scratch."""
     aiida_profile.clear_profile()
-    SsspFamily = GroupFactory('pseudo.family.sssp')
-    label = 'SSSP/1.1/PBE/efficiency'
-    #label = 'SSSP_modified'
+    sssp_family = GroupFactory("pseudo.family.sssp")
+    label = "SSSP/1.1/PBE/efficiency"
+    # label = 'SSSP_modified'
     my_path = pathlib.Path(SSSP_DIR)
-    family = SsspFamily.create_from_folder(my_path, label)
+    family = sssp_family.create_from_folder(my_path, label)
     family.store()
-    #return family
+    # return family
 
 
 @pytest.fixture
@@ -36,29 +39,27 @@ def fixture_localhost(aiida_localhost):
     return localhost
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def local_code_factory(fixture_localhost):
     """Modified version of aiida_local_code_factory, that uses fixture_localhost"""
-    def get_code(entry_point,
-                 executable,
-                 label=None,
-                 prepend_text=None,
-                 append_text=None):
+
+    def get_code(
+        entry_point, executable, label=None, prepend_text=None, append_text=None
+    ):
 
         if label is None:
             label = executable
 
         computer = fixture_localhost
 
-        builder = QueryBuilder().append(Computer,
-                                        filters={'uuid': computer.uuid},
-                                        tag='computer')
-        builder.append(Code,
-                       filters={
-                           'label': label,
-                           'attributes.input_plugin': entry_point
-                       },
-                       with_computer='computer')
+        builder = QueryBuilder().append(
+            Computer, filters={"uuid": computer.uuid}, tag="computer"
+        )
+        builder.append(
+            Code,
+            filters={"label": label, "attributes.input_plugin": entry_point},
+            with_computer="computer",
+        )
 
         try:
             code = builder.one()[0]
@@ -70,10 +71,13 @@ def local_code_factory(fixture_localhost):
         executable_path = shutil.which(executable)
         if not executable_path:
             raise ValueError(
-                f'The executable "{executable}" was not found in the $PATH.')
+                f'The executable "{executable}" was not found in the $PATH.'
+            )
 
-        code = Code(input_plugin_name=entry_point,
-                    remote_computer_exec=[computer, executable_path])
+        code = Code(
+            input_plugin_name=entry_point,
+            remote_computer_exec=[computer, executable_path],
+        )
         code.label = label
         code.description = label
 
@@ -91,22 +95,22 @@ def local_code_factory(fixture_localhost):
 # --------------------------------------------------------------------------------------
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def qe_pw_code(local_code_factory):
-    return local_code_factory('quantumespresso.pw', 'pw.x')
+    return local_code_factory("quantumespresso.pw", "pw.x")
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def qe_pp_code(local_code_factory):
-    return local_code_factory('quantumespresso.pp', 'pp.x')
+    return local_code_factory("quantumespresso.pp", "pp.x")
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def qe_projwfc_code(local_code_factory):
-    return local_code_factory('quantumespresso.projwfc', 'projwfc.x')
+    return local_code_factory("quantumespresso.projwfc", "projwfc.x")
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def cp2k_code(local_code_factory):
     prepend_text = "export OMP_NUM_THREADS=2"
-    return local_code_factory('cp2k', 'cp2k.ssmp', prepend_text=prepend_text)
+    return local_code_factory("cp2k", "cp2k.ssmp", prepend_text=prepend_text)

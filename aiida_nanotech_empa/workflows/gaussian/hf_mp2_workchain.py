@@ -1,14 +1,13 @@
-from aiida_nanotech_empa.utils import common_utils
-
-from aiida.engine import WorkChain, ToContext, ExitCode
-from aiida.orm import Int, Str, Code, Dict, Float, Bool
-from aiida.orm import StructureData, RemoteData
-
+from aiida.engine import ExitCode, ToContext, WorkChain
+from aiida.orm import Bool, Code, Dict, Float, Int, RemoteData, Str, StructureData
 from aiida.plugins import WorkflowFactory
 
-GaussianBaseWorkChain = WorkflowFactory('gaussian.base')
-GaussianCubesWorkChain = WorkflowFactory('gaussian.cubes')
-GaussianScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf')
+from aiida_nanotech_empa.utils import common_utils
+
+from .scf_workchain import GaussianScfWorkChain
+
+GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
+GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
 
 # -------------------------------------------------------------
 # Work Chain to run HF and MP2
@@ -22,26 +21,26 @@ class GaussianHfMp2WorkChain(WorkChain):
 
         spec.input("gaussian_code", valid_type=Code)
 
-        spec.input('structure',
-                   valid_type=StructureData,
-                   required=True,
-                   help='input geometry')
+        spec.input(
+            "structure", valid_type=StructureData, required=True, help="input geometry"
+        )
 
-        spec.input('basis_set',
-                   valid_type=Str,
-                   required=True,
-                   help='basis_set')
+        spec.input("basis_set", valid_type=Str, required=True, help="basis_set")
 
-        spec.input('multiplicity',
-                   valid_type=Int,
-                   required=False,
-                   default=lambda: Int(1),
-                   help='spin multiplicity; 0 means RKS')
+        spec.input(
+            "multiplicity",
+            valid_type=Int,
+            required=False,
+            default=lambda: Int(1),
+            help="spin multiplicity; 0 means RKS",
+        )
 
-        spec.input('parent_calc_folder',
-                   valid_type=RemoteData,
-                   required=False,
-                   help="the folder of a completed gaussian calculation")
+        spec.input(
+            "parent_calc_folder",
+            valid_type=RemoteData,
+            required=False,
+            help="the folder of a completed gaussian calculation",
+        )
 
         # -------------------------------------------------------------------
         # CUBE GENERATION INPUTS
@@ -50,30 +49,34 @@ class GaussianHfMp2WorkChain(WorkChain):
             valid_type=Int,
             required=False,
             default=lambda: Int(0),
-            help='Generate cubes for the mp2 orbitals (n*occ and n*virt).')
+            help="Generate cubes for the mp2 orbitals (n*occ and n*virt).",
+        )
 
         spec.input("formchk_code", valid_type=Code, required=False)
         spec.input("cubegen_code", valid_type=Code, required=False)
 
         spec.input(
-            'edge_space',
+            "edge_space",
             valid_type=Float,
             required=False,
             default=lambda: Float(3.0),
-            help='Extra cube space in addition to molecule bounding box [ang].'
+            help="Extra cube space in addition to molecule bounding box [ang].",
         )
-        spec.input("cubegen_parser_params",
-                   valid_type=Dict,
-                   required=False,
-                   default=lambda: Dict(dict={}),
-                   help='Additional parameters to cubegen parser.')
+        spec.input(
+            "cubegen_parser_params",
+            valid_type=Dict,
+            required=False,
+            default=lambda: Dict(dict={}),
+            help="Additional parameters to cubegen parser.",
+        )
         # -------------------------------------------------------------------
 
         spec.input(
-            'options',
+            "options",
             valid_type=Dict,
             required=False,
-            help="Use custom metadata.options instead of the automatic ones.")
+            help="Use custom metadata.options instead of the automatic ones.",
+        )
 
         spec.outline(cls.hf, cls.mp2, cls.finalize)
 
@@ -103,20 +106,20 @@ class GaussianHfMp2WorkChain(WorkChain):
         builder.gaussian_code = self.inputs.gaussian_code
 
         builder.structure = self.inputs.structure
-        builder.functional = Str('hf')
+        builder.functional = Str("hf")
         builder.basis_set = self.inputs.basis_set
         builder.multiplicity = self.inputs.multiplicity
 
         builder.wfn_stable_opt_min_basis = Bool(True)
 
-        if 'options' in self.inputs:
+        if "options" in self.inputs:
             builder.options = self.inputs.options
 
         future = self.submit(builder)
         return ToContext(hf=future)
 
     def should_do_cubes(self):
-        codes_set = 'formchk_code' in self.inputs and 'cubegen_code' in self.inputs
+        codes_set = "formchk_code" in self.inputs and "cubegen_code" in self.inputs
         non_zero_num = self.inputs.num_orbital_cubes.value > 0
         return codes_set and non_zero_num
 
@@ -131,7 +134,7 @@ class GaussianHfMp2WorkChain(WorkChain):
         builder.gaussian_code = self.inputs.gaussian_code
 
         builder.structure = self.inputs.structure
-        builder.functional = Str('mp2')
+        builder.functional = Str("mp2")
         builder.basis_set = self.inputs.basis_set
         builder.multiplicity = self.inputs.multiplicity
 
@@ -145,7 +148,7 @@ class GaussianHfMp2WorkChain(WorkChain):
             builder.edge_space = self.inputs.edge_space
             builder.cubegen_parser_params = self.inputs.cubegen_parser_params
 
-        if 'options' in self.inputs:
+        if "options" in self.inputs:
             builder.options = self.inputs.options
 
         future = self.submit(builder)
@@ -159,8 +162,7 @@ class GaussianHfMp2WorkChain(WorkChain):
         self.report("Finalizing...")
 
         self.out("hf_output_parameters", self.ctx.hf.outputs.output_parameters)
-        self.out("mp2_output_parameters",
-                 self.ctx.mp2.outputs.output_parameters)
+        self.out("mp2_output_parameters", self.ctx.mp2.outputs.output_parameters)
 
         if self.should_do_cubes():
             self.out("mp2_cube_images", self.ctx.mp2.outputs.cube_image_folder)

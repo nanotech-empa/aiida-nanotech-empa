@@ -19,14 +19,14 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
-        
-      - name: Install flit
-        run: pip install flit~=3.4
-      - name: Build and publish
-        run: flit publish
-        env:
-          FLIT_USERNAME: __token__
-          FLIT_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+
+    - name: Install flit
+      run: pip install flit~=3.4
+    - name: Build and publish
+      run: flit publish
+      env:
+        FLIT_USERNAME: __token__
+        FLIT_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
 
     - name: Install pypa/build
       run: python -m pip install build

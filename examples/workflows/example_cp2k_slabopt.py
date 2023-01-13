@@ -1,12 +1,11 @@
 import os
-import ase.io
 
-from aiida.orm import StructureData, Int, List, Str
-from aiida.orm import load_code
+import ase.io
 from aiida.engine import run_get_node
+from aiida.orm import Int, List, Str, StructureData, load_code
 from aiida.plugins import WorkflowFactory
 
-Cp2kSlabOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.slab_opt')
+Cp2kSlabOptWorkChain = WorkflowFactory("nanotech_empa.cp2k.slab_opt")
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 GEO_FILE = "h2_on_hbn.xyz"
@@ -16,8 +15,8 @@ def _example_cp2k_slabopt(cp2k_code, mult):
 
     builder = Cp2kSlabOptWorkChain.get_builder()
 
-    builder.metadata.label = 'Cp2kSlabOptWorkChain'
-    builder.metadata.description = 'test description'
+    builder.metadata.label = "Cp2kSlabOptWorkChain"
+    builder.metadata.description = "test description"
     builder.code = cp2k_code
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
@@ -29,7 +28,7 @@ def _example_cp2k_slabopt(cp2k_code, mult):
             "num_cores_per_mpiproc": 1,
         },
     }
-    builder.fixed_atoms = Str('3..18')
+    builder.fixed_atoms = Str("3..18")
 
     builder.multiplicity = Int(mult)
     mag = [0 for i in ase_geom]
@@ -38,7 +37,7 @@ def _example_cp2k_slabopt(cp2k_code, mult):
         mag[1] = -1
         builder.magnetization_per_site = List(mag)
 
-    builder.protocol = Str('debug')
+    builder.protocol = Str("debug")
 
     _, calc_node = run_get_node(builder)
 
@@ -58,7 +57,7 @@ def example_cp2k_slabopt_uks(cp2k_code):
     _example_cp2k_slabopt(cp2k_code, 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("#### RKS")
     _example_cp2k_slabopt(load_code("cp2k@localhost"), 0)
 

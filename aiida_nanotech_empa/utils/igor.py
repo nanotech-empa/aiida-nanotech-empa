@@ -7,10 +7,21 @@ Code is based on asetk module by Leopold Talirz
 """
 
 import re
+
 import numpy as np
 
 
-def read_wave(lines):
+class FileNotBeginsWithIgorError(OSError):
+    def __init__(self, fname):
+        super().__init__(f"File {fname} does not begin with 'IGOR'.")
+
+
+class MissingBeginError(OSError):
+    def __init__(self, fname):
+        super().__init__(f"Missing 'BEGIN' statement in {fname}.")
+
+
+def read_wave(lines, fname=None):
 
     line = lines.pop(0)
     while not re.match("WAVES", line):
@@ -22,7 +33,7 @@ def read_wave(lines):
     if "N=" in line:
         d2 = True
         match = re.search(r"WAVES/N=\(([\d, ]+)\)", line)
-        grid = match.group(1).split(',')
+        grid = match.group(1).split(",")
         grid = np.array(grid, dtype=int)
         name = line.split(")")[-1].strip()
     else:
@@ -30,7 +41,7 @@ def read_wave(lines):
 
     line = lines.pop(0).strip()
     if not line == "BEGIN":
-        raise IOError("Missing 'BEGIN' statement of data block")
+        raise MissingBeginError(fname)
 
     # read data
     datastring = ""
@@ -73,17 +84,17 @@ def igor_wave_factory(fname):
     """
     Returns either wave1d or wave2d, corresponding to the input file
     """
-    with open(fname, 'r', encoding='utf-8') as f:
+    with open(fname, encoding="utf-8") as f:
         lines = f.readlines()
 
     line = lines.pop(0).strip()
     if not line == "IGOR":
-        raise IOError("Files does not begin with 'IGOR'")
+        raise FileNotBeginsWithIgorError(fname)
 
     waves = []
     while len(lines) != 0:
         try:
-            wave = read_wave(lines)
+            wave = read_wave(lines, fname)
             if wave is not None:
                 waves.append(wave)
         except Exception as e:
@@ -92,10 +103,10 @@ def igor_wave_factory(fname):
     return waves
 
 
-class Axis():
+class Axis:
     """Represents an axis of an IGOR wave"""
+
     def __init__(self, symbol, min_, delta, unit, wavename=None):
-        # pylint: disable=too-many-arguments
         self.symbol = symbol
         self.min = min_
         self.delta = delta
@@ -107,20 +118,24 @@ class Axis():
         Note: SetScale/P expects minimum value and step-size
         """
         delta = 0 if self.delta is None else self.delta
-        s = "X SetScale/P {symb} {min},{delta}, \"{unit}\", {name};\n"\
-              .format(symb=self.symbol, min=self.min, delta=delta,\
-                      unit=self.unit, name=self.wavename)
+        s = 'X SetScale/P {symb} {min},{delta}, "{unit}", {name};\n'.format(
+            symb=self.symbol,
+            min=self.min,
+            delta=delta,
+            unit=self.unit,
+            name=self.wavename,
+        )
         return s
 
     def read(self, string):
         """Read axis from string
-        Format: 
+        Format:
         X SetScale/P x 0,2.01342281879195e-11,"m", data_00381_Up;
         SetScale d 0,0,"V", data_00381_Up
         """
         match = re.search(
-            r"SetScale/?P? (.) ([+-\.\de]+),([+-\.\de]+),[ ]*\"(.*)\",\s*(\w+)",
-            string)
+            r"SetScale/?P? (.) ([+-\.\de]+),([+-\.\de]+),[ ]*\"(.*)\",\s*(\w+)", string
+        )
         self.symbol = match.group(1)
         self.min = float(match.group(2))
         self.delta = float(match.group(3))
@@ -128,8 +143,9 @@ class Axis():
         self.wavename = match.group(5)
 
 
-class Wave():
+class Wave:
     """A class template for IGOR waves of generic dimension"""
+
     def __init__(self, data, axes, name=None):
         """Initialize IGOR wave of generic dimension"""
         self.data = data
@@ -143,10 +159,10 @@ class Wave():
 
         dimstring = "("
         for sh in self.data.shape:
-            dimstring += "{}, ".format(sh)
+            dimstring += f"{sh}, "
         dimstring = dimstring[:-2] + ")"
 
-        s += "WAVES/N={}  {}\n".format(dimstring, self.name)
+        s += f"WAVES/N={dimstring}  {self.name}\n"
         s += "BEGIN\n"
         s += self.print_data()
         s += "END\n"
@@ -156,14 +172,13 @@ class Wave():
 
     @classmethod
     def read(cls, fname):
-        """Read IGOR wave
-        """
-        with open(fname, 'r', encoding="utf-8") as f:
+        """Read IGOR wave"""
+        with open(fname, encoding="utf-8") as f:
             lines = f.readlines()
 
         line = lines.pop(0).strip()
         if not line == "IGOR":
-            raise IOError("Files does not begin with 'IGOR'")
+            raise FileNotBeginsWithIgorError(fname)
 
         line = lines.pop(0)
         while not re.match("WAVES", line):
@@ -174,12 +189,12 @@ class Wave():
         if "N=" in waves_str:
             d2 = True
             match = re.search(r"WAVES/N=\(([\d,]+)\)", waves_str)
-            grid = match.group(1).split(',')
+            grid = match.group(1).split(",")
             grid = np.array(grid, dtype=int)
 
         line = lines.pop(0).strip()
         if not line == "BEGIN":
-            raise IOError("Missing 'BEGIN' statement of data block")
+            raise MissingBeginError(fname)
 
         # read data
         datastring = ""
@@ -218,10 +233,11 @@ class Wave():
 
     def print_data(self):
         """Determines how to print the data block.
-        
+
         To be implemented by subclasses."""
+
     def write(self, fname):
-        with open(fname, 'w', encoding="utf-8") as f:
+        with open(fname, "w", encoding="utf-8") as f:
             f.write(str(self))
 
     def csv_header(self):
@@ -232,27 +248,29 @@ class Wave():
             if header != "":
                 header += "\n"
             header += "axis %d: %s [unit: %s] [%.6e, %.6e], delta=%.6e, n=%d" % (
-                i_ax, ax.symbol, ax.unit, ax.min, ax.min + ax.delta *
-                (s - 1), ax.delta, s)
+                i_ax,
+                ax.symbol,
+                ax.unit,
+                ax.min,
+                ax.min + ax.delta * (s - 1),
+                ax.delta,
+                s,
+            )
         return header
 
     def write_csv(self, fname, fmt="%.6e"):
-        np.savetxt(fname,
-                   self.data,
-                   delimiter=",",
-                   header=self.csv_header(),
-                   fmt=fmt)
+        np.savetxt(fname, self.data, delimiter=",", header=self.csv_header(), fmt=fmt)
 
 
 class Wave1d(Wave):
     """1d Igor wave"""
 
-    default_parameters = dict(
-        xmin=0.0,
-        xdelta=None,
-        xlabel='x',
-        ylabel='y',
-    )
+    default_parameters = {
+        "xmin": 0.0,
+        "xdelta": None,
+        "xlabel": "x",
+        "ylabel": "y",
+    }
 
     def __init__(self, data=None, axes=None, name="1d", **kwargs):
         """Initialize 1d IGOR wave"""
@@ -263,21 +281,23 @@ class Wave1d(Wave):
             if key in self.parameters:
                 self.parameters[key] = value
             else:
-                raise KeyError("Unknown parameter {}".format(key))
+                raise KeyError(f"Unknown parameter {key}")
 
         if axes is None:
             p = self.parameters
-            x = Axis(symbol='x',
-                     min_=p['xmin'],
-                     delta=p['xdelta'],
-                     unit=p['xlabel'],
-                     wavename=self.name)
+            x = Axis(
+                symbol="x",
+                min_=p["xmin"],
+                delta=p["xdelta"],
+                unit=p["xlabel"],
+                wavename=self.name,
+            )
             self.axes = [x]
 
     def print_data(self):
         s = ""
         for line in self.data:
-            s += "{:12.6e}\n".format(float(line))
+            s += f"{float(line):12.6e}\n"
 
         return s
 
@@ -285,26 +305,26 @@ class Wave1d(Wave):
 class Wave2d(Wave):
     """2d Igor wave"""
 
-    default_parameters = dict(
-        xmin=0.0,
-        xdelta=None,
-        xmax=None,
-        xlabel='x',
-        ymin=0.0,
-        ydelta=None,
-        ymax=None,
-        ylabel='y',
-    )
+    default_parameters = {
+        "xmin": 0.0,
+        "xdelta": None,
+        "xlabel": "x",
+        "xmax": None,
+        "ymin": 0.0,
+        "ydelta": None,
+        "ylabel": "y",
+        "ymax": None,
+    }
 
     def __init__(self, data=None, axes=None, name=None, **kwargs):
         """Initialize 2d Igor wave
         Parameters
         ----------
-        
-         * data 
-         * name 
-         * xmin, xdelta, xlabel         
-         * ymin, ydelta, ylabel         
+
+         * data
+         * name
+         * xmin, xdelta, xlabel
+         * ymin, ydelta, ylabel
         """
         super().__init__(data, axes=axes, name=name)
 
@@ -313,32 +333,36 @@ class Wave2d(Wave):
             if key in self.parameters:
                 self.parameters[key] = value
             else:
-                raise KeyError("Unknown parameter {}".format(key))
+                raise KeyError(f"Unknown parameter {key}")
 
         if axes is None:
             p = self.parameters
 
             nx, ny = self.data.shape
-            if p['xmax'] is None:
-                p['xmax'] = p['xdelta'] * nx
-            elif p['xdelta'] is None:
-                p['xdelta'] = p['xmax'] / nx
+            if p["xmax"] is None:
+                p["xmax"] = p["xdelta"] * nx
+            elif p["xdelta"] is None:
+                p["xdelta"] = p["xmax"] / nx
 
-            if p['ymax'] is None:
-                p['ymax'] = p['ydelta'] * ny
-            elif p['ydelta'] is None:
-                p['ydelta'] = p['ymax'] / ny
+            if p["ymax"] is None:
+                p["ymax"] = p["ydelta"] * ny
+            elif p["ydelta"] is None:
+                p["ydelta"] = p["ymax"] / ny
 
-            x = Axis(symbol='x',
-                     min_=p['xmin'],
-                     delta=p['xdelta'],
-                     unit=p['xlabel'],
-                     wavename=self.name)
-            y = Axis(symbol='y',
-                     min_=p['ymin'],
-                     delta=p['ydelta'],
-                     unit=p['ylabel'],
-                     wavename=self.name)
+            x = Axis(
+                symbol="x",
+                min_=p["xmin"],
+                delta=p["xdelta"],
+                unit=p["xlabel"],
+                wavename=self.name,
+            )
+            y = Axis(
+                symbol="y",
+                min_=p["ymin"],
+                delta=p["ydelta"],
+                unit=p["ylabel"],
+                wavename=self.name,
+            )
             self.axes = [x, y]
 
     def print_data(self):
@@ -346,7 +370,7 @@ class Wave2d(Wave):
         s = ""
         for line in self.data:
             for x in line:
-                s += "{:12.6e} ".format(x)
+                s += f"{x:12.6e} "
             s += "\n"
 
         return s
