@@ -213,7 +213,7 @@ gapw_std_scf_step:
       MULTIPLICITY: '0'
       MGRID:
         CUTOFF: '600'
-        REL_CUTOFF: '50'    
+        REL_CUTOFF: '50'
       QS:
         METHOD: GAPW
         EPS_PGF_ORB: '1.0E-80'

@@ -154,7 +154,7 @@ gpw_std_gw_basis_set_aux:
   B:  K-RI_aug_DZ
   C:  RI_aug_DZ
   N:  RI_aug_DZ
-  O:  RI_DZVP-own  
+  O:  RI_DZVP-own
 
 gapw_std_gw_basis_set:
   H:  aug-cc-pVDZ-up
@@ -172,7 +172,7 @@ gapw_std_gw_basis_set_aux:
   N:  aug-cc-pVDZ-RIFIT
   O:  aug-cc-pVDZ-RIFIT
   S:  aug-cc-pVDZ-RIFIT
-  Zn: aug-cc-pVDZ-RIFIT 
+  Zn: aug-cc-pVDZ-RIFIT
 
 gapw_hq_gw_basis_set:
   H:  aug-cc-pVTZ
@@ -190,7 +190,7 @@ gapw_hq_gw_basis_set_aux:
   N:  aug-cc-pVQZ-RIFIT
   O:  aug-cc-pVQZ-RIFIT
   S:  aug-cc-pVQZ-RIFIT
-  Zn: aug-cc-pVQZ-RIFIT  
+  Zn: aug-cc-pVQZ-RIFIT
 
 # -------------------------------------------------------------
 # Pseudopotentials
@@ -284,113 +284,113 @@ pseudopotential:
    Rn: GTH-PBE-q8
 
 all:
-   H:  ALL 
-   He: ALL 
-   Li: ALL 
-   Be: ALL 
-   B:  ALL 
-   C:  ALL 
-   N:  ALL 
-   O:  ALL 
-   F:  ALL 
-   Ne: ALL 
-   Na: ALL 
-   Mg: ALL 
-   Al: ALL 
-   Si: ALL 
-   P:  ALL 
-   S:  ALL 
-   Cl: ALL 
-   Ar: ALL 
-   K:  ALL 
-   Ca: ALL 
-   Sc: ALL 
-   Ti: ALL 
-   V:  ALL 
-   Cr: ALL 
-   Mn: ALL 
-   Fe: ALL 
-   Co: ALL 
-   Ni: ALL 
-   Cu: ALL 
-   Zn: ALL 
-   Ga: ALL 
-   Ge: ALL 
-   As: ALL 
-   Se: ALL 
-   Br: ALL 
-   Kr: ALL 
-   Rb: ALL 
-   Sr: ALL 
-   Y:  ALL 
-   Zr: ALL 
-   Nb: ALL 
-   Mo: ALL 
-   Tc: ALL 
-   Ru: ALL 
-   Rh: ALL 
-   Pd: ALL 
-   Ag: ALL 
-   Cd: ALL 
-   In: ALL 
-   Sn: ALL 
-   Sb: ALL 
-   Te: ALL 
-   I:  ALL 
-   Xe: ALL 
-   Cs: ALL 
-   Ba: ALL 
-   La: ALL 
-   Ce: ALL 
-   Pr: ALL 
-   Nd: ALL 
-   Pm: ALL 
-   Sm: ALL 
-   Eu: ALL 
-   Gd: ALL 
-   Tb: ALL 
-   Dy: ALL 
-   Ho: ALL 
-   Er: ALL 
-   Tm: ALL 
-   Yb: ALL 
-   Lu: ALL 
-   Hf: ALL 
-   Ta: ALL 
-   W:  ALL 
-   Re: ALL 
-   Os: ALL 
-   Ir: ALL 
-   Pt: ALL 
-   Au: ALL 
-   Hg: ALL 
-   Tl: ALL 
-   Pb: ALL 
-   Bi: ALL 
-   Po: ALL 
-   At: ALL 
-   Rn: ALL 
-   
+   H:  ALL
+   He: ALL
+   Li: ALL
+   Be: ALL
+   B:  ALL
+   C:  ALL
+   N:  ALL
+   O:  ALL
+   F:  ALL
+   Ne: ALL
+   Na: ALL
+   Mg: ALL
+   Al: ALL
+   Si: ALL
+   P:  ALL
+   S:  ALL
+   Cl: ALL
+   Ar: ALL
+   K:  ALL
+   Ca: ALL
+   Sc: ALL
+   Ti: ALL
+   V:  ALL
+   Cr: ALL
+   Mn: ALL
+   Fe: ALL
+   Co: ALL
+   Ni: ALL
+   Cu: ALL
+   Zn: ALL
+   Ga: ALL
+   Ge: ALL
+   As: ALL
+   Se: ALL
+   Br: ALL
+   Kr: ALL
+   Rb: ALL
+   Sr: ALL
+   Y:  ALL
+   Zr: ALL
+   Nb: ALL
+   Mo: ALL
+   Tc: ALL
+   Ru: ALL
+   Rh: ALL
+   Pd: ALL
+   Ag: ALL
+   Cd: ALL
+   In: ALL
+   Sn: ALL
+   Sb: ALL
+   Te: ALL
+   I:  ALL
+   Xe: ALL
+   Cs: ALL
+   Ba: ALL
+   La: ALL
+   Ce: ALL
+   Pr: ALL
+   Nd: ALL
+   Pm: ALL
+   Sm: ALL
+   Eu: ALL
+   Gd: ALL
+   Tb: ALL
+   Dy: ALL
+   Ho: ALL
+   Er: ALL
+   Tm: ALL
+   Yb: ALL
+   Lu: ALL
+   Hf: ALL
+   Ta: ALL
+   W:  ALL
+   Re: ALL
+   Os: ALL
+   Ir: ALL
+   Pt: ALL
+   Au: ALL
+   Hg: ALL
+   Tl: ALL
+   Pb: ALL
+   Bi: ALL
+   Po: ALL
+   At: ALL
+   Rn: ALL
+
 cutoff:
-   H:  600 
-   He: 600 
-   Li: 600 
-   Be: 600 
-   B:  600 
-   C:  600 
-   N:  600 
-   O:  600 
-   F:  600 
-   Ne: 600 
-   Na: 600 
-   Mg: 600 
-   Al: 600 
-   Si: 600 
-   P:  600 
-   S:  600 
-   Cl: 600 
-   Ar: 600 
-   K:  600 
+   H:  600
+   He: 600
+   Li: 600
+   Be: 600
+   B:  600
+   C:  600
+   N:  600
+   O:  600
+   F:  600
+   Ne: 600
+   Na: 600
+   Mg: 600
+   Al: 600
+   Si: 600
+   P:  600
+   S:  600
+   Cl: 600
+   Ar: 600
+   K:  600
    Ca: 600
    Sc: 600
    Ti: 600
@@ -409,14 +409,14 @@ cutoff:
    Br: 600
    Kr: 600
    Rb: 600
-   Sr: 600 
-   Y:  600 
-   Zr: 600 
-   Nb: 600 
-   Mo: 600 
-   Tc: 600 
-   Ru: 600 
-   Rh: 600 
+   Sr: 600
+   Y:  600
+   Zr: 600
+   Nb: 600
+   Mo: 600
+   Tc: 600
+   Ru: 600
+   Rh: 600
    Pd: 1200
    Ag: 600
    Cd: 600
@@ -427,34 +427,34 @@ cutoff:
    I:  600
    Xe: 600
    Cs: 600
-   Ba: 600 
-   La: 600 
-   Ce: 600 
-   Pr: 600 
-   Nd: 600 
-   Pm: 600 
-   Sm: 600 
-   Eu: 600 
-   Gd: 600 
-   Tb: 600 
-   Dy: 600 
-   Ho: 600 
-   Er: 600 
-   Tm: 600 
-   Yb: 600 
-   Lu: 600 
-   Hf: 600 
-   Ta: 600 
-   W:  600 
-   Re: 600 
-   Os: 600 
-   Ir: 600 
-   Pt: 600 
-   Au: 600 
-   Hg: 600 
-   Tl: 600 
-   Pb: 600 
-   Bi: 600 
-   Po: 600 
-   At: 600 
-   Rn: 600 
+   Ba: 600
+   La: 600
+   Ce: 600
+   Pr: 600
+   Nd: 600
+   Pm: 600
+   Sm: 600
+   Eu: 600
+   Gd: 600
+   Tb: 600
+   Dy: 600
+   Ho: 600
+   Er: 600
+   Tm: 600
+   Yb: 600
+   Lu: 600
+   Hf: 600
+   Ta: 600
+   W:  600
+   Re: 600
+   Os: 600
+   Ir: 600
+   Pt: 600
+   Au: 600
+   Hg: 600
+   Tl: 600
+   Pb: 600
+   Bi: 600
+   Po: 600
+   At: 600
+   Rn: 600

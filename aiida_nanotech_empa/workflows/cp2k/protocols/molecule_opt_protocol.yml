@@ -1,9 +1,9 @@
 standard:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: '' 
+        EXTENDED_FFT_LENGTHS: ''
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: GEO_OPT
-        WALLTIME: 600   
+        WALLTIME: 600
     MOTION:
         GEO_OPT:
             BFGS:
@@ -12,17 +12,17 @@ standard:
             MAX_ITER: 1000
             OPTIMIZER: BFGS
         PRINT:
-            RESTART_HISTORY: 
-                _: 'OFF'   
+            RESTART_HISTORY:
+                _: 'OFF'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
             CELL:
                 PERIODIC: NONE
-                SYMMETRY: ORTHORHOMBIC        
+                SYMMETRY: ORTHORHOMBIC
         DFT:
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
-            POTENTIAL_FILE_NAME: POTENTIAL   
+            POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             CHARGE: 0
             MGRID:
@@ -51,10 +51,10 @@ standard:
                         ADD_LAST: NUMERIC
                         EACH:
                             GEO_OPT: 1
-                            QS_SCF: 0                    
-                        FILENAME: RESTART                
+                            QS_SCF: 0
+                        FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'            
+                        _: 'OFF'
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -64,7 +64,7 @@ standard:
                         REFERENCE_FUNCTIONAL: PBE
                         R_CUTOFF: 15
                         TYPE: DFTD3
-                XC_FUNCTIONAL: 
+                XC_FUNCTIONAL:
                         _: PBE
             PRINT:
                 MO_CUBES:
@@ -83,10 +83,10 @@ standard:
                     ADD_LAST: 'NUMERIC'
 low_accuracy:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: '' 
+        EXTENDED_FFT_LENGTHS: ''
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: GEO_OPT
-        WALLTIME: 600   
+        WALLTIME: 600
     MOTION:
         GEO_OPT:
             BFGS:
@@ -94,21 +94,21 @@ low_accuracy:
             MAX_FORCE: 0.00045
             RMS_DR: 0.0015
             RMS_FORCE: 0.0003
-            MAX_DR: 0.003            
+            MAX_DR: 0.003
             MAX_ITER: 1000
             OPTIMIZER: BFGS
         PRINT:
-            RESTART_HISTORY: 
-                _: 'OFF'   
+            RESTART_HISTORY:
+                _: 'OFF'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
             CELL:
                 PERIODIC: NONE
-                SYMMETRY: ORTHORHOMBIC        
+                SYMMETRY: ORTHORHOMBIC
         DFT:
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
-            POTENTIAL_FILE_NAME: POTENTIAL   
+            POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             CHARGE: 0
             MGRID:
@@ -137,10 +137,10 @@ low_accuracy:
                         ADD_LAST: NUMERIC
                         EACH:
                             GEO_OPT: 1
-                            QS_SCF: 0                    
-                        FILENAME: RESTART                
+                            QS_SCF: 0
+                        FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'            
+                        _: 'OFF'
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -150,7 +150,7 @@ low_accuracy:
                         REFERENCE_FUNCTIONAL: PBE
                         R_CUTOFF: 15
                         TYPE: DFTD3
-                XC_FUNCTIONAL: 
+                XC_FUNCTIONAL:
                         _: PBE
             PRINT:
                 MO_CUBES:
@@ -169,10 +169,10 @@ low_accuracy:
                     ADD_LAST: 'NUMERIC'
 debug:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: '' 
+        EXTENDED_FFT_LENGTHS: ''
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: GEO_OPT
-        WALLTIME: 600   
+        WALLTIME: 600
     MOTION:
         GEO_OPT:
             BFGS:
@@ -180,21 +180,21 @@ debug:
             MAX_FORCE: 0.1
             RMS_DR: 0.1
             RMS_FORCE: 0.1
-            MAX_DR: 0.1 
+            MAX_DR: 0.1
             MAX_ITER: 1000
             OPTIMIZER: BFGS
         PRINT:
-            RESTART_HISTORY: 
-                _: 'OFF'   
+            RESTART_HISTORY:
+                _: 'OFF'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
             CELL:
                 PERIODIC: NONE
-                SYMMETRY: ORTHORHOMBIC        
+                SYMMETRY: ORTHORHOMBIC
         DFT:
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
-            POTENTIAL_FILE_NAME: POTENTIAL   
+            POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             CHARGE: 0
             MGRID:
@@ -223,10 +223,10 @@ debug:
                         ADD_LAST: NUMERIC
                         EACH:
                             GEO_OPT: 1
-                            QS_SCF: 0                    
-                        FILENAME: RESTART                
+                            QS_SCF: 0
+                        FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'            
+                        _: 'OFF'
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -236,7 +236,7 @@ debug:
                         REFERENCE_FUNCTIONAL: PBE
                         R_CUTOFF: 15
                         TYPE: DFTD3
-                XC_FUNCTIONAL: 
+                XC_FUNCTIONAL:
                         _: PBE
             PRINT:
                 MO_CUBES:

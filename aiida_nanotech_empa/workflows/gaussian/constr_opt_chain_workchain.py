@@ -1,12 +1,10 @@
+from aiida.engine import ExitCode, ToContext, WorkChain, while_
+from aiida.orm import Bool, Code, Dict, Int, List, Str, StructureData
+
 from aiida_nanotech_empa.utils import common_utils
 
-from aiida.engine import WorkChain, ToContext, ExitCode, while_
-from aiida.orm import Int, Str, Code, Bool, Dict, List, StructureData
-
-from aiida.plugins import WorkflowFactory
-
-GaussianRelaxWorkChain = WorkflowFactory('nanotech_empa.gaussian.relax')
-GaussianScfWorkChain = WorkflowFactory('nanotech_empa.gaussian.scf')
+from .relax_workchain import GaussianRelaxWorkChain
+from .scf_workchain import GaussianScfWorkChain
 
 
 class GaussianConstrOptChainWorkChain(WorkChain):
@@ -16,68 +14,70 @@ class GaussianConstrOptChainWorkChain(WorkChain):
 
         spec.input("gaussian_code", valid_type=Code)
 
-        spec.input('structure',
-                   valid_type=StructureData,
-                   required=True,
-                   help='input geometry')
+        spec.input(
+            "structure", valid_type=StructureData, required=True, help="input geometry"
+        )
 
-        spec.input('functional',
-                   valid_type=Str,
-                   required=True,
-                   help='xc functional')
+        spec.input("functional", valid_type=Str, required=True, help="xc functional")
 
-        spec.input('basis_set',
-                   valid_type=Str,
-                   required=True,
-                   help='basis_set')
-
-        spec.input('basis_set_scf',
-                   valid_type=Str,
-                   required=False,
-                   help='basis_set for SCF')
-
-        spec.input('multiplicity',
-                   valid_type=Int,
-                   required=False,
-                   default=lambda: Int(0),
-                   help='spin multiplicity; 0 means RKS')
-
-        spec.input('extra_scf_mults',
-                   valid_type=List,
-                   required=False,
-                   default=lambda: List(list=[]),
-                   help='Extra multiplicites for the SCF')
-
-        spec.input('tight',
-                   valid_type=Bool,
-                   required=False,
-                   default=lambda: Bool(False),
-                   help='Use tight optimization criteria.')
-
-        spec.input('empirical_dispersion',
-                   valid_type=Str,
-                   required=False,
-                   default=lambda: Str(""),
-                   help=('Include empirical dispersion corrections'
-                         '(e.g. "GD3", "GD3BJ")'))
-
-        spec.input('list_of_constraints',
-                   valid_type=List,
-                   required=False,
-                   default=lambda: List(list=[]),
-                   help='Supported constraints: ("distance", n1, n2, d)')
+        spec.input("basis_set", valid_type=Str, required=True, help="basis_set")
 
         spec.input(
-            'options',
+            "basis_set_scf", valid_type=Str, required=False, help="basis_set for SCF"
+        )
+
+        spec.input(
+            "multiplicity",
+            valid_type=Int,
+            required=False,
+            default=lambda: Int(0),
+            help="spin multiplicity; 0 means RKS",
+        )
+
+        spec.input(
+            "extra_scf_mults",
+            valid_type=List,
+            required=False,
+            default=lambda: List(list=[]),
+            help="Extra multiplicites for the SCF",
+        )
+
+        spec.input(
+            "tight",
+            valid_type=Bool,
+            required=False,
+            default=lambda: Bool(False),
+            help="Use tight optimization criteria.",
+        )
+
+        spec.input(
+            "empirical_dispersion",
+            valid_type=Str,
+            required=False,
+            default=lambda: Str(""),
+            help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
+        )
+
+        spec.input(
+            "list_of_constraints",
+            valid_type=List,
+            required=False,
+            default=lambda: List(list=[]),
+            help='Supported constraints: ("distance", n1, n2, d)',
+        )
+
+        spec.input(
+            "options",
             valid_type=Dict,
             required=False,
-            help="Use custom metadata.options instead of the automatic ones.")
+            help="Use custom metadata.options instead of the automatic ones.",
+        )
 
         spec.outline(
             cls.setup,
-            while_(cls.any_constraint_left)(cls.submit_opt,
-                                            cls.submit_extra_mults),
-            cls.finalize)
+            while_(cls.any_constraint_left)(cls.submit_opt, cls.submit_extra_mults),
+            cls.finalize,
+        )
 
         spec.outputs.dynamic = True
 
@@ -108,8 +108,7 @@ class GaussianConstrOptChainWorkChain(WorkChain):
 
             for extra_mult in self.inputs.extra_scf_mults:
                 ext_label = prev_label + f"_m{extra_mult}"
-                if not common_utils.check_if_calc_ok(self,
-                                                     self.ctx[ext_label]):
+                if not common_utils.check_if_calc_ok(self, self.ctx[ext_label]):
                     return self.exit_codes.ERROR_TERMINATION
 
             structure = self.ctx[prev_label].outputs.output_structure
@@ -126,7 +125,7 @@ class GaussianConstrOptChainWorkChain(WorkChain):
         builder.functional = self.inputs.functional
         builder.basis_set = self.inputs.basis_set
 
-        if 'basis_set_scf' in self.inputs:
+        if "basis_set_scf" in self.inputs:
             builder.basis_set_scf = self.inputs.basis_set_scf
 
         builder.multiplicity = self.inputs.multiplicity
@@ -138,7 +137,7 @@ class GaussianConstrOptChainWorkChain(WorkChain):
 
         builder.constraints = List(cur_constr)
 
-        if 'options' in self.inputs:
+        if "options" in self.inputs:
             builder.options = self.inputs.options
 
         submitted_node = self.submit(builder)
@@ -166,7 +165,7 @@ class GaussianConstrOptChainWorkChain(WorkChain):
             builder.multiplicity = Int(extra_mult)
             builder.wfn_stable_opt = Bool(True)
 
-            if 'options' in self.inputs:
+            if "options" in self.inputs:
                 builder.options = self.inputs.options
 
             submitted_node = self.submit(builder)
@@ -185,17 +184,23 @@ class GaussianConstrOptChainWorkChain(WorkChain):
             if not common_utils.check_if_calc_ok(self, self.ctx[label]):
                 return self.exit_codes.ERROR_TERMINATION
 
-            self.out(f"opt_{i_constr}_structure",
-                     self.ctx[label].outputs.output_structure)
-            self.out(f"opt_{i_constr}_out_params",
-                     self.ctx[label].outputs.output_parameters)
-            if 'scf_output_parameters' in self.ctx[label].outputs:
-                self.out(f"opt_{i_constr}_scf_out_params",
-                         self.ctx[label].outputs.scf_output_parameters)
+            self.out(
+                f"opt_{i_constr}_structure", self.ctx[label].outputs.output_structure
+            )
+            self.out(
+                f"opt_{i_constr}_out_params", self.ctx[label].outputs.output_parameters
+            )
+            if "scf_output_parameters" in self.ctx[label].outputs:
+                self.out(
+                    f"opt_{i_constr}_scf_out_params",
+                    self.ctx[label].outputs.scf_output_parameters,
+                )
 
             for extra_mult in self.inputs.extra_scf_mults:
                 extra_label = label + f"_m{extra_mult}"
-                self.out(f"{extra_label}_scf_out_params",
-                         self.ctx[extra_label].outputs.output_parameters)
+                self.out(
+                    f"{extra_label}_scf_out_params",
+                    self.ctx[extra_label].outputs.output_parameters,
+                )
 
         return ExitCode(0)
