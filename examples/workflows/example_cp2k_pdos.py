@@ -17,17 +17,17 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity):
 
     builder.metadata.label = "Cp2kPdosWorkChain"
     builder.metadata.description = "test description"
-    builder.code = cp2k_code
+    builder.cp2k_code = cp2k_code
     ase_geom_slab = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
-    ase_geom_mol = ase_geom_slab[0:1]
+    ase_geom_mol = ase_geom_slab[0:2]
     builder.slabsys_structure = StructureData(ase=ase_geom_slab)
     builder.mol_structure = StructureData(ase=ase_geom_mol)
-    builder.pdos_list = List([[1], [1, 2]])
+    builder.pdos_lists = List(list=['1', '1..2'])
     builder.protocol = Str("debug")
     builder.sc_diag = Bool(False)
     builder.force_multiplicity = Bool(True)
     builder.dft_params = Dict(
-        dict={"elpa_switch": False, "uks": False, "smear_temperature": 150}
+        dict={"elpa_switch": False, "uks": False, "smear_temperature": 150, "spin_up_guess":"","spin_dw_guess":""}
     )
     builder.overlap_code = overlap_code
     builder.overlap_params = Dict(
@@ -50,14 +50,6 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity):
             "--eval_cutoff": "14.0",
         }
     )
-    builder.options = {
-        "max_wallclock_seconds": 600,
-        "resources": {
-            "num_machines": 1,
-            "num_mpiprocs_per_machine": 12,
-            "num_cores_per_mpiproc": 1,
-        },
-    }
 
     builder.protocol = Str("debug")
 

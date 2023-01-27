@@ -4,6 +4,8 @@ import pathlib
 
 import numpy as np
 import yaml
+
+from aiida_nanotech_empa.utils import analyze_structure
 from aiida.engine import ToContext, WorkChain
 from aiida.orm import Bool, Code, Dict, List, SinglefileData, Str, StructureData
 from aiida.plugins import CalculationFactory, WorkflowFactory
@@ -145,11 +147,13 @@ class Cp2kPdosWorkChain(WorkChain):
         self.ctx.cutoff = get_cutoff(structure=structure)
 
         # get initial magnetization
+        spin_up_guess = analyze_structure.string_range_to_list(self.ctx.slab_dft_params["spin_up_guess"])[0]
+        spin_dw_guess = analyze_structure.string_range_to_list(self.ctx.slab_dft_params["spin_dw_guess"])[0]
         magnetization_per_site = [
             1
-            if i in self.ctx.slab_dft_params["spin_up_guess"]
+            if i in spin_up_guess
             else -1
-            if i in self.ctx.slab_dft_params["spin_dw_guess"]
+            if i in spin_dw_guess
             else 0
             for i in range(self.ctx.n_all_atoms)
         ]
@@ -188,13 +192,21 @@ class Cp2kPdosWorkChain(WorkChain):
         input_dict["GLOBAL"]["WALLTIME"] = 86000
 
         self.ctx.slab_options = self.get_options(self.ctx.n_all_atoms)
+        if self.inputs.protocol.value == "debug":
+            self.ctx.slab_options = {
+            "resources": {"num_machines": 1,
+            "num_mpiprocs_per_machine": 8,
+            "num_cores_per_mpiproc": 1,},
+            "max_wallclock_seconds": 600,
+            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+        }
         builder.cp2k.metadata.options = self.ctx.slab_options
 
         # parser
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
         # cp2k input dictionary
-        builder.cp2k.parameters = Dict(input_dict)
+        builder.cp2k.parameters = Dict(dict=input_dict)
         self.ctx.input_dict_slab = copy.deepcopy(input_dict)
 
         slab_future = self.submit(builder)
@@ -208,11 +220,13 @@ class Cp2kPdosWorkChain(WorkChain):
         structure = self.inputs.mol_structure
 
         # get initial magnetization
+        spin_up_guess = analyze_structure.string_range_to_list(self.ctx.mol_dft_params["spin_up_guess"])[0]
+        spin_dw_guess = analyze_structure.string_range_to_list(self.ctx.mol_dft_params["spin_dw_guess"])[0]
         magnetization_per_site = [
             1
-            if i in self.ctx.mol_dft_params["spin_up_guess"]
+            if i in spin_up_guess
             else -1
-            if i in self.ctx.mol_dft_params["spin_dw_guess"]
+            if i in spin_dw_guess
             else 0
             for i in range(self.ctx.n_mol_atoms)
         ]
@@ -248,13 +262,21 @@ class Cp2kPdosWorkChain(WorkChain):
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = 86000
         self.ctx.mol_options = self.get_options(self.ctx.n_mol_atoms)
+        if self.inputs.protocol.value == "debug":
+            self.ctx.mol_options = {
+            "resources": {"num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
+            "num_cores_per_mpiproc": 1,},
+            "max_wallclock_seconds": 600,
+            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+        }        
         builder.cp2k.metadata.options = self.ctx.mol_options
 
         # parser
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
         # cp2k input dictionary
-        builder.cp2k.parameters = Dict(input_dict)
+        builder.cp2k.parameters = Dict(dict=input_dict)
         self.ctx.input_dict_mol = copy.deepcopy(input_dict)
 
         mol_future = self.submit(builder)
@@ -431,6 +453,7 @@ class Cp2kPdosWorkChain(WorkChain):
             "max_wallclock_seconds": walltime,
             "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
+    
 
         return options
 
