@@ -5,7 +5,7 @@ import pathlib
 import numpy as np
 import yaml
 
-from aiida_nanotech_empa.utils import analyze_structure
+#from aiida_nanotech_empa.utils import analyze_structure
 from aiida.engine import ToContext, WorkChain
 from aiida.orm import Bool, Code, Dict, List, SinglefileData, Str, StructureData
 from aiida.plugins import CalculationFactory, WorkflowFactory
@@ -131,7 +131,7 @@ class Cp2kPdosWorkChain(WorkChain):
             self.ctx.mol_dft_params["spin_dw_guess"] = mol_spin_dw
 
     def run_ot_scfs(self):
-        self.report("Running CP2K diagonalization SCF")
+        self.report("Running CP2K OT SCF")
 
         # whole system part
         # load input template
@@ -147,8 +147,8 @@ class Cp2kPdosWorkChain(WorkChain):
         self.ctx.cutoff = get_cutoff(structure=structure)
 
         # get initial magnetization
-        spin_up_guess = analyze_structure.string_range_to_list(self.ctx.slab_dft_params["spin_up_guess"])[0]
-        spin_dw_guess = analyze_structure.string_range_to_list(self.ctx.slab_dft_params["spin_dw_guess"])[0]
+        spin_up_guess = self.ctx.slab_dft_params["spin_up_guess"]
+        spin_dw_guess = self.ctx.slab_dft_params["spin_dw_guess"]
         magnetization_per_site = [
             1
             if i in spin_up_guess
@@ -220,8 +220,8 @@ class Cp2kPdosWorkChain(WorkChain):
         structure = self.inputs.mol_structure
 
         # get initial magnetization
-        spin_up_guess = analyze_structure.string_range_to_list(self.ctx.mol_dft_params["spin_up_guess"])[0]
-        spin_dw_guess = analyze_structure.string_range_to_list(self.ctx.mol_dft_params["spin_dw_guess"])[0]
+        spin_up_guess = self.ctx.mol_dft_params["spin_up_guess"]
+        spin_dw_guess = self.ctx.mol_dft_params["spin_dw_guess"]
         magnetization_per_site = [
             1
             if i in spin_up_guess
@@ -350,7 +350,7 @@ class Cp2kPdosWorkChain(WorkChain):
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
         # cp2k input dictionary
-        builder.cp2k.parameters = Dict(input_dict)
+        builder.cp2k.parameters = Dict(dict=input_dict)
 
         slab_future = self.submit(builder)
         self.to_context(slab_diag_scf=slab_future)
@@ -385,6 +385,7 @@ class Cp2kPdosWorkChain(WorkChain):
         builder.cp2k.structure = StructureData(ase=self.ctx.mol_with_tags)
 
         builder.cp2k.file = self.ctx.files
+        builder.cp2k.parent_calc_folder = self.ctx.mol_ot_scf.outputs.remote_folder
 
         builder.cp2k.metadata.options = self.ctx.mol_options
 
@@ -392,7 +393,7 @@ class Cp2kPdosWorkChain(WorkChain):
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
         # cp2k input dictionary
-        builder.cp2k.parameters = Dict(input_dict)
+        builder.cp2k.parameters = Dict(dict=input_dict)
 
         mol_future = self.submit(builder)
         self.to_context(mol_diag_scf=mol_future)
@@ -411,8 +412,8 @@ class Cp2kPdosWorkChain(WorkChain):
         inputs["metadata"]["label"] = "overlap"
         inputs["code"] = self.inputs.overlap_code
         inputs["parameters"] = self.inputs.overlap_params
-        inputs["parent_slab_folder"] = self.ctx.slab_scf.outputs.remote_folder
-        inputs["parent_mol_folder"] = self.ctx.mol_scf.outputs.remote_folder
+        inputs["parent_slab_folder"] = self.ctx.slab_diag_scf.outputs.remote_folder
+        inputs["parent_mol_folder"] = self.ctx.mol_diag_scf.outputs.remote_folder
 
         n_machines = 4 if self.ctx.n_all_atoms < 2000 else 8
 
@@ -424,12 +425,13 @@ class Cp2kPdosWorkChain(WorkChain):
         settings = Dict(dict={"additional_retrieve_list": ["overlap.npz"]})
         inputs["settings"] = settings
 
-        self.report("overlap inputs: " + str(inputs))
+        #self.report("overlap inputs: " + str(inputs))
 
         future = self.submit(OverlapCalculation, **inputs)
         return ToContext(overlap=future)
 
     def finalize(self):
+        #[obj.name for obj in a.list_objects()]
         self.report("Work chain is finished")
 
     # ==========================================================================
