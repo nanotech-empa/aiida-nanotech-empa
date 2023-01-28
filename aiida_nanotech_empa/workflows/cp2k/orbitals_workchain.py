@@ -126,7 +126,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
 
         # make sure cell is big enough for MT poisson solver and center positions
         if self.inputs.protocol.value == "debug":
-            extra_cell = 5.0 # angstrom
+            extra_cell = 9.0 # angstrom
         else:
             extra_cell = 15.0
         ase_atoms = structure_with_tags.get_ase()

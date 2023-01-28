@@ -19,7 +19,7 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
     builder.metadata.description = "test description"
     builder.cp2k_code = cp2k_code
     ase_geom_slab = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
-    ase_geom_mol = ase_geom_slab[0:5]
+    ase_geom_mol = ase_geom_slab[0:4]
     builder.slabsys_structure = StructureData(ase=ase_geom_slab)
     builder.mol_structure = StructureData(ase=ase_geom_mol)
     builder.pdos_lists = List(list=['1', '2'])
