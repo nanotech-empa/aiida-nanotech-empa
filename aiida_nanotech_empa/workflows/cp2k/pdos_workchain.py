@@ -5,7 +5,6 @@ import pathlib
 import numpy as np
 import yaml
 
-#from aiida_nanotech_empa.utils import analyze_structure
 from aiida.engine import ToContext, WorkChain
 from aiida.orm import Bool, Code, Dict, List, SinglefileData, Str, StructureData
 from aiida.plugins import CalculationFactory, WorkflowFactory
@@ -74,6 +73,7 @@ class Cp2kPdosWorkChain(WorkChain):
         )
 
     def setup(self):
+        self.report("Setting up workchain")
         self.ctx.files = {
             "basis": SinglefileData(
                 file=os.path.join(
@@ -94,16 +94,28 @@ class Cp2kPdosWorkChain(WorkChain):
         }
         self.ctx.n_all_atoms = len(self.inputs.slabsys_structure.sites)
         self.ctx.n_mol_atoms = len(self.inputs.mol_structure.sites)
-        # set up mol UKS parameters
 
-        self.ctx.mol_dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
+        # set up slab dft parameters
         self.ctx.slab_dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
+        if "uks" not in self.ctx.slab_dft_params:
+            self.ctx.slab_dft_params["uks"] = False
+            self.ctx.slab_dft_params["spin_up_guess"] = []
+            self.ctx.slab_dft_params["spin_dw_guess"] = []
 
+        # set up mol dft parameters
+        self.ctx.mol_dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
+        
         self.ctx.mol_dft_params[
             "elpa_switch"
         ] = False  # Elpa can cause problems with small systems
 
-        if "uks" in self.ctx.mol_dft_params and self.ctx.mol_dft_params["uks"]:
+        mol_spin_up = []
+        mol_spin_dw = []
+
+        if "uks" not in self.ctx.mol_dft_params:
+            self.ctx.mol_dft_params["uks"] = False
+            self.ctx.mol_dft_params["spin_up_guess"] = []
+            self.ctx.mol_dft_params["spin_dw_guess"] = []
             slab_atoms = self.inputs.slabsys_structure.get_ase()
             mol_atoms = self.inputs.mol_structure.get_ase()
 
@@ -111,9 +123,6 @@ class Cp2kPdosWorkChain(WorkChain):
                 (e, *np.round(p, 2))
                 for e, p in zip(mol_atoms.get_chemical_symbols(), mol_atoms.positions)
             ]
-
-            mol_spin_up = []
-            mol_spin_dw = []
 
             for i_up in self.ctx.mol_dft_params["spin_up_guess"]:
                 at = slab_atoms[i_up]
@@ -127,8 +136,8 @@ class Cp2kPdosWorkChain(WorkChain):
                 if at_tup in mol_at_tuples:
                     mol_spin_dw.append(mol_at_tuples.index(at_tup))
 
-            self.ctx.mol_dft_params["spin_up_guess"] = mol_spin_up
-            self.ctx.mol_dft_params["spin_dw_guess"] = mol_spin_dw
+        self.ctx.mol_dft_params["spin_up_guess"] = mol_spin_up
+        self.ctx.mol_dft_params["spin_dw_guess"] = mol_spin_dw
 
     def run_ot_scfs(self):
         self.report("Running CP2K OT SCF")
@@ -373,7 +382,7 @@ class Cp2kPdosWorkChain(WorkChain):
             if self.inputs.force_multiplicity:
                 input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
                     "FIXED_MAGNETIC_MOMENT"
-                ] = (self.ctx.slab_mol_params["multiplicity"] - 1)
+                ] = (self.ctx.mol_dft_params["multiplicity"] - 1)
         # no self consistent diag
         if not self.inputs.sc_diag:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
@@ -431,7 +440,9 @@ class Cp2kPdosWorkChain(WorkChain):
         return ToContext(overlap=future)
 
     def finalize(self):
-        #[obj.name for obj in a.list_objects()]
+        if "overlap.npz" not in [obj.name for obj in self.ctx.overlap.outputs.retrieved.list_objects()]:
+            self.report("Overlap calculation did not finish correctly")
+            return self.exit_codes.ERROR_TERMINATION
         self.report("Work chain is finished")
 
     # ==========================================================================
