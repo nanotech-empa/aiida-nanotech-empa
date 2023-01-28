@@ -2,13 +2,8 @@ import copy
 import os
 import pathlib
 
-import tempfile
-import shutil
-
 import numpy as np
 import yaml
-
-from io import StringIO, BytesIO
 
 from aiida.engine import ToContext, WorkChain,  while_
 from aiida.orm import Bool, Code, Dict, List, SinglefileData, Str, StructureData
@@ -29,15 +24,22 @@ from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
 Cp2kBaseWorkChain = WorkflowFactory("cp2k.base")
 StmCalculation = CalculationFactory('spm.stm')
 
-class Cp2kOrbitalWorkChain(WorkChain):
+class Cp2kOrbitalsWorkChain(WorkChain):
 
     @classmethod
     def define(cls, spec):
-        super(Cp2kOrbitalWorkChain, cls).define(spec)
+        super(Cp2kOrbitalsWorkChain, cls).define(spec)
         
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
         spec.input("wfn_file_path", valid_type=Str, default=Str(""))
+        spec.input(
+            "protocol",
+            valid_type=Str,
+            default=lambda: Str("standard"),
+            required=False,
+            help="Settings to run simulations with.",
+        )        
         spec.input(
             "sc_diag",
             valid_type=Bool,
@@ -58,13 +60,18 @@ class Cp2kOrbitalWorkChain(WorkChain):
         spec.outline(
             cls.setup,
             cls.run_ot_scf,            
-            cls.run_diag,
+            cls.run_diag_scf,
             cls.run_stm,
             cls.finalize,
         )
         
         spec.outputs.dynamic = True
 
+        spec.exit_code(
+            390,
+            "ERROR_TERMINATION",
+            message="One or more steps of the work chain failed.",
+        )
 
     def setup(self):
         self.report("Setting up workchain")
@@ -95,29 +102,29 @@ class Cp2kOrbitalWorkChain(WorkChain):
 
         if "uks" not in self.ctx.dft_params:
             self.ctx.dft_params["uks"] = False
-            self.ctx.slab_dft_params["spin_up_guess"] = []
-            self.ctx.slab_dft_params["spin_dw_guess"] = []
+            self.ctx.dft_params["spin_up_guess"] = []
+            self.ctx.dft_params["spin_dw_guess"] = []
 
         
         # cutoff: use the same for all calculations
         self.ctx.cutoff = get_cutoff(structure=structure)
 
         # get initial magnetization
-        spin_up_guess = self.ctx.slab_dft_params["spin_up_guess"]
-        spin_dw_guess = self.ctx.slab_dft_params["spin_dw_guess"]
+        spin_up_guess = self.ctx.dft_params["spin_up_guess"]
+        spin_dw_guess = self.ctx.dft_params["spin_dw_guess"]
         magnetization_per_site = [
             1
             if i in spin_up_guess
             else -1
             if i in spin_dw_guess
             else 0
-            for i in range(self.ctx.n_all_atoms)
+            for i in range(self.ctx.n_atoms)
         ]
         structure_with_tags, kinds_dict = determine_kinds(
             structure, magnetization_per_site
         )
 
-        #m ake sure cell is big enough for MT poisson solver and center positions
+        # make sure cell is big enough for MT poisson solver and center positions
         if self.inputs.protocol.value == "debug":
             extra_cell = 5.0 # angstrom
         else:
@@ -167,16 +174,16 @@ class Cp2kOrbitalWorkChain(WorkChain):
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = 86000
 
-        self.ctx.options = self.get_options(self.ctx.n_all_atoms)
+        self.ctx.options = self.get_options(self.ctx.n_atoms)
         if self.inputs.protocol.value == "debug":
-            self.ctx.slab_options = {
+            self.ctx.options = {
             "resources": {"num_machines": 1,
             "num_mpiprocs_per_machine": 8,
             "num_cores_per_mpiproc": 1,},
             "max_wallclock_seconds": 600,
             "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
-        builder.cp2k.metadata.options = self.ctx.slab_options
+        builder.cp2k.metadata.options = self.ctx.options
 
         # parser
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
@@ -185,16 +192,17 @@ class Cp2kOrbitalWorkChain(WorkChain):
         builder.cp2k.parameters = Dict(dict=input_dict)
         self.ctx.input_dict = copy.deepcopy(input_dict)
 
-        slab_future = self.submit(builder)
-        self.to_context(ot_scf=slab_future)
+        future = self.submit(builder)
+        self.to_context(ot_scf=future)
 
-    def run_scf_diag(self):
+    def run_diag_scf(self):
         self.report("Running CP2K diagonalization SCF")
-        
-        n_lumo = int(self.inputs.stm_params.get_dict()['--n_lumo'])
-
         if not common_utils.check_if_calc_ok(self, self.ctx.ot_scf):
             return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+
+        n_lumo = int(self.inputs.stm_params.get_dict()['--n_lumo'])
+
+
 
         added_mos = np.max([n_lumo,20])
 
@@ -220,11 +228,11 @@ class Cp2kOrbitalWorkChain(WorkChain):
         ] = self.ctx.dft_params["smear_t"]
 
         # UKS
-        if self.ctx.slab_dft_params["uks"]:
+        if self.ctx.dft_params["uks"]:
             if self.inputs.force_multiplicity:
                 input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
                     "FIXED_MAGNETIC_MOMENT"
-                ] = (self.ctx.slab_dft_params["multiplicity"] - 1)
+                ] = (self.ctx.dft_params["multiplicity"] - 1)
         # no self consistent diag
         if not self.inputs.sc_diag:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
@@ -233,7 +241,7 @@ class Cp2kOrbitalWorkChain(WorkChain):
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
-        builder.cp2k.structure = StructureData(ase=self.ctx.slab_with_tags)
+        builder.cp2k.structure = StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
         builder.cp2k.settings = Dict(dict={"additional_retrieve_list": [
@@ -249,13 +257,15 @@ class Cp2kOrbitalWorkChain(WorkChain):
         # cp2k input dictionary
         builder.cp2k.parameters = Dict(dict=input_dict)
 
-        slab_future = self.submit(builder)
-        self.to_context(diag_scf=slab_future)
+        future = self.submit(builder)
+        self.to_context(diag_scf=future)
    
            
     def run_stm(self):
         self.report("STM calculation")
-             
+        if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
+            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+
         inputs = {}
         inputs['metadata'] = {}
         inputs['metadata']['label'] = "orb"
@@ -287,16 +297,16 @@ class Cp2kOrbitalWorkChain(WorkChain):
     @classmethod
     def get_options(cls, n_atoms):
 
-        num_machines = 12
-        if n_atoms > 500:
+        num_machines = 3
+        if n_atoms > 50:
+            num_machines = 6
+        if n_atoms > 100:
+            num_machines = 12
+        if n_atoms > 300:
             num_machines = 27
-        if n_atoms > 1200:
+        if n_atoms > 650:
             num_machines = 48
-        if n_atoms > 2400:
-            num_machines = 60
-        if n_atoms > 3600:
-            num_machines = 75
-        walltime = 86400
+        walltime = 72000
 
         # resources
         options = {

@@ -8,7 +8,7 @@ from aiida.plugins import WorkflowFactory
 Cp2kPdosWorkChain = WorkflowFactory("nanotech_empa.cp2k.pdos")
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
-GEO_FILE = "h2_on_hbn.xyz"
+GEO_FILE = "c2h2_on_au111.xyz"
 
 
 def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks):
@@ -19,15 +19,15 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
     builder.metadata.description = "test description"
     builder.cp2k_code = cp2k_code
     ase_geom_slab = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
-    ase_geom_mol = ase_geom_slab[0:2]
+    ase_geom_mol = ase_geom_slab[0:5]
     builder.slabsys_structure = StructureData(ase=ase_geom_slab)
     builder.mol_structure = StructureData(ase=ase_geom_mol)
-    builder.pdos_lists = List(list=['1', '1..2'])
+    builder.pdos_lists = List(list=['1', '2'])
     builder.protocol = Str("debug")
     builder.sc_diag = Bool(sc_diag)
     builder.force_multiplicity = Bool(force_multiplicity)
     builder.dft_params = Dict(
-        dict={"elpa_switch": False, "uks": uks, "multiplicity":1, "smear_temperature": 150, "spin_up_guess":[1],"spin_dw_guess":[2]}
+        dict={"elpa_switch": False, "uks": uks, "multiplicity":1, "smear_temperature": 150, "spin_up_guess":[0],"spin_dw_guess":[1]}
     )
     builder.overlap_code = overlap_code
     builder.overlap_params = Dict(
@@ -72,19 +72,18 @@ def example_cp2k_pdos_sc_diag(cp2k_code, overlap_code):
 
 
 if __name__ == "__main__":
-    # sc_diag, force_multiplicity,uks
-    #print("#### no sc_diag RKS")
-    #_example_cp2k_pdos(
-    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), False, True,False
-    #)
-    #print("#### sc_diag RKS")
-    #_example_cp2k_pdos(
-    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), True, True,False
-    #)
-    #print("#### no sc_diag UKS no force")
-    #_example_cp2k_pdos(
-    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), False, False, True
-    #)
+    print("#### no sc_diag RKS")
+    _example_cp2k_pdos(
+        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), False, True,False
+    )
+    print("#### sc_diag RKS")
+    _example_cp2k_pdos(
+        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), True, True,False
+    )
+    print("#### no sc_diag UKS no force")
+    _example_cp2k_pdos(
+        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), False, False, True
+    )
     print("#### sc_diag UKS force")
     _example_cp2k_pdos(
         load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), True, True, True
