@@ -23,11 +23,16 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
     builder.slabsys_structure = StructureData(ase=ase_geom_slab)
     builder.mol_structure = StructureData(ase=ase_geom_mol)
     builder.pdos_lists = List(list=['1', '2'])
-    builder.protocol = Str("debug")
-    builder.sc_diag = Bool(sc_diag)
-    builder.force_multiplicity = Bool(force_multiplicity)
     builder.dft_params = Dict(
-        dict={"elpa_switch": False, "uks": uks, "multiplicity":1, "smear_temperature": 150, "spin_up_guess":[0],"spin_dw_guess":[1]}
+        dict={"protocol":"debug",
+        "sc_diag": sc_diag,
+        "force_multiplicity": force_multiplicity,
+        "elpa_switch": False, 
+        "uks": uks, 
+        "multiplicity":1, 
+        "smear_t": 150, 
+        "spin_up_guess":[0],
+        "spin_dw_guess":[1]}
     )
     builder.overlap_code = overlap_code
     builder.overlap_params = Dict(
@@ -51,7 +56,6 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
         }
     )
 
-    builder.protocol = Str("debug")
 
     _, calc_node = run_get_node(builder)
 

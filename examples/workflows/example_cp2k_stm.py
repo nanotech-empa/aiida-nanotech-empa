@@ -20,11 +20,16 @@ def _example_cp2k_stm(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
     builder.cp2k_code = cp2k_code
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
-    builder.protocol = Str("debug")
-    builder.sc_diag = Bool(sc_diag)
-    builder.force_multiplicity = Bool(force_multiplicity)
     builder.dft_params = Dict(
-        dict={"elpa_switch": False, "uks": uks, "multiplicity":1, "smear_t": 150, "spin_up_guess":[0],"spin_dw_guess":[1]}
+        dict={"protocol":"debug",
+        "sc_diag": sc_diag,
+        "force_multiplicity": force_multiplicity,
+        "elpa_switch": False, 
+        "uks": uks, 
+        "multiplicity":1, 
+        "smear_t": 150, 
+        "spin_up_guess":[0],
+        "spin_dw_guess":[1]}
     )
     builder.stm_code = stm_code
     parent_dir = "./parent_calc_folder/"
@@ -48,7 +53,6 @@ def _example_cp2k_stm(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
         }
     )
 
-    builder.protocol = Str("debug")
 
     _, calc_node = run_get_node(builder)
 

@@ -33,27 +33,7 @@ class Cp2kStmWorkChain(WorkChain):
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
         spec.input("wfn_file_path", valid_type=Str, default=lambda: Str(""))
-        spec.input(
-            "protocol",
-            valid_type=Str,
-            default=lambda: Str("standard"),
-            required=False,
-            help="Settings to run simulations with.",
-        )        
-        spec.input(
-            "sc_diag",
-            valid_type=Bool,
-            required=False,
-            default=lambda: Bool(False),
-        )
-        spec.input(
-            "force_multiplicity",
-            valid_type=Bool,
-            required=False,
-            default=lambda: Bool(True),
-        )        
         spec.input("dft_params", valid_type=Dict)
-        
         spec.input("stm_code", valid_type=Code)
         spec.input("stm_params", valid_type=Dict)
         
@@ -139,7 +119,7 @@ class Cp2kStmWorkChain(WorkChain):
             encoding="utf-8",
         ) as handle:
             protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
+            input_dict = copy.deepcopy(protocols[self.ctx.dft_params['protocol']])
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
@@ -168,7 +148,7 @@ class Cp2kStmWorkChain(WorkChain):
         input_dict["GLOBAL"]["WALLTIME"] = 86000
 
         self.ctx.options = self.get_options(self.ctx.n_atoms)
-        if self.inputs.protocol.value == "debug":
+        if self.ctx.dft_params['protocol'] == "debug":
             self.ctx.options = {
             "resources": {"num_machines": 1,
             "num_mpiprocs_per_machine": 8,
@@ -204,7 +184,7 @@ class Cp2kStmWorkChain(WorkChain):
             encoding="utf-8",
         ) as handle:
             protocols = yaml.safe_load(handle)
-            scf_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
+            scf_dict = copy.deepcopy(protocols[self.ctx.dft_params['protocol']])
 
         input_dict = copy.deepcopy(self.ctx.input_dict)
         if self.ctx.dft_params["elpa_switch"]:
@@ -215,21 +195,27 @@ class Cp2kStmWorkChain(WorkChain):
         input_dict["FORCE_EVAL"]["DFT"]["SCF"] = scf_dict
         input_dict["FORCE_EVAL"]["DFT"]["SCF"]["ADDED_MOS"] = added_mos
 
-        input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
-            "ELECTRONIC_TEMPERATURE"
-        ] = self.ctx.dft_params["smear_t"]
+        smearing = "smear_t" in self.ctx.dft_params
+        if smearing:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
+                "ELECTRONIC_TEMPERATURE"
+            ] = self.ctx.dft_params["smear_t"]
+        else:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         # UKS
-        if self.ctx.dft_params["uks"]:
-            if self.inputs.force_multiplicity:
-                input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
-                    "FIXED_MAGNETIC_MOMENT"
-                ] = (self.ctx.dft_params["multiplicity"] - 1)
+        if self.ctx.dft_params["uks"] and smearing and self.ctx.dft_params['sc_diag']:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
+                "FIXED_MAGNETIC_MOMENT"
+            ] = (self.ctx.dft_params["multiplicity"] - 1)
         # no self consistent diag
-        if not self.inputs.sc_diag:
+        if not self.ctx.dft_params['sc_diag']:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_SCF"] = "1.0E-1"
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["OUTER_SCF"]["EPS_SCF"] = "1.0E-1"
+
+        if not smearing and "SMEAR" in input_dict["FORCE_EVAL"]["DFT"]["SCF"]:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
@@ -278,12 +264,12 @@ class Cp2kStmWorkChain(WorkChain):
             "resources": {"num_machines": n_machines},
             "max_wallclock_seconds": 36000,
         } 
-        
+        if self.inputs.dft_params["protocol"] == "debug"
+            inputs['metadata']['options']['max_wallclock_seconds'] = 600
         # Need to make an explicit instance for the node to be stored to aiida
         settings = Dict(dict={'additional_retrieve_list': ['stm.npz']})
         inputs['settings'] = settings
         
-        self.report("Inputs: " + str(inputs))
         
         future = self.submit(StmCalculation, **inputs)
         return ToContext(stm=future)

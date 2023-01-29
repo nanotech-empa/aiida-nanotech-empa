@@ -31,28 +31,7 @@ class Cp2kPdosWorkChain(WorkChain):
         spec.input("mol_structure", valid_type=StructureData)
         spec.input("pdos_lists", valid_type=List)
         spec.input("wfn_file_path", valid_type=Str, default=lambda: Str(""))
-        spec.input(
-            "protocol",
-            valid_type=Str,
-            default=lambda: Str("standard"),
-            required=False,
-            help="Settings to run simulations with.",
-        )
-        spec.input(
-            "sc_diag",
-            valid_type=Bool,
-            required=False,
-            default=lambda: Bool(False),
-        )
-        spec.input(
-            "force_multiplicity",
-            valid_type=Bool,
-            required=False,
-            default=lambda: Bool(True),
-        )
-
         spec.input("dft_params", valid_type=Dict)
-
         spec.input("overlap_code", valid_type=Code)
         spec.input("overlap_params", valid_type=Dict)
 
@@ -149,7 +128,7 @@ class Cp2kPdosWorkChain(WorkChain):
             encoding="utf-8",
         ) as handle:
             protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
+            input_dict = copy.deepcopy(protocols[self.inputs.dft_params["protocol"]])
 
         structure = self.inputs.slabsys_structure
         # cutoff: use the same for all calculations
@@ -201,7 +180,7 @@ class Cp2kPdosWorkChain(WorkChain):
         input_dict["GLOBAL"]["WALLTIME"] = 86000
 
         self.ctx.slab_options = self.get_options(self.ctx.n_all_atoms)
-        if self.inputs.protocol.value == "debug":
+        if self.inputs.dft_params["protocol"] == "debug":
             self.ctx.slab_options = {
             "resources": {"num_machines": 1,
             "num_mpiprocs_per_machine": 8,
@@ -224,7 +203,7 @@ class Cp2kPdosWorkChain(WorkChain):
         # end whole system part
 
         # molecule part
-        input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
+        input_dict = copy.deepcopy(protocols[self.inputs.dft_params["protocol"]])
 
         structure = self.inputs.mol_structure
 
@@ -271,7 +250,7 @@ class Cp2kPdosWorkChain(WorkChain):
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = 86000
         self.ctx.mol_options = self.get_options(self.ctx.n_mol_atoms)
-        if self.inputs.protocol.value == "debug":
+        if self.inputs.dft_params["protocol"] == "debug":
             self.ctx.mol_options = {
             "resources": {"num_machines": 1,
             "num_mpiprocs_per_machine": 1,
@@ -309,7 +288,7 @@ class Cp2kPdosWorkChain(WorkChain):
             encoding="utf-8",
         ) as handle:
             protocols = yaml.safe_load(handle)
-            scf_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
+            scf_dict = copy.deepcopy(protocols[self.inputs.dft_params["protocol"]])
 
         input_dict = copy.deepcopy(self.ctx.input_dict_slab)
         if self.ctx.slab_dft_params["elpa_switch"]:
@@ -329,21 +308,27 @@ class Cp2kPdosWorkChain(WorkChain):
                 "LDOS": pdos_list_dicts,
             }
 
-        input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
-            "ELECTRONIC_TEMPERATURE"
-        ] = self.ctx.slab_dft_params["smear_temperature"]
+        smearing = "smear_t" in self.ctx.slab_dft_params
+        if smearing:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
+                "ELECTRONIC_TEMPERATURE"
+            ] = self.ctx.slab_dft_params["smear_t"]
+        else:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         # UKS
-        if self.ctx.slab_dft_params["uks"]:
-            if self.inputs.force_multiplicity:
-                input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
-                    "FIXED_MAGNETIC_MOMENT"
-                ] = (self.ctx.slab_dft_params["multiplicity"] - 1)
+        if self.ctx.slab_dft_params["uks"] and smearing and self.ctx.slab_dft_params["force_multiplicity"]:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
+                "FIXED_MAGNETIC_MOMENT"
+            ] = (self.ctx.slab_dft_params["multiplicity"] - 1)
         # no self consistent diag
-        if not self.inputs.sc_diag:
+        if not self.ctx.slab_dft_params['sc_diag']:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_SCF"] = "1.0E-1"
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["OUTER_SCF"]["EPS_SCF"] = "1.0E-1"
+
+        if not smearing and "SMEAR" in input_dict["FORCE_EVAL"]["DFT"]["SCF"]:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
@@ -367,27 +352,34 @@ class Cp2kPdosWorkChain(WorkChain):
         # end whole system part
 
         # molecule part
-        scf_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
+        scf_dict = copy.deepcopy(protocols[self.inputs.dft_params["protocol"]])
         input_dict = copy.deepcopy(self.ctx.input_dict_mol)
         # no ELPA for the molecule
         input_dict["FORCE_EVAL"]["DFT"].pop("SCF")
         input_dict["FORCE_EVAL"]["DFT"]["SCF"] = scf_dict
         input_dict["FORCE_EVAL"]["DFT"]["SCF"]["ADDED_MOS"] = nlumo + 2
-        input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
-            "ELECTRONIC_TEMPERATURE"
-        ] = self.ctx.mol_dft_params["smear_temperature"]
+
+        smearing = "smear_t" in self.ctx.mol_dft_params
+        if smearing:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
+                "ELECTRONIC_TEMPERATURE"
+            ] = self.ctx.mol_dft_params["smear_t"]
+        else:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         # UKS
-        if self.ctx.mol_dft_params["uks"]:
-            if self.inputs.force_multiplicity:
-                input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
-                    "FIXED_MAGNETIC_MOMENT"
-                ] = (self.ctx.mol_dft_params["multiplicity"] - 1)
+        if self.ctx.mol_dft_params["uks"] and smearing and self.ctx.slab_dft_params["force_multiplicity"]:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
+                "FIXED_MAGNETIC_MOMENT"
+            ] = (self.ctx.mol_dft_params["multiplicity"] - 1)
         # no self consistent diag
-        if not self.inputs.sc_diag:
+        if not self.ctx.slab_dft_params['sc_diag']:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_SCF"] = "1.0E-1"
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["OUTER_SCF"]["EPS_SCF"] = "1.0E-1"
+
+        if not smearing and "SMEAR" in input_dict["FORCE_EVAL"]["DFT"]["SCF"]:
+            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
@@ -431,6 +423,8 @@ class Cp2kPdosWorkChain(WorkChain):
             "max_wallclock_seconds": 86400,
         }
 
+        if self.inputs.dft_params["protocol"] == "debug":
+            inputs["metadata"]["options"]["max_wallclock_seconds"] = 600
         settings = Dict(dict={"additional_retrieve_list": ["overlap.npz"]})
         inputs["settings"] = settings
 
