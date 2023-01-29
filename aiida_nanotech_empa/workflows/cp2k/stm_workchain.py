@@ -264,7 +264,7 @@ class Cp2kStmWorkChain(WorkChain):
             "resources": {"num_machines": n_machines},
             "max_wallclock_seconds": 36000,
         } 
-        if self.inputs.dft_params["protocol"] == "debug"
+        if self.inputs.dft_params["protocol"] == "debug":
             inputs['metadata']['options']['max_wallclock_seconds'] = 600
         # Need to make an explicit instance for the node to be stored to aiida
         settings = Dict(dict={'additional_retrieve_list': ['stm.npz']})
