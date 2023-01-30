@@ -272,6 +272,14 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         if "orb.npz" not in [obj.name for obj in self.ctx.stm.outputs.retrieved.list_objects()]:
             self.report("Orbital calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
+        # Add the workchain pk to the input structure extras
+        extras_label = "Cp2kOrbitalsWorkChain_pks"
+        if extras_label not in self.inputs.structure.extras:
+            extras_list = []
+        else:
+            extras_list = self.inputs.structure.extras[extras_label]
+        extras_list.append(self.node.pk)
+        self.inputs.structure.set_extra(extras_label, extras_list)
         self.report("Work chain is finished")
     
     

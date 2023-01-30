@@ -433,6 +433,14 @@ class Cp2kPdosWorkChain(WorkChain):
         if "overlap.npz" not in [obj.name for obj in self.ctx.overlap.outputs.retrieved.list_objects()]:
             self.report("Overlap calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
+        # Add the workchain pk to the input structure extras
+        extras_label = "Cp2kPdosWorkChain_pks"
+        if extras_label not in self.inputs.slabsys_structure.extras:
+            extras_list = []
+        else:
+            extras_list = self.inputs.slabsys_structure.extras[extras_label]
+        extras_list.append(self.node.pk)
+        self.inputs.slabsys_structure.set_extra(extras_label, extras_list)            
         self.report("Work chain is finished")
 
     # ==========================================================================
