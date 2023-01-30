@@ -309,7 +309,7 @@ class Cp2kPdosWorkChain(WorkChain):
             }
 
         smearing = "smear_t" in self.ctx.slab_dft_params
-        if smearing:
+        if smearing and self.ctx.slab_dft_params['sc_diag']:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
                 "ELECTRONIC_TEMPERATURE"
             ] = self.ctx.slab_dft_params["smear_t"]
@@ -317,18 +317,16 @@ class Cp2kPdosWorkChain(WorkChain):
             input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         # UKS
-        if self.ctx.slab_dft_params["uks"] and smearing and self.ctx.slab_dft_params["force_multiplicity"]:
+        if self.ctx.slab_dft_params["uks"] and smearing and self.ctx.slab_dft_params['force_multiplicity']:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
                 "FIXED_MAGNETIC_MOMENT"
             ] = (self.ctx.slab_dft_params["multiplicity"] - 1)
         # no self consistent diag
         if not self.ctx.slab_dft_params['sc_diag']:
-            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
+            if "SMEAR" in input_dict["FORCE_EVAL"]["DFT"]["SCF"]: # could have been already removed if smear false and sc_diag true
+                input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR") 
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_SCF"] = "1.0E-1"
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["OUTER_SCF"]["EPS_SCF"] = "1.0E-1"
-
-        if not smearing and "SMEAR" in input_dict["FORCE_EVAL"]["DFT"]["SCF"]:
-            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
@@ -360,7 +358,7 @@ class Cp2kPdosWorkChain(WorkChain):
         input_dict["FORCE_EVAL"]["DFT"]["SCF"]["ADDED_MOS"] = nlumo + 2
 
         smearing = "smear_t" in self.ctx.mol_dft_params
-        if smearing:
+        if smearing and self.ctx.mol_dft_params['sc_diag']:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
                 "ELECTRONIC_TEMPERATURE"
             ] = self.ctx.mol_dft_params["smear_t"]
@@ -368,18 +366,16 @@ class Cp2kPdosWorkChain(WorkChain):
             input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         # UKS
-        if self.ctx.mol_dft_params["uks"] and smearing and self.ctx.slab_dft_params["force_multiplicity"]:
+        if self.ctx.mol_dft_params["uks"] and smearing and self.ctx.mol_dft_params['force_multiplicity']:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["SMEAR"][
                 "FIXED_MAGNETIC_MOMENT"
             ] = (self.ctx.mol_dft_params["multiplicity"] - 1)
         # no self consistent diag
-        if not self.ctx.slab_dft_params['sc_diag']:
-            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
+        if not self.ctx.mol_dft_params['sc_diag']:
+            if "SMEAR" in input_dict["FORCE_EVAL"]["DFT"]["SCF"]: # could have been already removed if smear false and sc_diag true
+                input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR") 
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_SCF"] = "1.0E-1"
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["OUTER_SCF"]["EPS_SCF"] = "1.0E-1"
-
-        if not smearing and "SMEAR" in input_dict["FORCE_EVAL"]["DFT"]["SCF"]:
-            input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
