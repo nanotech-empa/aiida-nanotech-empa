@@ -26,12 +26,22 @@ def _example_cp2k_orb(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
         "force_multiplicity": force_multiplicity,
         "elpa_switch": False, 
         "uks": uks, 
-        "charge":0,
-        "multiplicity":1, 
-        "smear_t": 150, 
-        "spin_up_guess":[0],
-        "spin_dw_guess":[1]}
+        "charge":0, 
+        "smear_t": 150}
     )
+    if uks:
+        builder.dft_params = Dict(
+            dict={"protocol":"debug",
+            "sc_diag": sc_diag,
+            "force_multiplicity": force_multiplicity,
+            "elpa_switch": False, 
+            "uks": uks, 
+            "charge" : 0,
+            "multiplicity":1, 
+            "smear_t": 150, 
+            "spin_up_guess":[0],
+            "spin_dw_guess":[1]}
+        )    
     builder.stm_code = stm_code
     parent_dir = "./parent_calc_folder/"
     builder.stm_params = Dict(dict={

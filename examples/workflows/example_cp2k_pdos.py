@@ -28,12 +28,23 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
         "sc_diag": sc_diag,
         "force_multiplicity": force_multiplicity,
         "elpa_switch": False, 
-        "uks": uks, 
-        "multiplicity":1, 
+        "uks": uks,  
         "smear_t": 150, 
-        "spin_up_guess":[0],
-        "spin_dw_guess":[1]}
-    )
+        }
+    )    
+    if uks:
+        builder.dft_params = Dict(
+            dict={"protocol":"debug",
+            "sc_diag": sc_diag,
+            "force_multiplicity": force_multiplicity,
+            "elpa_switch": False, 
+            "uks": uks, 
+            "multiplicity":1, 
+            "smear_t": 150, 
+            "spin_up_guess":[0],
+            "spin_dw_guess":[1]}
+        )    
+
     builder.overlap_code = overlap_code
     builder.overlap_params = Dict(
         dict={
