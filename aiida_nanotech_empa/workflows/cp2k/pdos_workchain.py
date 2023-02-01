@@ -76,13 +76,12 @@ class Cp2kPdosWorkChain(WorkChain):
 
         # set up slab dft parameters
         self.ctx.slab_dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
-        if "uks" not in self.ctx.slab_dft_params:
-            self.ctx.slab_dft_params["uks"] = False
+        if  not self.ctx.slab_dft_params["uks"]:
             self.ctx.slab_dft_params["spin_up_guess"] = []
             self.ctx.slab_dft_params["spin_dw_guess"] = []
 
         # set up mol dft parameters
-        self.ctx.mol_dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
+        self.ctx.mol_dft_params = copy.deepcopy(self.ctx.slab_dft_params)
         
         self.ctx.mol_dft_params[
             "elpa_switch"
@@ -91,29 +90,26 @@ class Cp2kPdosWorkChain(WorkChain):
         mol_spin_up = []
         mol_spin_dw = []
 
-        if "uks" not in self.ctx.mol_dft_params:
-            self.ctx.mol_dft_params["uks"] = False
-            self.ctx.mol_dft_params["spin_up_guess"] = []
-            self.ctx.mol_dft_params["spin_dw_guess"] = []
-            slab_atoms = self.inputs.slabsys_structure.get_ase()
-            mol_atoms = self.inputs.mol_structure.get_ase()
 
-            mol_at_tuples = [
-                (e, *np.round(p, 2))
-                for e, p in zip(mol_atoms.get_chemical_symbols(), mol_atoms.positions)
-            ]
+        slab_atoms = self.inputs.slabsys_structure.get_ase()
+        mol_atoms = self.inputs.mol_structure.get_ase()
 
-            for i_up in self.ctx.mol_dft_params["spin_up_guess"]:
-                at = slab_atoms[i_up]
-                at_tup = (at.symbol, *np.round(at.position, 2))
-                if at_tup in mol_at_tuples:
-                    mol_spin_up.append(mol_at_tuples.index(at_tup))
+        mol_at_tuples = [
+            (e, *np.round(p, 2))
+            for e, p in zip(mol_atoms.get_chemical_symbols(), mol_atoms.positions)
+        ]
 
-            for i_dw in self.ctx.mol_dft_params["spin_dw_guess"]:
-                at = slab_atoms[i_dw]
-                at_tup = (at.symbol, *np.round(at.position, 2))
-                if at_tup in mol_at_tuples:
-                    mol_spin_dw.append(mol_at_tuples.index(at_tup))
+        for i_up in self.ctx.mol_dft_params["spin_up_guess"]:
+            at = slab_atoms[i_up]
+            at_tup = (at.symbol, *np.round(at.position, 2))
+            if at_tup in mol_at_tuples:
+                mol_spin_up.append(mol_at_tuples.index(at_tup))
+
+        for i_dw in self.ctx.mol_dft_params["spin_dw_guess"]:
+            at = slab_atoms[i_dw]
+            at_tup = (at.symbol, *np.round(at.position, 2))
+            if at_tup in mol_at_tuples:
+                mol_spin_dw.append(mol_at_tuples.index(at_tup))
 
         self.ctx.mol_dft_params["spin_up_guess"] = mol_spin_up
         self.ctx.mol_dft_params["spin_dw_guess"] = mol_spin_dw

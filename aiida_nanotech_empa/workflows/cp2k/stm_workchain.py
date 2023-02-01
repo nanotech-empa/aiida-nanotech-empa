@@ -81,8 +81,7 @@ class Cp2kStmWorkChain(WorkChain):
 
         self.ctx.dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
 
-        if "uks" not in self.ctx.dft_params:
-            self.ctx.dft_params["uks"] = False
+        if  not  self.ctx.dft_params["uks"]:
             self.ctx.dft_params["spin_up_guess"] = []
             self.ctx.dft_params["spin_dw_guess"] = []
 
