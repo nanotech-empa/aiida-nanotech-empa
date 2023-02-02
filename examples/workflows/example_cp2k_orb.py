@@ -2,7 +2,7 @@ import os
 
 import ase.io
 from aiida.engine import run_get_node
-from aiida.orm import Bool, Dict, List, Str, StructureData, load_code
+from aiida.orm import Dict, StructureData, load_code
 from aiida.plugins import WorkflowFactory
 
 Cp2kOrbiralsWorkChain = WorkflowFactory("nanotech_empa.cp2k.orbitals")
@@ -24,7 +24,8 @@ def _example_cp2k_orb(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
         dict={"protocol":"debug",
         "sc_diag": sc_diag,
         "force_multiplicity": force_multiplicity,
-        "elpa_switch": False, 
+        "elpa_switch": False,
+        "periodic": 'NONE', 
         "uks": uks, 
         "charge":0, 
         "smear_t": 150}
@@ -34,7 +35,8 @@ def _example_cp2k_orb(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
             dict={"protocol":"debug",
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
-            "elpa_switch": False, 
+            "elpa_switch": False,
+            "periodic": 'NONE',             
             "uks": uks, 
             "charge" : 0,
             "multiplicity":1, 
@@ -78,8 +80,8 @@ def example_cp2k_orb_no_sc_diag(cp2k_code, stm_code):
     _example_cp2k_orb(cp2k_code,stm_code, False, True,False)
 
 
-def example_cp2k_orb_sc_diag(cp2k_code, overlap_code):
-    _example_cp2k_orb(cp2k_code, overlap_code, True, True,True)
+def example_cp2k_orb_sc_diag(cp2k_code, stm_code):
+    _example_cp2k_orb(cp2k_code, stm_code, True, True,True)
 
 
 if __name__ == "__main__":

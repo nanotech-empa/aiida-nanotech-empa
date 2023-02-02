@@ -14,6 +14,9 @@ standard:
             POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             CHARGE: 0
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: XYZ
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
@@ -90,6 +93,9 @@ low_accuracy:
             POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             CHARGE: 0
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: XYZ            
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
@@ -166,6 +172,9 @@ debug:
             POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             CHARGE: 0
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: XYZ
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5

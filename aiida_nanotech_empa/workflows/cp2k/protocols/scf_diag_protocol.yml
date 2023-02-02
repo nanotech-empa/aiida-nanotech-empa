@@ -3,7 +3,6 @@ standard:
     EPS_SCF: "1.0E-6"
     MAX_SCF: "500"
     CHOLESKY: INVERSE
-    ADDED_MOS: "100"
     SMEAR:
         _: "ON"
         FIXED_MAGNETIC_MOMENT: "-100"
@@ -33,7 +32,6 @@ low_accuracy:
     EPS_SCF: "1.0E-5"
     MAX_SCF: "500"
     CHOLESKY: INVERSE
-    ADDED_MOS: "100"
     SMEAR:
         _: "ON"
         FIXED_MAGNETIC_MOMENT: "-100"
@@ -63,7 +61,6 @@ debug:
     EPS_SCF: "1.0E-1"
     MAX_SCF: "500"
     CHOLESKY: INVERSE
-    ADDED_MOS: "100"
     SMEAR:
         _: "ON"
         FIXED_MAGNETIC_MOMENT: "-100"

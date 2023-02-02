@@ -27,7 +27,8 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
         dict={"protocol":"debug",
         "sc_diag": sc_diag,
         "force_multiplicity": force_multiplicity,
-        "elpa_switch": False, 
+        "elpa_switch": False,
+        "periodic": 'XYZ', 
         "uks": uks,  
         "smear_t": 150, 
         }
@@ -38,6 +39,7 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
             "elpa_switch": False, 
+            "periodic": 'XYZ',
             "uks": uks, 
             "multiplicity":1, 
             "smear_t": 150, 

@@ -30,7 +30,7 @@ standard:
                 NGRIDS: 5
             POISSON:
                 PERIODIC: NONE
-                PSOLVER: MT
+                POISSON_SOLVER: MT
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -116,7 +116,7 @@ low_accuracy:
                 NGRIDS: 5
             POISSON:
                 PERIODIC: NONE
-                PSOLVER: MT
+                POISSON_SOLVER: MT
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -202,7 +202,7 @@ debug:
                 NGRIDS: 5
             POISSON:
                 PERIODIC: NONE
-                PSOLVER: MT
+                POISSON_SOLVER: MT
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC

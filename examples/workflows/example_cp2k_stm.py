@@ -2,7 +2,7 @@ import os
 
 import ase.io
 from aiida.engine import run_get_node
-from aiida.orm import Bool, Dict, List, Str, StructureData, load_code
+from aiida.orm import  Dict,  StructureData, load_code
 from aiida.plugins import WorkflowFactory
 
 Cp2kStmWorkChain = WorkflowFactory("nanotech_empa.cp2k.stm")
@@ -25,6 +25,7 @@ def _example_cp2k_stm(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
         "sc_diag": sc_diag,
         "force_multiplicity": force_multiplicity,
         "elpa_switch": False, 
+        "periodic": 'XYZ',
         "uks": uks, 
         "smear_t": 150}
     )
@@ -34,6 +35,7 @@ def _example_cp2k_stm(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
             "elpa_switch": False, 
+            "periodic": 'XYZ',
             "uks": uks, 
             "multiplicity":1, 
             "smear_t": 150, 
@@ -42,7 +44,6 @@ def _example_cp2k_stm(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
         )
     builder.stm_code = stm_code
     parent_dir = "./parent_calc_folder/"
-    extrap_plane = 3.0
     builder.stm_params = Dict(dict={
             '--cp2k_input_file':    parent_dir+'aiida.inp',
             '--basis_set_file':     parent_dir+'BASIS_MOLOPT',
@@ -67,18 +68,13 @@ def _example_cp2k_stm(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
 
     assert calc_node.is_finished_ok
 
-    # slabopt_out_dict = dict(calc_node.outputs.output_parameters)
-    # print()
-    # for k in slabopt_out_dict:
-    #    print(f"  {k}: {slabopt_out_dict[k]}")
-
 
 def example_cp2k_stm_no_sc_diag(cp2k_code, stm_code):
     _example_cp2k_orb(cp2k_code,stm_code, False, True,False)
 
 
-def example_cp2k_stm_sc_diag(cp2k_code, overlap_code):
-    _example_cp2k_orb(cp2k_code, overlap_code, True, True,True)
+def example_cp2k_stm_sc_diag(cp2k_code, stm_code):
+    _example_cp2k_orb(cp2k_code, stm_code, True, True,True)
 
 
 if __name__ == "__main__":
