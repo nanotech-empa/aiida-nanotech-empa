@@ -17,7 +17,7 @@ from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
     get_kinds_section,
 )
 
-Cp2kDiagWorkChain = WorkflowFactory("cp2k.diag")
+Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
 OverlapCalculation = CalculationFactory("spm.overlap")
 
 
@@ -74,39 +74,36 @@ class Cp2kPdosWorkChain(WorkChain):
             "elpa_switch"
         ] = False  # Elpa can cause problems with small systems
 
-        mol_spin_up = []
-        mol_spin_dw = []
+
 
 
         slab_atoms = self.inputs.slabsys_structure.get_ase()
         mol_atoms = self.inputs.mol_structure.get_ase()
 
+        if   self.ctx.mol_dft_params["uks"]:
+            mol_spin_up = []
+            mol_spin_dw = []
+            mol_at_tuples = [
+                (e, *np.round(p, 2))
+                for e, p in zip(mol_atoms.get_chemical_symbols(), mol_atoms.positions)
+            ]
 
-        mol_at_tuples = [
-            (e, *np.round(p, 2))
-            for e, p in zip(mol_atoms.get_chemical_symbols(), mol_atoms.positions)
-        ]
+            for i_up in self.ctx.mol_dft_params["spin_up_guess"]:
+                at = slab_atoms[i_up]
+                at_tup = (at.symbol, *np.round(at.position, 2))
+                if at_tup in mol_at_tuples:
+                    mol_spin_up.append(mol_at_tuples.index(at_tup))
 
-        for i_up in self.ctx.mol_dft_params["spin_up_guess"]:
-            at = slab_atoms[i_up]
-            at_tup = (at.symbol, *np.round(at.position, 2))
-            if at_tup in mol_at_tuples:
-                mol_spin_up.append(mol_at_tuples.index(at_tup))
+            for i_dw in self.ctx.mol_dft_params["spin_dw_guess"]:
+                at = slab_atoms[i_dw]
+                at_tup = (at.symbol, *np.round(at.position, 2))
+                if at_tup in mol_at_tuples:
+                    mol_spin_dw.append(mol_at_tuples.index(at_tup))
 
-        for i_dw in self.ctx.mol_dft_params["spin_dw_guess"]:
-            at = slab_atoms[i_dw]
-            at_tup = (at.symbol, *np.round(at.position, 2))
-            if at_tup in mol_at_tuples:
-                mol_spin_dw.append(mol_at_tuples.index(at_tup))
-
-        self.ctx.mol_dft_params["spin_up_guess"] = mol_spin_up
-        self.ctx.mol_dft_params["spin_dw_guess"] = mol_spin_dw
+            self.ctx.mol_dft_params["spin_up_guess"] = mol_spin_up
+            self.ctx.mol_dft_params["spin_dw_guess"] = mol_spin_dw
 
     def run_diags(self):
-        for calculation in [self.ctx.slab_ot_scf, self.ctx.mol_ot_scf]:
-            if not common_utils.check_if_calc_ok(self, calculation):
-                return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
-
         # slab part
         self.report("Running Diag Workchain for slab")
 
@@ -138,7 +135,6 @@ class Cp2kPdosWorkChain(WorkChain):
         # end molecule part
 
     def run_overlap(self):
-
         for calculation in [self.ctx.slab_diag_scf, self.ctx.mol_diag_scf]:
             if not common_utils.check_if_calc_ok(self, calculation):
                 return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
@@ -175,12 +171,12 @@ class Cp2kPdosWorkChain(WorkChain):
             self.report("Overlap calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
         # Add the workchain pk to the input structure extras
-        extras_label = "Cp2kPdosWorkChain_pks"
+        extras_label = "Cp2kPdosWorkChain_uuids"
         if extras_label not in self.inputs.slabsys_structure.extras:
             extras_list = []
         else:
             extras_list = self.inputs.slabsys_structure.extras[extras_label]
-        extras_list.append(self.node.pk)
+        extras_list.append(self.node.uuid)
         self.inputs.slabsys_structure.set_extra(extras_label, extras_list)            
         self.report("Work chain is finished")
 

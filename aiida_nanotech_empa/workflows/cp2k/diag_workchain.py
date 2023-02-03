@@ -86,10 +86,22 @@ class Cp2kDiagWorkChain(WorkChain):
 
         structure = self.inputs.structure
         self.ctx.n_atoms = len(structure.sites)
+
+
         # set up mol UKS parameters
 
         self.ctx.dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
-        self.report("DFT parameters in setup: {}".format(self.ctx.dft_params))
+        # resources
+        self.ctx.options = self.inputs.options.get_dict()
+        if self.ctx.dft_params['protocol'] == "debug":
+            self.ctx.options = {
+                "max_wallclock_seconds": 600,
+                "resources": {
+                    "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+                "num_cores_per_mpiproc": 1,
+                }
+                }
 
         if  not  self.ctx.dft_params["uks"]:
             self.ctx.dft_params["spin_up_guess"] = []
@@ -174,8 +186,6 @@ class Cp2kDiagWorkChain(WorkChain):
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = 86000
 
-        self.ctx.options = self.inputs.options.get_dict()
-
         builder.cp2k.metadata.options = self.ctx.options
 
         # parser
@@ -217,7 +227,7 @@ class Cp2kDiagWorkChain(WorkChain):
                 {"COMPONENTS": "", "LIST": e} for e in self.inputs.pdos_lists
             ]
             input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["PDOS"] = {
-                "NLUMO": added_mos,
+                "NLUMO": self.ctx.dft_params['added_mos'],
                 "LDOS": pdos_list_dicts,
             }        
 

@@ -16,7 +16,7 @@ standard:
             CHARGE: 0
             POISSON:
                 PERIODIC: XYZ
-                POISSON_SOLVER: XYZ
+                POISSON_SOLVER: PERIODIC
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
@@ -95,7 +95,7 @@ low_accuracy:
             CHARGE: 0
             POISSON:
                 PERIODIC: XYZ
-                POISSON_SOLVER: XYZ            
+                POISSON_SOLVER: PERIODIC            
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
@@ -174,7 +174,7 @@ debug:
             CHARGE: 0
             POISSON:
                 PERIODIC: XYZ
-                POISSON_SOLVER: XYZ
+                POISSON_SOLVER: PERIODIC
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5

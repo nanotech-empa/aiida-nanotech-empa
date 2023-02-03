@@ -86,11 +86,12 @@ if __name__ == "__main__":
     #_example_cp2k_stm(
     #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_stm_4576cd@daint-mc-em01"), True, True,False
     #)
-    #print("#### no sc_diag UKS no force")
-    #_example_cp2k_stm(
-    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_stm_4576cd@daint-mc-em01"), False, False, True
-    #)
-    print("#### sc_diag UKS force")
+    #
+    print("#### no sc_diag UKS no force")
     _example_cp2k_stm(
-        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_stm_4576cd@daint-mc-em01"), True, True, True
-    )    
+        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_stm_4576cd@daint-mc-em01"), False, False, True
+    )
+    #print("#### sc_diag UKS force")
+    #_example_cp2k_stm(
+    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_stm_4576cd@daint-mc-em01"), True, True, True
+    #)    
