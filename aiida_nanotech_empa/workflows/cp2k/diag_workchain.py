@@ -270,6 +270,7 @@ class Cp2kDiagWorkChain(WorkChain):
 
         self.out("output_parameters", self.ctx.diag_scf.outputs.output_parameters)
         self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
+        self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         self.report("Work chain is finished")
     
     
