@@ -34,6 +34,12 @@ class Cp2kPdosWorkChain(WorkChain):
         spec.input("dft_params", valid_type=Dict)
         spec.input("overlap_code", valid_type=Code)
         spec.input("overlap_params", valid_type=Dict)
+        spec.input_namespace(
+            "options",
+            valid_type=dict,
+            non_db=True,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")        
 
         spec.outline(
             cls.setup,
@@ -54,9 +60,8 @@ class Cp2kPdosWorkChain(WorkChain):
         self.report("Setting up workchain")
         
         self.ctx.n_slab_atoms = len(self.inputs.slabsys_structure.sites)
-        n_mol_atoms = len(self.inputs.mol_structure.sites)
-        self.ctx.slab_options = self.get_options(self.ctx.n_slab_atoms)
-        self.ctx.mol_options = self.get_options(n_mol_atoms)
+        self.ctx.slab_options = self.inputs.options['slab']
+        self.ctx.mol_options = self.inputs.options['molecule']
         emax = float(self.inputs.overlap_params.get_dict()["--emax1"])
         nlumo = int(self.inputs.overlap_params.get_dict()["--nlumo2"])
         
@@ -179,30 +184,3 @@ class Cp2kPdosWorkChain(WorkChain):
         extras_list.append(self.node.uuid)
         self.inputs.slabsys_structure.set_extra(extras_label, extras_list)            
         self.report("Work chain is finished")
-
-    # ==========================================================================
-    @classmethod
-    def get_options(cls, n_atoms):
-
-        num_machines = 12
-        if n_atoms > 500:
-            num_machines = 27
-        if n_atoms > 1200:
-            num_machines = 48
-        if n_atoms > 2400:
-            num_machines = 60
-        if n_atoms > 3600:
-            num_machines = 75
-        walltime = 86400
-
-        # resources
-        options = {
-            "resources": {"num_machines": num_machines},
-            "max_wallclock_seconds": walltime,
-            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
-        }
-    
-
-        return options
-
-    # ==========================================================================

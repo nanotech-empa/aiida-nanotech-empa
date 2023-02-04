@@ -47,8 +47,12 @@ class Cp2kHrstmWorkChain(WorkChain):
         )
 
         spec.outputs.dynamic = True
+        spec.exit_code(
+            390,
+            "ERROR_TERMINATION",
+            message="One or more steps of the work chain failed.",
+        ) 
 
-    # TODO this is seemingly done everywhere, I don't like copy paste though...
     def setup(self):
         self.report("Setting up workchain")
         structure = self.inputs.structure

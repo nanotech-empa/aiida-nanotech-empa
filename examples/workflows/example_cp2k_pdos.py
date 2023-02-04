@@ -47,6 +47,24 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
             "spin_dw_guess":[1]}
         )    
 
+    builder.options = {
+        'slab': {
+            "max_wallclock_seconds": 600,
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+            }
+        },
+        'molecule': {
+            "max_wallclock_seconds": 600,
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+            }
+        }            
+        }    
+    
+    
     builder.overlap_code = overlap_code
     builder.overlap_params = Dict(
         dict={
