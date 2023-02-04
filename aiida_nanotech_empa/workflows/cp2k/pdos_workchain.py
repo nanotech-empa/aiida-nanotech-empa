@@ -53,9 +53,9 @@ class Cp2kPdosWorkChain(WorkChain):
     def setup(self):
         self.report("Setting up workchain")
         
-        n_slab_atoms = len(self.inputs.slabsys_structure.sites)
+        self.ctx.n_slab_atoms = len(self.inputs.slabsys_structure.sites)
         n_mol_atoms = len(self.inputs.mol_structure.sites)
-        self.ctx.slab_options = self.get_options(n_slab_atoms)
+        self.ctx.slab_options = self.get_options(self.ctx.n_slab_atoms)
         self.ctx.mol_options = self.get_options(n_mol_atoms)
         emax = float(self.inputs.overlap_params.get_dict()["--emax1"])
         nlumo = int(self.inputs.overlap_params.get_dict()["--nlumo2"])
@@ -63,7 +63,7 @@ class Cp2kPdosWorkChain(WorkChain):
 
         # set up slab dft parameters
         self.ctx.slab_dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
-        self.ctx.slab_dft_params["added_mos"] =  np.max([100, int(1.2 * n_slab_atoms * emax / 5.0)])
+        self.ctx.slab_dft_params["added_mos"] =  np.max([100, int(1.2 * self.ctx.n_slab_atoms * emax / 5.0)])
 
         # set up mol dft parameters
         self.ctx.mol_dft_params = copy.deepcopy(self.ctx.slab_dft_params)
@@ -149,7 +149,7 @@ class Cp2kPdosWorkChain(WorkChain):
         inputs["parent_slab_folder"] = self.ctx.slab_diag_scf.outputs.remote_folder
         inputs["parent_mol_folder"] = self.ctx.mol_diag_scf.outputs.remote_folder
 
-        n_machines = 4 if self.ctx.n_all_atoms < 2000 else 8
+        n_machines = 4 if self.ctx.n_slab_atoms < 2000 else 8
 
         inputs["metadata"]["options"] = {
             "resources": {"num_machines": n_machines},

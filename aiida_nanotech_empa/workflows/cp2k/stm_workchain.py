@@ -6,10 +6,7 @@ import numpy as np
 import yaml
 
 from aiida.engine import ToContext, WorkChain,  while_
-from aiida.orm import Bool, Code, Dict, List, SinglefileData, Str, StructureData
-from aiida.orm.nodes.data.array import ArrayData
-from aiida.orm import SinglefileData
-from aiida.orm import RemoteData
+from aiida.orm import  Code, Dict, Str, StructureData
 
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
@@ -55,12 +52,12 @@ class Cp2kStmWorkChain(WorkChain):
     def setup(self):
         self.report("Setting up workchain")
         structure = self.inputs.structure
-        n_atoms = len(structure.sites)
+        self.ctx.n_atoms = len(structure.sites)
         emax = float(self.inputs.stm_params.get_dict()['--energy_range'][1])
-        added_mos = np.max([100, int(1.2*n_atoms*emax/5.0)])
+        added_mos = np.max([100, int(1.2*self.ctx.n_atoms*emax/5.0)])
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
         self.ctx.dft_params["added_mos"] = added_mos        
-        self.ctx.options = self.get_options(n_atoms)
+        self.ctx.options = self.get_options(self.ctx.n_atoms)
               
     def run_diag_scf(self):
         self.report("Running CP2K diagonalization SCF")        

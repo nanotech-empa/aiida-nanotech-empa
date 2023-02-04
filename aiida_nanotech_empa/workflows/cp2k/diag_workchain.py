@@ -5,11 +5,11 @@ import pathlib
 import numpy as np
 import yaml
 
-from aiida.engine import ToContext, WorkChain,  while_
+from aiida.engine import  WorkChain
 from aiida.orm import  Code, Dict, List, SinglefileData, Str, StructureData
 from aiida.orm import SinglefileData
 
-from aiida.plugins import CalculationFactory, WorkflowFactory
+from aiida.plugins import  WorkflowFactory
 
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
