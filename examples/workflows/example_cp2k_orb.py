@@ -43,7 +43,16 @@ def _example_cp2k_orb(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
             "smear_t": 150, 
             "spin_up_guess":[0],
             "spin_dw_guess":[1]}
-        )    
+        )
+
+    builder.options=Dict(dict={
+            "max_wallclock_seconds": 600,
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+                "num_cores_per_mpiproc": 1,
+            }
+        })        
     builder.stm_code = stm_code
     parent_dir = "./parent_calc_folder/"
     builder.stm_params = Dict(dict={
@@ -99,5 +108,5 @@ if __name__ == "__main__":
    #)
     print("#### sc_diag UKS force")
     _example_cp2k_orb(
-        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_stm_4576cd@daint-mc-em01"), True, True, True
+        load_code("cp2k@localhost"), load_code("py_stm_4576cd@localhost"), True, True, True
     )    

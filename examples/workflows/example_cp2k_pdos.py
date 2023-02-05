@@ -22,7 +22,7 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
     ase_geom_mol = ase_geom_slab[0:4]
     builder.slabsys_structure = StructureData(ase=ase_geom_slab)
     builder.mol_structure = StructureData(ase=ase_geom_mol)
-    builder.pdos_lists = List(list=['1', '2'])
+    builder.pdos_lists = List(list=[('1..4','molecule'), ('1','cat')])
     builder.dft_params = Dict(
         dict={"protocol":"debug",
         "sc_diag": sc_diag,
@@ -53,6 +53,7 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
             "resources": {
                 "num_machines": 1,
                 "num_mpiprocs_per_machine": 1,
+                "num_cores_per_mpiproc": 1,
             }
         },
         'molecule': {
@@ -60,6 +61,7 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity,uks)
             "resources": {
                 "num_machines": 1,
                 "num_mpiprocs_per_machine": 1,
+                "num_cores_per_mpiproc": 1,
             }
         }            
         }    
@@ -109,7 +111,7 @@ def example_cp2k_pdos_sc_diag(cp2k_code, overlap_code):
 if __name__ == "__main__":
     print("#### no sc_diag RKS")
     _example_cp2k_pdos(
-        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), False, True,False
+        load_code("cp2k@localhost"), load_code("py_overlap_4576cd@localhost"), False, True,False
     )
     #print("#### sc_diag RKS")
     #_example_cp2k_pdos(
@@ -119,7 +121,7 @@ if __name__ == "__main__":
     #_example_cp2k_pdos(
     #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), False, False, True
     #)
-    print("#### sc_diag UKS force")
-    _example_cp2k_pdos(
-        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), True, True, True
-    )    
+    #print("#### sc_diag UKS force")
+    #_example_cp2k_pdos(
+    #    load_code("cp2k@localhost"), load_code("py_overlap_4576cd@localhost"), True, True, True
+    #)    

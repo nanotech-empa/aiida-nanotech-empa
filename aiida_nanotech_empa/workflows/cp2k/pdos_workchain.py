@@ -120,7 +120,7 @@ class Cp2kPdosWorkChain(WorkChain):
         builder.options = Dict(dict=self.ctx.slab_options)        
         # pdos
         if self.inputs.pdos_lists is not None:
-            builder.pdos_lists = self.inputs.pdos_lists
+            builder.pdos_lists = List(list=[pdos[0] for pdos in self.inputs.pdos_lists])
 
         slab_future = self.submit(builder)
         self.to_context(slab_diag_scf=slab_future)

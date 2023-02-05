@@ -181,11 +181,11 @@ debug:
         GEO_OPT:
             BFGS:
                 TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 0.1
-            RMS_DR: 0.1
-            RMS_FORCE: 0.1
-            MAX_DR: 0.1 
-            MAX_ITER: 1000
+            MAX_FORCE: 10
+            RMS_DR: 10
+            RMS_FORCE: 10
+            MAX_DR: 10 
+            MAX_ITER: 10
             OPTIMIZER: BFGS
         PRINT:
             RESTART_HISTORY: 
@@ -210,13 +210,13 @@ debug:
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 1.0E-2
+                EPS_SCF: 5.0E-2
                 MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 1.0E-2
+                    EPS_SCF: 5.0E-2
                     MAX_SCF: 50
                 PRINT:
                     RESTART:

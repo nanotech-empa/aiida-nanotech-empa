@@ -33,6 +33,7 @@ class Cp2kStmWorkChain(WorkChain):
         spec.input("dft_params", valid_type=Dict)
         spec.input("stm_code", valid_type=Code)
         spec.input("stm_params", valid_type=Dict)
+        spec.input("options", valid_type=Dict)
         
         spec.outline(
             cls.setup,            
@@ -56,8 +57,7 @@ class Cp2kStmWorkChain(WorkChain):
         emax = float(self.inputs.stm_params.get_dict()['--energy_range'][1])
         added_mos = np.max([100, int(1.2*self.ctx.n_atoms*emax/5.0)])
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
-        self.ctx.dft_params["added_mos"] = added_mos        
-        self.ctx.options = self.get_options(self.ctx.n_atoms)
+        self.ctx.dft_params["added_mos"] = added_mos
               
     def run_diag_scf(self):
         self.report("Running CP2K diagonalization SCF")        
@@ -65,7 +65,7 @@ class Cp2kStmWorkChain(WorkChain):
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
         builder.dft_params = Dict(dict=self.ctx.dft_params)
-        builder.options = Dict(dict=self.ctx.options)
+        builder.options = self.inputs.options
 
         future = self.submit(builder)
         self.to_context(diag_scf=future)

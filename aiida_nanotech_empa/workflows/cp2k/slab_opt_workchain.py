@@ -51,7 +51,6 @@ class Cp2kSlabOptWorkChain(WorkChain):
             "options",
             valid_type=dict,
             non_db=True,
-            required=False,
             help=
             "Define options for the cacluations: walltime, memory, CPUs, etc.")
 

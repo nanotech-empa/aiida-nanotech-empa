@@ -36,6 +36,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         spec.input("dft_params", valid_type=Dict)        
         spec.input("stm_code", valid_type=Code)
         spec.input("stm_params", valid_type=Dict)
+        spec.input("options", valid_type=Dict)
         
         spec.outline(
             cls.setup,            
@@ -59,7 +60,6 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         added_mos = np.max([n_lumo,20])
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
         self.ctx.dft_params["added_mos"] = added_mos
-        self.ctx.options = self.get_options(len(structure.sites))
         
     def run_diag_scf(self):
         self.report("Running CP2K diagonalization SCF")        
@@ -70,7 +70,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         builder.settings = Dict(dict={'additional_retrieve_list': [
             'aiida.inp', 'BASIS_MOLOPT', 'aiida.coords.xyz', 'aiida-RESTART.wfn'
         ]})
-        builder.options = Dict(dict=self.ctx.options)
+        builder.options = self.inputs.options
 
         future = self.submit(builder)
         self.to_context(diag_scf=future)
@@ -115,29 +115,3 @@ class Cp2kOrbitalsWorkChain(WorkChain):
     
      # ==========================================================================
 
-# ==========================================================================    
-    @classmethod
-    def get_options(cls, n_atoms):
-
-        num_machines = 3
-        if n_atoms > 50:
-            num_machines = 6
-        if n_atoms > 100:
-            num_machines = 12
-        if n_atoms > 300:
-            num_machines = 27
-        if n_atoms > 650:
-            num_machines = 48
-        walltime = 72000
-
-        # resources
-        options = {
-            "resources": {"num_machines": num_machines},
-            "max_wallclock_seconds": walltime,
-            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
-        }
-    
-
-        return options
-
-    # ==========================================================================
