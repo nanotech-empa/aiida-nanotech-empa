@@ -45,14 +45,14 @@ def _example_cp2k_orb(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
             "spin_dw_guess":[1]}
         )
 
-    builder.options=Dict(dict={
+    builder.options={
             "max_wallclock_seconds": 600,
             "resources": {
                 "num_machines": 1,
                 "num_mpiprocs_per_machine": 1,
                 "num_cores_per_mpiproc": 1,
             }
-        })        
+        }        
     builder.stm_code = stm_code
     parent_dir = "./parent_calc_folder/"
     builder.stm_params = Dict(dict={

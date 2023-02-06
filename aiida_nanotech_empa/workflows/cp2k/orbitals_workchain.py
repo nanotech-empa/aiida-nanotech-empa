@@ -36,7 +36,12 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         spec.input("dft_params", valid_type=Dict)        
         spec.input("stm_code", valid_type=Code)
         spec.input("stm_params", valid_type=Dict)
-        spec.input("options", valid_type=Dict)
+        spec.input(
+            "options",
+            valid_type=dict,
+            non_db=True,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
         
         spec.outline(
             cls.setup,            
@@ -70,7 +75,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         builder.settings = Dict(dict={'additional_retrieve_list': [
             'aiida.inp', 'BASIS_MOLOPT', 'aiida.coords.xyz', 'aiida-RESTART.wfn'
         ]})
-        builder.options = self.inputs.options
+        builder.options = Dict(dict=self.inputs.options)
 
         future = self.submit(builder)
         self.to_context(diag_scf=future)
