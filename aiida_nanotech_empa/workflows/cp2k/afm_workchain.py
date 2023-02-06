@@ -26,7 +26,12 @@ class Cp2kAfmWorkChain(WorkChain):
         spec.input("structure", valid_type=StructureData)
         spec.input("wfn_file_path", valid_type=Str, required=False)
         spec.input("dft_params", valid_type=Dict)
-        spec.input("options", valid_type=Dict, required=False)
+        spec.input(
+            "options",
+            valid_type=dict,
+            non_db=True,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
         
         spec.input("afm_pp_code", valid_type=Code)
         spec.input("afm_pp_params", valid_type=Dict)
@@ -53,10 +58,6 @@ class Cp2kAfmWorkChain(WorkChain):
         self.report("Setting up workchain")
         structure = self.inputs.structure
         n_atoms = len(structure.sites)
-        if "options" in self.inputs:
-            self.ctx.options = self.inputs.options.get_dict()
-        else:
-            self.ctx.options = self.get_options(n_atoms)
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
         if "smear_t" in self.ctx.dft_params:
             added_mos = np.max([100, int(1.2*n_atoms*2/5.0)])
@@ -86,7 +87,7 @@ class Cp2kAfmWorkChain(WorkChain):
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
         builder.dft_params = Dict(dict=self.ctx.dft_params)
-        builder.options = Dict(dict=self.ctx.options)
+        builder.options = Dict(dict=self.inputs.options)
 
         future = self.submit(builder)
         self.to_context(diag_scf=future)
@@ -152,30 +153,3 @@ class Cp2kAfmWorkChain(WorkChain):
         extras_list.append(self.node.uuid)
         self.inputs.structure.set_extra(extras_label, extras_list)      
         self.report("Work chain is finished") 
-# ==========================================================================    
-    @classmethod
-    def get_options(cls, n_atoms):
-
-        num_machines = 12
-        if n_atoms > 500:
-            num_machines = 27
-        if n_atoms > 1200:
-            num_machines = 48
-        if n_atoms > 2400:
-            num_machines = 60
-        if n_atoms > 3600:
-            num_machines = 75
-        walltime = 86400
-
-        # resources
-        options = {
-            "resources": {"num_machines": num_machines},
-            "max_wallclock_seconds": walltime,
-            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
-        }
-    
-
-        return options
-
-    # ==========================================================================    
-    

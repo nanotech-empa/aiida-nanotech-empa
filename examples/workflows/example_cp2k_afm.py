@@ -21,15 +21,14 @@ def _example_cp2k_afm(cp2k_code, afm_code1,afm_code2, sc_diag, force_multiplicit
     builder.cp2k_code = cp2k_code
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
-    builder.options = Dict(
-        dict={
+    builder.options = {
             "resources": {
                 "num_machines": 1,
                 "num_mpiprocs_per_machine": 1,
             },
             "max_wallclock_seconds": 600,
         }
-    )
+    
     builder.dft_params = Dict(
         dict={"protocol":"debug",
         "sc_diag": sc_diag,
@@ -121,7 +120,7 @@ def example_cp2k_afm_no_sc_diag(cp2k_code, afm_code1,afm_code2):
     _example_cp2k_afm(cp2k_code,afm_code1,afm_code2, False, True,False)
 
 
-def example_cp2k_afm_sc_diag(cp2k_code, afm_code):
+def example_cp2k_afm_sc_diag(cp2k_code, afm_code1,afm_code2):
     _example_cp2k_afm(cp2k_code, afm_code1,afm_code2, True, True,True)
 
 
@@ -137,7 +136,7 @@ if __name__ == "__main__":
     #
     print("#### no sc_diag UKS no force")
     _example_cp2k_afm(
-        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_afm_pp_8aa7a6@daint-mc-em01"),load_code("py_afm_2pp_ba8f05@daint-mc-em01"), False, False, True
+        load_code("cp2k@localhost"), load_code("py_afm_pp_8aa7a6@localhost"),load_code("py_afm_2pp_ba8f05@localhost"), False, False, True
     )
     #print("#### sc_diag UKS force")
     #_example_cp2k_stm(
