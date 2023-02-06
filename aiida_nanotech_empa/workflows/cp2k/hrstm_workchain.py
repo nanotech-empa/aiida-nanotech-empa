@@ -126,7 +126,7 @@ class Cp2kHrstmWorkChain(WorkChain):
         self.report("Running HR-STM")
         retrieved_list = [obj.name for obj in self.ctx.ppm.outputs.retrieved.list_objects()]
         pp_worked = "df.npy"  in retrieved_list and "df_vec.npy"  in retrieved_list
-       if not pp_worked:
+        if not pp_worked:
            self.report("AFM calculation did not finish correctly")
            return self.exit_codes.ERROR_TERMINATION         
         inputs = {}

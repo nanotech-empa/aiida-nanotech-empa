@@ -11,7 +11,7 @@ DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 GEO_FILE = "c2h2_on_au111.xyz"
 
 
-def _example_cp2k_stm(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
+def _example_cp2k_stm(cp2k_code, spm_code, sc_diag, force_multiplicity,uks):
 
     builder = Cp2kStmWorkChain.get_builder()
 
@@ -43,17 +43,17 @@ def _example_cp2k_stm(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
             "spin_dw_guess":[1]}
         )
 
-    builder.options=Dict(dict={
+    builder.options={
             "max_wallclock_seconds": 600,
             "resources": {
                 "num_machines": 1,
                 "num_mpiprocs_per_machine": 1,
                 "num_cores_per_mpiproc": 1,
             }
-        })     
-    builder.stm_code = stm_code
+        }     
+    builder.spm_code = spm_code
     parent_dir = "./parent_calc_folder/"
-    builder.stm_params = Dict(dict={
+    builder.spm_params = Dict(dict={
             '--cp2k_input_file':    parent_dir+'aiida.inp',
             '--basis_set_file':     parent_dir+'BASIS_MOLOPT',
             '--xyz_file':           parent_dir+'aiida.coords.xyz',
@@ -78,12 +78,12 @@ def _example_cp2k_stm(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
     assert calc_node.is_finished_ok
 
 
-def example_cp2k_stm_no_sc_diag(cp2k_code, stm_code):
-    _example_cp2k_orb(cp2k_code,stm_code, False, True,False)
+def example_cp2k_stm_no_sc_diag(cp2k_code, spm_code):
+    _example_cp2k_stm(cp2k_code,spm_code, False, True,False)
 
 
-def example_cp2k_stm_sc_diag(cp2k_code, stm_code):
-    _example_cp2k_orb(cp2k_code, stm_code, True, True,True)
+def example_cp2k_stm_sc_diag(cp2k_code, spm_code):
+    _example_cp2k_stm(cp2k_code, spm_code, True, True,True)
 
 
 if __name__ == "__main__":
