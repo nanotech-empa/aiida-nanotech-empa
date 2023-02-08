@@ -34,8 +34,8 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         spec.input("structure", valid_type=StructureData)
         spec.input("wfn_file_path", valid_type=Str, required=False)                
         spec.input("dft_params", valid_type=Dict)        
-        spec.input("stm_code", valid_type=Code)
-        spec.input("stm_params", valid_type=Dict)
+        spec.input("spm_code", valid_type=Code)
+        spec.input("spm_params", valid_type=Dict)
         spec.input(
             "options",
             valid_type=dict,
@@ -61,7 +61,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
     def setup(self):
         self.report("Setting up workchain")
         structure = self.inputs.structure
-        n_lumo = int(self.inputs.stm_params.get_dict()['--n_lumo'])
+        n_lumo = int(self.inputs.spm_params.get_dict()['--n_lumo'])
         added_mos = np.max([n_lumo,20])
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
         self.ctx.dft_params["added_mos"] = added_mos
@@ -88,8 +88,8 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         inputs = {}
         inputs['metadata'] = {}
         inputs['metadata']['label'] = "orb"
-        inputs['code'] = self.inputs.stm_code
-        inputs['parameters'] = self.inputs.stm_params
+        inputs['code'] = self.inputs.spm_code
+        inputs['parameters'] = self.inputs.spm_params
         inputs['parent_calc_folder'] = self.ctx.diag_scf.outputs.remote_folder
         inputs['metadata']['options'] = {
             "resources": {"num_machines": 1},
