@@ -53,9 +53,9 @@ def _example_cp2k_orb(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
                 "num_cores_per_mpiproc": 1,
             }
         }        
-    builder.stm_code = stm_code
+    builder.spm_code = stm_code
     parent_dir = "./parent_calc_folder/"
-    builder.stm_params = Dict(dict={
+    builder.spm_params = Dict(dict={
             '--cp2k_input_file':    parent_dir+'aiida.inp',
             '--basis_set_file':     parent_dir+'BASIS_MOLOPT',
             '--xyz_file':           parent_dir+'aiida.coords.xyz',
@@ -85,12 +85,12 @@ def _example_cp2k_orb(cp2k_code, stm_code, sc_diag, force_multiplicity,uks):
     #    print(f"  {k}: {slabopt_out_dict[k]}")
 
 
-def example_cp2k_orb_no_sc_diag(cp2k_code, stm_code):
-    _example_cp2k_orb(cp2k_code,stm_code, False, True,False)
+def example_cp2k_orb_no_sc_diag(cp2k_code, spm_code):
+    _example_cp2k_orb(cp2k_code,spm_code, False, True,False)
 
 
-def example_cp2k_orb_sc_diag(cp2k_code, stm_code):
-    _example_cp2k_orb(cp2k_code, stm_code, True, True,True)
+def example_cp2k_orb_sc_diag(cp2k_code, spm_code):
+    _example_cp2k_orb(cp2k_code, spm_code, True, True,True)
 
 
 if __name__ == "__main__":

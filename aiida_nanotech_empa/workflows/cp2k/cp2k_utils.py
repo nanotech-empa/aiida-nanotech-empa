@@ -2,7 +2,10 @@
 import pathlib
 import yaml
 import collections
-from aiida.orm import StructureData, Dict
+import tempfile
+import shutil
+from io import StringIO
+from aiida.orm import StructureData, Dict, SinglefileData
 
 ang_2_bohr = 1.889725989
 
@@ -173,3 +176,34 @@ def get_cutoff(structure=None):
         atom_data = yaml.safe_load(fhandle)
     elements = structure.get_symbols_set()
     return max([atom_data['cutoff'][element] for element in elements])
+
+def make_geom_file(atoms, filename, spin_guess=None):
+        # spin_guess = [[spin_up_indexes], [spin_down_indexes]]
+        tmpdir = tempfile.mkdtemp()
+        file_path = tmpdir + "/" + filename
+
+        orig_file = StringIO()
+        atoms.write(orig_file, format='xyz')
+        orig_file.seek(0)
+        all_lines = orig_file.readlines()
+        comment = all_lines[1] # with newline character!
+        orig_lines = all_lines[2:]
+        
+        modif_lines = []
+        for i_line, line in enumerate(orig_lines):
+            new_line = line
+            lsp = line.split()
+            if spin_guess is not None:
+                if i_line in spin_guess[0]:
+                    new_line = lsp[0]+"1 " + " ".join(lsp[1:])+"\n"
+                if i_line in spin_guess[1]:
+                    new_line = lsp[0]+"2 " + " ".join(lsp[1:])+"\n"
+            modif_lines.append(new_line)
+        
+        final_str = "%d\n%s" % (len(atoms), comment) + "".join(modif_lines)
+
+        with open(file_path, 'w') as f:
+            f.write(final_str)
+        aiida_f = SinglefileData(file=file_path)
+        shutil.rmtree(tmpdir)
+        return aiida_f

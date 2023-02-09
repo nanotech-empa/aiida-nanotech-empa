@@ -149,7 +149,7 @@ if __name__ == "__main__":
     #
     print("#### no sc_diag UKS no force")
     _example_cp2k_hrstm(
-        load_code("cp2k-9.1@daint-mc-em01"), load_code("py_afm_2pp_ba8f05@daint-mc-em01"),load_code("py_hrstm_4576cd@daint-mc-em01"), False, False, True
+        load_code("cp2k@localhost"), load_code("py_afm_2pp_ba8f05@localhost"),load_code("py_hrstm_4576cd@localhost"), False, False, True
     )
     #print("#### sc_diag UKS force")
     #_example_cp2k_stm(

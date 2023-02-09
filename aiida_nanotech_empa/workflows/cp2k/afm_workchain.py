@@ -10,6 +10,7 @@ from aiida.orm import Code
 from aiida.engine import WorkChain 
 from aiida.plugins import CalculationFactory, WorkflowFactory
 from aiida_nanotech_empa.utils import common_utils
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import make_geom_file
 
 Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
 AfmCalculation = CalculationFactory('spm.afm')
@@ -20,7 +21,7 @@ class Cp2kAfmWorkChain(WorkChain):
 
     @classmethod
     def define(cls, spec):
-        super(Cp2kAfmWorkChain, cls).define(spec)
+        super().define(spec)
         
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
@@ -57,12 +58,15 @@ class Cp2kAfmWorkChain(WorkChain):
     def setup(self):
         self.report("Setting up workchain")
         structure = self.inputs.structure
+        ase_geom = structure.get_ase()
+        ase_geom.set_tags(np.zeros(len(ase_geom)))
         n_atoms = len(structure.sites)
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
         if "smear_t" in self.ctx.dft_params:
             added_mos = np.max([100, int(1.2*n_atoms*2/5.0)])
             self.ctx.dft_params["added_mos"] = added_mos
         self.ctx.files = {
+            "geo_no_labels" : make_geom_file(ase_geom, 'geom.xyz'),
             "pp": SinglefileData(
                 file=os.path.join(
                     os.path.dirname(os.path.realpath(__file__)),
@@ -97,6 +101,8 @@ class Cp2kAfmWorkChain(WorkChain):
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
             return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member        
         afm_pp_inputs = {}
+
+        afm_pp_inputs['geo_no_labels'] = self.ctx.files['geo_no_labels']
         afm_pp_inputs['metadata'] = {}
         afm_pp_inputs['metadata']['label'] = "afm_pp"
         afm_pp_inputs['code'] = self.inputs.afm_pp_code
@@ -118,6 +124,7 @@ class Cp2kAfmWorkChain(WorkChain):
         self.report("Running 2PP")
         
         afm_2pp_inputs = {}
+        afm_2pp_inputs['geo_no_labels'] = self.ctx.files['geo_no_labels']
         afm_2pp_inputs['metadata'] = {}
         afm_2pp_inputs['metadata']['label'] = "afm_2pp"
         afm_2pp_inputs['code'] = self.inputs.afm_2pp_code

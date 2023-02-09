@@ -14,6 +14,8 @@ from aiida.engine import WorkChain, ToContext
 from aiida_nanotech_empa.utils import common_utils
 
 from aiida.plugins import CalculationFactory, WorkflowFactory
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import make_geom_file
+
 Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
 HrstmCalculation = CalculationFactory('spm.hrstm')
 AfmCalculation = CalculationFactory('spm.afm')
@@ -56,6 +58,7 @@ class Cp2kHrstmWorkChain(WorkChain):
     def setup(self):
         self.report("Setting up workchain")
         structure = self.inputs.structure
+        ase_geom = structure.get_ase()
         n_atoms = len(structure.sites)
         if "options" in self.inputs:
             self.ctx.options = self.inputs.options.get_dict()
@@ -66,14 +69,7 @@ class Cp2kHrstmWorkChain(WorkChain):
             added_mos = np.max([100, int(1.2*n_atoms*2/5.0)])
             self.ctx.dft_params["added_mos"] = added_mos
         self.ctx.files = {
-            "pp": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "atomtypes_pp.ini",
-                )
-            ),
+            "geo_no_labels" : make_geom_file(ase_geom, 'geom.xyz'),
             "2pp": SinglefileData(
                 file=os.path.join(
                     os.path.dirname(os.path.realpath(__file__)),
@@ -101,6 +97,7 @@ class Cp2kHrstmWorkChain(WorkChain):
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
             return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member  
         inputs = {}
+        inputs['geo_no_labels'] = self.ctx.files['geo_no_labels']
         inputs['metadata'] = {}
         inputs['metadata']['label'] = "hrstm_ppm"
         inputs['code'] = self.inputs.ppm_code

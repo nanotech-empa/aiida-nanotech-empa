@@ -114,6 +114,8 @@ class Cp2kStmWorkChain(WorkChain):
         if "stm.npz" not in [obj.name for obj in self.ctx.stm.outputs.retrieved.list_objects()]:
             self.report("STM calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION  
+        
+        self.out("dft_output_parameters",self.ctx.diag_scf.outputs.output_parameters)
         # Add the workchain pk to the input structure extras
         extras_label = "Cp2kStmWorkChain_uuids"
         if extras_label not in self.inputs.structure.extras:
