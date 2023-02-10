@@ -21,15 +21,14 @@ def _example_cp2k_hrstm(cp2k_code, afm_code,hrstm_code, sc_diag, force_multiplic
     builder.cp2k_code = cp2k_code
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
-    builder.options = Dict(
-        dict={
+    builder.options = {
             "resources": {
                 "num_machines": 1,
                 "num_mpiprocs_per_machine": 1,
             },
             "max_wallclock_seconds": 600,
         }
-    )
+    
     builder.dft_params = Dict(
         dict={"protocol":"debug",
         "sc_diag": sc_diag,

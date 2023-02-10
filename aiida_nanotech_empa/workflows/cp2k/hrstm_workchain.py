@@ -32,7 +32,12 @@ class Cp2kHrstmWorkChain(WorkChain):
         spec.input("structure", valid_type=StructureData)
         spec.input("wfn_file_path", valid_type=Str, default=Str(""))
         spec.input("dft_params", valid_type=Dict)
-        spec.input("options", valid_type=Dict, required=False)
+        spec.input(
+            "options",
+            valid_type=dict,
+            non_db=True,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
 
         spec.input("ppm_code", valid_type=Code)
         spec.input("ppm_params", valid_type=Dict)
@@ -60,14 +65,12 @@ class Cp2kHrstmWorkChain(WorkChain):
         structure = self.inputs.structure
         ase_geom = structure.get_ase()
         n_atoms = len(structure.sites)
-        if "options" in self.inputs:
-            self.ctx.options = self.inputs.options.get_dict()
-        else:
-            self.ctx.options = self.get_options(n_atoms)
+        emax = 2
+        self.ctx.options = self.inputs.options
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
-        if "smear_t" in self.ctx.dft_params:
-            added_mos = np.max([100, int(1.2*n_atoms*2/5.0)])
-            self.ctx.dft_params["added_mos"] = added_mos
+        added_mos = np.max([100, int(1.2*n_atoms*emax/5.0)])
+        self.ctx.dft_params["added_mos"] = added_mos
+            
         self.ctx.files = {
             "geo_no_labels" : make_geom_file(ase_geom, 'geom.xyz'),
             "2pp": SinglefileData(
