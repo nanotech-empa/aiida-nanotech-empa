@@ -1,21 +1,17 @@
-import copy
 import os
 import pathlib
-
 import yaml
-from aiida.engine import ExitCode, ToContext, WorkChain
-from aiida.orm import Bool, Code, Dict, Int, List, SinglefileData, Str, StructureData
+import copy
+
+from aiida.engine import WorkChain, ToContext, ExitCode
+from aiida.orm import Int, Bool, Code, Dict, List, Str
+from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
 
-from aiida_nanotech_empa.utils import analyze_structure, common_utils
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
-    determine_kinds,
-    dict_merge,
-    get_cutoff,
-    get_kinds_section,
-)
+from aiida_nanotech_empa.utils import common_utils, analyze_structure
 
-Cp2kBaseWorkChain = WorkflowFactory("cp2k.base")
+Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
 
 
 class Cp2kSlabOptWorkChain(WorkChain):
@@ -29,37 +25,36 @@ class Cp2kSlabOptWorkChain(WorkChain):
             "charge",  # +1 means one electron removed
             valid_type=Int,
             default=lambda: Int(0),
-            required=False,
-        )
-        spec.input(
-            "fixed_atoms", valid_type=Str, default=lambda: Str(""), required=False
-        )
-        spec.input(
-            "multiplicity", valid_type=Int, default=lambda: Int(0), required=False
-        )
-        spec.input(
-            "magnetization_per_site",
-            valid_type=List,
-            default=lambda: List(list=[]),
-            required=False,
-        )
-        spec.input("vdw", valid_type=Bool, default=lambda: Bool(False), required=False)
-        spec.input(
-            "protocol",
-            valid_type=Str,
-            default=lambda: Str("standard"),
-            required=False,
-            help="Settings to run simulations with.",
-        )
+            required=False)
+        spec.input("fixed_atoms",
+                   valid_type=Str,
+                   default=lambda: Str(''),
+                   required=False)
+        spec.input("multiplicity",
+                   valid_type=Int,
+                   default=lambda: Int(0),
+                   required=False)
+        spec.input("magnetization_per_site",
+                   valid_type=List,
+                   default=lambda: List(list=[]),
+                   required=False)
+        spec.input("vdw",
+                   valid_type=Bool,
+                   default=lambda: Bool(False),
+                   required=False)
+        spec.input("protocol",
+                   valid_type=Str,
+                   default=lambda: Str('standard'),
+                   required=False,
+                   help="Settings to run simulations with.")
         spec.input(
             "options",
             valid_type=dict,
             non_db=True,
-            required=False,
-            help="Define options for the cacluations: walltime, memory, CPUs, etc.",
-        )
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
 
-        # workchain outline
+        #workchain outline
         spec.outline(cls.setup, cls.submit_calc, cls.finalize)
         spec.outputs.dynamic = True
 
@@ -75,22 +70,21 @@ class Cp2kSlabOptWorkChain(WorkChain):
         # --------------------------------------------------
 
     def submit_calc(self):
-        with open(
-            pathlib.Path(__file__).parent / "./protocols/slab_opt_protocol.yml",
-            encoding="utf-8",
-        ) as handle:
+        with open(pathlib.Path(__file__).parent /
+                  './protocols/slab_opt_protocol.yml',
+                  encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
 
         structure = self.inputs.structure
-        # cutoff
+        #cutoff
         self.ctx.cutoff = get_cutoff(structure=structure)
 
-        # get initial magnetization
-        magnetization_per_site = copy.deepcopy(self.inputs.magnetization_per_site)
+        #get initial magnetization
+        magnetization_per_site = copy.deepcopy(
+            self.inputs.magnetization_per_site)
         structure_with_tags, kinds_dict = determine_kinds(
-            structure, magnetization_per_site
-        )
+            structure, magnetization_per_site)
 
         ase_atoms = structure_with_tags.get_ase()
 
@@ -98,68 +92,56 @@ class Cp2kSlabOptWorkChain(WorkChain):
         builder.cp2k.code = self.inputs.code
         builder.cp2k.structure = StructureData(ase=ase_atoms)
         builder.cp2k.file = {
-            "basis": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "BASIS_MOLOPT",
-                )
-            ),
-            "pseudo": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "POTENTIAL",
-                )
-            ),
+            'basis':
+            SinglefileData(
+                file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                  ".", "data", "BASIS_MOLOPT")),
+            'pseudo':
+            SinglefileData(
+                file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                  ".", "data", "POTENTIAL")),
         }
 
-        # charge
-        input_dict["FORCE_EVAL"]["DFT"]["CHARGE"] = self.inputs.charge.value
+        #charge
+        input_dict['FORCE_EVAL']['DFT']['CHARGE'] = self.inputs.charge.value
         # vdw
         if not self.inputs.vdw.value:
-            input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
+            input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
 
-        # UKS
+        #UKS
         if self.inputs.multiplicity.value > 0:
-            input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
-            input_dict["FORCE_EVAL"]["DFT"][
-                "MULTIPLICITY"
-            ] = self.inputs.multiplicity.value
+            input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
+            input_dict['FORCE_EVAL']['DFT'][
+                'MULTIPLICITY'] = self.inputs.multiplicity.value
 
-        # fixed atoms
-        input_dict["MOTION"]["CONSTRAINT"]["FIXED_ATOMS"][
-            "LIST"
-        ] = self.inputs.fixed_atoms.value
+        #fixed atoms
+        input_dict['MOTION']['CONSTRAINT']['FIXED_ATOMS'][
+            'LIST'] = self.inputs.fixed_atoms.value
 
-        # cutoff
-        input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = self.ctx.cutoff
+        #cutoff
+        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
 
         # KINDS section
-        self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol="gpw")
+        self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
         dict_merge(input_dict, self.ctx.kinds_section)
 
         # Setup options.
-        if "options" in self.inputs:
+        if 'options' in self.inputs:
             builder.cp2k.metadata.options = self.inputs.options
 
         # Setup walltime.
-        if "max_wallclock_seconds" in self.inputs.options:
-            input_dict["GLOBAL"]["WALLTIME"] = max(
-                self.inputs.options["max_wallclock_seconds"] - 600, 600
-            )
+        if 'max_wallclock_seconds' in self.inputs.options:
+            input_dict['GLOBAL']['WALLTIME'] = max(
+                self.inputs.options['max_wallclock_seconds'] - 600, 600)
 
-        # parser
+        #parser
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
-        # handlers
+        #handlers
         builder.handler_overrides = Dict(
-            {"restart_incomplete_calculation": {"enabled": True}}
-        )
+            {'resubmit_unconverged_geometry': True})
 
-        # cp2k input dictionary
+        #cp2k input dictionary
         builder.cp2k.parameters = Dict(input_dict)
 
         submitted_node = self.submit(builder)
@@ -177,33 +159,30 @@ class Cp2kSlabOptWorkChain(WorkChain):
         # Add extras
         struc = self.ctx.opt.outputs.output_structure
         ase_geom = struc.get_ase()
-        self.node.base.extras.set(
-            "thumbnail", common_utils.thumbnail(ase_struc=ase_geom)
-        )
+        self.node.set_extra('thumbnail',
+                            common_utils.thumbnail(ase_struc=ase_geom))
 
         # add formula to extra as molecule@surface
-        try:  # mainly for debug cases where the analyzer could crash due to odd geometries
+        try:  #mainly for debug cases where the analyzer could crash due to odd geometries
             analyzer = analyze_structure.StructureAnalyzer()
             analyzer.structure = ase_geom
             res = analyzer.details
 
-            mol_formula = ""
-            for imol in res["all_molecules"]:
-                mol_formula += ase_geom[imol].get_chemical_formula() + " "
-            if len(res["slabatoms"]) > 0:
-                mol_formula += "at " + ase_geom[res["slabatoms"]].get_chemical_formula()
-                if len(res["bottom_H"]) > 0:
-                    mol_formula += (
-                        " saturated: "
-                        + ase_geom[res["bottom_H"]].get_chemical_formula()
-                    )
-                if len(res["adatoms"]) > 0:
-                    mol_formula += (
-                        " Adatoms: " + ase_geom[res["adatoms"]].get_chemical_formula()
-                    )
+            mol_formula = ''
+            for imol in res['all_molecules']:
+                mol_formula += ase_geom[imol].get_chemical_formula() + ' '
+            if len(res['slabatoms']) > 0:
+                mol_formula += 'at ' + ase_geom[
+                    res['slabatoms']].get_chemical_formula()
+                if len(res['bottom_H']) > 0:
+                    mol_formula += ' saturated: ' + ase_geom[
+                        res['bottom_H']].get_chemical_formula()
+                if len(res['adatoms']) > 0:
+                    mol_formula += ' Adatoms: ' + ase_geom[
+                        res['adatoms']].get_chemical_formula()
         except ValueError:
             mol_formula = struc.get_formula()
 
-        self.node.base.extras.set("formula", mol_formula)
+        self.node.set_extra('formula', mol_formula)
 
         return ExitCode(0)
