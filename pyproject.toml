@@ -70,6 +70,12 @@ dev = [
 "nanotech_empa.cp2k.fragment_separation" = "aiida_nanotech_empa.workflows.cp2k.fragment_separation:Cp2kFragmentSeparationWorkChain"
 "nanotech_empa.cp2k.ads_gw_ic" = "aiida_nanotech_empa.workflows.cp2k.adsorbed_gw_ic_workchain:Cp2kAdsorbedGwIcWorkChain"
 "nanotech_empa.cp2k.mol_opt_gw" = "aiida_nanotech_empa.workflows.cp2k.molecule_opt_gw_workchain:Cp2kMoleculeOptGwWorkChain"
+"nanotech_empa.cp2k.pdos" = "aiida_nanotech_empa.workflows.cp2k.pdos_workchain:Cp2kPdosWorkChain"
+"nanotech_empa.cp2k.orbitals" = "aiida_nanotech_empa.workflows.cp2k.orbitals_workchain:Cp2kOrbitalsWorkChain"
+"nanotech_empa.cp2k.stm" = "aiida_nanotech_empa.workflows.cp2k.stm_workchain:Cp2kStmWorkChain"
+"nanotech_empa.cp2k.afm" = "aiida_nanotech_empa.workflows.cp2k.afm_workchain:Cp2kAfmWorkChain"
+"nanotech_empa.cp2k.hrstm" = "aiida_nanotech_empa.workflows.cp2k.hrstm_workchain:Cp2kHrstmWorkChain"
+"nanotech_empa.cp2k.diag" = "aiida_nanotech_empa.workflows.cp2k.diag_workchain:Cp2kDiagWorkChain"
 
 [project.entry-points."aiida.schedulers"]
 lsf_ethz_euler = "aiida_nanotech_empa.schedulers.lsf_ethz_euler:ETHZEulerLsfScheduler"

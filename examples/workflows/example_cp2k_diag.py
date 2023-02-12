@@ -75,17 +75,17 @@ def example_cp2k_diag_sc_diag(cp2k_code):
 if __name__ == "__main__":
     print("#### no sc_diag RKS")
     _example_cp2k_diag(
-        load_code("cp2k-9.1@daint-mc-em01"),  False, True,False
+        load_code("cp2k@localhost"),  False, True,False
     )
     print("#### sc_diag RKS")
     _example_cp2k_diag(
-        load_code("cp2k-9.1@daint-mc-em01"),  True, True,False
+        load_code("cp2k@localhost"),  True, True,False
     )
     print("#### no sc_diag UKS no force")
     _example_cp2k_diag(
-        load_code("cp2k-9.1@daint-mc-em01"),  False, False, True
+        load_code("cp2k@localhost"),  False, False, True
     )
     print("#### sc_diag UKS force")
     _example_cp2k_diag(
-        load_code("cp2k-9.1@daint-mc-em01"),  True, True, True
+        load_code("cp2k@localhost"),  True, True, True
     )    
