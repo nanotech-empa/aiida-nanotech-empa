@@ -36,7 +36,7 @@ class Cp2kPdosWorkChain(WorkChain):
         spec.input("overlap_params", valid_type=Dict)
         spec.input_namespace(
             "options",
-            valid_type=dict,
+            valid_type=int,
             non_db=True,
             help=
             "Define options for the cacluations: walltime, memory, CPUs, etc.")        
@@ -175,6 +175,7 @@ class Cp2kPdosWorkChain(WorkChain):
         if "overlap.npz" not in [obj.name for obj in self.ctx.overlap.outputs.retrieved.list_objects()]:
             self.report("Overlap calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
+        self.out("slab_retrieved",self.ctx.slab_diag_scf.outputs.retrieved)
         # Add the workchain pk to the input structure extras
         extras_label = "Cp2kPdosWorkChain_uuids"
         if extras_label not in self.inputs.slabsys_structure.extras:

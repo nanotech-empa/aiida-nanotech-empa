@@ -139,7 +139,7 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
         #handlers
         builder.handler_overrides = Dict(
-            {'resubmit_unconverged_geometry': True})
+            {'restart_incomplete_calculation': True})
 
         #cp2k input dictionary
         builder.cp2k.parameters = Dict(input_dict)

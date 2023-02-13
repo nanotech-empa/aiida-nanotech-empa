@@ -243,6 +243,9 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
     def _set_debug(self, input_dict):
         input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["STRIDE"] = "6 6 6"
         input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]["STRIDE"] = "6 6 6"
+        input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_SCF"] = 0.2
+        input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_EIGVAL"] = 0.2
+        input_dict["FORCE_EVAL"]["DFT"]["SCF"]['OUTER_SCF']["EPS_SCF"] = 0.2
 
     def submit_scf(self):
 
