@@ -63,7 +63,7 @@ def _example_cp2k_afm(cp2k_code, afm_code1,afm_code2, sc_diag, force_multiplicit
     amp = 1.4
     f0 = 22352.5
     paramdata1 = Dict({
-        'probeType':    'Otip',
+        'probeType':    'O',
         'charge':       -0.028108681223969645,
         'sigma':        0.7,
         'tip':          's',
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     #
     print("#### no sc_diag UKS no force")
     _example_cp2k_afm(
-        load_code("cp2k@localhost"), load_code("py_afm_pp_8aa7a6@localhost"),load_code("py_afm_2pp_ba8f05@localhost"), False, False, True
+        load_code("cp2k@localhost"), load_code("py_afm_pp_@localhost"),load_code("py_afm_2pp_@localhost"), False, False, True
     )
     #print("#### sc_diag UKS force")
     #_example_cp2k_stm(
