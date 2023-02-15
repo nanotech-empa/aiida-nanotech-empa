@@ -76,6 +76,8 @@ dev = [
 "nanotech_empa.cp2k.afm" = "aiida_nanotech_empa.workflows.cp2k.afm_workchain:Cp2kAfmWorkChain"
 "nanotech_empa.cp2k.hrstm" = "aiida_nanotech_empa.workflows.cp2k.hrstm_workchain:Cp2kHrstmWorkChain"
 "nanotech_empa.cp2k.diag" = "aiida_nanotech_empa.workflows.cp2k.diag_workchain:Cp2kDiagWorkChain"
+"nanotech_empa.cp2k.replica" = "aiida_nanotech_empa.workflows.cp2k.replica_workchain:Cp2kReplicaWorkChain"
+
 
 [project.entry-points."aiida.schedulers"]
 lsf_ethz_euler = "aiida_nanotech_empa.schedulers.lsf_ethz_euler:ETHZEulerLsfScheduler"

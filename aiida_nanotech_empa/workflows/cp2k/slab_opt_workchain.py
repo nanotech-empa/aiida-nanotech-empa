@@ -71,7 +71,7 @@ class Cp2kSlabOptWorkChain(WorkChain):
 
     def submit_calc(self):
         with open(pathlib.Path(__file__).parent /
-                  './protocols/slab_opt_protocol.yml',
+                  './protocols/geo_opt_protocol.yml',
                   encoding='utf-8') as handle:
             protocols = yaml.safe_load(handle)
             input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])

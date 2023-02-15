@@ -54,7 +54,7 @@ def example_cp2k_bulkopt_rks(cp2k_code):
     _example_cp2k_bulkopt(cp2k_code, False, 0)
 
 
-def example_cp2k_cellkopt_rks(cp2k_code):
+def example_cp2k_cellopt_rks(cp2k_code):
     _example_cp2k_bulkopt(cp2k_code, True, 0)
 
 

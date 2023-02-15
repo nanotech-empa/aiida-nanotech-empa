@@ -92,7 +92,7 @@ class Cp2kBulkOptWorkChain(WorkChain):
     def submit_calc(self):
 
         # load input template
-        the_protocol = "./protocols/bulk_opt_protocol.yml"
+        the_protocol = "./protocols/geo_opt_protocol.yml"
         if self.inputs.cell_opt.value:
             the_protocol = "./protocols/cell_opt_protocol.yml"
         with open(
