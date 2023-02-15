@@ -63,8 +63,8 @@ def _example_cp2k_hrstm(cp2k_code, afm_code,hrstm_code, sc_diag, force_multiplic
     f0 = 22352.5
 
     ppm_params_dict = Dict({
-        'Catom':        'Ctip',
-        'Oatom':        'Otip',
+        'Catom':        6,
+        'Oatom':        8,
         'ChargeCuUp':   -0.0669933, 
         'ChargeCuDown': -0.0627402, 
         'Ccharge':      0.212718, 
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     #
     print("#### no sc_diag UKS no force")
     _example_cp2k_hrstm(
-        load_code("cp2k@localhost"), load_code("py_afm_2pp_ba8f05@localhost"),load_code("py_hrstm_4576cd@localhost"), False, False, True
+        load_code("cp2k@localhost"), load_code("py_afm_2pp_@localhost"),load_code("py_hrstm_4576cd@localhost"), False, False, True
     )
     #print("#### sc_diag UKS force")
     #_example_cp2k_stm(

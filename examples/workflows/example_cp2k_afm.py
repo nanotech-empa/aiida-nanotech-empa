@@ -81,8 +81,8 @@ def _example_cp2k_afm(cp2k_code, afm_code1,afm_code2, sc_diag, force_multiplicit
         'f0Cantilever': f0
     })
     paramdata2 = Dict({
-        'Catom':        'Ctip',
-        'Oatom':        'Otip',
+        'Catom':        6,
+        'Oatom':        8,
         'ChargeCuUp':   -0.0669933, 
         'ChargeCuDown': -0.0627402, 
         'Ccharge':      0.212718, 

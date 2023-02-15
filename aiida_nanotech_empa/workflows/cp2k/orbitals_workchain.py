@@ -108,6 +108,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
             self.report("Orbital calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
         self.out("dft_output_parameters",self.ctx.diag_scf.outputs.output_parameters)
+        self.out("retrieved",self.ctx.diag_scf.outputs.retrieved)
         # Add the workchain pk to the input structure extras
         extras_label = "Cp2kOrbitalsWorkChain_uuids"
         if extras_label not in self.inputs.structure.extras:
