@@ -24,15 +24,21 @@ standard:
         METHOD: Quickstep
         SUBSYS:
             CELL:
-                PERIODIC: XYZ        
+                PERIODIC: XYZ
+                SYMMETRY: ORTHORHOMBIC        
         DFT:
+            UKS: .FALSE.
+            MULTIPLICITY: 0
+            CHARGE: 0
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL   
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
-            CHARGE: 0
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC                
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -78,7 +84,14 @@ standard:
                         GEO_OPT: '0'
                     ADD_LAST: 'NUMERIC'
                 E_DENSITY_CUBE:
-                    STRIDE: '4 4 4'
+                    STRIDE: '2 2 2'
+                    EACH:
+                        QS_SCF: '0'
+                        GEO_OPT: '0'
+                    ADD_LAST: 'NUMERIC'
+                V_HARTREE_CUBE:
+                    STRIDE: '2 2 2'
+                    FILENAME: 'HART'
                     EACH:
                         QS_SCF: '0'
                         GEO_OPT: '0'
@@ -109,15 +122,21 @@ low_accuracy:
         METHOD: Quickstep
         SUBSYS:
             CELL:
-                PERIODIC: XYZ        
+                PERIODIC: XYZ
+                SYMMETRY: ORTHORHOMBIC
         DFT:
+            UKS: .FALSE.
+            MULTIPLICITY: 0  
+            CHARGE: 0      
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL   
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
-            CHARGE: 0
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -163,7 +182,14 @@ low_accuracy:
                         GEO_OPT: '0'
                     ADD_LAST: 'NUMERIC'
                 E_DENSITY_CUBE:
-                    STRIDE: '4 4 4'
+                    STRIDE: '2 2 2'
+                    EACH:
+                        QS_SCF: '0'
+                        GEO_OPT: '0'
+                    ADD_LAST: 'NUMERIC'
+                V_HARTREE_CUBE:
+                    STRIDE: '2 2 2'
+                    FILENAME: 'HART'
                     EACH:
                         QS_SCF: '0'
                         GEO_OPT: '0'
@@ -194,15 +220,21 @@ debug:
         METHOD: Quickstep
         SUBSYS:
             CELL:
-                PERIODIC: XYZ        
+                PERIODIC: XYZ
+                SYMMETRY: ORTHORHOMBIC
         DFT:
+            UKS: .FALSE.
+            MULTIPLICITY: 0
+            CHARGE: 0
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL   
-            RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
-            CHARGE: 0
+            RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn            
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -210,13 +242,13 @@ debug:
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 5.0E-2
+                EPS_SCF: 0.1
                 MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 5.0E-2
+                    EPS_SCF: 0.1
                     MAX_SCF: 50
                 PRINT:
                     RESTART:
@@ -252,4 +284,11 @@ debug:
                     EACH:
                         QS_SCF: '0'
                         GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'                                        
+                    ADD_LAST: 'NUMERIC' 
+                V_HARTREE_CUBE:
+                    STRIDE: '4 4 4'
+                    FILENAME: 'HART'
+                    EACH:
+                        QS_SCF: '0'
+                        GEO_OPT: '0'
+                    ADD_LAST: 'NUMERIC'                                       

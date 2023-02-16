@@ -33,3 +33,16 @@ def thumbnail(ase_struc, file_format=None):
         ase_struc.write(tmp.name, format=file_format)
         with open(tmp.name, "rb") as raw:
             return base64.b64encode(raw.read()).decode()
+        
+def add_extras(node,app,extras_label,uuid):
+    if app not in node.extras:
+        node.set_extra(app,{label:[uuid]})
+    else:
+        app_extras = node.extras[app]
+        if extras_label not in app_extras:
+            extras_list = []
+        else:
+            extras_list = app_extras[extras_label]
+        extras_list.append(uuid)
+        app_extras[extras_label] = extras_list
+        node.set_extra(app, app_extras)        
