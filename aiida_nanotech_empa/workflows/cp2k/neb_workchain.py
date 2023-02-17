@@ -6,25 +6,27 @@ import numpy as np
 
 from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Bool, Code, Dict, List, Str
-from aiida.orm import SinglefileData, StructureData
-from aiida.plugins import WorkflowFactory
+from aiida.orm import SinglefileData, StructureData, FolderData
+from aiida.plugins import CalculationFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_colvars_section, get_constraints_section
 
 from aiida_nanotech_empa.utils import common_utils
 
-Cp2kBaseWorkChain = WorkflowFactory('cp2k.base')
+Cp2kCalculation = CalculationFactory("cp2k")
 
 
-class Cp2kGeoOptWorkChain(WorkChain):
+class Cp2kNebWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
         spec.input("code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
+        spec.input("replica_folder", valid_type=FolderData)
         spec.input("wfn_file_path", valid_type=Str, required=False)
         spec.input("dft_params", valid_type=Dict)
-        spec.input("sys_params",valid_type=Dict)        
+        spec.input("sys_params",valid_type=Dict)
+        spec.input("neb_params",valid_type=Dict)        
         spec.input(
             "options",
             valid_type=dict,
@@ -64,14 +66,17 @@ class Cp2kGeoOptWorkChain(WorkChain):
             ),
         }        
 
+
+
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.neb_params = self.inputs.neb_params.get_dict()
 
         self.ctx.n_atoms = len(self.inputs.structure.sites)
 
         # load input template
         with open(
-            pathlib.Path(__file__).parent / "./protocols/geo_opt_protocol.yml",
+            pathlib.Path(__file__).parent / "./protocols/neb_protocol.yml",
             encoding="utf-8",
         ) as handle:
             protocols = yaml.safe_load(handle)
@@ -86,7 +91,7 @@ class Cp2kGeoOptWorkChain(WorkChain):
         #charge
         if 'charge' in self.ctx.dft_params:
             self.ctx.input_dict['FORCE_EVAL']['DFT']['CHARGE'] = self.ctx.dft_params['charge']
-
+           
         # uks    
         magnetization_per_site = [0 for i in range(self.ctx.n_atoms)]
         if 'uks' in   self.ctx.dft_params:
@@ -102,7 +107,7 @@ class Cp2kGeoOptWorkChain(WorkChain):
 
         ase_atoms = structure_with_tags.get_ase()
 
-        # non periodic systems only NONE and XYZ implemented:
+        # non periodic systems only NONE and XYZ implemented: TO BE CHECKED FOR NEB!!!!
         if 'periodic' in self.ctx.dft_params:
             if self.ctx.dft_params['periodic'] == 'NONE':
                 # make sure cell is big enough for MT poisson solver and center molecule
@@ -119,6 +124,21 @@ class Cp2kGeoOptWorkChain(WorkChain):
                 self.ctx.input_dict['FORCE_EVAL']['DFT']['POISSON']['POISSON_SOLVER'] = 'MT'
             # to be done: more cases        
 
+
+        # replica files
+        # replica files 
+        for f in self.inputs.replica_folder.list_object_names():
+            with struc_folder.open(f) as handle:
+                f_no_dot = f.replace(".", "_")
+                slef.ctx.files[f_no_dot] = SinglefileData(file=handle.name)
+
+        structures = [ase_atoms]
+        filenames = ['/replica_001.xyz']
+        for i, uuid in enumerate(self.inputs.replica_uuids):
+            structures.append = load_node(uuid).get_ase() 
+            filenames.append = ['/replica_$s.xyz' % str(i +1 ).zfill(3)]
+            
+
         self.ctx.structure_with_tags = ase_atoms  
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol="gpw")   
         dict_merge(self.ctx.input_dict, self.ctx.kinds_section)  
@@ -132,42 +152,31 @@ class Cp2kGeoOptWorkChain(WorkChain):
 
         self.ctx.input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = cutoff
 
-        # cell symmetry:
-        if 'symmetry' in self.ctx.sys_params:
-            self.ctx.input_dict['FORCE_EVAL']['SUBSYS']['CELL']['SYMMETRY'] = self.ctx.sys_params['symmetry']
-
-        # cell optimization:
-        if 'cell_opt' in self.ctx.sys_params:
-            with open(
-                pathlib.Path(__file__).parent / "./protocols/cell_opt_protocol.yml",
-                encoding="utf-8",
-            ) as handle:
-                protocols = yaml.safe_load(handle)
-                cell_input_dict = copy.deepcopy(protocols[self.ctx.dft_params['protocol']])
-            self.ctx.input_dict['MOTION'] = cell_input_dict['MOTION']
-            self.ctx.input_dict['FORCE_EVAL']['STRESS_TENSOR'] = 'ANALYTICAL'
-            if 'cell_opt_constraint' in self.ctx.sys_params:
-                self.ctx.input_dict['MOTION']['CELL_OPT']['CONSTRAINT'] = self.ctx.sys_params['cell_opt_constraint']
-            for sym in ['KEEP_SYMMETRY', 'KEEP_ANGLES','KEEP_SPACE_GROUP']:
-                if sym in self.ctx.sys_params:
-                    self.ctx.input_dict['MOTION']['CELL_OPT'][sym] = ''
-            
-            
-
         # constraints
         if 'constraints' in self.ctx.sys_params:
             self.ctx.input_dict['MOTION']['CONSTRAINT'] = get_constraints_section(self.ctx.sys_params['constraints'])
         # colvars
         if 'colvars' in self.ctx.sys_params:
             self.ctx.input_dict['FORCE_EVAL']['SUBSYS'].update(get_colvars_section(self.ctx.sys_params['colvars']))
-            
+
+
+        # NEB parameters
+        for param in ['align_frames','band_type','k_spring','nproc_rep','number_of_replica']
+            if param in self.ctx.neb_params:
+                    self.ctx.input_dict['MOTION']['BAND'][param.upper()] = self.ctx.neb_params[param]
+
+        if  'nsteps_it' in self.ctx.neb_params:
+            self.ctx.input_dict['MOTION']['BAND']['CI_NEB'] = self.ctx.neb_params['nsteps_it']
+        if 'optimize_end_points' in self.ctx.neb_params:
+            self.ctx.input_dict['MOTION']['BAND']['OPTIMIZE_BAND']['OPTIMIZE_END_POINTS'] = self.ctx.neb_params['optimize_end_points']
+
         # resources
         self.ctx.options = self.inputs.options
         if self.ctx.dft_params['protocol'] == "debug":
             self.ctx.options = {
                 "max_wallclock_seconds": 600,
                 "resources": {
-                    "num_machines": 1,
+                    "num_machines": 3,
                 "num_mpiprocs_per_machine": 1,
                 "num_cores_per_mpiproc": 1,
                 }
@@ -178,46 +187,52 @@ class Cp2kGeoOptWorkChain(WorkChain):
     def submit_calc(self):
         self.report("Submitting geometry optimization")
 
-        builder = Cp2kBaseWorkChain.get_builder()
-        builder.cp2k.code = self.inputs.code
-        builder.cp2k.structure = StructureData(ase=self.ctx.structure_with_tags)
-        builder.cp2k.file = self.ctx.files
+        builder = Cp2kCalculation.get_builder()
+        builder.code = self.inputs.code
+        builder.structure = StructureData(ase=self.ctx.structure_with_tags)
+        builder.file = self.ctx.files
+        builder.
 
         # resources
-        builder.cp2k.metadata.options = self.ctx.options
+        builder.metadata.options = self.ctx.options
+
+        # label
+        builder.metadata.label = 'neb'
 
         # parser
-        builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
+        builder.metadata.options.parser_name = "cp2k_neb_parser"
 
-        # handlers
-        builder.handler_overrides = Dict(
-            {'restart_incomplete_calculation': True})
-        
+        # additional retrieved files
+        builder.settings = Dict(dict={"additional_retrieve_list": ["*.xyz", "*.out", "*.ener"]})
         # restart wfn
         if "wfn_file_path" in self.inputs:
             builder.cp2k.parent_calc_folder = self.inputs.wfn_file_path.value
 
         # cp2k input dictionary
-        builder.cp2k.parameters = Dict(self.ctx.input_dict)
+        builder.parameters = Dict(self.ctx.input_dict)
 
         future = self.submit(builder)
-        self.to_context(geo_opt=future)
+        self.to_context(neb=future)
 
     def finalize(self):
         self.report("Finalizing.")
 
-        if not self.ctx.geo_opt.is_finished_ok:
+        if not self.ctx.neb.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
 
-        for out in self.ctx.geo_opt.outputs:
-            self.out(out, self.ctx.geo_opt.outputs[out])
+        for i_rep in range(self.ctx.neb_params['number_of_replica']):
+            label = "opt_replica_%s" % str(i_rep).zfill(3)
+            self.out(label, self.ctx.neb.outputs[label])
+
+        self.out("replica_energies", self.ctx.neb.outputs["replica_energies"])
+        self.out("replica_distances", self.ctx.neb.outputs["replica_distances"])
 
         # Add extras
         struc = self.inputs.structure
         ase_geom = struc.get_ase()
         struc.set_extra('thumbnail',
                             common_utils.thumbnail(ase_struc=ase_geom))
-        common_utils.add_extras(struc,'surfaces','geo_opt',self.node.uuid)
+        common_utils.add_extras(struc,'surfaces','neb',self.node.uuid)
         
 
 

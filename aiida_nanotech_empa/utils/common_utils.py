@@ -36,7 +36,7 @@ def thumbnail(ase_struc, file_format=None):
         
 def add_extras(node,app,extras_label,uuid):
     if app not in node.extras:
-        node.set_extra(app,{label:[uuid]})
+        node.set_extra(app,{extras_label:[uuid]})
     else:
         app_extras = node.extras[app]
         if extras_label not in app_extras:

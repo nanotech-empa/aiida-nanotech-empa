@@ -6,7 +6,7 @@ import collections
 import tempfile
 import shutil
 from io import StringIO
-from aiida.orm import StructureData, Dict, SinglefileData
+from aiida.orm import StructureData, Dict, SinglefileData, FolderData
 
 ang_2_bohr = 1.889725989
 
@@ -178,37 +178,45 @@ def get_cutoff(structure=None):
     elements = structure.get_symbols_set()
     return max([atom_data['cutoff'][element] for element in elements])
 
-def make_geom_file(atoms, filename, spin_guess=None):
-        # spin_guess = [[spin_up_indexes], [spin_down_indexes]]
+def make_geom_file(atoms, filename, tags=False):
         tmpdir = tempfile.mkdtemp()
-        file_path = tmpdir + "/" + filename
 
-        orig_file = StringIO()
-        atoms.write(orig_file, format='xyz')
-        orig_file.seek(0)
-        all_lines = orig_file.readlines()
-        comment = all_lines[1] # with newline character!
-        orig_lines = all_lines[2:]
-        
-        modif_lines = []
-        for i_line, line in enumerate(orig_lines):
-            new_line = line
-            lsp = line.split()
-            if spin_guess is not None:
-                if i_line in spin_guess[0]:
-                    new_line = lsp[0]+"1 " + " ".join(lsp[1:])+"\n"
-                if i_line in spin_guess[1]:
-                    new_line = lsp[0]+"2 " + " ".join(lsp[1:])+"\n"
-            modif_lines.append(new_line)
-        
-        final_str = "%d\n%s" % (len(atoms), comment) + "".join(modif_lines)
+        singlefile = False
+        if not isinstance(atoms,list):
+            singlefile = True
+            all_atoms=[atoms]
+            all_filenames = [filename]
+        for ifile, atoms in enumerate(all_atoms)
+            orig_file = StringIO()
+            atoms.write(orig_file, format='xyz')
+            orig_file.seek(0)
+            all_lines = orig_file.readlines()
+            comment = all_lines[1] # with newline character!
+            orig_lines = all_lines[2:]
+            
+            modif_lines = []
+            for i_line, line in enumerate(orig_lines):
+                new_line = line
+                lsp = line.split()
+                if tags :
+                    if tags(i_line) ==0 :
+                        new_line = lsp[0]+"  " + " ".join(lsp[1:])+"\n"
+                    else:
+                        new_line = lsp[0]+str(tags(i_line))+" " + " ".join(lsp[1:])+"\n"
+                modif_lines.append(new_line)
+            
+            final_str = "%d\n%s" % (len(atoms), comment) + "".join(modif_lines)
 
-        with open(file_path, 'w') as f:
-            f.write(final_str)
-        aiida_f = SinglefileData(file=file_path)
-        shutil.rmtree(tmpdir)
+            file_path = tmpdir + "/" + all_filenames[ifile]
+            with open(file_path, 'w') as f:
+                f.write(final_str)
+        if singlefile:
+            aiida_f = SinglefileData(file=file_path)            
+        else:
+            aiida_f = FolderData().replace_with_folder(folder=tmpdir)
+
+        shutil.rmtree(tmpdir)    
         return aiida_f
-
 
 # Constraints
 
