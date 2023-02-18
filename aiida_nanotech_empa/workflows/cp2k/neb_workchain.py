@@ -9,7 +9,8 @@ from aiida.orm import Int, Bool, Code, Dict, List, Str
 from aiida.orm import SinglefileData, StructureData, load_node
 from aiida.plugins import CalculationFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_colvars_section, get_constraints_section, make_geom_file
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_colvars_section, get_constraints_section 
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import make_geom_file, mk_wfn_cp_commands
 
 from aiida_nanotech_empa.utils import common_utils
 
@@ -44,6 +45,11 @@ class Cp2kNebWorkChain(WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+        spec.exit_code(
+            380,
+            "ERROR_UUIDS",
+            message="no structures specified",
+        )        
 
     def setup(self):
         self.report("Inspecting input and setting up things")
@@ -67,11 +73,21 @@ class Cp2kNebWorkChain(WorkChain):
             ),
         }        
 
-
-
+        uuids_to_check = [self.inputs.structure.uuid]
+        # check if restarting        
+        if len(self.inputs.replica_uuids) > 0:
+            uuids_to_check += self.inputs.replica_uuids
+        elif 'restart_from' in self.inputs:
+            uuids_to_check += load_node(self.inputs.restrat_from.value).inputs.replica_uuids
+        else:
+            return self.exit_codes.ERROR_UUIDS
+    
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
         self.ctx.neb_params = self.inputs.neb_params.get_dict()
+
+        # check for existing wfn files and create copy commands
+        self.ctx.wfn_cp_commands = mk_wfn_cp_commands(self.ctx.neb_params['number_of_replica'], uuids_to_check, self.inputs.code.computer)        
 
         self.ctx.n_atoms = len(self.inputs.structure.sites)
 
@@ -192,6 +208,15 @@ class Cp2kNebWorkChain(WorkChain):
 
         # resources
         builder.metadata.options = self.ctx.options
+
+        # wfn cp commands.
+        
+        
+        if len(self.ctx.wfn_cp_commands) > 0:
+            cp_commands = ""
+            for wfn_cp_command in self.ctx.wfn_cp_commands:
+                cp_commands += wfn_cp_command + "\n"        
+            builder.metadata.options.prepend_text = Str(cp_commands)
 
         # label
         builder.metadata.label = 'neb'

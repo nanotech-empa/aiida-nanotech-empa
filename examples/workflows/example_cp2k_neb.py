@@ -9,7 +9,7 @@ Cp2kNebWorkChain = WorkflowFactory("nanotech_empa.cp2k.neb")
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def _example_cp2k_neb(cp2k_code,uks):
+def _example_cp2k_neb(cp2k_code,uks,restart_uuid):
 
     builder = Cp2kNebWorkChain.get_builder()
 
@@ -32,44 +32,50 @@ def _example_cp2k_neb(cp2k_code,uks):
     qb.append(Node, filters={'label': {'in': ['auto_test_neb_ini_structure',
                                                'auto_test_neb_rep_structure', 
                                                'auto_test_neb_fin_structure']
-                                               }
-                                               })  
-    available_structures={}
-    uuids=[]
-    for node_tuple in qb.iterall():
-        node = node_tuple[0]
-        available_structures[node.label] = node.uuid
+                                               }})
+    if restart_uuid is  None:
+        available_structures={}
+        uuids=[]
+        for node_tuple in qb.iterall():
+            node = node_tuple[0]
+            available_structures[node.label] = node.uuid
 
-    if   'auto_test_neb_ini_structure' in available_structures:
-        uuids = [available_structures['auto_test_neb_ini_structure']]
-        print("found ini: ",available_structures['auto_test_neb_ini_structure'])
-    else:  
-        ini = StructureData(ase=Atoms("HCCH", positions=[[1, 2, 2], [2.07, 2, 2],[3.43, 2, 2],[4.50, 2, 2],], cell=[6.0, 4.0, 4.0]))
-        ini.label = 'auto_test_neb_ini_structure'
-        ini.store()
-        uuids = [ini.uuid]
-        print("created ini: ",ini.uuid)
-    if  'auto_test_neb_rep_structure' in available_structures:
-        uuids.append(available_structures['auto_test_neb_rep_structure'])
-        print("found rep: ",available_structures['auto_test_neb_rep_structure'])
-    else:  
-        rep = StructureData(ase=Atoms("HCCH", positions=[[1, 2, 2], [2.07, 2, 2],[3.43, 2, 2],[4.60, 2, 2],], cell=[6.0, 4.0, 4.0]))
-        rep.label = 'auto_test_neb_rep_structure'
-        rep.store()
-        uuids.append(rep.uuid)
-        print("created rep: ",rep.uuid)
-    if  'auto_test_neb_fin_structure' in available_structures:
-        uuids.append(available_structures['auto_test_neb_fin_structure'])
-        print("found fin: ",available_structures['auto_test_neb_fin_structure'])
-    else:
-        fin = StructureData(ase=Atoms("HCCH", positions=[[1, 2, 2], [2.07, 2, 2],[3.43, 2, 2],[4.70, 2, 2],], cell=[6.0, 4.0, 4.0]))
-        fin.label = 'auto_test_neb_fin_structure'
-        fin.store()
-        uuids.append(fin.uuid)
-        print("created fin: ",fin.uuid)
+        if   'auto_test_neb_ini_structure' in available_structures:
+            uuids = [available_structures['auto_test_neb_ini_structure']]
+            print("found ini: ",available_structures['auto_test_neb_ini_structure'])
+        else:  
+            ini = StructureData(ase=Atoms("HCCH", positions=[[1, 2, 2], [2.07, 2, 2],[3.43, 2, 2],[4.50, 2, 2],], cell=[6.0, 4.0, 4.0]))
+            ini.label = 'auto_test_neb_ini_structure'
+            ini.store()
+            uuids = [ini.uuid]
+            print("created ini: ",ini.uuid)
+        if  'auto_test_neb_rep_structure' in available_structures:
+            uuids.append(available_structures['auto_test_neb_rep_structure'])
+            print("found rep: ",available_structures['auto_test_neb_rep_structure'])
+        else:  
+            rep = StructureData(ase=Atoms("HCCH", positions=[[1, 2, 2], [2.07, 2, 2],[3.43, 2, 2],[4.60, 2, 2],], cell=[6.0, 4.0, 4.0]))
+            rep.label = 'auto_test_neb_rep_structure'
+            rep.store()
+            uuids.append(rep.uuid)
+            print("created rep: ",rep.uuid)
+        if  'auto_test_neb_fin_structure' in available_structures:
+            uuids.append(available_structures['auto_test_neb_fin_structure'])
+            print("found fin: ",available_structures['auto_test_neb_fin_structure'])
+        else:
+            fin = StructureData(ase=Atoms("HCCH", positions=[[1, 2, 2], [2.07, 2, 2],[3.43, 2, 2],[4.70, 2, 2],], cell=[6.0, 4.0, 4.0]))
+            fin.label = 'auto_test_neb_fin_structure'
+            fin.store()
+            uuids.append(fin.uuid)
+            print("created fin: ",fin.uuid)
     
-    builder.structure = load_node(uuids[0])
+        builder.structure = load_node(uuids[0])
+
+    else:
+        builder.structure = load_node(restart_uuid).inputs.structure
+        uuids = [0]
+    
     builder.replica_uuids = List(list=uuids[1:])
+    builder.restart_from = Str(restart_uuid)
 
     dft_params ={"protocol":"debug",   
         "cutoff": 300,
@@ -109,18 +115,25 @@ def _example_cp2k_neb(cp2k_code,uks):
 
     assert calc_node.is_finished_ok
 
+    return calc_node.uuid
+
 
 def example_cp2k_neb_rks(cp2k_code):
-    _example_cp2k_neb(cp2k_code, False)
+    _example_cp2k_neb(cp2k_code, False,None)
 
 
 def example_cp2k_neb_uks(cp2k_code):
-    _example_cp2k_neb(cp2k_code, True)
+    _example_cp2k_neb(cp2k_code, True,None)
 
 
 if __name__ == "__main__":
     print("####  RKS")
-    _example_cp2k_neb(load_code("cp2k@localhost"),  False)
+    uuid1 = _example_cp2k_neb(load_code("cp2k@localhost"),  False,None)
+
+    print("### restarting ",uuid1)
+    uuid2 = _example_cp2k_neb(load_code("cp2k@localhost"),  True, uuid1)    
 
     print("####  UKS")
-    _example_cp2k_neb(load_code("cp2k@localhost"),  True)
+    uuid3 = _example_cp2k_neb(load_code("cp2k@localhost"),  True, None)
+
+
