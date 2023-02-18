@@ -6,10 +6,10 @@ import numpy as np
 
 from aiida.engine import WorkChain, ToContext, ExitCode
 from aiida.orm import Int, Bool, Code, Dict, List, Str
-from aiida.orm import SinglefileData, StructureData, FolderData
+from aiida.orm import SinglefileData, StructureData, load_node
 from aiida.plugins import CalculationFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_colvars_section, get_constraints_section
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_colvars_section, get_constraints_section, make_geom_file
 
 from aiida_nanotech_empa.utils import common_utils
 
@@ -131,12 +131,12 @@ class Cp2kNebWorkChain(WorkChain):
         dict_merge(self.ctx.input_dict, self.ctx.kinds_section) 
 
         # replica files with tags must be after structure_with_tags.
-        tags = ase_atoms.get_tags()
+        tags = ase_atoms.get_tags().astype(np.int32).tolist()
         self.ctx.files['replica_001_xyz'] = make_geom_file(ase_atoms, 'replica_001.xyz', tags=tags)
         self.ctx.input_dict['MOTION']['BAND']['REPLICA']=[{'COORD_FILE_NAME':'replica_001.xyz'}]
-        for uuid in self.inputs.replica_uuids:
+        for i, uuid in enumerate(self.inputs.replica_uuids):
             structure = load_node(uuid).get_ase() 
-            filename = 'replica_$s.xyz' % str(i +1 ).zfill(3)
+            filename = 'replica_%s.xyz' % str(i +2 ).zfill(3)
             self.ctx.files[filename.replace(".", "_")] = make_geom_file(structure, filename, tags=tags)
             # and update input dictionary.
             self.ctx.input_dict['MOTION']['BAND']['REPLICA'].append({'COORD_FILE_NAME':filename}) 
@@ -159,12 +159,12 @@ class Cp2kNebWorkChain(WorkChain):
 
 
         # neb parameters.
-        for param in ['align_frames','band_type','k_spring','nproc_rep','number_of_replica']
+        for param in ['align_frames','band_type','k_spring','nproc_rep','number_of_replica']:
             if param in self.ctx.neb_params:
-                    self.ctx.input_dict['MOTION']['BAND'][param.upper()] = self.ctx.neb_params[param]
+                self.ctx.input_dict['MOTION']['BAND'][param.upper()] = self.ctx.neb_params[param]
 
         if  'nsteps_it' in self.ctx.neb_params:
-            self.ctx.input_dict['MOTION']['BAND']['CI_NEB'] = self.ctx.neb_params['nsteps_it']
+            self.ctx.input_dict['MOTION']['BAND']['CI_NEB'] = {'NSTEPS_IT':self.ctx.neb_params['nsteps_it']}
         if 'optimize_end_points' in self.ctx.neb_params:
             self.ctx.input_dict['MOTION']['BAND']['OPTIMIZE_BAND']['OPTIMIZE_END_POINTS'] = self.ctx.neb_params['optimize_end_points']
 

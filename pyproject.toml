@@ -74,6 +74,7 @@ dev = [
 "nanotech_empa.cp2k.hrstm" = "aiida_nanotech_empa.workflows.cp2k.hrstm_workchain:Cp2kHrstmWorkChain"
 "nanotech_empa.cp2k.diag" = "aiida_nanotech_empa.workflows.cp2k.diag_workchain:Cp2kDiagWorkChain"
 "nanotech_empa.cp2k.replica" = "aiida_nanotech_empa.workflows.cp2k.replica_workchain:Cp2kReplicaWorkChain"
+"nanotech_empa.cp2k.neb" = "aiida_nanotech_empa.workflows.cp2k.neb_workchain:Cp2kNebWorkChain"
 
 
 [project.entry-points."aiida.schedulers"]

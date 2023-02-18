@@ -178,7 +178,7 @@ def get_cutoff(structure=None):
     elements = structure.get_symbols_set()
     return max([atom_data['cutoff'][element] for element in elements])
 
-def make_geom_file(atoms, filename, tags=False):
+def make_geom_file(atoms, filename, tags=None):
         tmpdir = tempfile.mkdtemp()
 
         singlefile = False
@@ -198,11 +198,11 @@ def make_geom_file(atoms, filename, tags=False):
             for i_line, line in enumerate(orig_lines):
                 new_line = line
                 lsp = line.split()
-                if tags :
-                    if tags(i_line) ==0 :
+                if tags is not None :
+                    if tags[i_line] == 0 :
                         new_line = lsp[0]+"  " + " ".join(lsp[1:])+"\n"
                     else:
-                        new_line = lsp[0]+str(tags(i_line))+" " + " ".join(lsp[1:])+"\n"
+                        new_line = lsp[0]+str(tags[i_line])+" " + " ".join(lsp[1:])+"\n"
                 modif_lines.append(new_line)
             
             final_str = "%d\n%s" % (len(atoms), comment) + "".join(modif_lines)
