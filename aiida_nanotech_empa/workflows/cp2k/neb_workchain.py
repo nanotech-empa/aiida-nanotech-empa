@@ -22,8 +22,9 @@ class Cp2kNebWorkChain(WorkChain):
         super().define(spec)
         spec.input("code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
-        spec.input("replica_folder", valid_type=FolderData)
+        spec.input("replica_uuids", valid_type=List)
         spec.input("wfn_file_path", valid_type=Str, required=False)
+        spec.input("restart_from", valid_type=Str, required=False)
         spec.input("dft_params", valid_type=Dict)
         spec.input("sys_params",valid_type=Dict)
         spec.input("neb_params",valid_type=Dict)        
@@ -35,7 +36,7 @@ class Cp2kNebWorkChain(WorkChain):
             "Define options for the cacluations: walltime, memory, CPUs, etc.")
 
         #workchain outline
-        spec.outline(cls.setup, cls.submit_calc, cls.finalize)
+        spec.outline(cls.setup, cls.submit_neb, cls.finalize)
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -122,45 +123,42 @@ class Cp2kNebWorkChain(WorkChain):
                 self.ctx.input_dict['FORCE_EVAL']['SUBSYS']['CELL']['PERIODIC'] = 'NONE'
                 self.ctx.input_dict['FORCE_EVAL']['DFT']['POISSON']['PERIODIC'] = 'NONE'
                 self.ctx.input_dict['FORCE_EVAL']['DFT']['POISSON']['POISSON_SOLVER'] = 'MT'
-            # to be done: more cases        
+            # to be done: more cases 
 
-
-        # replica files
-        # replica files 
-        for f in self.inputs.replica_folder.list_object_names():
-            with struc_folder.open(f) as handle:
-                f_no_dot = f.replace(".", "_")
-                slef.ctx.files[f_no_dot] = SinglefileData(file=handle.name)
-
-        structures = [ase_atoms]
-        filenames = ['/replica_001.xyz']
-        for i, uuid in enumerate(self.inputs.replica_uuids):
-            structures.append = load_node(uuid).get_ase() 
-            filenames.append = ['/replica_$s.xyz' % str(i +1 ).zfill(3)]
-            
-
+        # must be after if 'periodic'     
         self.ctx.structure_with_tags = ase_atoms  
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol="gpw")   
-        dict_merge(self.ctx.input_dict, self.ctx.kinds_section)  
+        dict_merge(self.ctx.input_dict, self.ctx.kinds_section) 
 
-        # get cutoff
+        # replica files with tags must be after structure_with_tags.
+        tags = ase_atoms.get_tags()
+        self.ctx.files['replica_001_xyz'] = make_geom_file(ase_atoms, 'replica_001.xyz', tags=tags)
+        self.ctx.input_dict['MOTION']['BAND']['REPLICA']=[{'COORD_FILE_NAME':'replica_001.xyz'}]
+        for uuid in self.inputs.replica_uuids:
+            structure = load_node(uuid).get_ase() 
+            filename = 'replica_$s.xyz' % str(i +1 ).zfill(3)
+            self.ctx.files[filename.replace(".", "_")] = make_geom_file(structure, filename, tags=tags)
+            # and update input dictionary.
+            self.ctx.input_dict['MOTION']['BAND']['REPLICA'].append({'COORD_FILE_NAME':filename}) 
+
+        # get cutoff.
         cutoff = get_cutoff(structure=self.inputs.structure)
 
-        # overwrite cutoff if given in dft_params
+        # overwrite cutoff if given in dft_params.
         if "cutoff" in self.ctx.dft_params:
             cutoff = self.ctx.dft_params["cutoff"]
 
         self.ctx.input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = cutoff
 
-        # constraints
+        # constraints.
         if 'constraints' in self.ctx.sys_params:
             self.ctx.input_dict['MOTION']['CONSTRAINT'] = get_constraints_section(self.ctx.sys_params['constraints'])
-        # colvars
+        # colvars.
         if 'colvars' in self.ctx.sys_params:
             self.ctx.input_dict['FORCE_EVAL']['SUBSYS'].update(get_colvars_section(self.ctx.sys_params['colvars']))
 
 
-        # NEB parameters
+        # neb parameters.
         for param in ['align_frames','band_type','k_spring','nproc_rep','number_of_replica']
             if param in self.ctx.neb_params:
                     self.ctx.input_dict['MOTION']['BAND'][param.upper()] = self.ctx.neb_params[param]
@@ -184,14 +182,13 @@ class Cp2kNebWorkChain(WorkChain):
 
         # --------------------------------------------------
 
-    def submit_calc(self):
+    def submit_neb(self):
         self.report("Submitting geometry optimization")
 
         builder = Cp2kCalculation.get_builder()
         builder.code = self.inputs.code
         builder.structure = StructureData(ase=self.ctx.structure_with_tags)
         builder.file = self.ctx.files
-        builder.
 
         # resources
         builder.metadata.options = self.ctx.options
@@ -206,7 +203,7 @@ class Cp2kNebWorkChain(WorkChain):
         builder.settings = Dict(dict={"additional_retrieve_list": ["*.xyz", "*.out", "*.ener"]})
         # restart wfn
         if "wfn_file_path" in self.inputs:
-            builder.cp2k.parent_calc_folder = self.inputs.wfn_file_path.value
+            builder.parent_calc_folder = self.inputs.wfn_file_path.value
 
         # cp2k input dictionary
         builder.parameters = Dict(self.ctx.input_dict)

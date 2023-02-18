@@ -186,7 +186,7 @@ def make_geom_file(atoms, filename, tags=False):
             singlefile = True
             all_atoms=[atoms]
             all_filenames = [filename]
-        for ifile, atoms in enumerate(all_atoms)
+        for ifile, atoms in enumerate(all_atoms):
             orig_file = StringIO()
             atoms.write(orig_file, format='xyz')
             orig_file.seek(0)
