@@ -72,10 +72,11 @@ def _example_cp2k_neb(cp2k_code,uks,restart_uuid):
 
     else:
         builder.structure = load_node(restart_uuid).inputs.structure
+        builder.restart_from = Str(restart_uuid)
         uuids = [0]
     
     builder.replica_uuids = List(list=uuids[1:])
-    builder.restart_from = Str(restart_uuid)
+    
 
     dft_params ={"protocol":"debug",   
         "cutoff": 300,
@@ -129,11 +130,11 @@ def example_cp2k_neb_uks(cp2k_code):
 if __name__ == "__main__":
     print("####  RKS")
     uuid1 = _example_cp2k_neb(load_code("cp2k@localhost"),  False,None)
-
-    print("### restarting ",uuid1)
-    uuid2 = _example_cp2k_neb(load_code("cp2k@localhost"),  True, uuid1)    
-
+ 
     print("####  UKS")
-    uuid3 = _example_cp2k_neb(load_code("cp2k@localhost"),  True, None)
+    uuid2 = _example_cp2k_neb(load_code("cp2k@localhost"),  True, None)
+
+    print("### restarting from ",uuid2)
+    uuid3 = _example_cp2k_neb(load_code("cp2k@localhost"),  True, uuid2)    
 
 

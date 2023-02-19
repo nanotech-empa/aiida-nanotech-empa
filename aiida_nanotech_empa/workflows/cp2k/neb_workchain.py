@@ -1,16 +1,11 @@
-import os
-import pathlib
-import yaml
-import copy
 import numpy as np
 
-from aiida.engine import WorkChain, ToContext, ExitCode
+from aiida.engine import WorkChain, ToContext, ExitCode, if_
 from aiida.orm import Int, Bool, Code, Dict, List, Str
 from aiida.orm import SinglefileData, StructureData, load_node
 from aiida.plugins import CalculationFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds, dict_merge, get_cutoff
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_colvars_section, get_constraints_section 
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import make_geom_file, mk_wfn_cp_commands
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import make_geom_file, mk_wfn_cp_commands, get_dft_inputs
 
 from aiida_nanotech_empa.utils import common_utils
 
@@ -24,7 +19,7 @@ class Cp2kNebWorkChain(WorkChain):
         spec.input("code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
         spec.input("replica_uuids", valid_type=List)
-        spec.input("wfn_file_path", valid_type=Str, required=False)
+        spec.input("wfn_cp_commands", valid_type=Str, required=False)
         spec.input("restart_from", valid_type=Str, required=False)
         spec.input("dft_params", valid_type=Dict)
         spec.input("sys_params",valid_type=Dict)
@@ -37,7 +32,9 @@ class Cp2kNebWorkChain(WorkChain):
             "Define options for the cacluations: walltime, memory, CPUs, etc.")
 
         #workchain outline
-        spec.outline(cls.setup, cls.submit_neb, cls.finalize)
+        spec.outline(cls.setup, 
+                     if_(cls.should_run_scf)(cls.first_scf),
+                     cls.submit_neb, cls.finalize)
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -53,102 +50,36 @@ class Cp2kNebWorkChain(WorkChain):
 
     def setup(self):
         self.report("Inspecting input and setting up things")
-
-        self.ctx.files = {
-            "basis": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "BASIS_MOLOPT",
-                )
-            ),
-            "pseudo": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "POTENTIAL",
-                )
-            ),
-        }        
+        if 'restart_from' in self.inputs:
+            dft_params = load_node(self.inputs.restart_from.value).inputs.dft_params.get_dict()
+        else:
+            dft_params = self.inputs.dft_params.get_dict()
+        
+        self.ctx.files, self.ctx.input_dict, self.ctx.structure_with_tags = get_dft_inputs(dft_params,self.inputs.structure,'neb_protocol.yml')
+        self.ctx.sys_params = self.inputs.sys_params.get_dict()
+        self.ctx.neb_params = self.inputs.neb_params.get_dict()
 
         uuids_to_check = [self.inputs.structure.uuid]
         # check if restarting        
         if len(self.inputs.replica_uuids) > 0:
             uuids_to_check += self.inputs.replica_uuids
         elif 'restart_from' in self.inputs:
-            uuids_to_check += load_node(self.inputs.restrat_from.value).inputs.replica_uuids
+            self.report("checking wfn available from previos neb")
+            workcalc = load_node(self.inputs.restart_from.value)
+            n_previous_replica = workcalc.inputs.neb_params['number_of_replica']
+            uuids_to_check = [workcalc.outputs['opt_replica_%s' % str(i).zfill(3)].uuid for i in range(1,n_previous_replica)]    
         else:
             return self.exit_codes.ERROR_UUIDS
-    
-        self.ctx.sys_params = self.inputs.sys_params.get_dict()
-        self.ctx.dft_params = self.inputs.dft_params.get_dict()
-        self.ctx.neb_params = self.inputs.neb_params.get_dict()
 
         # check for existing wfn files and create copy commands
-        self.ctx.wfn_cp_commands = mk_wfn_cp_commands(self.ctx.neb_params['number_of_replica'], uuids_to_check, self.inputs.code.computer)        
-
-        self.ctx.n_atoms = len(self.inputs.structure.sites)
-
-        # load input template
-        with open(
-            pathlib.Path(__file__).parent / "./protocols/neb_protocol.yml",
-            encoding="utf-8",
-        ) as handle:
-            protocols = yaml.safe_load(handle)
-            self.ctx.input_dict = copy.deepcopy(protocols[self.ctx.dft_params['protocol']])        
-
-        # vdW section
-        if 'vdw' in self.ctx.dft_params:
-            if not self.ctx.dft_params['vdw']: self.ctx.input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
-        else:
-            self.ctx.input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
-
-        #charge
-        if 'charge' in self.ctx.dft_params:
-            self.ctx.input_dict['FORCE_EVAL']['DFT']['CHARGE'] = self.ctx.dft_params['charge']
-           
-        # uks    
-        magnetization_per_site = [0 for i in range(self.ctx.n_atoms)]
-        if 'uks' in   self.ctx.dft_params:
-            if self.ctx.dft_params['uks']:
-                magnetization_per_site = self.ctx.dft_params["magnetization_per_site"]
-                self.ctx.input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
-                self.ctx.input_dict['FORCE_EVAL']['DFT']['MULTIPLICITY'] = self.ctx.dft_params['multiplicity']
-
-        # get initial magnetization
-        structure_with_tags, kinds_dict = determine_kinds(
-            self.inputs.structure, magnetization_per_site
-        )
-
-        ase_atoms = structure_with_tags.get_ase()
-
-        # non periodic systems only NONE and XYZ implemented: TO BE CHECKED FOR NEB!!!!
-        if 'periodic' in self.ctx.dft_params:
-            if self.ctx.dft_params['periodic'] == 'NONE':
-                # make sure cell is big enough for MT poisson solver and center molecule
-                if self.ctx.dft_params['protocol'] == "debug":
-                    extra_cell = 5.0
-                else:
-                    extra_cell = 15.0
-                ase_atoms.cell = 2 * (np.ptp(ase_atoms.positions, axis=0)) + extra_cell
-                ase_atoms.center()
-
-                # Poisson solver
-                self.ctx.input_dict['FORCE_EVAL']['SUBSYS']['CELL']['PERIODIC'] = 'NONE'
-                self.ctx.input_dict['FORCE_EVAL']['DFT']['POISSON']['PERIODIC'] = 'NONE'
-                self.ctx.input_dict['FORCE_EVAL']['DFT']['POISSON']['POISSON_SOLVER'] = 'MT'
-            # to be done: more cases 
-
-        # must be after if 'periodic'     
-        self.ctx.structure_with_tags = ase_atoms  
-        self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol="gpw")   
-        dict_merge(self.ctx.input_dict, self.ctx.kinds_section) 
-
+        self.ctx.should_run_scf = False
+        self.ctx.wfn_cp_commands = mk_wfn_cp_commands(self.ctx.neb_params['number_of_replica'], uuids_to_check, self.inputs.code.computer)
+        if len(self.ctx.wfn_cp_commands) == 0:
+            self.ctx.should_run_scf = True            
+    
         # replica files with tags must be after structure_with_tags.
-        tags = ase_atoms.get_tags().astype(np.int32).tolist()
-        self.ctx.files['replica_001_xyz'] = make_geom_file(ase_atoms, 'replica_001.xyz', tags=tags)
+        tags = self.ctx.structure_with_tags.get_tags().astype(np.int32).tolist()
+        self.ctx.files['replica_001_xyz'] = make_geom_file(self.ctx.structure_with_tags, 'replica_001.xyz', tags=tags)
         self.ctx.input_dict['MOTION']['BAND']['REPLICA']=[{'COORD_FILE_NAME':'replica_001.xyz'}]
         for i, uuid in enumerate(self.inputs.replica_uuids):
             structure = load_node(uuid).get_ase() 
@@ -156,15 +87,6 @@ class Cp2kNebWorkChain(WorkChain):
             self.ctx.files[filename.replace(".", "_")] = make_geom_file(structure, filename, tags=tags)
             # and update input dictionary.
             self.ctx.input_dict['MOTION']['BAND']['REPLICA'].append({'COORD_FILE_NAME':filename}) 
-
-        # get cutoff.
-        cutoff = get_cutoff(structure=self.inputs.structure)
-
-        # overwrite cutoff if given in dft_params.
-        if "cutoff" in self.ctx.dft_params:
-            cutoff = self.ctx.dft_params["cutoff"]
-
-        self.ctx.input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = cutoff
 
         # constraints.
         if 'constraints' in self.ctx.sys_params:
@@ -186,7 +108,7 @@ class Cp2kNebWorkChain(WorkChain):
 
         # resources
         self.ctx.options = self.inputs.options
-        if self.ctx.dft_params['protocol'] == "debug":
+        if self.inputs.dft_params['protocol'] == "debug":
             self.ctx.options = {
                 "max_wallclock_seconds": 600,
                 "resources": {
@@ -197,38 +119,68 @@ class Cp2kNebWorkChain(WorkChain):
                 }
 
         # --------------------------------------------------
+    def should_run_scf(self):
+        """Function that returnns whether to run or not the first scf step"""
+        return self.ctx.should_run_scf
+    
+    def first_scf(self):
+        """Run scf on the initial geometry."""
 
-    def submit_neb(self):
-        self.report("Submitting geometry optimization")
+        files,input_dict, structure_with_tags = get_dft_inputs(self.inputs.dft_params.get_dict(),self.inputs.structure,'scf_ot_protocol.yml')
 
         builder = Cp2kCalculation.get_builder()
+        builder.structure = StructureData(ase=structure_with_tags)
         builder.code = self.inputs.code
-        builder.structure = StructureData(ase=self.ctx.structure_with_tags)
-        builder.file = self.ctx.files
+        builder.file = files
 
         # resources
-        builder.metadata.options = self.ctx.options
-
-        # wfn cp commands.
-        
-        
-        if len(self.ctx.wfn_cp_commands) > 0:
-            cp_commands = ""
-            for wfn_cp_command in self.ctx.wfn_cp_commands:
-                cp_commands += wfn_cp_command + "\n"        
-            builder.metadata.options.prepend_text = Str(cp_commands)
+        builder.metadata.options = self.inputs.options        
 
         # label
-        builder.metadata.label = 'neb'
+        builder.metadata.label = 'scf'
 
         # parser
-        builder.metadata.options.parser_name = "cp2k_neb_parser"
+        builder.metadata.options.parser_name = "cp2k_advanced_parser"
 
+        # cp2k input dictionary
+        builder.parameters = Dict(input_dict)
+
+        future = self.submit(builder)
+        self.report(
+            f"Submitted scf of the initial geometry: {future.pk}")
+        self.to_context(initial_scf=future)
+
+    def submit_neb(self):
+        self.report("Submitting NEB optimization")
+
+        builder = Cp2kCalculation.get_builder()
+        # label
+        builder.metadata.label = 'neb'
+        # code        
+        builder.code = self.inputs.code
+        # structure
+        builder.structure = StructureData(ase=self.ctx.structure_with_tags)
+        builder.file = self.ctx.files
+        # resources
+        builder.metadata.options = self.ctx.options
+        # parser
+        builder.metadata.options.parser_name = "cp2k_neb_parser"        
         # additional retrieved files
         builder.settings = Dict(dict={"additional_retrieve_list": ["*.xyz", "*.out", "*.ener"]})
-        # restart wfn
-        if "wfn_file_path" in self.inputs:
-            builder.parent_calc_folder = self.inputs.wfn_file_path.value
+
+        # wfn cp commands.
+        if self.ctx.should_run_scf:
+            cp_commands = ""
+            ndigits = len(str(self.ctx.neb_params['number_of_replica']))       
+            for i in range(self.ctx.neb_params['number_of_replica']):
+                wfn_name = "aiida-BAND%s-RESTART.wfn" % str(i+1).zfill(ndigits)
+                cp_commands += "cp " + self.ctx.initial_scf.outputs.remote_folder.get_remote_path() + "/aiida-RESTART.wfn " +"./"+wfn_name+"\n"        
+        else:
+            cp_commands = ""
+            for wfn_cp_command in self.ctx.wfn_cp_commands:
+                cp_commands += wfn_cp_command + "\n" 
+
+        builder.metadata.options.prepend_text = cp_commands
 
         # cp2k input dictionary
         builder.parameters = Dict(self.ctx.input_dict)

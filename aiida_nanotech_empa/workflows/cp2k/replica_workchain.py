@@ -1,21 +1,15 @@
-import os
-import pathlib
-import copy
-import yaml
-
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_kinds_section, determine_kinds
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import dict_merge, get_nodes, get_cutoff, get_colvars_section, get_constraints_section
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import  get_colvars_section, get_constraints_section, get_dft_inputs
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import compute_colvars
-from aiida.plugins import DataFactory, WorkflowFactory
+from aiida.plugins import DataFactory, WorkflowFactory, CalculationFactory
 from aiida.engine import WorkChain, ToContext, ExitCode, while_, if_, append_, calcfunction
-from aiida.orm import SinglefileData,Int, Str, Code, Dict, List, Bool, load_node, CalcJobNode
+from aiida.orm import  Str, Code, Dict, load_node, CalcJobNode
 import math
 import numpy as np
 
 StructureData = DataFactory("core.structure")
 Cp2kBaseWorkChain = WorkflowFactory("cp2k.base")
-#Cp2kOptWorkChain = WorkflowFactory('nanotech_empa.cp2k.opt')
+Cp2kCalculation = CalculationFactory("cp2k")
 
 @calcfunction
 def output_dict(enes,cvs,structures):
@@ -34,49 +28,21 @@ class Cp2kReplicaWorkChain(WorkChain):
         super().define(spec)
 
         # Define the inputs of the workflow
-        spec.input(
-            "charge",  # +1 means one electron removed
-            valid_type=Int,
-            default=lambda:         Int(0),
-            required=False)
-        spec.input("multiplicity",
-                   valid_type=Int,
-                   default=lambda: Int(0),
-                   required=False)
-        spec.input("magnetization_per_site",
-                   valid_type=List,
-                   default=lambda: List(list=[]),
-                   required=False)
-        spec.input("vdw",
-                   valid_type=Bool,
-                   default=lambda: Bool(False),
-                   required=False)
-        spec.input("protocol",
-                   valid_type=Str,
-                   default=lambda: Str('standard'),
-                   required=False,
-                   help="Settings to run simulations with.")
-        spec.input("walltime_seconds",
-                   valid_type=Int,
-                   default=lambda: Int(7200),
-                   required=False)     
-        spec.input("max_nodes",
-                   valid_type=Int,
-                   default=lambda: Int(48),
-                   required=False)                                 
-        spec.input("structure", valid_type=StructureData)
         spec.input("code", valid_type=Code)
-        spec.input("constraints", valid_type=Str)
-        spec.input("colvars", valid_type=Str)
-        spec.input("colvars_targets", valid_type=List)
-        spec.input("colvars_increments", valid_type=List)
-        spec.input("continuation_of",
-                   valid_type=Int,
-                   default=lambda: Int(0),
-                   required=False)
+        spec.input("structure", valid_type=StructureData)
+        spec.input("restart_from", valid_type=Str, required=False)
+        spec.input("dft_params", valid_type=Dict)
+        spec.input("sys_params",valid_type=Dict)      
+        spec.input(
+            "options",
+            valid_type=dict,
+            non_db=True,
+            help=
+            "Define options for the cacluations: walltime, memory, CPUs, etc.")
+        
 
         spec.outline(
-            cls.start, 
+            cls.setup, 
             if_(cls.should_run_scf)(cls.first_scf, cls.update_colvars_values,
             cls.update_colvars_increments,
             cls.to_outputs),
@@ -94,13 +60,14 @@ class Cp2kReplicaWorkChain(WorkChain):
         spec.output_namespace("details",valid_type=Dict) 
         spec.exit_code(390, "ERROR_TERMINATION", message="One geo opt failed")
 
-    def start(self):
+    def setup(self):
         """Initialize the workchain process."""
-        self.report(f"Initialization")
+        self.report("Inspecting input and setting up things")
+                       
         # restart from previous workchain
-        if self.inputs.continuation_of.value !=0 :
-            self.report(f"Retrieving previous steps from {self.inputs.continuation_of.value} and continuing")
-            previous_replica=load_node(self.inputs.continuation_of.value)
+        if 'restart_from' in self.inputs:
+            self.report(f"Retrieving previous steps from {self.inputs.restart_from.value} and continuing")
+            previous_replica=load_node(self.inputs.restart_from.value)
             previous_structures=[struc for struc in previous_replica.outputs.structures]
             
             previous_structures.sort()
@@ -149,101 +116,36 @@ class Cp2kReplicaWorkChain(WorkChain):
 
     def first_scf(self):
         """Run scf on the initial geometry."""
-        with open(pathlib.Path(__file__).parent /
-            './protocols/scf_ot_protocol.yml',
-            encoding='utf-8') as handle:
-            protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
 
+        files,input_dict, structure_with_tags = get_dft_inputs(self.inputs.dft_params.get_dict(),self.ctx.lowest_energy_structure,'scf_ot_protocol.yml')
 
+        builder = Cp2kCalculation.get_builder()
+        builder.structure = StructureData(ase=structure_with_tags)
+        builder.code = self.inputs.code
+        builder.file = files
 
-        structure = self.ctx.lowest_energy_structure
-        #cutoff
-        self.ctx.cutoff = get_cutoff(structure=structure)
+        # resources
+        builder.metadata.options = self.inputs.options        
 
-        #get initial magnetization
-        magnetization_per_site = copy.deepcopy(
-            self.inputs.magnetization_per_site)
-        structure_with_tags, kinds_dict = determine_kinds(
-            structure, magnetization_per_site)
+        # label
+        builder.metadata.label = 'scf'
 
-        ase_atoms = structure_with_tags.get_ase()
+        # parser
+        builder.metadata.options.parser_name = "cp2k_advanced_parser"
 
-        builder = Cp2kBaseWorkChain.get_builder()
-        builder.cp2k.structure = StructureData(ase=ase_atoms)
-        builder.cp2k.code = self.inputs.code
+        # cp2k input dictionary
+        builder.parameters = Dict(input_dict)
 
-        builder.cp2k.file = {
-            'basis':
-            SinglefileData(
-                file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  ".", "data", "BASIS_MOLOPT")),
-            'pseudo':
-            SinglefileData(
-                file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  ".", "data", "POTENTIAL")),
-        }
-
-        #charge
-        if self.inputs.charge != 0:
-            input_dict['FORCE_EVAL']['DFT']['CHARGE'] = self.inputs.charge
-
-        # vdw
-        if not self.inputs.vdw.value:
-            input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
-
-        #UKS
-        if self.inputs.multiplicity.value > 0:
-            input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
-            input_dict['FORCE_EVAL']['DFT'][
-                'MULTIPLICITY'] = self.inputs.multiplicity.value
-
-        #cutoff
-        input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
-
-        # KINDS section
-        self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
-        dict_merge(input_dict, self.ctx.kinds_section)
-
-        #computational resources
-        nodes, tasks_per_node, threads = get_nodes(
-            atoms=ase_atoms,
-            calctype='slab',
-            computer=self.inputs.code.computer,
-            max_nodes=self.inputs.max_nodes.value,
-            uks=self.inputs.multiplicity.value > 0)
-
-        builder.cp2k.metadata.options.resources = {
-            'num_machines': nodes,
-            'num_mpiprocs_per_machine': tasks_per_node,
-            'num_cores_per_mpiproc': threads
-        }
-
-        #walltime
-        input_dict['GLOBAL']['WALLTIME'] = max(
-            self.inputs.walltime_seconds.value - 600, 600)
-        builder.cp2k.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
-
-        #parser
-        builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
-
-        #handlers
-        builder.handler_overrides = Dict(
-            {'resubmit_unconverged_geometry': True})
-
-        #cp2k input dictionary
-        builder.cp2k.parameters = Dict(input_dict)
-
-        submitted_calculation = self.submit(builder)
+        future = self.submit(builder)
         self.report(
-            f"Submitted scf of the initial geometry: {submitted_calculation.pk}")
-        return ToContext(initial_scf=submitted_calculation)
+            f"Submitted scf of the initial geometry: {future.pk}")
+        self.to_context(initial_scf=future)
 
     def update_colvars_values(self):
         """Compute actual value of CVs."""
 
         ase_structure = self.ctx.lowest_energy_structure.get_ase()
-        colvars = self.inputs.colvars.value
+        colvars = self.inputs.sys_params['colvars']
         self.ctx.colvars_values = [cv[1] for cv in compute_colvars(colvars, ase_structure)]
         self.report(f"actual CVs values: {self.ctx.colvars_values}")
         if self.ctx.propagation_step == 0 :
@@ -260,11 +162,11 @@ class Cp2kReplicaWorkChain(WorkChain):
         from targets"""
         self.ctx.colvars_increments = []
         for index, colvar in enumerate(self.ctx.colvars_values):
-            if math.fabs(self.inputs.colvars_targets[index] -
-                        colvar) > self.inputs.colvars_increments[index] and math.fabs(self.inputs.colvars_increments[index]) > 0.0001:
+            if math.fabs(self.inputs.sys_params['colvars_targets'][index] -
+                        colvar) > self.inputs.sys_params['colvars_increments'][index] and math.fabs(self.inputs.sys_params['colvars_increments'][index]) > 0.0001:
                 self.ctx.colvars_increments.append(
-                    math.fabs(self.inputs.colvars_increments[index]) *
-                    np.sign(self.inputs.colvars_targets[index] - colvar))
+                    math.fabs(self.inputs.sys_params['colvars_increments'][index]) *
+                    np.sign(self.inputs.sys_params['colvars_targets'][index] - colvar))
             else:
                 self.ctx.colvars_increments.append(0)
         if all(i == 0 for i in self.ctx.colvars_increments):
@@ -275,55 +177,35 @@ class Cp2kReplicaWorkChain(WorkChain):
         #pylint: disable=unused-variable
         self.ctx.CVs_cases=[]
         for index, value in enumerate(self.ctx.CVs_to_increment): #(self.ctx.colvars_values):
-            if self.ctx.colvars_increments[index] != 0:
-                with open(pathlib.Path(__file__).parent /
-                        './protocols/geo_opt_protocol.yml',
-                        encoding='utf-8') as handle:
-                    protocols = yaml.safe_load(handle)
-                    input_dict = copy.deepcopy(protocols[self.inputs.protocol.value])
-
+            if self.ctx.colvars_increments[index] != 0:               
                 structure = self.ctx.lowest_energy_structure
-                #cutoff
-                self.ctx.cutoff = get_cutoff(structure=structure)
 
-                #get initial magnetization
-                magnetization_per_site = copy.deepcopy(
-                    self.inputs.magnetization_per_site)
-                structure_with_tags, kinds_dict = determine_kinds(
-                    structure, magnetization_per_site)
-
-                ase_atoms = structure_with_tags.get_ase()        
+                files, input_dict, structure_with_tags = get_dft_inputs(self.inputs.dft_params,structure,'geo_opt_protocol.yml')
+      
                 builder = Cp2kBaseWorkChain.get_builder()
-                builder.cp2k.structure = StructureData(ase=ase_atoms)
                 builder.cp2k.code = self.inputs.code
+                builder.cp2k.structure = StructureData(ase=structure_with_tags)
+                builder.cp2k.file = files
+                # resources
+                builder.cp2k.metadata.options = self.inputs.options 
+                # parser
+                builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
+                # handlers
+                builder.handler_overrides = Dict(
+                    {'restart_incomplete_calculation': True}) 
+                # wfn restart folder
+                if self.ctx.propagation_step == 0:
+                    builder.cp2k.parent_calc_folder = self.ctx.initial_scf.outputs.remote_folder 
+                else:
+                    builder.cp2k.parent_calc_folder = self.ctx.restart_folder                                         
 
-                builder.cp2k.file = {
-                    'basis':
-                    SinglefileData(
-                        file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                        ".", "data", "BASIS_MOLOPT")),
-                    'pseudo':
-                    SinglefileData(
-                        file=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                        ".", "data", "POTENTIAL")),
-                }
-
-                #charge
-                if self.inputs.charge != 0:
-                    input_dict['FORCE_EVAL']['DFT']['CHARGE'] = self.inputs.charge
-
-                # vdw
-                if not self.inputs.vdw.value:
-                    input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
-
-                #UKS
-                if self.inputs.multiplicity.value > 0:
-                    input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
-                    input_dict['FORCE_EVAL']['DFT'][
-                        'MULTIPLICITY'] = self.inputs.multiplicity.value
-
-                #constraints
-                input_dict['MOTION']['CONSTRAINT'] = get_constraints_section(self.inputs.constraints.value)
+                # constraints.
+                if 'constraints' in self.inputs.sys_params:
+                    input_dict['MOTION']['CONSTRAINT'] = get_constraints_section(self.inputs.sys_params['constraints'])
+                # colvars.
+                if 'colvars' in self.inputs.sys_params:
+                    input_dict['FORCE_EVAL']['SUBSYS'].update(get_colvars_section(self.inputs.sys_params['colvars']))
+                # update constraints
                 submitted_CVs=''
                 current_CVs_targets=[]
                 for icv, cvval in enumerate(self.ctx.CVs_to_increment):
@@ -335,53 +217,9 @@ class Cp2kReplicaWorkChain(WorkChain):
                     input_dict['MOTION']['CONSTRAINT']['COLLECTIVE'][icv]['TARGET'] = units + ' ' + str(target)
                     submitted_CVs += ' ' + str(target)
                 self.ctx.CVs_cases.append(current_CVs_targets)
-                #colvars
-                if self.inputs.colvars.value:
-                    input_dict['FORCE_EVAL']['SUBSYS'].update(
-                        get_colvars_section(self.inputs.colvars.value))
 
-                #cutoff
-                input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = self.ctx.cutoff
-
-                # KINDS section
-                self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol='gpw')
-                dict_merge(input_dict, self.ctx.kinds_section)
-
-                #computational resources
-                nodes, tasks_per_node, threads = get_nodes(
-                    atoms=ase_atoms,
-                    calctype='slab',
-                    computer=self.inputs.code.computer,
-                    max_nodes=self.inputs.max_nodes.value,
-                    uks=self.inputs.multiplicity.value > 0)
-
-                builder.cp2k.metadata.options.resources = {
-                    'num_machines': nodes,
-                    'num_mpiprocs_per_machine': tasks_per_node,
-                    'num_cores_per_mpiproc': threads
-                }
-
-                #walltime
-                input_dict['GLOBAL']['WALLTIME'] = max(
-                    self.inputs.walltime_seconds.value - 600, 600)
-                builder.cp2k.metadata.options.max_wallclock_seconds = self.inputs.walltime_seconds.value
-
-                #parser
-                builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
-
-                #handlers
-                builder.handler_overrides = Dict(
-                    {'resubmit_unconverged_geometry': True})
-
-                #wfn restart folder
-                if self.ctx.propagation_step == 0:
-                    builder.cp2k.parent_calc_folder = self.ctx.initial_scf.outputs.remote_folder 
-                else:
-                    builder.cp2k.parent_calc_folder = self.ctx.restart_folder
-
-                #cp2k input dictionary
+                # cp2k input dictionary
                 builder.cp2k.parameters = Dict(input_dict)
-
 
                 submitted_calculation = self.submit(builder)
                 self.report(

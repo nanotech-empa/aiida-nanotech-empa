@@ -5,6 +5,10 @@ import numbers
 import collections
 import tempfile
 import shutil
+import subprocess
+import os
+import copy
+import numpy as np
 from io import StringIO
 from aiida.orm import StructureData, Dict, SinglefileData, FolderData, load_node
 
@@ -178,6 +182,94 @@ def get_cutoff(structure=None):
     elements = structure.get_symbols_set()
     return max([atom_data['cutoff'][element] for element in elements])
 
+
+def get_dft_inputs(dft_params,structure,template):
+    ase_atoms = structure.get_ase()
+    files = {
+        "basis": SinglefileData(
+        file=os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+                ".",
+                "data",
+                "BASIS_MOLOPT",
+                )
+            ),
+            "pseudo": SinglefileData(
+                file=os.path.join(
+                    os.path.dirname(os.path.realpath(__file__)),
+                    ".",
+                    "data",
+                    "POTENTIAL",
+                )
+            ),
+        }
+    # load input template
+    protocol = "./protocols/" + template
+    with open(
+        pathlib.Path(__file__).parent / protocol ,
+        encoding="utf-8",
+    ) as handle:
+        protocols = yaml.safe_load(handle)
+        input_dict = copy.deepcopy(protocols[dft_params['protocol']])        
+
+    # vdW section
+    if 'vdw' in dft_params:
+        if not dft_params['vdw']: input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
+    else:
+        input_dict['FORCE_EVAL']['DFT']['XC'].pop('VDW_POTENTIAL')
+
+    #charge
+    if 'charge' in dft_params:
+        input_dict['FORCE_EVAL']['DFT']['CHARGE'] = dft_params['charge']
+        
+    # uks    
+    magnetization_per_site = [0 for i in range(len(ase_atoms))]
+    if 'uks' in   dft_params:
+        if dft_params['uks']:
+            magnetization_per_site = dft_params["magnetization_per_site"]
+            input_dict['FORCE_EVAL']['DFT']['UKS'] = '.TRUE.'
+            input_dict['FORCE_EVAL']['DFT']['MULTIPLICITY'] = dft_params['multiplicity']
+
+    # get initial magnetization
+    structure_with_tags, kinds_dict = determine_kinds(
+        structure, magnetization_per_site
+    )
+
+    ase_atoms = structure_with_tags.get_ase()
+
+    # non periodic systems only NONE and XYZ implemented: TO BE CHECKED FOR NEB!!!!
+    if 'periodic' in dft_params:
+        if dft_params['periodic'] == 'NONE':
+            # make sure cell is big enough for MT poisson solver and center molecule
+            if dft_params['protocol'] == "debug":
+                extra_cell = 5.0
+            else:
+                extra_cell = 15.0
+            ase_atoms.cell = 2 * (np.ptp(ase_atoms.positions, axis=0)) + extra_cell
+            ase_atoms.center()
+
+            # Poisson solver
+            input_dict['FORCE_EVAL']['SUBSYS']['CELL']['PERIODIC'] = 'NONE'
+            input_dict['FORCE_EVAL']['DFT']['POISSON']['PERIODIC'] = 'NONE'
+            input_dict['FORCE_EVAL']['DFT']['POISSON']['POISSON_SOLVER'] = 'MT'
+        # to be done: more cases 
+
+    # must be after if 'periodic'     
+    structure_with_tags = ase_atoms  
+    kinds_section = get_kinds_section(kinds_dict, protocol="gpw")   
+    dict_merge(input_dict, kinds_section) 
+
+    # get cutoff.
+    cutoff = get_cutoff(structure=structure)
+
+    # overwrite cutoff if given in dft_params.
+    if "cutoff" in dft_params:
+        cutoff = dft_params["cutoff"]
+
+    input_dict['FORCE_EVAL']['DFT']['MGRID']['CUTOFF'] = cutoff
+
+    return files, input_dict, structure_with_tags
+
 def make_geom_file(atoms, filename, tags=None):
         tmpdir = tempfile.mkdtemp()
 
@@ -248,30 +340,33 @@ def structure_available_wfn(node_uuid, relative_replica_id,current_hostname):
         ndigits = len(str(nreplica_parent))
         eff_replica_number = int(round(relative_replica_id*nreplica_parent,0)+1)
         # aiida-BAND2-RESTART.wfn 'replica_%s.xyz' % str(i +2 ).zfill(3)
-        wfn_name = "aiida-BAND%s--RESTART.wfn" % str(eff_replica_number).zfill(ndigits)
+        wfn_name = "aiida-BAND%s-RESTART.wfn" % str(eff_replica_number).zfill(ndigits)
     else:
         # In all other cases, e.g. geo opt, replica, ...
         # use the standard name
         wfn_name = "aiida-RESTART.wfn"
 
     wfn_search_path = parent_calc.get_remote_workdir() + "/" + wfn_name
-    ssh_cmd = (
-        "ssh "
-        + hostname
-        + " if [ -f "
-        + wfn_search_path
-        + " ]; then echo 1 ; else echo 0 ; fi"
-    )
-    wfn_exists = subprocess.check_output(ssh_cmd.split())
 
-    if wfn_exists.decode()[0] != "1":
+    if hostname == 'localhost':
+        wfn_exists = subprocess.call("test -e '{}'".format(wfn_search_path), shell=True) == 0
+    else:
+        ssh_cmd = (
+            "ssh "
+            + hostname
+            + " if [ -f "
+            + wfn_search_path
+            + " ]; then echo 1 ; else echo 0 ; fi"
+        )
+        wfn_exists = subprocess.check_output(ssh_cmd.split()).decode()[0] == "1"
+
+    if not wfn_exists:
         #print("Struct %d .wfn not avail: file deleted from remote." % struct_pk)
         return None
 
     return wfn_search_path
 
 def mk_wfn_cp_commands(nreplicas, replica_uuids, selected_computer):
-
     available_wfn_paths = []
     list_wfn_available = []
     list_of_cp_commands = []
@@ -279,8 +374,7 @@ def mk_wfn_cp_commands(nreplicas, replica_uuids, selected_computer):
     for ir, node_uuid in enumerate(replica_uuids):
 
         # in general teh number of uuids is <= nreplicas
-        relative_replica_id = nreplicas*ir/len(replica_uuids)
-
+        relative_replica_id = ir/len(replica_uuids)
         avail_wfn = structure_available_wfn(
             node_uuid,relative_replica_id, selected_computer.hostname
         )
@@ -311,7 +405,7 @@ def mk_wfn_cp_commands(nreplicas, replica_uuids, selected_computer):
             lwa * block_size + block_size / 2 - to_be_created
         ).argmin()
 
-        closest_available = lwa[index_wfn]
+        #closest_available = lwa[index_wfn]
 
         #print(name, closest_available)
 
