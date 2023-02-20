@@ -5,8 +5,8 @@ import pathlib
 import numpy as np
 import yaml
 
-from aiida.engine import ToContext, WorkChain,  while_
-from aiida.orm import  Code, Dict, Str, StructureData
+from aiida.engine import ToContext, WorkChain, while_
+from aiida.orm import Code, Dict, Str, StructureData
 
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
@@ -19,14 +19,14 @@ from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
 )
 
 Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
-StmCalculation = CalculationFactory('spm.stm')
+StmCalculation = CalculationFactory("nanotech_empa.stm")
+
 
 class Cp2kStmWorkChain(WorkChain):
-
     @classmethod
     def define(cls, spec):
         super(Cp2kStmWorkChain, cls).define(spec)
-        
+
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
         spec.input("wfn_file_path", valid_type=Str, required=False)
@@ -37,16 +37,16 @@ class Cp2kStmWorkChain(WorkChain):
             "options",
             valid_type=dict,
             non_db=True,
-            help=
-            "Define options for the cacluations: walltime, memory, CPUs, etc.")
-        
+            help="Define options for the cacluations: walltime, memory, CPUs, etc.",
+        )
+
         spec.outline(
-            cls.setup,            
+            cls.setup,
             cls.run_diag_scf,
             cls.run_stm,
             cls.finalize,
         )
-        
+
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -59,13 +59,13 @@ class Cp2kStmWorkChain(WorkChain):
         self.report("Setting up workchain")
         structure = self.inputs.structure
         self.ctx.n_atoms = len(structure.sites)
-        emax = float(self.inputs.spm_params.get_dict()['--energy_range'][1])
-        added_mos = np.max([100, int(1.2*self.ctx.n_atoms*emax/5.0)])
+        emax = float(self.inputs.spm_params.get_dict()["--energy_range"][1])
+        added_mos = np.max([100, int(1.2 * self.ctx.n_atoms * emax / 5.0)])
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
         self.ctx.dft_params["added_mos"] = added_mos
-              
+
     def run_diag_scf(self):
-        self.report("Running CP2K diagonalization SCF")        
+        self.report("Running CP2K diagonalization SCF")
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
@@ -74,18 +74,18 @@ class Cp2kStmWorkChain(WorkChain):
 
         future = self.submit(builder)
         self.to_context(diag_scf=future)
-              
+
     def run_stm(self):
         self.report("STM calculation")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member             
+            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
         inputs = {}
-        inputs['metadata'] = {}
-        inputs['metadata']['label'] = "stm"
-        inputs['code'] = self.inputs.spm_code
-        inputs['parameters'] = self.inputs.spm_params
-        inputs['parent_calc_folder'] = self.ctx.diag_scf.outputs.remote_folder
-        
+        inputs["metadata"] = {}
+        inputs["metadata"]["label"] = "stm"
+        inputs["code"] = self.inputs.spm_code
+        inputs["parameters"] = self.inputs.spm_params
+        inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
+
         n_machines = 6
         if self.ctx.n_atoms > 1000:
             n_machines = 12
@@ -95,27 +95,28 @@ class Cp2kStmWorkChain(WorkChain):
             n_machines = 24
         if self.ctx.n_atoms > 4000:
             n_machines = 30
-        
-        inputs['metadata']['options'] = {
+
+        inputs["metadata"]["options"] = {
             "resources": {"num_machines": n_machines},
             "max_wallclock_seconds": 36000,
-        } 
+        }
         if self.inputs.dft_params["protocol"] == "debug":
-            inputs['metadata']['options']['max_wallclock_seconds'] = 600
+            inputs["metadata"]["options"]["max_wallclock_seconds"] = 600
         # Need to make an explicit instance for the node to be stored to aiida
-        settings = Dict({'additional_retrieve_list': ['stm.npz']})
-        inputs['settings'] = settings
-        
-        
+        settings = Dict({"additional_retrieve_list": ["stm.npz"]})
+        inputs["settings"] = settings
+
         future = self.submit(StmCalculation, **inputs)
         return ToContext(stm=future)
-    
+
     def finalize(self):
-        if "stm.npz" not in [obj.name for obj in self.ctx.stm.outputs.retrieved.list_objects()]:
+        if "stm.npz" not in [
+            obj.name for obj in self.ctx.stm.outputs.retrieved.list_objects()
+        ]:
             self.report("STM calculation did not finish correctly")
-            return self.exit_codes.ERROR_TERMINATION  
-        
-        self.out("dft_output_parameters",self.ctx.diag_scf.outputs.output_parameters)
+            return self.exit_codes.ERROR_TERMINATION
+
+        self.out("dft_output_parameters", self.ctx.diag_scf.outputs.output_parameters)
         # Add the workchain pk to the input structure extras
         extras_label = "Cp2kStmWorkChain_uuids"
         if extras_label not in self.inputs.structure.extras:
@@ -123,6 +124,5 @@ class Cp2kStmWorkChain(WorkChain):
         else:
             extras_list = self.inputs.structure.extras[extras_label]
         extras_list.append(self.node.uuid)
-        self.inputs.structure.set_extra(extras_label, extras_list)      
+        self.inputs.structure.set_extra(extras_label, extras_list)
         self.report("Work chain is finished")
-
