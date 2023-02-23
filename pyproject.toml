@@ -54,10 +54,10 @@ dev = [
 "nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.parsers.gaussian_casscf_parser:GaussianCasscfParser"
 
 [project.entry-points."aiida.calculations"]
-"nanotech_empa.stm" = "aiida_nanotech_empa.plugins.stm:StmCalculation
-"nanotech_empa.overlap" = "aiida_nanotech_empa.plugins.overlap:OverlapCalculation
-"nanotech_empa.afm" = "aiida_nanotech_empa.plugins.afm:AfmCalculation
-"nanotech_empa.hrstm" = "aiida_nanotech_empa.plugins.hrstm:HrstmCalculation
+"nanotech_empa.stm" = "aiida_nanotech_empa.plugins.stm:StmCalculation"
+"nanotech_empa.overlap" = "aiida_nanotech_empa.plugins.overlap:OverlapCalculation"
+"nanotech_empa.afm" = "aiida_nanotech_empa.plugins.afm:AfmCalculation"
+"nanotech_empa.hrstm" = "aiida_nanotech_empa.plugins.hrstm:HrstmCalculation"
 
 [project.entry-points."aiida.workflows"]
 "nanotech_empa.nanoribbon" = "aiida_nanotech_empa.workflows.qe.nanoribbon:NanoribbonWorkChain"
