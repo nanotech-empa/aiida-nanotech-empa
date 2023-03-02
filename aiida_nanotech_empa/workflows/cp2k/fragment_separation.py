@@ -344,10 +344,4 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         self.out("energies", energies)
 
         # Add the workchain pk to the input structure extras
-        extras_label = "Cp2kAdsorptionEnergyWorkChain_pks"
-        if extras_label not in self.inputs.structure.base.extras.all:
-            extras_list = []
-        else:
-            extras_list = self.inputs.structure.base.extras.all[extras_label]
-        extras_list.append(self.node.pk)
-        self.inputs.structure.base.extras.set(extras_label, extras_list)
+        common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)

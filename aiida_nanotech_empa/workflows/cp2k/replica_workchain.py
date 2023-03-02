@@ -356,4 +356,7 @@ class Cp2kReplicaWorkChain(WorkChain):
     def finalize(self):
         self.report("Finalizing...")
         # self.out('output_parameters',Dict(dict={'energies':self.ctx.outenes,'cvs':self.ctx.outcvs,'structures':self.ctx.outstructures}).store())
+
+        # Add the workchain pk to the input structure extras
+        common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         return ExitCode(0)

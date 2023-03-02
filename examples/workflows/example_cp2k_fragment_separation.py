@@ -14,14 +14,26 @@ GEO_FILE = "h2_on_hbn.xyz"
 
 def _example_cp2k_ads_ene(cp2k_code, mult):
     """Example of running a workflow to compute the adsorption energy of a molecule on substrate."""
-
+    # check test geometry is already in database
+    qb = QueryBuilder()
+    qb.append(Node, filters={"label": {"in": [GEO_FILE]}})
+    structure = None
+    for node_tuple in qb.iterall():
+        node = node_tuple[0]
+        structure = node
+    if structure is not None:
+        print("found existing structure: ", structure.pk)
+    else:
+        structure = StructureData(ase=ase.io.read(os.path.join(DATA_DIR, GEO_FILE)))
+        structure.label = GEO_FILE
+        structure.store()
+        print("created new structure: ", structure.pk)
     builder = Cp2kFragmentSeparationWorkChain.get_builder()
 
-    builder.metadata.label = "Cp2kFragmentSeparationWorkChain"
-    builder.metadata.description = "test description"
+    builder.metadata.label = "CP2K_AdsorptionE"
+    builder.metadata.description = "h2 on hbn slab"
     builder.code = cp2k_code
-    ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
-    builder.structure = StructureData(ase=ase_geom)
+    builder.structure = structure
     builder.fixed_atoms = orm.List(
         list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     )

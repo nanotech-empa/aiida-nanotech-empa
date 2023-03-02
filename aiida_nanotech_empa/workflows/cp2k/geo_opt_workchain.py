@@ -242,6 +242,6 @@ class Cp2kGeoOptWorkChain(WorkChain):
         struc = self.inputs.structure
         ase_geom = struc.get_ase()
         struc.set_extra("thumbnail", common_utils.thumbnail(ase_struc=ase_geom))
-        common_utils.add_extras(struc, "surfaces", "geo_opt", self.node.uuid)
+        common_utils.add_extras(struc, "surfaces", self.node.uuid)
 
         return ExitCode(0)

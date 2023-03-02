@@ -163,9 +163,9 @@ class Cp2kNebWorkChain(WorkChain):
                     "num_cores_per_mpiproc": 1,
                 },
             }
-        self.ctx.input_dict["GLOBAL"]["WALLTIME"] = self.ctx.options[
-            "max_wallclock_seconds"
-        ]
+        self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
+            600, self.ctx.options["max_wallclock_seconds"] - 600
+        )
         # --------------------------------------------------
 
     def should_run_scf(self):
@@ -210,7 +210,7 @@ class Cp2kNebWorkChain(WorkChain):
 
         builder = Cp2kCalculation.get_builder()
         # label
-        builder.metadata.label = "neb"
+        builder.metadata.label = "CP2K_NEB"
         # code
         builder.code = self.inputs.code
         # structure
@@ -265,10 +265,7 @@ class Cp2kNebWorkChain(WorkChain):
         self.out("replica_energies", self.ctx.neb.outputs["replica_energies"])
         self.out("replica_distances", self.ctx.neb.outputs["replica_distances"])
 
-        # Add extras
-        struc = self.inputs.structure
-        ase_geom = struc.get_ase()
-        struc.set_extra("thumbnail", common_utils.thumbnail(ase_struc=ase_geom))
-        common_utils.add_extras(struc, "surfaces", "neb", self.node.uuid)
+        # Add the workchain pk to the input structure extras
+        common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
 
         return ExitCode(0)

@@ -119,13 +119,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         self.out("dft_output_parameters", self.ctx.diag_scf.outputs.output_parameters)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         # Add the workchain pk to the input structure extras
-        extras_label = "Cp2kOrbitalsWorkChain_uuids"
-        if extras_label not in self.inputs.structure.extras:
-            extras_list = []
-        else:
-            extras_list = self.inputs.structure.extras[extras_label]
-        extras_list.append(self.node.uuid)
-        self.inputs.structure.set_extra(extras_label, extras_list)
+        common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         self.report("Work chain is finished")
 
     # ==========================================================================
