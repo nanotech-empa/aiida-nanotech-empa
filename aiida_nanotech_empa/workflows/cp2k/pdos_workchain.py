@@ -18,7 +18,7 @@ from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
 )
 
 Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
-OverlapCalculation = CalculationFactory("spm.overlap")
+OverlapCalculation = CalculationFactory("nanotech_empa.overlap")
 
 
 class Cp2kPdosWorkChain(WorkChain):

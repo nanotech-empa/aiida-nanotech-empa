@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 
 from aiida.engine import WorkChain, ToContext, ExitCode, if_
 from aiida.orm import Int, Bool, Code, Dict, List, Str
@@ -163,6 +164,12 @@ class Cp2kNebWorkChain(WorkChain):
                     "num_cores_per_mpiproc": 1,
                 },
             }
+        self.ctx.scf_options = deepcopy(self.ctx.options)
+        # numper of mpi processes for scf derived from nproc_replica
+        self.ctx.scf_options["resources"]["num_machines"] = int(
+            self.ctx.neb_param["nproc_rep"]
+            / self.ctx.options["resources"]["num_mpiprocs_per_machine"]
+        )
         self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
         )
@@ -187,7 +194,7 @@ class Cp2kNebWorkChain(WorkChain):
         builder.file = files
 
         # resources
-        builder.metadata.options = self.inputs.options
+        builder.metadata.options = self.ctx.scf_options
 
         # label
         builder.metadata.label = "scf"
@@ -207,10 +214,10 @@ class Cp2kNebWorkChain(WorkChain):
 
     def submit_neb(self):
         self.report("Submitting NEB optimization")
+        if not self.ctx.initial_scf.is_finished_ok:
+            return self.exit_codes.ERROR_TERMINATION
 
         builder = Cp2kCalculation.get_builder()
-        # label
-        builder.metadata.label = "CP2K_NEB"
         # code
         builder.code = self.inputs.code
         # structure

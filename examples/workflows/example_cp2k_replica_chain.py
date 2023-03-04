@@ -24,13 +24,13 @@ def _example_cp2k_replicachain(cp2k_code, targets, restart_uuid):
     if structure is not None:
         print("found existing structure: ", structure.pk)
     else:
-        structure = StructureData(ase=ase.io.read(os.path.join(DATA_DIR, GEO_FILE)))
+        structure = StructureData(ase=read(os.path.join(DATA_DIR, GEO_FILE)))
         structure.label = GEO_FILE
         structure.store()
         print("created new structure: ", structure.pk)
 
     builder = Cp2kReplicaWorkChain.get_builder()
-    if restart_uuid is not none:
+    if restart_uuid is not None:
         builder.restart_from = Str(restart_uuid)
 
     builder.metadata.label = "CP2K_Replica"

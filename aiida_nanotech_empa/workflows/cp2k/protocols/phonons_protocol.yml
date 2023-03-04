@@ -1,22 +1,25 @@
 phonons:
     GLOBAL:
         EXTENDED_FFT_LENGTHS: '' 
-        PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
+        PRINT_LEVEL: LOW
+        RUN_TYPE: NORMAL_MODES
         WALLTIME: 600   
+        PREFERRED_DIAG_LIBRARY: ELPA
+        ELPA_KERNEL: AUTO
+        DBCSR: 
+            USE_MPI_ALLOCATOR: .FALSE.
+    VIBRATIONAL_ANALYSIS:
+        FULLY_PERIODIC: .TRUE.
+        NPROC_REP: 228
+        DX: 0.002
+        INTENSITIES: ''
+        PRINT:
+            PROGRAM_RUN_INFO:
+                _: 'ON'
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
                 LIST: ''
-        GEO_OPT:
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 0.00005
-            RMS_DR: 0.0005
-            RMS_FORCE: 0.00005
-            MAX_DR: 0.0015
-            MAX_ITER: 1000
-            OPTIMIZER: BFGS
         PRINT:
             RESTART_HISTORY: 
                 _: 'OFF'   
@@ -76,46 +79,30 @@ phonons:
                 XC_FUNCTIONAL: 
                         _: PBE
             PRINT:
-                MO_CUBES:
-                    NHOMO: '1'
-                    NLUMO: '1'
-                    STRIDE: '4 4 4'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
-                E_DENSITY_CUBE:
-                    STRIDE: '2 2 2'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
-                V_HARTREE_CUBE:
-                    STRIDE: '2 2 2'
-                    FILENAME: 'HART'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
+                MOMENTS:
+                    PERIODIC: .TRUE.
 standard:
     GLOBAL:
         EXTENDED_FFT_LENGTHS: '' 
-        PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
+        PRINT_LEVEL: LOW
+        RUN_TYPE: NORMAL_MODES
         WALLTIME: 600   
+        PREFERRED_DIAG_LIBRARY: ELPA
+        ELPA_KERNEL: AUTO
+        DBCSR: 
+            USE_MPI_ALLOCATOR: .FALSE.
+    VIBRATIONAL_ANALYSIS:
+        FULLY_PERIODIC: .TRUE.
+        NPROC_REP: 228
+        DX: 0.002
+        INTENSITIES: ''
+        PRINT:
+            PROGRAM_RUN_INFO:
+                _: 'ON'
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
                 LIST: ''
-        GEO_OPT:
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 0.0001
-            RMS_DR: 0.001
-            RMS_FORCE: 0.0001
-            MAX_DR: 0.003
-            MAX_ITER: 1000
-            OPTIMIZER: BFGS
         PRINT:
             RESTART_HISTORY: 
                 _: 'OFF'   
@@ -145,13 +132,13 @@ standard:
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 1.0E-7
+                EPS_SCF: 1.0E-9
                 MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 1.0E-7
+                    EPS_SCF: 1.0E-9
                     MAX_SCF: 50
                 PRINT:
                     RESTART:
@@ -175,46 +162,30 @@ standard:
                 XC_FUNCTIONAL: 
                         _: PBE
             PRINT:
-                MO_CUBES:
-                    NHOMO: '1'
-                    NLUMO: '1'
-                    STRIDE: '4 4 4'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
-                E_DENSITY_CUBE:
-                    STRIDE: '2 2 2'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
-                V_HARTREE_CUBE:
-                    STRIDE: '2 2 2'
-                    FILENAME: 'HART'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
+                MOMENTS:
+                    PERIODIC: .TRUE.
 low_accuracy:
     GLOBAL:
         EXTENDED_FFT_LENGTHS: '' 
-        PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
+        PRINT_LEVEL: LOW
+        RUN_TYPE: NORMAL_MODES
         WALLTIME: 600   
+        PREFERRED_DIAG_LIBRARY: ELPA
+        ELPA_KERNEL: AUTO
+        DBCSR: 
+            USE_MPI_ALLOCATOR: .FALSE.
+    VIBRATIONAL_ANALYSIS:
+        FULLY_PERIODIC: .TRUE.
+        NPROC_REP: 228
+        DX: 0.002
+        INTENSITIES: ''
+        PRINT:
+            PROGRAM_RUN_INFO:
+                _: 'ON'
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
                 LIST: ''
-        GEO_OPT:
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 0.00045
-            RMS_DR: 0.0015
-            RMS_FORCE: 0.0003
-            MAX_DR: 0.003            
-            MAX_ITER: 1000
-            OPTIMIZER: BFGS
         PRINT:
             RESTART_HISTORY: 
                 _: 'OFF'   
@@ -223,11 +194,11 @@ low_accuracy:
         SUBSYS:
             CELL:
                 PERIODIC: XYZ
-                SYMMETRY: ORTHORHOMBIC
+                SYMMETRY: ORTHORHOMBIC        
         DFT:
             UKS: .FALSE.
-            MULTIPLICITY: 0  
-            CHARGE: 0      
+            MULTIPLICITY: 0
+            CHARGE: 0
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL   
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
@@ -236,7 +207,7 @@ low_accuracy:
                 NGRIDS: 5
             POISSON:
                 PERIODIC: XYZ
-                POISSON_SOLVER: PERIODIC
+                POISSON_SOLVER: PERIODIC                
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -244,13 +215,13 @@ low_accuracy:
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 1.0E-6
+                EPS_SCF: 1.0E-9
                 MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 1.0E-6
+                    EPS_SCF: 1.0E-9
                     MAX_SCF: 50
                 PRINT:
                     RESTART:
@@ -274,46 +245,30 @@ low_accuracy:
                 XC_FUNCTIONAL: 
                         _: PBE
             PRINT:
-                MO_CUBES:
-                    NHOMO: '1'
-                    NLUMO: '1'
-                    STRIDE: '4 4 4'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
-                E_DENSITY_CUBE:
-                    STRIDE: '2 2 2'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
-                V_HARTREE_CUBE:
-                    STRIDE: '2 2 2'
-                    FILENAME: 'HART'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
+                MOMENTS:
+                    PERIODIC: .TRUE.
 debug:
     GLOBAL:
         EXTENDED_FFT_LENGTHS: '' 
-        PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
+        PRINT_LEVEL: LOW
+        RUN_TYPE: NORMAL_MODES
         WALLTIME: 600   
+        PREFERRED_DIAG_LIBRARY: ELPA
+        ELPA_KERNEL: AUTO
+        DBCSR: 
+            USE_MPI_ALLOCATOR: .FALSE.
+    VIBRATIONAL_ANALYSIS:
+        FULLY_PERIODIC: .TRUE.
+        NPROC_REP: 228
+        DX: 0.002
+        INTENSITIES: ''
+        PRINT:
+            PROGRAM_RUN_INFO:
+                _: 'ON'
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
                 LIST: ''
-        GEO_OPT:
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 10
-            RMS_DR: 10
-            RMS_FORCE: 10
-            MAX_DR: 10 
-            MAX_ITER: 10
-            OPTIMIZER: BFGS
         PRINT:
             RESTART_HISTORY: 
                 _: 'OFF'   
@@ -322,20 +277,20 @@ debug:
         SUBSYS:
             CELL:
                 PERIODIC: XYZ
-                SYMMETRY: ORTHORHOMBIC
+                SYMMETRY: ORTHORHOMBIC        
         DFT:
             UKS: .FALSE.
             MULTIPLICITY: 0
             CHARGE: 0
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL   
-            RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn            
+            RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
             POISSON:
                 PERIODIC: XYZ
-                POISSON_SOLVER: PERIODIC
+                POISSON_SOLVER: PERIODIC                
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -343,13 +298,13 @@ debug:
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 0.1
+                EPS_SCF: 1.0
                 MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 0.1
+                    EPS_SCF: 1.0
                     MAX_SCF: 50
                 PRINT:
                     RESTART:
@@ -359,8 +314,8 @@ debug:
                             QS_SCF: 0                    
                         FILENAME: RESTART                
                     RESTART_HISTORY:
-                        _: '' 
-                        BACKUP_COPIES: 0           
+                        _: 'OFF'  
+                        BACKUP_COPIES: 0          
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -373,24 +328,5 @@ debug:
                 XC_FUNCTIONAL: 
                         _: PBE
             PRINT:
-                MO_CUBES:
-                    NHOMO: '1'
-                    NLUMO: '1'
-                    STRIDE: '4 4 4'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
-                E_DENSITY_CUBE:
-                    STRIDE: '4 4 4'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC' 
-                V_HARTREE_CUBE:
-                    STRIDE: '4 4 4'
-                    FILENAME: 'HART'
-                    EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'                                       
+                MOMENTS:
+                    PERIODIC: .TRUE.                               

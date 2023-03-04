@@ -14,8 +14,8 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid):
 
     builder = Cp2kNebWorkChain.get_builder()
 
-    builder.metadata.label = "Cp2kNebWorkChain"
-    builder.metadata.description = "test description"
+    builder.metadata.label = "CP2K_NEB"
+    builder.metadata.description = "a NEB calculation"
     builder.code = cp2k_code
     builder.options = {
         "max_wallclock_seconds": 600,
