@@ -7,6 +7,8 @@ from aiida import engine, orm, plugins
 from aiida_nanotech_empa.utils import analyze_structure
 from aiida_nanotech_empa.workflows.cp2k import cp2k_utils
 
+from aiida_nanotech_empa.utils import common_utils
+
 StructureData = plugins.DataFactory("core.structure")
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 

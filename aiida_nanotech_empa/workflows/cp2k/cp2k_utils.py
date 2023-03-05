@@ -9,6 +9,7 @@ import subprocess
 import os
 import copy
 import numpy as np
+from ase import Atoms
 from io import StringIO
 from aiida.orm import StructureData, Dict, SinglefileData, FolderData, load_node
 
@@ -400,7 +401,7 @@ def mk_wfn_cp_commands(nreplicas, replica_uuids, selected_computer):
         )
 
         if avail_wfn:
-            list_wfn_available.append(ir)  ## example:[0,4,8]
+            list_wfn_available.append(ir)  # example:[0,4,8]
             available_wfn_paths.append(avail_wfn)
 
     if len(list_wfn_available) == 0:

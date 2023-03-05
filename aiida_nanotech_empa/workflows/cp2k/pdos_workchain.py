@@ -1,21 +1,11 @@
-import copy
-import os
-import pathlib
-
 import numpy as np
-import yaml
-
+from copy import deepcopy
 from aiida.engine import ToContext, WorkChain
-from aiida.orm import Bool, Code, Dict, List, SinglefileData, Str, StructureData
+from aiida.orm import Code, Dict, List, Str, StructureData
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
 from aiida_nanotech_empa.utils import common_utils
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
-    determine_kinds,
-    dict_merge,
-    get_cutoff,
-    get_kinds_section,
-)
+from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_cutoff
 
 Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
 OverlapCalculation = CalculationFactory("nanotech_empa.overlap")
@@ -66,13 +56,13 @@ class Cp2kPdosWorkChain(WorkChain):
         nlumo = int(self.inputs.overlap_params.get_dict()["--nlumo2"])
 
         # set up slab dft parameters
-        self.ctx.slab_dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
+        self.ctx.slab_dft_params = deepcopy(self.inputs.dft_params.get_dict())
         self.ctx.slab_dft_params["added_mos"] = np.max(
             [100, int(1.2 * self.ctx.n_slab_atoms * emax / 5.0)]
         )
 
         # set up mol dft parameters
-        self.ctx.mol_dft_params = copy.deepcopy(self.ctx.slab_dft_params)
+        self.ctx.mol_dft_params = deepcopy(self.ctx.slab_dft_params)
         self.ctx.mol_dft_params["added_mos"] = nlumo + 2
         # force same cutoff for molecule and slab
         self.ctx.mol_dft_params["cutoff"] = get_cutoff(self.inputs.slabsys_structure)

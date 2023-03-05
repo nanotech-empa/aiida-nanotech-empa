@@ -8,12 +8,11 @@ from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import compute_colvars
 from aiida.plugins import DataFactory, WorkflowFactory, CalculationFactory
 from aiida.engine import (
     WorkChain,
-    ToContext,
     ExitCode,
     while_,
     if_,
     append_,
-    calcfunction,
+    # calcfunction,
 )
 from aiida.orm import Str, Code, Dict, load_node, CalcJobNode
 import math
@@ -24,10 +23,10 @@ Cp2kBaseWorkChain = WorkflowFactory("cp2k.base")
 Cp2kCalculation = CalculationFactory("cp2k")
 
 
-@calcfunction
-def output_dict(enes, cvs, structures):
-
-    return Dict({"energies": enes, "cvs": listcvs, "structures": structures})
+# @calcfunction
+# def output_dict(enes, cvs, structures):
+#
+#    return Dict({"energies": enes, "cvs": listcvs, "structures": structures})
 
 
 class Cp2kReplicaWorkChain(WorkChain):
@@ -150,7 +149,7 @@ class Cp2kReplicaWorkChain(WorkChain):
                 ).store(),
             )
             self.out("structures.initial_scf", self.ctx.lowest_energy_structure)
-            self.report(f"Updated output for the initial_scf step")
+            self.report("Updated output for the initial_scf step")
         else:
             self.out(
                 f"details.step_{self.ctx.propagation_step - 1 :04}",

@@ -1,9 +1,9 @@
 import numpy as np
 from copy import deepcopy
 
-from aiida.engine import WorkChain, ToContext, ExitCode, if_
-from aiida.orm import Int, Bool, Code, Dict, List, Str
-from aiida.orm import SinglefileData, StructureData, load_node
+from aiida.engine import WorkChain, ExitCode, if_
+from aiida.orm import Code, Dict, List, Str
+from aiida.orm import StructureData, load_node
 from aiida.plugins import CalculationFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
     get_colvars_section,

@@ -1,6 +1,4 @@
 import os
-import tempfile
-import shutil
 import numpy as np
 
 from aiida.orm import StructureData

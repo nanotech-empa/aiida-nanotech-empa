@@ -4,8 +4,8 @@ import yaml
 import copy
 import numpy as np
 
-from aiida.engine import WorkChain, ToContext, ExitCode
-from aiida.orm import Int, Bool, Code, Dict, List, Str
+from aiida.engine import WorkChain, ExitCode
+from aiida.orm import Code, Dict, Str
 from aiida.orm import SinglefileData, StructureData
 from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
@@ -240,8 +240,8 @@ class Cp2kGeoOptWorkChain(WorkChain):
 
         # Add extras
         struc = self.inputs.structure
-        #ase_geom = struc.get_ase()
-        #struc.set_extra("thumbnail", common_utils.thumbnail(ase_struc=ase_geom))
+        # ase_geom = struc.get_ase()
+        # struc.set_extra("thumbnail", common_utils.thumbnail(ase_struc=ase_geom))
         common_utils.add_extras(struc, "surfaces", self.node.uuid)
 
         return ExitCode(0)

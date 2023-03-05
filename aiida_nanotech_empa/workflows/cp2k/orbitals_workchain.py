@@ -1,25 +1,12 @@
-import copy
-import os
-import pathlib
-
 import numpy as np
-import yaml
 
-from aiida.engine import ToContext, WorkChain, while_
-from aiida.orm import Bool, Code, Dict, List, SinglefileData, Str, StructureData
-from aiida.orm.nodes.data.array import ArrayData
-from aiida.orm import SinglefileData
-from aiida.orm import RemoteData
+from aiida.engine import ToContext, WorkChain
+from aiida.orm import Code, Dict, Str, StructureData
 
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
 from aiida_nanotech_empa.utils import common_utils
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
-    determine_kinds,
-    dict_merge,
-    get_cutoff,
-    get_kinds_section,
-)
+
 
 Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
 StmCalculation = CalculationFactory("nanotech_empa.stm")
@@ -60,7 +47,6 @@ class Cp2kOrbitalsWorkChain(WorkChain):
 
     def setup(self):
         self.report("Setting up workchain")
-        structure = self.inputs.structure
         n_lumo = int(self.inputs.spm_params.get_dict()["--n_lumo"])
         added_mos = np.max([n_lumo, 20])
         self.ctx.dft_params = self.inputs.dft_params.get_dict()

@@ -7,7 +7,6 @@ import yaml
 
 from aiida.engine import WorkChain
 from aiida.orm import Code, Dict, List, SinglefileData, Str, StructureData
-from aiida.orm import SinglefileData
 
 from aiida.plugins import WorkflowFactory
 
