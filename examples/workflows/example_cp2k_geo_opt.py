@@ -35,7 +35,6 @@ def _example_cp2k_geo_opt(cp2k_code, sys_type, uks):
 
     builder = Cp2kGeoOptWorkChain.get_builder()
 
-    builder.metadata.label = "CP2K_GeoOpt"
     builder.metadata.description = "test description"
     builder.code = cp2k_code
     builder.options = {
@@ -50,10 +49,13 @@ def _example_cp2k_geo_opt(cp2k_code, sys_type, uks):
     # define structure
     if sys_type == "SlabXY":
         structure = structures["h2_on_hbn.xyz"]
+        builder.metadata.label = "CP2K_GeoOpt"
     elif sys_type == "Molecule":
         structure = structures["c2h2.xyz"]
+        builder.metadata.label = "CP2K_GeoOpt"
     elif sys_type == "Bulk":
         structure = structures["si_bulk.xyz"]
+        builder.metadata.label = "CP2K_CellOpt"
 
     dft_params = {
         "protocol": "debug",

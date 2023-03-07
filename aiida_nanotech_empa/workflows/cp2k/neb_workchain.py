@@ -176,7 +176,7 @@ class Cp2kNebWorkChain(WorkChain):
         # --------------------------------------------------
 
     def should_run_scf(self):
-        """Function that returnns whether to run or not the first scf step"""
+        """Function that returns whether to run or not the first scf step"""
         return self.ctx.should_run_scf
 
     def first_scf(self):

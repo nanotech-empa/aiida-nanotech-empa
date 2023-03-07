@@ -33,8 +33,8 @@ low_accuracy:
 debug:
     MOTION:
         CELL_OPT:
-            EXTERNAL_PRESSURE: 0
-            PRESSURE_TOLERANCE: 100000
+            EXTERNAL_PRESSURE: 1000
+            PRESSURE_TOLERANCE: 1000000
             BFGS:
                 TRUST_RADIUS: '[bohr] 0.1'
             MAX_FORCE: 1

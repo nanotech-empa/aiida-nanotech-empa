@@ -165,6 +165,7 @@ class Cp2kGeoOptWorkChain(WorkChain):
                 cell_input_dict = copy.deepcopy(
                     protocols[self.ctx.dft_params["protocol"]]
                 )
+            self.ctx.input_dict["GLOBAL"]["RUN_TYPE"] = "CELL_OPT"
             self.ctx.input_dict["MOTION"] = cell_input_dict["MOTION"]
             self.ctx.input_dict["FORCE_EVAL"]["STRESS_TENSOR"] = "ANALYTICAL"
             if "cell_opt_constraint" in self.ctx.sys_params:

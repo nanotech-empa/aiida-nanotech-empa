@@ -359,7 +359,7 @@ def structure_available_wfn(node_uuid, relative_replica_id, current_hostname):
         # print("Struct %d .wfn not avail: different hostname." % struct_pk)
         return None
 
-    if parent_calc.label == "neb":
+    if parent_calc.label == "CP2K_NEB":
         # it could be that the neb calculatio had a different number of replicas
         nreplica_parent = parent_calc.caller.inputs.neb_params["number_of_replica"]
         ndigits = len(str(nreplica_parent))
@@ -394,7 +394,7 @@ def mk_wfn_cp_commands(nreplicas, replica_uuids, selected_computer):
 
     for ir, node_uuid in enumerate(replica_uuids):
 
-        # in general teh number of uuids is <= nreplicas
+        # in general the number of uuids is <= nreplicas
         relative_replica_id = ir / len(replica_uuids)
         avail_wfn = structure_available_wfn(
             node_uuid, relative_replica_id, selected_computer.hostname
