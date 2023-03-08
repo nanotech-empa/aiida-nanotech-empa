@@ -111,13 +111,15 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid):
             print("created fin: ", fin.uuid)
 
         builder.structure = load_node(uuids[0])
+        replicas = {}
+        for i in range(1, 3):
+            name = "replica_%s" % str(i).zfill(3)
+            replicas[name] = load_node(uuids[i])
+        builder.replicas = replicas
 
     else:
         builder.structure = load_node(restart_uuid).inputs.structure
         builder.restart_from = Str(restart_uuid)
-        uuids = [0]
-
-    builder.replica_uuids = List(list=uuids[1:])
 
     dft_params = {
         "protocol": "debug",

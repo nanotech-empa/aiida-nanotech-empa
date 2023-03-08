@@ -25,7 +25,13 @@ class Cp2kNebWorkChain(WorkChain):
         super().define(spec)
         spec.input("code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
-        spec.input("replica_uuids", valid_type=List)
+        # spec.input("replica_uuids", valid_type=List)
+        spec.input_namespace(
+            "replicas",
+            valid_type=StructureData,
+            required=False,
+            help="nodes of input replicas",
+        )
         spec.input("wfn_cp_commands", valid_type=Str, required=False)
         spec.input("restart_from", valid_type=Str, required=False)
         spec.input("dft_params", valid_type=Dict)
@@ -75,17 +81,20 @@ class Cp2kNebWorkChain(WorkChain):
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.neb_params = self.inputs.neb_params.get_dict()
 
-        uuids_to_check = [self.inputs.structure.uuid]
+        # the input structure is  the  NEB replica 0 if we do not continue from previous NEB
+        all_replica_nodes = [self.inputs.structure]
         # check if restarting
-        if len(self.inputs.replica_uuids) > 0:
-            uuids_to_check += self.inputs.replica_uuids
+        if "replicas" in self.inputs:
+            for i in range(1, len(self.inputs.replicas) + 1):
+                name = "replica_%s" % str(i).zfill(3)
+                all_replica_nodes.append(self.inputs.replicas[name])
         elif "restart_from" in self.inputs:
             self.report("checking wfn available from previos neb")
             workcalc = load_node(self.inputs.restart_from.value)
             n_previous_replica = workcalc.inputs.neb_params["number_of_replica"]
-            uuids_to_check = [
-                workcalc.outputs["opt_replica_%s" % str(i).zfill(3)].uuid
-                for i in range(1, n_previous_replica)
+            all_replica_nodes = [
+                workcalc.outputs["opt_replica_%s" % str(i).zfill(3)]
+                for i in range(n_previous_replica)
             ]
         else:
             return self.exit_codes.ERROR_UUIDS
@@ -101,23 +110,35 @@ class Cp2kNebWorkChain(WorkChain):
             self.ctx.should_run_scf = True
 
         # replica files with tags must be after structure_with_tags.
+        self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"] = []
         tags = self.ctx.structure_with_tags.get_tags().astype(np.int32).tolist()
-        self.ctx.files["replica_001_xyz"] = make_geom_file(
-            self.ctx.structure_with_tags, "replica_001.xyz", tags=tags
-        )
-        self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"] = [
-            {"COORD_FILE_NAME": "replica_001.xyz"}
-        ]
-        for i, uuid in enumerate(self.inputs.replica_uuids):
-            structure = load_node(uuid).get_ase()
-            filename = "replica_%s.xyz" % str(i + 2).zfill(3)
+        #        self.ctx.files["replica_001_xyz"] = make_geom_file(
+        #            self.ctx.structure_with_tags, "replica_001.xyz", tags=tags
+        #        )
+        #        self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"] = [
+        #            {"COORD_FILE_NAME": "replica_001.xyz"}
+        #        ]
+
+        for i, node in enumerate(all_replica_nodes):
+            filename = "replica_%s" % str(i).zfill(3) + ".xyz"
             self.ctx.files[filename.replace(".", "_")] = make_geom_file(
-                structure, filename, tags=tags
+                node.get_ase(), filename, tags=tags
             )
             # and update input dictionary.
             self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"].append(
                 {"COORD_FILE_NAME": filename}
             )
+
+        #        for replica in self.inputs.replicas:
+        #            structure = self.inputs.replicas[replica].get_ase()
+        #            filename = replica + ".xyz"
+        #            self.ctx.files[filename.replace(".", "_")] = make_geom_file(
+        #                structure, filename, tags=tags
+        #            )
+        #            # and update input dictionary.
+        #            self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"].append(
+        #                {"COORD_FILE_NAME": filename}
+        #            )
 
         # constraints.
         if "constraints" in self.ctx.sys_params:
@@ -166,7 +187,7 @@ class Cp2kNebWorkChain(WorkChain):
         self.ctx.scf_options = deepcopy(self.ctx.options)
         # numper of mpi processes for scf derived from nproc_replica
         self.ctx.scf_options["resources"]["num_machines"] = int(
-            self.ctx.neb_param["nproc_rep"]
+            self.ctx.neb_params["nproc_rep"]
             / self.ctx.options["resources"]["num_mpiprocs_per_machine"]
         )
         self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
