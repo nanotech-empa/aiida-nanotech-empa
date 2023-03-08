@@ -6,7 +6,7 @@ import numpy as np
 
 from aiida.engine import WorkChain, ExitCode
 from aiida.orm import Code, Dict, Str
-from aiida.orm import SinglefileData, StructureData
+from aiida.orm import SinglefileData, StructureData, RemoteData
 from aiida.plugins import WorkflowFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
     get_kinds_section,
@@ -30,7 +30,7 @@ class Cp2kGeoOptWorkChain(WorkChain):
         super().define(spec)
         spec.input("code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
-        spec.input("wfn_file_path", valid_type=Str, required=False)
+        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
         spec.input("dft_params", valid_type=Dict)
         spec.input("sys_params", valid_type=Dict)
         spec.input(
@@ -221,8 +221,8 @@ class Cp2kGeoOptWorkChain(WorkChain):
         builder.handler_overrides = Dict({"restart_incomplete_calculation": True})
 
         # restart wfn
-        if "wfn_file_path" in self.inputs:
-            builder.cp2k.parent_calc_folder = self.inputs.wfn_file_path.value
+        if "parent_calc_folder" in self.inputs:
+            builder.cp2k.parent_calc_folder = self.inputs.parent_calc_folder
 
         # cp2k input dictionary
         builder.cp2k.parameters = Dict(self.ctx.input_dict)

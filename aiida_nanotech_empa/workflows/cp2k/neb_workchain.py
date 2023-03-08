@@ -11,7 +11,6 @@ from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
 )
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
     make_geom_file,
-    mk_wfn_cp_commands,
     get_dft_inputs,
 )
 
@@ -93,11 +92,11 @@ class Cp2kNebWorkChain(WorkChain):
 
         # check for existing wfn files and create copy commands
         self.ctx.should_run_scf = False
-        self.ctx.wfn_cp_commands = mk_wfn_cp_commands(
-            self.ctx.neb_params["number_of_replica"],
-            uuids_to_check,
-            self.inputs.code.computer,
-        )
+        if "wfn_cp_commands" in self.inputs:
+            self.ctx.wfn_cp_commands = self.inputs.wfn_cp_commands.value
+        else:
+            self.ctx.wfn_cp_commands = []
+
         if len(self.ctx.wfn_cp_commands) == 0:
             self.ctx.should_run_scf = True
 

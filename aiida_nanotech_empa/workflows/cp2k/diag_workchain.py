@@ -6,7 +6,7 @@ import numpy as np
 import yaml
 
 from aiida.engine import WorkChain
-from aiida.orm import Code, Dict, List, SinglefileData, Str, StructureData
+from aiida.orm import Code, Dict, List, SinglefileData, StructureData, RemoteData
 
 from aiida.plugins import WorkflowFactory
 
@@ -28,7 +28,7 @@ class Cp2kDiagWorkChain(WorkChain):
 
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
-        spec.input("wfn_file_path", valid_type=Str, required=False)
+        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
         spec.input("dft_params", valid_type=Dict, default=lambda: Dict(dict={}))
         spec.input("pdos_lists", valid_type=List, required=False)
         spec.input("settings", valid_type=Dict, required=False)
@@ -153,8 +153,9 @@ class Cp2kDiagWorkChain(WorkChain):
         builder.cp2k.structure = StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
-        if "wfn_file_path" in self.inputs:
-            builder.cp2k.parent_calc_folder = self.inputs.wfn_file_path.value
+        # restart wfn
+        if "parent_calc_folder" in self.inputs:
+            builder.cp2k.parent_calc_folder = self.inputs.parent_calc_folder
 
         if "charge" in self.ctx.dft_params:
             input_dict["FORCE_EVAL"]["DFT"]["CHARGE"] = self.ctx.dft_params["charge"]

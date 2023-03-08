@@ -14,7 +14,7 @@ from aiida.engine import (
     append_,
     # calcfunction,
 )
-from aiida.orm import Str, Code, Dict, load_node, CalcJobNode
+from aiida.orm import Str, Code, Dict, load_node, CalcJobNode, RemoteData
 import math
 import numpy as np
 
@@ -40,6 +40,7 @@ class Cp2kReplicaWorkChain(WorkChain):
         # Define the inputs of the workflow
         spec.input("code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
+        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
         spec.input("restart_from", valid_type=Str, required=False)
         spec.input("dft_params", valid_type=Dict)
         spec.input("sys_params", valid_type=Dict)
@@ -183,6 +184,9 @@ class Cp2kReplicaWorkChain(WorkChain):
         builder.structure = StructureData(ase=structure_with_tags)
         builder.code = self.inputs.code
         builder.file = files
+        # restart wfn
+        if "parent_calc_folder" in self.inputs:
+            builder.parent_calc_folder = self.inputs.parent_calc_folder
 
         # resources
         builder.metadata.options = self.inputs.options

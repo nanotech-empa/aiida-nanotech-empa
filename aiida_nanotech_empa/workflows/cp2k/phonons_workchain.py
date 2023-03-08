@@ -24,7 +24,7 @@ class Cp2kPhononsWorkChain(WorkChain):
         super().define(spec)
         spec.input("code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
-        spec.input("wfn_cp_commands", valid_type=Str, required=False)
+        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
         spec.input("dft_params", valid_type=Dict)
         spec.input("sys_params", valid_type=Dict)
         spec.input("phonons_params", valid_type=Dict)
@@ -111,7 +111,9 @@ class Cp2kPhononsWorkChain(WorkChain):
 
         builder.code = self.inputs.code
         builder.structure = self.inputs.structure
-        # builder.wfn_file_path = self.inputs.wfn_file_path
+        # restart wfn
+        if "parent_calc_folder" in self.inputs:
+            builder.parent_calc_folder = self.inputs.parent_calc_folder
         builder.dft_params = self.inputs.dft_params
         builder.sys_params = self.inputs.sys_params
         builder.options = self.ctx.geo_options

@@ -1,7 +1,7 @@
 import numpy as np
 from copy import deepcopy
 from aiida.engine import ToContext, WorkChain
-from aiida.orm import Code, Dict, List, Str, StructureData
+from aiida.orm import Code, Dict, List, StructureData, RemoteData
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
 from aiida_nanotech_empa.utils import common_utils
@@ -20,7 +20,7 @@ class Cp2kPdosWorkChain(WorkChain):
         spec.input("slabsys_structure", valid_type=StructureData)
         spec.input("mol_structure", valid_type=StructureData)
         spec.input("pdos_lists", valid_type=List)
-        spec.input("wfn_file_path", valid_type=Str, required=False)
+        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
         spec.input("dft_params", valid_type=Dict)
         spec.input("overlap_code", valid_type=Code)
         spec.input("overlap_params", valid_type=Dict)
@@ -106,6 +106,9 @@ class Cp2kPdosWorkChain(WorkChain):
         builder.dft_params = Dict(self.ctx.slab_dft_params)
         builder.settings = Dict({"additional_retrieve_list": ["*.pdos"]})
         builder.options = Dict(self.ctx.slab_options)
+        # restart wfn
+        if "parent_calc_folder" in self.inputs:
+            builder.parent_calc_folder = self.inputs.parent_calc_folder
         # pdos
         if self.inputs.pdos_lists is not None:
             builder.pdos_lists = List([pdos[0] for pdos in self.inputs.pdos_lists])

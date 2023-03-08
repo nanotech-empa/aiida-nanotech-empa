@@ -5,13 +5,12 @@ import numbers
 import collections
 import tempfile
 import shutil
-import subprocess
 import os
 import copy
 import numpy as np
 from ase import Atoms
 from io import StringIO
-from aiida.orm import StructureData, Dict, SinglefileData, FolderData, load_node
+from aiida.orm import StructureData, Dict, SinglefileData, FolderData
 
 ang_2_bohr = 1.889725989
 
@@ -317,119 +316,6 @@ def make_geom_file(atoms, filename, tags=None):
 
     shutil.rmtree(tmpdir)
     return aiida_f
-
-
-# check if a rmeote file exists
-def remote_file_exists(hostname, filepath):
-    """Checks if a file exists on a remote host."""
-    result = ""
-    try:
-        ssh = subprocess.check_output(
-            ["ssh", "%s" % hostname, "ls %s" % filepath],
-            shell=False,
-            stderr=subprocess.DEVNULL,
-        )
-        result = ssh.decode()
-    except subprocess.CalledProcessError:
-        pass
-    return result
-
-
-# neb
-def structure_available_wfn(node_uuid, relative_replica_id, current_hostname):
-    """
-    Checks availability of .wfn file corresponding to a structure and returns the remote path.
-    """
-
-    struct_node = load_node(node_uuid)
-
-    if struct_node.creator is None:
-        # print("Struct %d .wfn not avail: no creator." % struct_pk)
-        return None
-
-    parent_calc = struct_node.creator
-
-    if parent_calc.computer is None:
-        # print("Struct %d .wfn not avail: creator has no computer." % struct_pk)
-        return None
-
-    hostname = parent_calc.computer.hostname
-
-    if hostname != current_hostname:
-        # print("Struct %d .wfn not avail: different hostname." % struct_pk)
-        return None
-
-    if parent_calc.label == "CP2K_NEB":
-        # it could be that the neb calculatio had a different number of replicas
-        nreplica_parent = parent_calc.caller.inputs.neb_params["number_of_replica"]
-        ndigits = len(str(nreplica_parent))
-        eff_replica_number = int(round(relative_replica_id * nreplica_parent, 0) + 1)
-        # aiida-BAND2-RESTART.wfn 'replica_%s.xyz' % str(i +2 ).zfill(3)
-        wfn_name = "aiida-BAND%s-RESTART.wfn" % str(eff_replica_number).zfill(ndigits)
-    else:
-        # In all other cases, e.g. geo opt, replica, ...
-        # use the standard name
-        wfn_name = "aiida-RESTART.wfn"
-
-    wfn_search_path = parent_calc.get_remote_workdir() + "/" + wfn_name
-
-    if hostname == "localhost":
-        wfn_exists = (
-            subprocess.call("test -e '{}'".format(wfn_search_path), shell=True) == 0
-        )
-    else:
-        wfn_exists = remote_file_exists(hostname, wfn_search_path) != ""
-
-    if not wfn_exists:
-        # print("Struct %d .wfn not avail: file deleted from remote." % struct_pk)
-        return None
-
-    return wfn_search_path
-
-
-def mk_wfn_cp_commands(nreplicas, replica_uuids, selected_computer):
-    available_wfn_paths = []
-    list_wfn_available = []
-    list_of_cp_commands = []
-
-    for ir, node_uuid in enumerate(replica_uuids):
-
-        # in general the number of uuids is <= nreplicas
-        relative_replica_id = ir / len(replica_uuids)
-        avail_wfn = structure_available_wfn(
-            node_uuid, relative_replica_id, selected_computer.hostname
-        )
-
-        if avail_wfn:
-            list_wfn_available.append(ir)  # example:[0,4,8]
-            available_wfn_paths.append(avail_wfn)
-
-    if len(list_wfn_available) == 0:
-        return []
-
-    n_images_available = len(replica_uuids)
-    n_images_needed = nreplicas
-    n_digits = len(str(n_images_needed))
-    fmt = "%." + str(n_digits) + "d"
-
-    # assign each initial replica to a block of created reps
-    block_size = n_images_needed / float(n_images_available)
-
-    for to_be_created in range(1, n_images_needed + 1):
-        name = "aiida-BAND" + str(fmt % to_be_created) + "-RESTART.wfn"
-
-        lwa = np.array(list_wfn_available)
-
-        # index_wfn = np.abs(np.round(lwa*block_size + block_size/2) - to_be_created).argmin()
-        index_wfn = np.abs(lwa * block_size + block_size / 2 - to_be_created).argmin()
-
-        # closest_available = lwa[index_wfn]
-
-        # print(name, closest_available)
-
-        list_of_cp_commands.append(f"cp {available_wfn_paths[index_wfn]} ./{name}")
-
-    return list_of_cp_commands
 
 
 # Constraints

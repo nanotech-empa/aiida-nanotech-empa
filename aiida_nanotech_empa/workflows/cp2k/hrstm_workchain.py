@@ -1,10 +1,8 @@
 import os
 import numpy as np
 
-from aiida.orm import StructureData
+from aiida.orm import StructureData, SinglefileData, RemoteData
 from aiida.orm import Dict
-from aiida.orm import Str
-from aiida.orm import SinglefileData
 from aiida.orm import Code
 
 from aiida.engine import WorkChain, ToContext
@@ -26,7 +24,7 @@ class Cp2kHrstmWorkChain(WorkChain):
 
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
-        spec.input("wfn_file_path", valid_type=Str, default=Str(""))
+        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
         spec.input("dft_params", valid_type=Dict)
         spec.input(
             "options",
@@ -86,6 +84,10 @@ class Cp2kHrstmWorkChain(WorkChain):
         builder.structure = self.inputs.structure
         builder.dft_params = Dict(self.ctx.dft_params)
         builder.options = Dict(self.ctx.options)
+
+        # restart wfn
+        if "parent_calc_folder" in self.inputs:
+            builder.parent_calc_folder = self.inputs.parent_calc_folder
 
         future = self.submit(builder)
         self.to_context(diag_scf=future)

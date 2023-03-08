@@ -1,7 +1,7 @@
 import numpy as np
 
 from aiida.engine import ToContext, WorkChain
-from aiida.orm import Code, Dict, Str, StructureData
+from aiida.orm import Code, Dict, StructureData, RemoteData
 
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
@@ -19,7 +19,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
 
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
-        spec.input("wfn_file_path", valid_type=Str, required=False)
+        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
         spec.input("dft_params", valid_type=Dict)
         spec.input("spm_code", valid_type=Code)
         spec.input("spm_params", valid_type=Dict)
@@ -58,6 +58,10 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
         builder.dft_params = Dict(self.ctx.dft_params)
+
+        # restart wfn
+        if "parent_calc_folder" in self.inputs:
+            builder.parent_calc_folder = self.inputs.parent_calc_folder
         builder.settings = Dict(
             {
                 "additional_retrieve_list": [
