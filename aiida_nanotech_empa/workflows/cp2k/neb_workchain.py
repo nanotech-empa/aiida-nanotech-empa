@@ -8,11 +8,11 @@ from aiida.plugins import CalculationFactory
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
     get_colvars_section,
     get_constraints_section,
-)
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
+    mk_wfn_cp_commands,
     make_geom_file,
     get_dft_inputs,
 )
+
 
 from aiida_nanotech_empa.utils import common_utils
 
@@ -104,7 +104,12 @@ class Cp2kNebWorkChain(WorkChain):
         if "wfn_cp_commands" in self.inputs:
             self.ctx.wfn_cp_commands = self.inputs.wfn_cp_commands.value
         else:
-            self.ctx.wfn_cp_commands = []
+            self.ctx.wfn_cp_commands = mk_wfn_cp_commands(
+                nreplicas=self.ctx.neb_params["number_of_replica"],
+                replica_nodes=all_replica_nodes,
+                selected_computer=self.inputs.code.computer,
+                dft_params=dft_params,
+            )
 
         if len(self.ctx.wfn_cp_commands) == 0:
             self.ctx.should_run_scf = True
@@ -234,7 +239,7 @@ class Cp2kNebWorkChain(WorkChain):
 
     def submit_neb(self):
         self.report("Submitting NEB optimization")
-        if not self.ctx.initial_scf.is_finished_ok:
+        if self.ctx.should_run_scf and not self.ctx.initial_scf.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
 
         builder = Cp2kCalculation.get_builder()
@@ -291,6 +296,7 @@ class Cp2kNebWorkChain(WorkChain):
 
         self.out("replica_energies", self.ctx.neb.outputs["replica_energies"])
         self.out("replica_distances", self.ctx.neb.outputs["replica_distances"])
+        self.out("remote_folder", self.ctx.neb.outputs.remote_folder)
 
         # Add the workchain pk to the input structure extras
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)

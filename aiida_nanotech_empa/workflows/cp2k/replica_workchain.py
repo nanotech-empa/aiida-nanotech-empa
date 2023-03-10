@@ -146,6 +146,7 @@ class Cp2kReplicaWorkChain(WorkChain):
                         ),
                         "cvs_target": self.ctx.colvars_values,
                         "cvs_actual": self.ctx.colvars_values,
+                        "d2prev": 0,
                     }
                 ).store(),
             )
@@ -161,6 +162,7 @@ class Cp2kReplicaWorkChain(WorkChain):
                         ),
                         "cvs_target": self.ctx.CVs_cases[self.ctx.lowest_energy_calc],
                         "cvs_actual": self.ctx.colvars_values,
+                        "d2prev": self.ctx.d2prev,
                     }
                 ).store(),
             )
@@ -335,9 +337,12 @@ class Cp2kReplicaWorkChain(WorkChain):
         lowest_energy_base_workchain = getattr(
             self.ctx, f"run_{self.ctx.propagation_step :04}"
         )[self.ctx.lowest_energy_calc]
+        ase_previous = self.ctx.lowest_energy_structure.get_ase()
         self.ctx.lowest_energy_structure = (
             lowest_energy_base_workchain.outputs.output_structure
         )
+        ase_now = self.ctx.lowest_energy_structure.get_ase()
+        self.ctx.d2prev = np.linalg.norm(ase_previous.positions - ase_now.positions)
         self.ctx.lowest_energy_output_parameters = (
             lowest_energy_base_workchain.outputs.output_parameters
         )
