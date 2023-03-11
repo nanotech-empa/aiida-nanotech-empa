@@ -43,20 +43,26 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
         "slab": orm.List(list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
     }
 
-    builder.multiplicities = {
-        "all": orm.Int(mult),
-        "molecule": orm.Int(mult),
-        "slab": orm.Int(0),
-    }
-
     mag = []
+    uks = False
     if mult == 1:
-        builder.uks = orm.Bool(True)
-        mag = [0 for i in ase_geom]
+        uks = True
+        mag = [0 for i in structure.get_ase()]
         mag[0] = 1
         mag[1] = -1
 
-    builder.magnetization_per_site = orm.List(list=mag)
+    dft_params = {
+        "uks": uks,
+        "multiplicities": {
+            "all": mult,
+            "molecule": mult,
+            "slab": mult,
+        },
+        "magnetization_per_site": mag,
+        "protocol": "debug",
+    }
+
+    builder.dft_params = orm.Dict(dft_params)
 
     builder.options = {
         "all": {
@@ -81,8 +87,6 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
             },
         },
     }
-
-    builder.protocol = orm.Str("debug")
 
     _, calc_node = engine.run_get_node(builder)
 

@@ -23,7 +23,7 @@ class Cp2kAfmWorkChain(WorkChain):
 
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
-        spec.input("wfn_file_path", valid_type=Str, required=False)
+        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
         spec.input("dft_params", valid_type=Dict)
         spec.input(
             "options",
@@ -90,6 +90,9 @@ class Cp2kAfmWorkChain(WorkChain):
         builder.structure = self.inputs.structure
         builder.dft_params = Dict(self.ctx.dft_params)
         builder.options = Dict(self.inputs.options)
+        # restart wfn
+        if "parent_calc_folder" in self.inputs:
+            builder.parent_calc_folder = self.inputs.parent_calc_folder
 
         future = self.submit(builder)
         self.to_context(diag_scf=future)

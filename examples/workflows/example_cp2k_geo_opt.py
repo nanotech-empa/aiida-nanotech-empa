@@ -64,8 +64,8 @@ def _example_cp2k_geo_opt(cp2k_code, sys_type, uks):
 
     if uks:
         magnetization_per_site = [0 for i in range(len(structure.sites))]
-        magnetization_per_site[1] = 1
-        magnetization_per_site[2] = -1
+        magnetization_per_site[0] = 1
+        magnetization_per_site[1] = -1
         dft_params = {
             "protocol": "debug",
             "uks": uks,

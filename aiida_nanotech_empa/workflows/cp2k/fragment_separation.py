@@ -89,30 +89,25 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             "structure", valid_type=StructureData, help="A molecule on a substrate."
         )
 
-        spec.input(
-            "uks", valid_type=orm.Bool, required=False, default=lambda: orm.Bool(False)
-        )
-
         spec.input_namespace(
             "fragments",
             valid_type=orm.List,
             help="List of indices of atoms defining individual fragments.",
         )
 
-        # Charges of each fragment.
-        spec.input_namespace(
-            "charges",  # +1 means one electron removed
-            valid_type=orm.Int,
-            required=False,
-            help="Charges of each fragment. No need to specify the charge of the full system as it would be computed automatically.",
-        )
-
-        # Multiplicity of each fragment.
-        spec.input_namespace(
-            "multiplicities",
-            valid_type=orm.Int,
-            required=False,
-            help="Multiplicity of each fragment. Use 'all' to specify the multiplicity of the whole system.",
+        # dft parameters
+        spec.input(
+            "dft_params",
+            valid_type=orm.Dict,
+            help="""
+        multiplicities, dictionary: multiplicity of each fragment. Use 'all' to specify the multiplicity of the whole system.
+        magnetization_per_site: Magnetization per site of the whole system. 
+            Magnetization per site of the fragments will be extracted automatically.
+        charges, dictionary: Charges of each fragment. No need to specify the charge of the full system 
+            as it would be computed automatically.
+        protocol: Protocol to use for the calculation.
+        uks: Use unrestricted Kohn-Sham.
+        """,
         )
 
         # Fixed atoms and magnetization per site defined for the whole system. Information for the fragments will extracted automatically.
@@ -121,22 +116,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             valid_type=orm.List,
             required=False,
             help="Fixed atoms of the whole system. Fixed atoms of the fragments will be extracted automatically.",
-        )
-
-        spec.input(
-            "magnetization_per_site",
-            valid_type=orm.List,
-            required=False,
-            help="Magnetization per site of the whole system. Magnetization per site of the fragments will be extracted automatically.",
-        )
-
-        # Protocol that defines the simulation settings.
-        spec.input(
-            "protocol",
-            valid_type=orm.Str,
-            default=lambda: orm.Str("standard"),
-            required=False,
-            help="Settings to run simulations with.",
         )
 
         spec.input_namespace(
@@ -153,6 +132,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             required=False,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+
+        # in case wfn for the whole system is available and matches uks/rks parameters
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
 
         # Outline.
         spec.outline(cls.setup, cls.run_scfs, cls.run_geo_opts, cls.finalize)
@@ -173,8 +155,8 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         self.report("Inspecting input and setting things up.")
 
         n_atoms = len(self.inputs.structure.sites)
-        if "magnetization_per_site" in self.inputs:
-            n_mags = len(list(self.inputs.magnetization_per_site))
+        if "magnetization_per_site" in self.inputs.dft_params:
+            n_mags = len(list(self.inputs.dft_params["magnetization_per_site"]))
             if n_mags not in (0, n_atoms):
                 self.report(
                     "If set, magnetization_per_site needs a value for every atom."
@@ -199,15 +181,16 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         for inputs in split_structure(
             structure=self.inputs.structure,
             fixed_atoms=self.inputs.fixed_atoms,
-            magnetization_per_site=self.inputs.magnetization_per_site
-            if "magnetization_per_site" in self.inputs
+            magnetization_per_site=self.inputs.dft_params["magnetization_per_site"]
+            if "magnetization_per_site" in self.inputs.dft_params
             else None,
             fragments=self.inputs.fragments,
         ):
 
             # Re-loading the input dictionary for the given protocol.
             input_dict = load_protocol(
-                fname="slab_opt_protocol.yml", protocol=self.inputs.protocol.value
+                fname="geo_opt_protocol.yml",
+                protocol=self.inputs.dft_params["protocol"],
             )
 
             self.report(
@@ -223,6 +206,11 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             builder.cp2k.code = self.inputs.code
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
+            # restart wfn in case of fragment 'all'
+            if inputs["label"] == "all":
+                if "parent_calc_folder" in self.inputs:
+                    builder.cp2k.parent_calc_folder = self.inputs.parent_calc_folder
+
             # If options are defined for a specific fragment, use them.
             if "options" in self.inputs and fragment in self.inputs.options:
                 builder.cp2k.metadata.options = self.inputs.options[fragment]
@@ -237,22 +225,25 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             ] = "2 2 2"
 
             # If charge is set, add it to the corresponding section of the input.
-            if "charges" in self.inputs and fragment in self.inputs.charges:
-                input_dict["FORCE_EVAL"]["DFT"]["CHARGE"] = self.inputs.charges[
-                    fragment
-                ].value
+            if (
+                "charges" in self.inputs.dft_params
+                and fragment in self.inputs.dft_params["charges"]
+            ):
+                input_dict["FORCE_EVAL"]["DFT"]["CHARGE"] = self.inputs.dft_params[
+                    "charges"
+                ][fragment]
 
-            if self.inputs.uks:
+            if "uks" in self.inputs.dft_params and self.inputs.dft_params["uks"]:
                 input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
 
                 # If the multiplicity is set, add it to the corresponding section of the input.
                 if (
-                    "multiplicities" in self.inputs
-                    and fragment in self.inputs.multiplicities
+                    "multiplicities" in self.inputs.dft_params
+                    and fragment in self.inputs.dft_params["multiplicities"]
                 ):
                     input_dict["FORCE_EVAL"]["DFT"][
                         "MULTIPLICITY"
-                    ] = self.inputs.multiplicities[fragment].value
+                    ] = self.inputs.dft_params["multiplicities"][fragment]
 
                 # Adding magnetisation tags to the structure and to the CP2K input dictionary.
                 structure, kinds_dict = cp2k_utils.determine_kinds(
