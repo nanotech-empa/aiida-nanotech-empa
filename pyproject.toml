@@ -86,7 +86,7 @@ dev = [
 
 
 [project.entry-points."aiida.schedulers"]
-lsf_ethz_euler = "aiida_nanotech_empa.schedulers.lsf_ethz_euler:ETHZEulerLsfScheduler"
+slurm_ethz_euler = "aiida_nanotech_empa.schedulers.slurm_ethz_euler:ETHZEulerSlurmScheduler"
 
 [tool.bumpver]
 current_version = "v1.0.0a0"
