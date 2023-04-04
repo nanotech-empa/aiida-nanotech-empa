@@ -30,7 +30,6 @@ class Cp2kGWParser(Cp2kBaseParser):
     """AiiDA parser class for the output of CP2K GW calculations."""
 
     def _parse_stdout(self):
-
         fname = self.node.process_class._DEFAULT_OUTPUT_FILE
         if fname not in self.retrieved.base.repository.list_object_names():
             raise Cp2kNoOutputFileError()
@@ -140,7 +139,6 @@ class Cp2kGWParser(Cp2kBaseParser):
                 while True:
                     line_loc = lines[i_line]
                     if "GW HOMO-LUMO gap" in line_loc:
-
                         spin = 1 if "Beta" in line_loc else 0
 
                         if len(results["mo"]) > spin:
@@ -185,7 +183,6 @@ class Cp2kGWParser(Cp2kBaseParser):
                 while True:
                     line_loc = lines[i_line]
                     if "IC HOMO-LUMO gap" in line_loc:
-
                         spin = 1 if "Beta" in line_loc else 0
 
                         if len(results["mo"]) > spin:

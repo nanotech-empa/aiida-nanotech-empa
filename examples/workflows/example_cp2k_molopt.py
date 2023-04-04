@@ -7,7 +7,6 @@ Cp2kMoleculeOptWorkChain = WorkflowFactory("nanotech_empa.cp2k.molecule_opt")
 
 
 def _example_cp2k_molopt(cp2k_code, mult):
-
     builder = Cp2kMoleculeOptWorkChain.get_builder()
 
     builder.metadata.label = "Cp2kMoleculeOptWorkChain"

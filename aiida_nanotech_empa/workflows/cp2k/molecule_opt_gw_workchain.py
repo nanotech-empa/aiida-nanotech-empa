@@ -8,7 +8,6 @@ from .molecule_opt_workchain import Cp2kMoleculeOptWorkChain
 
 @calcfunction
 def analyze_structure(structure, mag_per_site):
-
     mol_atoms = structure.get_ase()
 
     mps = []
@@ -158,7 +157,6 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         return ExitCode(0)
 
     def gw(self):
-
         self.report("Submitting GW.")
 
         builder = Cp2kMoleculeGwWorkChain.get_builder()

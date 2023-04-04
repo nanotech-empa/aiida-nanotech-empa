@@ -99,7 +99,6 @@ class GaussianConstrOptChainWorkChain(WorkChain):
         return len(self.inputs.list_of_constraints) > self.ctx.i_constr
 
     def submit_opt(self):
-
         label = f"opt_{self.ctx.i_constr}"
         if self.ctx.i_constr == 0:
             structure = self.inputs.structure
@@ -145,14 +144,12 @@ class GaussianConstrOptChainWorkChain(WorkChain):
         return ToContext(**{label: submitted_node})
 
     def submit_extra_mults(self):
-
         opt_label = f"opt_{self.ctx.i_constr-1}"
 
         if not common_utils.check_if_calc_ok(self, self.ctx[opt_label]):
             return self.exit_codes.ERROR_TERMINATION
 
         for extra_mult in self.inputs.extra_scf_mults:
-
             label = opt_label + f"_m{extra_mult}"
             self.report(f"Submitting scf {label}")
 
@@ -175,11 +172,9 @@ class GaussianConstrOptChainWorkChain(WorkChain):
         return ExitCode(0)
 
     def finalize(self):
-
         self.report("Finalizing...")
 
         for i_constr in range(len(self.inputs.list_of_constraints)):
-
             label = f"opt_{i_constr}"
             if not common_utils.check_if_calc_ok(self, self.ctx[label]):
                 return self.exit_codes.ERROR_TERMINATION

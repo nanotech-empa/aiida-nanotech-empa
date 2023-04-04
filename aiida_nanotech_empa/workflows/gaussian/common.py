@@ -29,7 +29,6 @@ def _get_gaussian_mem_mb(total_mem_kb, computer):
 
 
 def setup_context_variables(self_):
-
     pymatgen_structure = self_.inputs.structure.get_pymatgen_molecule()
     self_.ctx.n_atoms = pymatgen_structure.num_sites
     self_.ctx.n_electrons = pymatgen_structure.nelectrons
@@ -47,7 +46,6 @@ def setup_context_variables(self_):
 
 
 def determine_comp_resources(num_atoms, basis_set=""):
-
     # Very small basis sets:
     if basis_set.lower() in ("sto-3g", "sv", "svp", "def2sv", "def2svp"):
         num_cores = int(np.round(num_atoms / 20))
@@ -70,7 +68,6 @@ def determine_comp_resources(num_atoms, basis_set=""):
 
 
 def get_default_metadata_options(num_atoms, computer, basis_set):
-
     num_cores, memory_mb = determine_comp_resources(num_atoms, basis_set)
 
     options = {}
@@ -97,7 +94,6 @@ def get_default_metadata_options(num_atoms, computer, basis_set):
 
 
 def validate_metadata_options(options, computer):
-
     if "resources" not in options:
         return "'resources' needs to be set"
 
@@ -148,7 +144,6 @@ def determine_metadata_options(self_):
 
 
 def get_total_number_of_cores(resources, computer):
-
     num_machines = 1
     if "num_machines" in resources:
         num_machines = resources["num_machines"]
@@ -173,7 +168,6 @@ def get_total_number_of_cores(resources, computer):
 
 
 def get_gaussian_cores_and_memory(options, computer):
-
     num_cores = get_total_number_of_cores(options["resources"], computer)
 
     if "max_memory_kb" not in options:

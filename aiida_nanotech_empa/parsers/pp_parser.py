@@ -20,7 +20,6 @@ class PpParser(BasePpParser):
     """
 
     def parse_gaussian(self, data_file_str):
-
         with io.StringIO(data_file_str) as data_file_handle:
             cube = Cube.from_file_handle(data_file_handle)
 

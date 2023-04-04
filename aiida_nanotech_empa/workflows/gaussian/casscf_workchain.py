@@ -144,7 +144,6 @@ class GaussianCasscfWorkChain(WorkChain):
         return ExitCode(0)
 
     def casscf(self):
-
         self.report("Submitting CASSCF")
 
         func_str = "CASSCF({},{}{})".format(
@@ -184,7 +183,6 @@ class GaussianCasscfWorkChain(WorkChain):
         return ToContext(casscf=future)
 
     def casmp2(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.casscf):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -225,7 +223,6 @@ class GaussianCasscfWorkChain(WorkChain):
         return ToContext(casmp2=future)
 
     def cubes(self):
-
         n_d = self.inputs.num_orbital_cubes.value
         n_u = self.inputs.num_orbital_cubes.value
 
@@ -245,7 +242,6 @@ class GaussianCasscfWorkChain(WorkChain):
         return ToContext(cubes=future)
 
     def finalize(self):
-
         self.report("Finalizing...")
 
         if not common_utils.check_if_calc_ok(self, self.ctx.casscf):

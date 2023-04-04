@@ -221,7 +221,6 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_bands(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.export_hartree):
             return self.exit_codes.CALC_FAILED
 
@@ -244,7 +243,6 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_export_pdos(self):
-
         prev_calc = self.ctx.bands
         if not common_utils.check_if_calc_ok(self, prev_calc):
             return self.exit_codes.CALC_FAILED
@@ -313,7 +311,6 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def run_bands_lowres(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.export_pdos):
             return self.exit_codes.CALC_FAILED
 
@@ -338,7 +335,6 @@ class NanoribbonWorkChain(WorkChain):
 
     # =========================================================================
     def prepare_export_orbitals(self):
-
         prev_calc = self.ctx.bands_lowres
         if not common_utils.check_if_calc_ok(self, prev_calc):
             return self.exit_codes.CALC_FAILED

@@ -12,7 +12,6 @@ GEO_FILE = "h2_on_hbn.xyz"
 
 
 def _example_cp2k_slabopt(cp2k_code, mult):
-
     builder = Cp2kSlabOptWorkChain.get_builder()
 
     builder.metadata.label = "Cp2kSlabOptWorkChain"

@@ -144,7 +144,6 @@ class GaussianCasscfSeriesWorkChain(WorkChain):
         return "start_calc_folder" not in self.inputs
 
     def initial_scf(self):
-
         self.report("Submitting initial SCF")
 
         self.ctx.init_mult = list(self.inputs.multiplicity_list)[0]
@@ -198,7 +197,6 @@ class GaussianCasscfSeriesWorkChain(WorkChain):
         return True
 
     def casscf(self):
-
         if self.ctx.last_submitted_label is not None:
             if not common_utils.check_if_calc_ok(
                 self, self.ctx[self.ctx.last_submitted_label]
@@ -273,7 +271,6 @@ class GaussianCasscfSeriesWorkChain(WorkChain):
         return ToContext(**{label: submitted_node})
 
     def finalize(self):
-
         self.report("Finalizing...")
 
         if not common_utils.check_if_calc_ok(
