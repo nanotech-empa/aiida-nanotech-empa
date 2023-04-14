@@ -26,8 +26,8 @@ def _example_cp2k_dielectic(cp2k_code):
     builder.cp2k_base.cp2k.metadata.options = {
         "max_wallclock_seconds": 21600,
         "resources": {
-            "num_machines": 4,
-            "num_mpiprocs_per_machine": 12,
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
             "num_cores_per_mpiproc": 1,
         },
     }
@@ -42,5 +42,5 @@ def _example_cp2k_dielectic(cp2k_code):
 
 
 if __name__ == "__main__":
-    #_example_cp2k_dielectic(load_code("cp2k@localhost"))
-    _example_cp2k_dielectic(load_code("cp2k@daint-hybrid-s1141"))
+    _example_cp2k_dielectic(load_code("cp2k@localhost"))
+    #_example_cp2k_dielectic(load_code("cp2k@daint-hybrid-s1141"))
