@@ -221,6 +221,8 @@ standard:
     GLOBAL:
       PRINT_LEVEL: MEDIUM #default: MEDIUM. Important to have the correct parsing
       RUN_TYPE: CELL_OPT
+      ELPA_KERNEL: GENERIC
+
     FORCE_EVAL:
       METHOD: QUICKSTEP
       STRESS_TENSOR: ANALYTICAL
