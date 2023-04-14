@@ -195,7 +195,7 @@ class Cp2kDielectricWorkChain(WorkChain):
 
         def get_dipole_from_output(aiidaout_path):
             my_list = []
-            with open(efield0_output, 'r') as my_out:
+            with aiidaout_path.open('aiida.out') as my_out:
                 for line in my_out.readlines():
                     if 'X=' in line:
                         vector = line.split()
@@ -204,10 +204,10 @@ class Cp2kDielectricWorkChain(WorkChain):
 
         ase_structure = self.ctx.ground_state.outputs.output_structure.get_ase()
         volume = ase_structure.get_volume()
-        efield0_output = self.ctx.efield0.called[-1].outputs.remote_folder.get_remote_path() +'/aiida.out'
-        efield_x_output = self.ctx.efield_x.called[-1].outputs.remote_folder.get_remote_path() +'/aiida.out'
-        efield_y_output = self.ctx.efield_y.called[-1].outputs.remote_folder.get_remote_path() +'/aiida.out'
-        efield_z_output = self.ctx.efield_z.called[-1].outputs.remote_folder.get_remote_path()+'/aiida.out'
+        efield0_output = self.ctx.efield0.called[-1].outputs.retrieved.base.repository 
+        efield_x_output = self.ctx.efield_x.called[-1].outputs.retrieved.base.repository 
+        efield_y_output = self.ctx.efield_y.called[-1].outputs.retrieved.base.repository 
+        efield_z_output = self.ctx.efield_z.called[-1].outputs.retrieved.base.repository
         dipole_e0 = get_dipole_from_output(efield0_output)
         dipole_ex = get_dipole_from_output(efield_x_output)
         dipole_ey = get_dipole_from_output(efield_y_output)
@@ -225,8 +225,8 @@ class Cp2kDielectricWorkChain(WorkChain):
         eps_inf_zz = (4*np.pi*np.absolute(dipole_efieldz-dipole_efield0)*0.393456)/(volume*np.power(1.8897259886,3)*0.0005) + 1
 
         eps_0_xx = (4*np.pi*(np.absolute(dipole_efieldx_relax-dipole_efieldx))*0.393456)/(volume*np.power(1.8897259886,3)*0.0005) + eps_inf_xx
-        eps_0_yy = (4*np.pi*(np.absolute(dipole_efieldy_relax-dipole_efieldy))*0.393456)/(volume*np.power(1.8897259886,3)*0.0005) + eps_inf_zz
-        eps_0_zz = (4*np.pi*(np.absolute(dipole_efieldz_relax-dipole_efieldz))*0.393456)/(volume*np.power(1.8897259886,3)*0.0005) + eps_inf_yy
+        eps_0_yy = (4*np.pi*(np.absolute(dipole_efieldy_relax-dipole_efieldy))*0.393456)/(volume*np.power(1.8897259886,3)*0.0005) + eps_inf_yy
+        eps_0_zz = (4*np.pi*(np.absolute(dipole_efieldz_relax-dipole_efieldz))*0.393456)/(volume*np.power(1.8897259886,3)*0.0005) + eps_inf_zz
         
         results_dict = {
             'eps_inf': [eps_inf_xx,eps_inf_yy,eps_inf_zz],

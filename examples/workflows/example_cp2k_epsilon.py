@@ -17,17 +17,15 @@ def _example_cp2k_dielectic(cp2k_code):
     builder.metadata.label = "Cp2kDielectricWorkChain"
     builder.metadata.description = "Si bulk dielectric constant"
     builder.cp2k_base.cp2k.code = cp2k_code
-    #builder.protocol = Str('debug')
-    builder.protocol = Str('standard')
+    builder.protocol = Str('debug')
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
-    builder.structure = load_node(5265)
-    #builder.structure = StructureData(ase=ase_geom)
+    builder.structure = StructureData(ase=ase_geom)
 
     builder.cp2k_base.cp2k.metadata.options = {
         "max_wallclock_seconds": 21600,
         "resources": {
-            "num_machines": 6,
-            "num_mpiprocs_per_machine": 12,
+            "num_machines": 1,
+            "num_mpiprocs_per_machine": 1,
             "num_cores_per_mpiproc": 1,
         },
     }
@@ -42,5 +40,4 @@ def _example_cp2k_dielectic(cp2k_code):
 
 
 if __name__ == "__main__":
-    #_example_cp2k_dielectic(load_code("cp2k@localhost"))
-    _example_cp2k_dielectic(load_code("cp2k@daint-hybrid-s1141"))
+    _example_cp2k_dielectic(load_code("cp2k@localhost"))
