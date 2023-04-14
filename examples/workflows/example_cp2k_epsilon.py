@@ -26,7 +26,7 @@ def _example_cp2k_dielectic(cp2k_code):
     builder.cp2k_base.cp2k.metadata.options = {
         "max_wallclock_seconds": 21600,
         "resources": {
-            "num_machines": 4,
+            "num_machines": 6,
             "num_mpiprocs_per_machine": 12,
             "num_cores_per_mpiproc": 1,
         },

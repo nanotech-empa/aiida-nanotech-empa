@@ -83,7 +83,7 @@ class Cp2kDielectricWorkChain(WorkChain):
             cls.run_efieldxyz_geoopt,
             cls.results
         )
-        spec.output('output', valid_type=Dict, help='Dictionary with the dielectric constants')
+        spec.output('epsilon', valid_type=Dict, help='Dictionary with the dielectric constants')
         spec.exit_code(390,"ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",)
         
@@ -103,8 +103,8 @@ class Cp2kDielectricWorkChain(WorkChain):
             parameters = deepcopy(self.ctx.protocols['debug']['settings'])
         else:
             parameters = deepcopy(self.ctx.protocols['standard']['settings'])
-            cell_lengths = self.input.structure.cell_lengths
-            cell_angles = self.input.structure.cell_angles
+            cell_lengths = self.inputs.structure.cell_lengths
+            cell_angles = self.inputs.structure.cell_angles
             symmetry, super_cell = check_symmetry(cell_lengths, cell_angles)
             symmetry_parameters = {
                 'FORCE_EVAL': {
@@ -229,12 +229,12 @@ class Cp2kDielectricWorkChain(WorkChain):
         eps_0_zz = (4*np.pi*(np.absolute(dipole_efieldz_relax-dipole_efieldz))*0.393456)/(volume*np.power(1.8897259886,3)*0.0005) + eps_inf_yy
         
         results_dict = {
-            'esp_inf': [eps_inf_xx,eps_inf_yy,eps_inf_zz],
+            'eps_inf': [eps_inf_xx,eps_inf_yy,eps_inf_zz],
             'eps_0': [eps_0_xx,eps_0_yy,eps_0_zz],
         }
         aiida_result_dict = Dict(dict=results_dict)
         aiida_result_dict.store()
-        self.out('output',aiida_result_dict)
+        self.out('epsilon',aiida_result_dict)
         self.report(f'Cp2kDielectricWorkChain Completed')
 
 
