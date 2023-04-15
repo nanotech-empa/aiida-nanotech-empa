@@ -29,12 +29,12 @@ initial_magnetization:
   Cr: 0 # oxidation state +2 high spin
   Mn: 0 # oxidation state +2 high spin
   Fe: 0 # oxidation state +2 high spin
-  Co: 0 
-  Ni: 0 
-  Cu: 0 
-  Zn: 0 
+  Co: 0
+  Ni: 0
+  Cu: 0
+  Zn: 0
   Cd: 0
-  Zr: 0 
+  Zr: 0
   Ag: 0
   Au: 0
   Ru: 0
@@ -226,7 +226,7 @@ standard:
     FORCE_EVAL:
       METHOD: QUICKSTEP
       STRESS_TENSOR: ANALYTICAL
-  
+
       DFT:
         BASIS_SET_FILE_NAME:
           - BASIS_MOLOPT
@@ -260,9 +260,9 @@ standard:
             METHOD: DIRECT_P_MIXING
             ALPHA: 0.4
             BETA: 0.5
-          
+
           PRINT:
-            RESTART: 
+            RESTART:
               BACKUP_COPIES: 0
 
         XC:
@@ -383,9 +383,9 @@ debug:
             METHOD: DIRECT_P_MIXING
             ALPHA: 0.4
             BETA: 0.5
-          
+
           PRINT:
-            RESTART: 
+            RESTART:
               BACKUP_COPIES: 0
 
         XC:

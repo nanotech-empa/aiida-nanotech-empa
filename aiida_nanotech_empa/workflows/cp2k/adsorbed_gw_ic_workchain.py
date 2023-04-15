@@ -33,7 +33,6 @@ def geometrical_analysis(ase_geo, substr_elem):
 
 @calcfunction
 def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
-
     ase_geo = structure.get_ase()
     substr_elem = substrate.value.split("(")[0]
 
@@ -74,7 +73,6 @@ def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
 
 @calcfunction
 def calc_gw_ic_parameters(gw_params, ic_params):
-
     gw_evals = gw_params["gw_eval"]
     ic_deltas = ic_params["ic_delta"]
     homo_inds = gw_params["homo"]
@@ -310,7 +308,6 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         return ToContext(ic=submitted_node)
 
     def gw(self):
-
         if not self.ctx.ic.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
 

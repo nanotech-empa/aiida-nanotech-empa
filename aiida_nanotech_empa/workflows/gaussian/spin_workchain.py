@@ -74,7 +74,6 @@ class GaussianSpinWorkChain(WorkChain):
         )
 
     def submit_opts(self):
-
         # multiplicity 0 means RKS calculation
 
         for mult in self.inputs.multiplicity_list:
@@ -111,7 +110,6 @@ class GaussianSpinWorkChain(WorkChain):
             self.to_context(**{label: submitted_node})
 
     def inspect_opts(self):
-
         opt_energies = []
 
         for mult in self.inputs.multiplicity_list:
@@ -212,7 +210,6 @@ class GaussianSpinWorkChain(WorkChain):
         self.report("Submitting vertical calculations")
 
         for mult in self.inputs.multiplicity_list:
-
             label = f"m{mult}_vert"
             opt_label = f"m{mult}_opt"
 
@@ -247,7 +244,6 @@ class GaussianSpinWorkChain(WorkChain):
             self.to_context(**{label: submitted_node})
 
     def inspect_next_steps(self):
-
         # ------------------------------------------------------
         if not common_utils.check_if_calc_ok(self, self.ctx.gs_cubes):
             return self.exit_codes.ERROR_TERMINATION
@@ -264,7 +260,6 @@ class GaussianSpinWorkChain(WorkChain):
 
         # ------------------------------------------------------
         for mult in self.inputs.multiplicity_list:
-
             label = f"m{mult}_vert"
 
             if mult == self.ctx.gs_mult:
@@ -293,7 +288,6 @@ class GaussianSpinWorkChain(WorkChain):
         return self.ctx.gs_mult == 1
 
     def submit_nat_orb(self):
-
         self.report("Submitting natural pop analysis")
 
         builder = GaussianNatOrbWorkChain.get_builder()
@@ -308,7 +302,6 @@ class GaussianSpinWorkChain(WorkChain):
         self.to_context(natorb=submitted_node)
 
     def inspect_nat_orb(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
             return self.exit_codes.ERROR_TERMINATION
 

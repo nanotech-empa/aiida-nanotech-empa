@@ -10,7 +10,6 @@ from PIL import Image
 
 
 def select_frontier_orbital_energies(out_params, n_orb=4):
-
     nspin = len(out_params["homos"])
     mo_e = np.array(out_params["moenergies"])
 
@@ -19,7 +18,6 @@ def select_frontier_orbital_energies(out_params, n_orb=4):
     occs = [[]]
 
     if nspin == 1:
-
         homo_s0 = out_params["homos"][0]
 
         i_start = max(homo_s0 - n_orb, -1)
@@ -31,7 +29,6 @@ def select_frontier_orbital_energies(out_params, n_orb=4):
             occs[0].append(2 if i_orb <= homo_s0 else 0)
 
     elif nspin == 2:
-
         energies.append([])
         occs.append([])
 
@@ -54,7 +51,6 @@ def select_frontier_orbital_energies(out_params, n_orb=4):
 
 
 def _get_orb_energies_str(out_params, n_orb=4):
-
     orb_dict = select_frontier_orbital_energies(out_params, n_orb)
 
     inds = orb_dict["indexes"]
@@ -71,7 +67,6 @@ def _get_orb_energies_str(out_params, n_orb=4):
             lines.append("{:>10} {:>16.4f} {:>6}".format(*z))
 
     elif nspin == 2:
-
         header = "{:>10} {:>16} {:>9} {:>16} {:>9}".format(
             "i_orb", "E(up) (eV)", "occ(up)", "E(down) (eV)", "occ(down)"
         )
@@ -121,7 +116,6 @@ def _get_out_params_str(out_params):
 
 
 def _get_natorb_analysis_str(natorb_params, out_params, n_orb=4):
-
     no_occs = natorb_params["no_occs"]
     no_occs_sp = natorb_params["no_occs_sp"]
 
@@ -162,14 +156,12 @@ def plot_cube_images(
     save_image_loc=None,
     save_prefix="",
 ):
-
     if name_contains is None:
         name_contains = ["z+"]
 
     rows = {}
     image_names = cube_image_folder.list_object_names()
     for imag_name in image_names:
-
         if not all(e in imag_name for e in name_contains):
             continue
 
@@ -261,7 +253,6 @@ def make_report(wc_node, nb=False, save_image_loc=None):
     print()
 
     if "gs_hf_out_params" in wc_node.outputs:
-
         gs_hf_out_params = dict(wc_node.outputs.gs_hf_out_params)
 
         print("##############################################################")
@@ -290,7 +281,6 @@ def make_report(wc_node, nb=False, save_image_loc=None):
         print()
 
     for mult in list(wc_node.inputs.multiplicity_list):
-
         if mult == gs_multiplicity:
             continue
 

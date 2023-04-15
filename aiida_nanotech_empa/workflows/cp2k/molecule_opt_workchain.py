@@ -73,7 +73,6 @@ class Cp2kMoleculeOptWorkChain(WorkChain):
         # --------------------------------------------------
 
     def submit_calc(self):
-
         # load input template
         with open(
             pathlib.Path(__file__).parent / "./protocols/molecule_opt_protocol.yml",

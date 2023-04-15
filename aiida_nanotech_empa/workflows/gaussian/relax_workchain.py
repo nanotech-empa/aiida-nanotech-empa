@@ -195,7 +195,6 @@ class GaussianRelaxWorkChain(WorkChain):
         return ExitCode(0)
 
     def uks_wfn_stability(self):
-
         self.report("Running UKS WFN Stability")
 
         parameters = Dict(
@@ -229,7 +228,6 @@ class GaussianRelaxWorkChain(WorkChain):
         return ToContext(uks_stab=future)
 
     def optimization(self):
-
         self.report("Submitting optimization")
 
         parameters = Dict(
@@ -303,7 +301,6 @@ class GaussianRelaxWorkChain(WorkChain):
         return "basis_set_scf" in self.inputs
 
     def scf(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.opt):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -334,7 +331,6 @@ class GaussianRelaxWorkChain(WorkChain):
         return ToContext(scf=submitted_node)
 
     def finalize(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.opt):
             return self.exit_codes.ERROR_TERMINATION
 

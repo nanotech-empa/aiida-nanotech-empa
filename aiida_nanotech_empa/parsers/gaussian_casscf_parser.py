@@ -36,7 +36,6 @@ class GaussianCasscfParser(GaussianBaseParser):
         return None
 
     def _parse_casscf(self, log_file_string):
-
         parsed_data = {}
 
         for line in log_file_string.splitlines():

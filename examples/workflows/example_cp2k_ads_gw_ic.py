@@ -13,7 +13,6 @@ GEO_FILE = "h2_on_au111.xyz"
 
 
 def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
-
     builder = Cp2kAdsorbedGwIcWorkChain.get_builder()
 
     builder.metadata.description = os.path.splitext(GEO_FILE)[0]

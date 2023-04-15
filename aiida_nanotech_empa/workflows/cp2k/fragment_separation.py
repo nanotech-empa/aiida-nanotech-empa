@@ -202,7 +202,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             else None,
             fragments=self.inputs.fragments,
         ):
-
             # Re-loading the input dictionary for the given protocol.
             input_dict = load_protocol(
                 fname="slab_opt_protocol.yml", protocol=self.inputs.protocol.value
@@ -286,7 +285,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             self.to_context(**{f"scf.{fragment}": submitted_node})
 
     def run_geo_opts(self):
-
         for fragment in self.inputs.fragments.keys():
             # We deliberately do not run optimisation for the full structure.
             if fragment == "all":
@@ -325,7 +323,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         unrelaxed_separation_energy = energies["all"]
 
         for fragment in list(self.inputs.fragments.keys()):
-
             # The geometry optimisation is not run for the full structure.
             if fragment == "all":
                 continue

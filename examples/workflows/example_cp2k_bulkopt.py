@@ -12,7 +12,6 @@ GEO_FILE = "si_bulk.xyz"
 
 
 def _example_cp2k_bulkopt(cp2k_code, cell_opt, mult):
-
     builder = Cp2kBulkOptWorkChain.get_builder()
 
     builder.metadata.label = "Cp2kBulkOptWorkChain"

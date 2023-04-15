@@ -7,7 +7,6 @@ Cp2kMoleculeOptGwWorkChain = WorkflowFactory("nanotech_empa.cp2k.mol_opt_gw")
 
 
 def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
-
     builder = Cp2kMoleculeOptGwWorkChain.get_builder()
 
     builder.metadata.description = "H2 gas"

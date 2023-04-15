@@ -40,7 +40,6 @@ def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
         pmin = np.min(cube.ase_atoms.positions[:, i])
 
         if i_crop:
-
             if isinstance(i_crop, collections.abc.Iterable):
                 i_crop_ = i_crop
             else:
@@ -75,7 +74,6 @@ def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
 
 
 def cube_from_qe_pp_arraydata(ad):
-
     data_units = str(ad.get_array("data_units"))
     coord_units = str(ad.get_array("coordinates_units"))
     data = ad.get_array("data")

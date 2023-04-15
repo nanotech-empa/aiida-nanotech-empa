@@ -278,7 +278,6 @@ class GaussianScfWorkChain(WorkChain):
         return ToContext(**{self.ctx.scf_label: future})
 
     def did_scf_fail(self):
-
         scf_node = self.ctx[self.ctx.scf_label]
         if not common_utils.check_if_calc_ok(self, scf_node):
             # set up for conver=7 calculation
@@ -297,7 +296,6 @@ class GaussianScfWorkChain(WorkChain):
         return codes_set and non_zero_num
 
     def cubes(self):
-
         scf_node = self.ctx[self.ctx.scf_label]
 
         if not common_utils.check_if_calc_ok(self, scf_node):
@@ -328,7 +326,6 @@ class GaussianScfWorkChain(WorkChain):
         return ToContext(cubes=future)
 
     def finalize(self):
-
         scf_node = self.ctx[self.ctx.scf_label]
 
         if not common_utils.check_if_calc_ok(self, scf_node):

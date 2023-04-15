@@ -1,7 +1,8 @@
 import os
+
 import ase.io
 from aiida.engine import run_get_node
-from aiida.orm import load_code, load_node
+from aiida.orm import load_code
 from aiida.plugins import DataFactory, WorkflowFactory
 
 Cp2kDielectricWorkChain = WorkflowFactory("nanotech_empa.cp2k.epsilon")
@@ -11,13 +12,13 @@ GEO_FILE = "si_bulk.xyz"
 StructureData = DataFactory("core.structure")
 Str = DataFactory("core.str")
 
-def _example_cp2k_dielectic(cp2k_code):
 
+def _example_cp2k_dielectic(cp2k_code):
     builder = Cp2kDielectricWorkChain.get_builder()
     builder.metadata.label = "Cp2kDielectricWorkChain"
     builder.metadata.description = "Si bulk dielectric constant"
     builder.cp2k_base.cp2k.code = cp2k_code
-    builder.protocol = Str('debug')
+    builder.protocol = Str("debug")
     ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
     builder.structure = StructureData(ase=ase_geom)
 

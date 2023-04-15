@@ -84,7 +84,6 @@ def spin_proj_nakano(no_occs, i_hono=None):
 
 @calcfunction
 def process_natural_orb_occupations(natorb_parameters):
-
     no_occs = natorb_parameters["nooccnos"]
     i_homo = natorb_parameters["homos"][0]
     no_occs_sp = list(spin_proj_nakano(np.array(no_occs), i_hono=i_homo))
@@ -190,7 +189,6 @@ class GaussianNatOrbWorkChain(WorkChain):
         )
 
     def submit_calc(self):
-
         self.ctx.n_atoms = self.inputs.parent_calc_params["natom"]
         self.ctx.basis_set = self.inputs.parent_calc_params["metadata"]["basis_set"]
         self.ctx.comp = self.inputs.gaussian_code.computer
@@ -244,7 +242,6 @@ class GaussianNatOrbWorkChain(WorkChain):
         return self.inputs.save_natorb_chk
 
     def submit_save(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -289,7 +286,6 @@ class GaussianNatOrbWorkChain(WorkChain):
         return self.save_natorb_chk() and codes_set and pos_num_specified
 
     def cubes(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb_save):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -312,7 +308,6 @@ class GaussianNatOrbWorkChain(WorkChain):
         return ToContext(cubes=future)
 
     def finalize(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
             return self.exit_codes.ERROR_TERMINATION
 
