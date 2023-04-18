@@ -88,6 +88,7 @@ class Cp2kDielectricWorkChain(WorkChain):
     def define(cls, spec):
         """Specify input, outputs, and the workchain outline."""
         super().define(spec)
+
         spec.input("structure", valid_type=StructureData)
         spec.input(
             "protocol",
@@ -104,12 +105,30 @@ class Cp2kDielectricWorkChain(WorkChain):
         spec.outline(
             cls.setup,
             cls.run_geoopt,
+            cls.inspect_geoopt,
             cls.run_efield0,
+            cls.inspect_efield0,
             cls.run_efieldxyz_geoopt,
+            cls.inspect_efieldxyz,
             cls.results,
         )
         spec.output(
             "epsilon", valid_type=Dict, help="Dictionary with the dielectric constants"
+        )
+        spec.exit_code(
+            401,
+            "ERROR_SUB_PROCESS_FAILED_GEOOPT",
+            message="The cell optimization sub process failed",
+        )
+        spec.exit_code(
+            402,
+            "ERROR_SUB_PROCESS_FAILED_EFIELD0",
+            message="The efield 0 sub process failed",
+        )
+        spec.exit_code(
+            403,
+            "ERROR_SUB_PROCESS_FAILED_EFIELDXYZ",
+            message="The efieldxyz optimization sub process failed",
         )
         spec.exit_code(
             390,
@@ -165,6 +184,12 @@ class Cp2kDielectricWorkChain(WorkChain):
         self.report("Submitting ground state cell optimization")
         self.to_context(ground_state=running_ground_state)
 
+    def inspect_geoopt(self):
+        """Verify that the ground state calculation finished successfully."""
+        if not self.ctx.ground_state.is_finished_ok:
+            self.report("Ground state calculation failed.")
+            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_GEOOPT
+
     def run_efield0(self):
         optimized_structure = self.ctx.ground_state.outputs.output_structure
         self.ctx.efield_parameters = self.ctx.parameters
@@ -201,6 +226,12 @@ class Cp2kDielectricWorkChain(WorkChain):
         self.report("Submiting single point field 0")
         self.to_context(efield0=running_efield0)
 
+    def inspect_efield0(self):
+        """Verify that the efield 0 calculation finished successfully."""
+        if not self.ctx.efield0.is_finished_ok:
+            self.report("Efield 0 calculation failed.")
+            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_EFIELD0
+
     def run_efieldxyz_geoopt(self):
         direction = {"x": "1 0 0", "y": "0 1 0", "z": "0 0 1"}
         optimized_structure = self.ctx.ground_state.outputs.output_structure
@@ -209,7 +240,7 @@ class Cp2kDielectricWorkChain(WorkChain):
         self.ctx.efield_parameters["GLOBAL"]["RUN_TYPE"] = "GEO_OPT"
         self.ctx.efield_parameters["FORCE_EVAL"]["DFT"]["PERIODIC_EFIELD"][
             "INTENSITY"
-        ] = 0.0005
+        ] = 0.0005  # Debye units
 
         for vector in direction:
             geo_efield = AttributeDict(
@@ -226,8 +257,17 @@ class Cp2kDielectricWorkChain(WorkChain):
             running_geo_efield = self.submit(Cp2kBaseWorkChain, **geo_efield)
             self.to_context(**{f"efield_{vector}": running_geo_efield})
 
+    def inspect_efieldxyz(self):
+        """Verify that the efield x,y,z calculation finished successfully."""
+        for vector in ["x", "y", "z"]:
+            if not self.ctx[f"efield_{vector}"].is_finished_ok:
+                self.report(f"Efield {vector} calculation failed.")
+                return self.exit_codes.ERROR_SUB_PROCESS_FAILED_EFIELDXYZ_GEOOPT
+
     def results(self):
-        def get_dipole_from_output(aiidaout_path):
+        def get_dipole_from_output(
+            aiidaout_path,
+        ):  # For future update cp2k-aiida parser to get dipole from output
             my_list = []
             with aiidaout_path.open("aiida.out") as my_out:
                 for line in my_out.readlines():
@@ -282,3 +322,4 @@ class Cp2kDielectricWorkChain(WorkChain):
         aiida_result_dict.store()
         self.out("epsilon", aiida_result_dict)
         self.report("Cp2kDielectricWorkChain Completed")
+        #
