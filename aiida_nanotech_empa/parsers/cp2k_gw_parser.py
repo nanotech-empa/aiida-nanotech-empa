@@ -1,19 +1,19 @@
 """AiiDA-CP2K output parser for GW calculations."""
 
-from aiida.common import OutputParsingError
-from aiida.orm import Dict
+
+from aiida import common, orm
 from aiida_cp2k.parsers import Cp2kBaseParser
 from aiida_cp2k.utils import parse_cp2k_output_advanced
 
 HART_2_EV = 27.21138602
 
 
-class Cp2kNoOutputFileError(OutputParsingError):
+class Cp2kNoOutputFileError(common.OutputParsingError):
     def __init__(self):
         super().__init__("CP2K output file  not retrieved")
 
 
-class Cp2kDidNotFinishProperlyError(OutputParsingError):
+class Cp2kDidNotFinishProperlyError(common.OutputParsingError):
     def __init__(self):
         super().__init__("CP2K did not finish properly")
 
@@ -26,11 +26,10 @@ def is_number(s):
     return True
 
 
-class Cp2kGWParser(Cp2kBaseParser):
+class Cp2kGwParser(Cp2kBaseParser):
     """AiiDA parser class for the output of CP2K GW calculations."""
 
     def _parse_stdout(self):
-
         fname = self.node.process_class._DEFAULT_OUTPUT_FILE
         if fname not in self.retrieved.base.repository.list_object_names():
             raise Cp2kNoOutputFileError()
@@ -52,11 +51,11 @@ class Cp2kGWParser(Cp2kBaseParser):
             return self.exit_codes.ERROR_OUTPUT_CONTAINS_ABORT
 
         # Standard output parameters
-        self.out("std_output_parameters", Dict(dict=result_dict))
+        self.out("std_output_parameters", orm.Dict(dict=result_dict))
 
         # Custom GW parsing
         gw_output_parameters = self._parse_cp2k_gw_output(output_string)
-        self.out("gw_output_parameters", Dict(dict=gw_output_parameters))
+        self.out("gw_output_parameters", orm.Dict(dict=gw_output_parameters))
 
         return None
 
@@ -140,7 +139,6 @@ class Cp2kGWParser(Cp2kBaseParser):
                 while True:
                     line_loc = lines[i_line]
                     if "GW HOMO-LUMO gap" in line_loc:
-
                         spin = 1 if "Beta" in line_loc else 0
 
                         if len(results["mo"]) > spin:
@@ -185,7 +183,6 @@ class Cp2kGWParser(Cp2kBaseParser):
                 while True:
                     line_loc = lines[i_line]
                     if "IC HOMO-LUMO gap" in line_loc:
-
                         spin = 1 if "Beta" in line_loc else 0
 
                         if len(results["mo"]) > spin:

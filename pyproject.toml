@@ -48,7 +48,7 @@ dev = [
 
 [project.entry-points."aiida.parsers"]
 "nanotech_empa.pp" = "aiida_nanotech_empa.parsers.pp_parser:PpParser"
-"nanotech_empa.cp2k_gw_parser" = "aiida_nanotech_empa.parsers.cp2k_gw_parser:Cp2kGWParser"
+"nanotech_empa.cp2k_gw_parser" = "aiida_nanotech_empa.parsers.cp2k_gw_parser:Cp2kGwParser"
 "nanotech_empa.cp2k_neb_parser" = "aiida_nanotech_empa.parsers.cp2k_neb_parser:Cp2kNebParser"
 "nanotech_empa.gaussian.cubegen_pymol" = "aiida_nanotech_empa.parsers.cubegen_pymol_parser:CubegenPymolParser"
 "nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.parsers.gaussian_casscf_parser:GaussianCasscfParser"
