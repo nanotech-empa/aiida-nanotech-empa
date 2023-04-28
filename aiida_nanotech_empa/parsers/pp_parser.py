@@ -1,7 +1,3 @@
-"""Parsers provided by aiida_nanotech_empa.
-
-Register parsers via the "aiida.parsers" entry point in setup.json.
-"""
 import io
 
 import numpy as np
@@ -11,7 +7,7 @@ from aiida_quantumespresso.parsers.pp import PpParser as BasePpParser
 
 from aiida_nanotech_empa.utils.cube_utils import crop_cube
 
-ANG_TO_BOHR = 1.8897259886
+from ..helpers import ANG_TO_BOHR
 
 
 class PpParser(BasePpParser):
@@ -20,7 +16,6 @@ class PpParser(BasePpParser):
     """
 
     def parse_gaussian(self, data_file_str):
-
         with io.StringIO(data_file_str) as data_file_handle:
             cube = Cube.from_file_handle(data_file_handle)
 
