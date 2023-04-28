@@ -1,30 +1,24 @@
 import os
+
 import numpy as np
+from aiida import engine, orm, plugins
 
-from aiida.orm import StructureData
-from aiida.orm import Dict
-from aiida.orm import Str
-from aiida.orm import SinglefileData
-from aiida.orm import Code
-
-from aiida.engine import WorkChain
-from aiida.plugins import CalculationFactory, WorkflowFactory
 from aiida_nanotech_empa.utils import common_utils
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import make_geom_file
 
-Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
-AfmCalculation = CalculationFactory("nanotech_empa.afm")
+Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
+AfmCalculation = plugins.CalculationFactory("nanotech_empa.afm")
 
 
-class Cp2kAfmWorkChain(WorkChain):
+class Cp2kAfmWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
-        spec.input("cp2k_code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
-        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
-        spec.input("dft_params", valid_type=Dict)
+        spec.input("cp2k_code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input("dft_params", valid_type=orm.Dict)
         spec.input(
             "options",
             valid_type=dict,
@@ -32,11 +26,11 @@ class Cp2kAfmWorkChain(WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
 
-        spec.input("afm_pp_code", valid_type=Code)
-        spec.input("afm_pp_params", valid_type=Dict)
+        spec.input("afm_pp_code", valid_type=orm.Code)
+        spec.input("afm_pp_params", valid_type=orm.Dict)
 
-        spec.input("afm_2pp_code", valid_type=Code)
-        spec.input("afm_2pp_params", valid_type=Dict)
+        spec.input("afm_2pp_code", valid_type=orm.Code)
+        spec.input("afm_2pp_params", valid_type=orm.Dict)
 
         spec.outline(
             cls.setup,
@@ -65,7 +59,7 @@ class Cp2kAfmWorkChain(WorkChain):
             self.ctx.dft_params["added_mos"] = added_mos
         self.ctx.files = {
             "geo_no_labels": make_geom_file(ase_geom, "geom.xyz"),
-            "pp": SinglefileData(
+            "pp": orm.SinglefileData(
                 file=os.path.join(
                     os.path.dirname(os.path.realpath(__file__)),
                     ".",
@@ -73,7 +67,7 @@ class Cp2kAfmWorkChain(WorkChain):
                     "atomtypes_pp.ini",
                 )
             ),
-            "2pp": SinglefileData(
+            "2pp": orm.SinglefileData(
                 file=os.path.join(
                     os.path.dirname(os.path.realpath(__file__)),
                     ".",
@@ -88,9 +82,10 @@ class Cp2kAfmWorkChain(WorkChain):
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
-        builder.dft_params = Dict(self.ctx.dft_params)
-        builder.options = Dict(self.inputs.options)
-        # restart wfn
+        builder.dft_params = orm.Dict(self.ctx.dft_params)
+        builder.options = orm.Dict(self.inputs.options)
+
+        # Restart wfn.
         if "parent_calc_folder" in self.inputs:
             builder.parent_calc_folder = self.inputs.parent_calc_folder
 
@@ -156,6 +151,7 @@ class Cp2kAfmWorkChain(WorkChain):
         if not pp_worked or not pp2_worked:
             self.report("AFM calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
-        # Add the workchain pk to the input structure extras
+
+        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         self.report("Work chain is finished")
