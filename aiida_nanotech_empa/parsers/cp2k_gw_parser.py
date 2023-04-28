@@ -5,7 +5,7 @@ from aiida import common, orm
 from aiida_cp2k.parsers import Cp2kBaseParser
 from aiida_cp2k.utils import parse_cp2k_output_advanced
 
-HART_2_EV = 27.21138602
+from ..helpers import HART_2_EV
 
 
 class Cp2kNoOutputFileError(common.OutputParsingError):
