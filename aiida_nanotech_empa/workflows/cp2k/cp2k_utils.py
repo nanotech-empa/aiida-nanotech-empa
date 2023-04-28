@@ -1,21 +1,17 @@
-# pylint: disable=too-many-locals
-import pathlib
-import yaml
-import numbers
 import collections
-import tempfile
-import shutil
-import os
 import copy
-import numpy as np
-import subprocess
+import io
+import numbers
+import os
+import pathlib
 import re
-from ase import Atoms
-from io import StringIO
-from aiida.orm import StructureData, Dict, SinglefileData
-from aiida.common.exceptions import NotExistentAttributeError
+import shutil
+import tempfile
 
-ang_2_bohr = 1.889725989
+import ase
+import numpy as np
+import yaml
+from aiida import common, orm
 
 
 def get_kinds_section(kinds_dict, protocol="gapw_std"):
@@ -220,7 +216,7 @@ def determine_kinds(structure, magnetization_per_site=None, ghost_per_site=None)
     #        info_dict = {"mag": mag, "ghost": ghost}
     #        kinds_dict[kind_name] = info_dict
 
-    return StructureData(ase=ase_structure), kinds_dict
+    return orm.StructureData(ase=ase_structure), kinds_dict
 
 
 def dict_merge(dct, merge_dct):
@@ -237,7 +233,7 @@ def dict_merge(dct, merge_dct):
         if (
             k in dct
             and isinstance(dct[k], dict)
-            and isinstance(merge_dct[k], collections.Mapping)
+            and isinstance(merge_dct[k], collections.abc.Mapping)
         ):
             dict_merge(dct[k], merge_dct[k])
         else:
@@ -258,7 +254,7 @@ def get_cutoff(structure=None):
 def get_dft_inputs(dft_params, structure, template):
     ase_atoms = structure.get_ase()
     files = {
-        "basis": SinglefileData(
+        "basis": orm.SinglefileData(
             file=os.path.join(
                 os.path.dirname(os.path.realpath(__file__)),
                 ".",
@@ -266,7 +262,7 @@ def get_dft_inputs(dft_params, structure, template):
                 "BASIS_MOLOPT",
             )
         ),
-        "pseudo": SinglefileData(
+        "pseudo": orm.SinglefileData(
             file=os.path.join(
                 os.path.dirname(os.path.realpath(__file__)),
                 ".",
@@ -351,7 +347,7 @@ def make_geom_file(atoms, filename, tags=None):
         all_atoms = [atoms]
         all_filenames = [filename]
     for ifile, atoms in enumerate(all_atoms):
-        orig_file = StringIO()
+        orig_file = io.StringIO()
         atoms.write(orig_file, format="xyz")
         orig_file.seek(0)
         all_lines = orig_file.readlines()
@@ -377,9 +373,9 @@ def make_geom_file(atoms, filename, tags=None):
         with open(file_path, "w") as f:
             f.write(final_str)
     if singlefile:
-        aiida_f = SinglefileData(file=file_path)
+        aiida_f = orm.SinglefileData(file=file_path)
     else:
-        aiida_f = FolderData().replace_with_folder(folder=tmpdir)
+        aiida_f = orm.FolderData().replace_with_folder(folder=tmpdir)
 
     shutil.rmtree(tmpdir)
     return aiida_f
@@ -391,7 +387,7 @@ def make_geom_file(atoms, filename, tags=None):
 def find_first_workchain(node):
     """Find the first workchain in the provenance."""
     lastcalling = None
-    if isinstance(node, StructureData):
+    if isinstance(node, orm.StructureData):
         previous_node = node.creator
     else:
         previous_node = node
@@ -512,7 +508,7 @@ def structure_available_wfn(
         wfn_exists = remote_file_exists(
             generating_workchain.inputs.code.computer, wfn_search_path
         )
-    except NotExistentAttributeError:
+    except common.NotExistentAttributeError:
         pass
 
     if not wfn_exists:
@@ -541,7 +537,6 @@ def mk_wfn_cp_commands(
     list_of_cp_commands = []
 
     for ir, node in enumerate(replica_nodes):
-
         # in general the number of uuids is <= nreplicas
         relative_replica_id = ir / len(replica_nodes)
         avail_wfn = structure_available_wfn(
@@ -685,7 +680,6 @@ def get_points(details):
     return {"POINT": allpoints}
 
 
-# pylint: disable=unused-variable
 def get_points_coords(points, atoms):
     """Returns an ase Atoms object with H atoms positiones at the cartesian coordinates defined by the CP2K CV points."""
     coords = []
@@ -699,7 +693,7 @@ def get_points_coords(points, atoms):
                 + atoms[ids[0]].position
             )
 
-    return Atoms("".join(["H" for i in points]), cell=atoms.cell, positions=coords)
+    return ase.Atoms("".join(["H" for i in points]), cell=atoms.cell, positions=coords)
 
 
 def get_planes(details):
