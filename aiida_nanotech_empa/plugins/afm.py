@@ -1,27 +1,26 @@
-from aiida.common import CalcInfo, CodeInfo, InputValidationError
-from aiida.common.utils import classproperty
-from aiida.engine import CalcJob
-from aiida.orm import Dict, RemoteData, SinglefileData, StructureData
+from aiida import common, engine, orm
 
 
-class AfmCalculation(CalcJob):
-    # --------------------------------------------------------------------------
+class AfmCalculation(engine.CalcJob):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.input("parameters", valid_type=Dict, help="AFM input parameters")
-        spec.input("parent_calc_folder", valid_type=RemoteData, help="remote folder")
-        spec.input("atomtypes", valid_type=SinglefileData, help="atomtypes.ini file")
+        spec.input("parameters", valid_type=orm.Dict, help="AFM input parameters")
+        spec.input(
+            "parent_calc_folder", valid_type=orm.RemoteData, help="remote folder"
+        )
+        spec.input(
+            "atomtypes", valid_type=orm.SinglefileData, help="atomtypes.ini file"
+        )
         spec.input(
             "geo_no_labels",
-            valid_type=SinglefileData,
+            valid_type=orm.SinglefileData,
             help="geometry without spin labels file",
         )
 
         # Don't use mpi by default
         spec.input("metadata.options.withmpi", valid_type=bool, default=False)
 
-    # --------------------------------------------------------------------------
     def prepare_for_submission(self, folder):
         """Create the input files from the input nodes passed to this instance of the `CalcJob`.
         :param folder: an `aiida.common.folders.Folder` to temporarily write files on disk
@@ -32,8 +31,7 @@ class AfmCalculation(CalcJob):
 
         param_dict = self.inputs.parameters.get_dict()
 
-        # ---------------------------------------------------
-        # Write params.ini file
+        # Write params.ini file.
         params_fn = folder.get_abs_path("params.ini")
         with open(params_fn, "w") as f:
             for key, val in param_dict.items():
@@ -43,19 +41,18 @@ class AfmCalculation(CalcJob):
                 else:
                     line += str(val)
                 f.write(line + "\n")
-        # ---------------------------------------------------
 
-        # create code info
-        codeinfo = CodeInfo()
+        # Create code info.
+        codeinfo = common.CodeInfo()
         codeinfo.code_uuid = self.inputs.code.uuid
         codeinfo.withmpi = False
 
-        # create calc info
-        calcinfo = CalcInfo()
+        # Create calc info.
+        calcinfo = common.CalcInfo()
         calcinfo.uuid = self.uuid
         calcinfo.codes_info = [codeinfo]
 
-        # file lists
+        # File lists.
         calcinfo.remote_symlink_list = []
         calcinfo.local_copy_list = [
             (
@@ -72,7 +69,7 @@ class AfmCalculation(CalcJob):
         calcinfo.remote_copy_list = []
         calcinfo.retrieve_list = ["*/*/*.npy"]
 
-        # symlinks
+        # Symlinks.
         if "parent_calc_folder" in self.inputs:
             comp_uuid = self.inputs.parent_calc_folder.computer.uuid
             remote_path = self.inputs.parent_calc_folder.get_remote_path()
@@ -86,6 +83,3 @@ class AfmCalculation(CalcJob):
                 calcinfo.remote_copy_list.append(copy_info)
 
         return calcinfo
-
-
-# EOF
