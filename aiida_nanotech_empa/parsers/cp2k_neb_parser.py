@@ -2,27 +2,21 @@ import re
 
 import ase
 import numpy as np
-from aiida.common import NotExistent, OutputParsingError, exceptions
-from aiida.engine import ExitCode
-from aiida.orm import Dict
-from aiida.parsers import Parser
-from aiida.plugins import DataFactory
+from aiida import common, engine, orm, parsers, plugins
 
-StructureData = DataFactory("structure")  # pylint: disable=invalid-name
-ArrayData = DataFactory("array")
+StructureData = plugins.DataFactory("structure")
+ArrayData = plugins.DataFactory("array")
 
 
-class Cp2kNebParser(Parser):
-    """
-    Parser for the output of CP2K.
-    """
+class Cp2kNebParser(parsers.Parser):
+    """Parser for the output of CP2K NEB calculations."""
 
     def parse(self, **kwargs):
         """Receives in input a dictionary of retrieved nodes. Does all the logic here."""
 
         try:
             _ = self.retrieved
-        except exceptions.NotExistent:
+        except common.NotExistent:
             return self.exit_codes.ERROR_NO_RETRIEVED_FOLDER
 
         exit_code = self._parse_stdout()
@@ -33,12 +27,10 @@ class Cp2kNebParser(Parser):
         if exit_code is not None:
             return exit_code
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def _parse_stdout(self):
         """Basic CP2K output file parser."""
-
-        from aiida_cp2k.utils import parse_cp2k_output
 
         fname = self.node.process_class._DEFAULT_OUTPUT_FILE
 
@@ -86,7 +78,7 @@ class Cp2kNebParser(Parser):
         distances_arr_data = ArrayData()
         distances_arr_data.set_array("distances", np.array(distances_list))
 
-        self.out("output_parameters", Dict(dict=result_dict))
+        self.out("output_parameters", orm.Dict(dict=result_dict))
         self.out("replica_energies", energies_arr_data)
         self.out("replica_distances", distances_arr_data)
 
@@ -95,16 +87,13 @@ class Cp2kNebParser(Parser):
     def _parse_trajectory(self):
         """CP2K trajectory parser."""
 
-        from aiida_cp2k.utils import parse_cp2k_trajectory
-        from ase import Atoms
-
         fname = (
             self.node.process_class._DEFAULT_RESTART_FILE_NAME
         )  # pylint: disable=protected-access
 
         # Check if the restart file is present.
         if fname not in self.retrieved.list_object_names():
-            raise exceptions.NotExistent(
+            raise common.NotExistent(
                 "No restart file available, so the output trajectory can't be extracted"
             )
 
@@ -128,7 +117,8 @@ class Cp2kNebParser(Parser):
         ]
         coord_set_with_elements = coord_line_sets[-1]
         replica_coord_line_sets = coord_line_sets[:-1]
-        # remove integers from element names and create tags
+
+        # Remove integers from element names and create tags.
         element_list = [
             re.sub(r"[0-9]+", "", line[0]) for line in coord_set_with_elements
         ]
@@ -138,10 +128,7 @@ class Cp2kNebParser(Parser):
             positions = np.array(rep_coord_lines, np.float64)
             ase_atoms = ase.Atoms(symbols=element_list, positions=positions, cell=cell)
             ase_atoms.set_tags(tags)
-            replica_label = "opt_replica_%s" % str(i_rep).zfill(3)
+            replica_label = f"opt_replica_{str(i_rep).zfill(3)}"
             self.out(replica_label, StructureData(ase=ase_atoms, label=replica_label))
 
         return None
-
-
-# EOF
