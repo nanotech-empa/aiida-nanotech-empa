@@ -18,7 +18,6 @@ sys.stdout, sys.stderr = _stdouterr
 
 
 def _crop_image_bbox(filename):
-
     image = Image.open(filename)
 
     try:
@@ -33,7 +32,6 @@ def _crop_image_bbox(filename):
 
 
 def _save_and_crop(fname, max_w, view):
-
     for _try in range(4):
         # Pymol sometimes creates the png with a delay
         # and sometimes even after a long delay, the image is not created
@@ -65,7 +63,6 @@ def make_pymol_png(  # noqa
     output_name=None,
     orientations=("z", "y", "x"),
 ):
-
     pymol.cmd.delete("all")
 
     # ------------------------------------
@@ -87,7 +84,6 @@ def make_pymol_png(  # noqa
     filename = os.path.basename(filepath)
 
     if ext == ".cube":
-
         # Geometry from cube.
         ase_geom = Cube.from_file(input_file, read_data=False).ase_atoms
         with tempfile.NamedTemporaryFile(delete=False, mode="w") as tempf:
@@ -107,7 +103,6 @@ def make_pymol_png(  # noqa
         pymol.cmd.set(name="transparency", value=0.0, selection="%neg_1")
 
     elif ext == ".xyz":
-
         ase_geom = ase.io.read(input_file)
         pymol.cmd.load(input_file)
 

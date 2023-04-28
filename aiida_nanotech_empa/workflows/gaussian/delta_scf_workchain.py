@@ -216,7 +216,6 @@ class GaussianDeltaScfWorkChain(WorkChain):
             self.to_context(**{label: submitted_node})
 
     def finalize(self):
-
         if not common_utils.check_if_calc_ok(
             self, self.ctx.neutral
         ) or not common_utils.check_if_calc_ok(self, self.ctx.pos):

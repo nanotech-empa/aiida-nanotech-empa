@@ -14,7 +14,6 @@ class CubegenPymolParser(CubegenBaseParser):
     """Cubegen parser based on pymol."""
 
     def _parse_folders(self, retrieved_folders, parser_params):
-
         # Parse constant-height planes based on the base parser
         super()._parse_folders(retrieved_folders, parser_params)
 
@@ -29,11 +28,9 @@ class CubegenPymolParser(CubegenBaseParser):
             isovalues = [0.01]
 
         with tempfile.TemporaryDirectory() as image_folder:
-
             for retrieved_fd in retrieved_folders:
                 for filename in retrieved_fd.list_object_names():
                     if filename.endswith(".cube"):
-
                         # AiiDA retrieved folder provides handles to retrieved files
                         # pymol rendering, however, requires the path to the cube file
                         # therefore, we need to write the contents to a temporary file

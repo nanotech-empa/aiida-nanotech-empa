@@ -58,7 +58,6 @@ def _example_nanoribbon(
 
 
 def example_nanoribbon_no_spin(qe_pw_code, qe_pp_code, qe_projwfc_code):
-
     _example_nanoribbon(
         True,
         qe_pw_code,

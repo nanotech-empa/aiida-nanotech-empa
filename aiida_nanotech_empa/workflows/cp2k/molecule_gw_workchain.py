@@ -125,7 +125,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         )
 
     def setup(self):
-
         self.report("Inspecting input and setting up things")
 
         if self.inputs.protocol not in ALLOWED_PROTOCOLS:
@@ -202,7 +201,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         return ExitCode(0)
 
     def scf_is_not_done(self):
-
         if hasattr(self.ctx, "scf"):
             scf_out_params = self.ctx.scf.outputs.output_parameters
 
@@ -245,7 +243,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]["STRIDE"] = "6 6 6"
 
     def submit_scf(self):
-
         # Try the next SCF section:
         if self.ctx.current_scf_protocol is None:
             # First try
@@ -311,7 +308,6 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         )
 
     def submit_gw(self):
-
         self.report("Submitting GW.")
 
         # -------------------------------------------------------

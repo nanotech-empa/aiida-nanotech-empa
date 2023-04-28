@@ -22,7 +22,6 @@ class MissingBeginError(OSError):
 
 
 def read_wave(lines, fname=None):
-
     line = lines.pop(0)
     while not re.match("WAVES", line):
         if len(lines) == 0:

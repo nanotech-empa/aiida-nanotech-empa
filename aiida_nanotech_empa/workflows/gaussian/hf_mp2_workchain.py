@@ -99,7 +99,6 @@ class GaussianHfMp2WorkChain(WorkChain):
         )
 
     def hf(self):
-
         self.report("Submitting HF")
 
         builder = GaussianScfWorkChain.get_builder()
@@ -124,7 +123,6 @@ class GaussianHfMp2WorkChain(WorkChain):
         return codes_set and non_zero_num
 
     def mp2(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.hf):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -155,7 +153,6 @@ class GaussianHfMp2WorkChain(WorkChain):
         return ToContext(mp2=future)
 
     def finalize(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.mp2):
             return self.exit_codes.ERROR_TERMINATION
 

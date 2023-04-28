@@ -128,9 +128,7 @@ def get_sts_mapping(energy, fwhm, h, extrap_h, cpa_dict, sop):
 
     for i_spin in range(nspin):
         for i_mo, e in enumerate(energies[i_spin]):
-
             if np.abs(e - energy) <= 1.5 * fwhm:
-
                 broad_coef = gaussian(e - energy, fwhm)
 
                 if i_mo not in cpa_dict["mo_planes"]:
@@ -149,7 +147,6 @@ def get_sts_mapping(energy, fwhm, h, extrap_h, cpa_dict, sop):
 
 
 def save_figure_and_igor(data_2d, filename, title, **imshow_args):
-
     plt.figure(figsize=(5, 5))
     plt.imshow(data_2d.T, **imshow_args)
     plt.title(title)
