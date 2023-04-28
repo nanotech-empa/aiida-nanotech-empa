@@ -70,6 +70,7 @@ dev = [
 "nanotech_empa.cp2k.fragment_separation" = "aiida_nanotech_empa.workflows.cp2k.fragment_separation:Cp2kFragmentSeparationWorkChain"
 "nanotech_empa.cp2k.ads_gw_ic" = "aiida_nanotech_empa.workflows.cp2k.adsorbed_gw_ic_workchain:Cp2kAdsorbedGwIcWorkChain"
 "nanotech_empa.cp2k.mol_opt_gw" = "aiida_nanotech_empa.workflows.cp2k.molecule_opt_gw_workchain:Cp2kMoleculeOptGwWorkChain"
+"nanotech_empa.cp2k.epsilon" = "aiida_nanotech_empa.workflows.cp2k.dielectric_constants_workchain:Cp2kDielectricWorkChain"
 
 [project.entry-points."aiida.schedulers"]
 lsf_ethz_euler = "aiida_nanotech_empa.schedulers.lsf_ethz_euler:ETHZEulerLsfScheduler"
