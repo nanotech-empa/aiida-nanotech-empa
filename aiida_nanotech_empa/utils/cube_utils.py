@@ -1,14 +1,10 @@
-"""
-Routines regarding gaussian cube files
-"""
-
 import collections
 
 import ase
 import numpy as np
 from aiida_gaussian.utils.cube import Cube
 
-ANG_TO_BOHR = 1.8897259886
+from ..helpers import ANG_TO_BOHR
 
 
 def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
@@ -40,7 +36,6 @@ def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
         pmin = np.min(cube.ase_atoms.positions[:, i])
 
         if i_crop:
-
             if isinstance(i_crop, collections.abc.Iterable):
                 i_crop_ = i_crop
             else:
@@ -75,7 +70,6 @@ def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
 
 
 def cube_from_qe_pp_arraydata(ad):
-
     data_units = str(ad.get_array("data_units"))
     coord_units = str(ad.get_array("coordinates_units"))
     data = ad.get_array("data")
