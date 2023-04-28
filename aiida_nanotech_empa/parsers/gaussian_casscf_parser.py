@@ -1,18 +1,16 @@
-from aiida.orm import Dict, Float
+from aiida import orm
 from aiida_gaussian.parsers.gaussian import GaussianBaseParser
 
-HART_2_EV = 27.21138602
+from ..helpers import HART_2_EV
 
 
 class GaussianCasscfParser(GaussianBaseParser):
-    """
-    CASSCF AiiDA parser for the output of Gaussian
-    """
+    """AiiDA parser for Gaussian CASSCF calculations."""
 
     def _parse_log(self, log_file_string, _inputs):
-        """Overwrite the basic log parser"""
+        """Overwrite the basic log parser."""
 
-        # parse with cclib
+        # Parse with cclib.
         property_dict = self._parse_log_cclib(log_file_string)
 
         if property_dict is None:
@@ -22,12 +20,12 @@ class GaussianCasscfParser(GaussianBaseParser):
 
         property_dict.update(self._parse_casscf(log_file_string))
 
-        self.out("output_parameters", Dict(dict=property_dict))
+        self.out("output_parameters", orm.Dict(dict=property_dict))
 
         if "casscf_energy_ev" in property_dict:
-            self.out("casscf_energy_ev", Float(property_dict["casscf_energy_ev"]))
+            self.out("casscf_energy_ev", orm.Float(property_dict["casscf_energy_ev"]))
         if "casmp2_energy_ev" in property_dict:
-            self.out("casmp2_energy_ev", Float(property_dict["casmp2_energy_ev"]))
+            self.out("casmp2_energy_ev", orm.Float(property_dict["casmp2_energy_ev"]))
 
         exit_code = self._final_checks_on_log(log_file_string, property_dict)
         if exit_code is not None:
@@ -36,7 +34,6 @@ class GaussianCasscfParser(GaussianBaseParser):
         return None
 
     def _parse_casscf(self, log_file_string):
-
         parsed_data = {}
 
         for line in log_file_string.splitlines():
