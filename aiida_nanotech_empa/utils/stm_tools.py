@@ -2,9 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from . import igor
-
-ang_2_bohr = 1.0 / 0.52917721067
-hart_2_ev = 27.21138602
+from .helpers import ANG_TO_BOHR, HART_2_EV
 
 
 def process_cube_planes_array(cpa):
@@ -62,11 +60,11 @@ def extrapolate_morb(orb_plane, dx, dy, energy_wrt_vacuum, delta_h):
     """
 
     # Convert everything to a.u.
-    dx = dx * ang_2_bohr
-    dy = dy * ang_2_bohr
-    delta_h = delta_h * ang_2_bohr
+    dx = dx * ANG_TO_BOHR
+    dy = dy * ANG_TO_BOHR
+    delta_h = delta_h * ANG_TO_BOHR
 
-    energy_wrt_vacuum = energy_wrt_vacuum / hart_2_ev
+    energy_wrt_vacuum = energy_wrt_vacuum / HART_2_EV
 
     if energy_wrt_vacuum >= 0.0:
         print("Warning: unbound state, can't extrapolate! Constant extrapolation.")
@@ -128,9 +126,7 @@ def get_sts_mapping(energy, fwhm, h, extrap_h, cpa_dict, sop):
 
     for i_spin in range(nspin):
         for i_mo, e in enumerate(energies[i_spin]):
-
             if np.abs(e - energy) <= 1.5 * fwhm:
-
                 broad_coef = gaussian(e - energy, fwhm)
 
                 if i_mo not in cpa_dict["mo_planes"]:
@@ -149,7 +145,6 @@ def get_sts_mapping(energy, fwhm, h, extrap_h, cpa_dict, sop):
 
 
 def save_figure_and_igor(data_2d, filename, title, **imshow_args):
-
     plt.figure(figsize=(5, 5))
     plt.imshow(data_2d.T, **imshow_args)
     plt.title(title)
