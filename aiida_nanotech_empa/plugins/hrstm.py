@@ -1,30 +1,26 @@
-from aiida.common import CalcInfo, CodeInfo, InputValidationError
-from aiida.common.utils import classproperty
-from aiida.engine import CalcJob
-from aiida.orm import Dict, RemoteData, SinglefileData, StructureData
+from aiida import common, engine, orm
 
 
-class HrstmCalculation(CalcJob):
-    # --------------------------------------------------------------------------
+class HrstmCalculation(engine.CalcJob):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.input("parameters", valid_type=Dict, help="HRSTM input parameters")
-        spec.input("parent_calc_folder", valid_type=RemoteData, help="scf folder")
-        spec.input("ppm_calc_folder", valid_type=RemoteData, help="ppm folder")
+        spec.input("parameters", valid_type=orm.Dict, help="HRSTM input parameters")
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, help="scf folder")
+        spec.input("ppm_calc_folder", valid_type=orm.RemoteData, help="ppm folder")
 
-        # Use mpi by default
+        # Use mpi by default.
         spec.input("metadata.options.withmpi", valid_type=bool, default=True)
 
-    # --------------------------------------------------------------------------
     def prepare_for_submission(self, folder):
         """Create the input files from the input nodes passed to this instance of the `CalcJob`.
+
         :param folder: an `aiida.common.folders.Folder` to temporarily write files on disk
         :return: `aiida.common.datastructures.CalcInfo` instance
         """
 
-        # create code info
-        codeinfo = CodeInfo()
+        # Create code info.
+        codeinfo = common.CodeInfo()
         codeinfo.code_uuid = self.inputs.code.uuid
 
         param_dict = self.inputs.parameters.get_dict()
@@ -40,19 +36,19 @@ class HrstmCalculation(CalcJob):
 
         codeinfo.cmdline_params = cmdline
 
-        # create calc info
-        calcinfo = CalcInfo()
+        # Create calc info.
+        calcinfo = common.CalcInfo()
         calcinfo.uuid = self.uuid
         calcinfo.cmdline_params = codeinfo.cmdline_params
         calcinfo.codes_info = [codeinfo]
 
-        # file lists
+        # File lists.
         calcinfo.remote_symlink_list = []
         calcinfo.local_copy_list = []
         calcinfo.remote_copy_list = []
         calcinfo.retrieve_list = ["*.npy", "*.npz"]
 
-        # symlinks
+        # Symlinks.
         if "parent_calc_folder" in self.inputs:
             comp_uuid = self.inputs.parent_calc_folder.computer.uuid
             remote_path = self.inputs.parent_calc_folder.get_remote_path()
@@ -78,6 +74,3 @@ class HrstmCalculation(CalcJob):
                 calcinfo.remote_copy_list.append(copy_info)
 
         return calcinfo
-
-
-# EOF
