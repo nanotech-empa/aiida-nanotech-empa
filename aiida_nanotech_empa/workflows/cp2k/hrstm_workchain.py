@@ -1,31 +1,27 @@
-import os
+import pathlib
+
 import numpy as np
-
-from aiida.orm import StructureData, SinglefileData, RemoteData
-from aiida.orm import Dict
-from aiida.orm import Code
-
-from aiida.engine import WorkChain, ToContext
-
-from aiida_nanotech_empa.utils import common_utils
-
+from aiida import engine, orm
 from aiida.plugins import CalculationFactory, WorkflowFactory
+
 from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import make_geom_file
+
+from ..utils import common_utils
 
 Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
 HrstmCalculation = CalculationFactory("nanotech_empa.hrstm")
 AfmCalculation = CalculationFactory("nanotech_empa.afm")
 
 
-class Cp2kHrstmWorkChain(WorkChain):
+class Cp2kHrstmWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
-        super(Cp2kHrstmWorkChain, cls).define(spec)
+        super().define(spec)
 
-        spec.input("cp2k_code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
-        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
-        spec.input("dft_params", valid_type=Dict)
+        spec.input("cp2k_code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input("dft_params", valid_type=orm.Dict)
         spec.input(
             "options",
             valid_type=dict,
@@ -33,11 +29,11 @@ class Cp2kHrstmWorkChain(WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
 
-        spec.input("ppm_code", valid_type=Code)
-        spec.input("ppm_params", valid_type=Dict)
+        spec.input("ppm_code", valid_type=orm.Code)
+        spec.input("ppm_params", valid_type=orm.Dict)
 
-        spec.input("hrstm_code", valid_type=Code)
-        spec.input("hrstm_params", valid_type=Dict)
+        spec.input("hrstm_code", valid_type=orm.Code)
+        spec.input("hrstm_params", valid_type=orm.Dict)
 
         spec.outline(
             cls.setup,
@@ -67,13 +63,8 @@ class Cp2kHrstmWorkChain(WorkChain):
 
         self.ctx.files = {
             "geo_no_labels": make_geom_file(ase_geom, "geom.xyz"),
-            "2pp": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "atomtypes_2pp.ini",
-                )
+            "2pp": orm.SinglefileData(
+                file=pathlib.Path(__file__).parent / "data" / "atomtypes_2pp.ini"
             ),
         }
 
@@ -82,8 +73,8 @@ class Cp2kHrstmWorkChain(WorkChain):
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
-        builder.dft_params = Dict(self.ctx.dft_params)
-        builder.options = Dict(self.ctx.options)
+        builder.dft_params = orm.Dict(self.ctx.dft_params)
+        builder.options = orm.Dict(self.ctx.options)
 
         # restart wfn
         if "parent_calc_folder" in self.inputs:
@@ -114,9 +105,7 @@ class Cp2kHrstmWorkChain(WorkChain):
             },
         }
         self.report("PPM inputs: " + str(inputs))
-
-        future = self.submit(AfmCalculation, **inputs)
-        return ToContext(ppm=future)
+        return engine.ToContext(ppm=self.submit(AfmCalculation, **inputs))
 
     def run_hrstm(self):
         self.report("Running HR-STM")
@@ -141,8 +130,7 @@ class Cp2kHrstmWorkChain(WorkChain):
 
         self.report("HR-STM Inputs: " + str(inputs))
 
-        future = self.submit(HrstmCalculation, **inputs)
-        return ToContext(hrstm=future)
+        return engine.ToContext(hrstm=self.submit(HrstmCalculation, **inputs))
 
     def finalize(self):
         self.report("Work chain is finished")
@@ -153,6 +141,7 @@ class Cp2kHrstmWorkChain(WorkChain):
         if not hrstm_worked:
             self.report("HRSTM calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
-        # Add the workchain pk to the input structure extras
+
+        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         self.report("Work chain is finished")
