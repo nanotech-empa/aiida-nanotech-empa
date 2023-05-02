@@ -1,42 +1,37 @@
-import numpy as np
-from copy import deepcopy
+import copy
 
-from aiida.engine import WorkChain, ExitCode, if_
-from aiida.orm import Code, Dict, List, Str
-from aiida.orm import StructureData, load_node
-from aiida.plugins import CalculationFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
+import numpy as np
+from aiida import engine, orm, plugins
+
+from ..utils import common_utils
+from .cp2k_utils import (
     get_colvars_section,
     get_constraints_section,
-    mk_wfn_cp_commands,
-    make_geom_file,
     get_dft_inputs,
+    make_geom_file,
+    mk_wfn_cp_commands,
 )
 
-
-from aiida_nanotech_empa.utils import common_utils
-
-Cp2kCalculation = CalculationFactory("cp2k")
+Cp2kCalculation = plugins.CalculationFactory("cp2k")
 
 
-class Cp2kNebWorkChain(WorkChain):
+class Cp2kNebWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.input("code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
-        # spec.input("replica_uuids", valid_type=List)
+        spec.input("code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
         spec.input_namespace(
             "replicas",
-            valid_type=StructureData,
+            valid_type=orm.StructureData,
             required=False,
             help="nodes of input replicas",
         )
-        spec.input("wfn_cp_commands", valid_type=Str, required=False)
-        spec.input("restart_from", valid_type=Str, required=False)
-        spec.input("dft_params", valid_type=Dict)
-        spec.input("sys_params", valid_type=Dict)
-        spec.input("neb_params", valid_type=Dict)
+        spec.input("wfn_cp_commands", valid_type=orm.Str, required=False)
+        spec.input("restart_from", valid_type=orm.Str, required=False)
+        spec.input("dft_params", valid_type=orm.Dict)
+        spec.input("sys_params", valid_type=orm.Dict)
+        spec.input("neb_params", valid_type=orm.Dict)
         spec.input(
             "options",
             valid_type=dict,
@@ -44,10 +39,10 @@ class Cp2kNebWorkChain(WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
 
-        # workchain outline
+        # Workchain outline.
         spec.outline(
             cls.setup,
-            if_(cls.should_run_scf)(cls.first_scf),
+            engine.if_(cls.should_run_scf)(cls.first_scf),
             cls.submit_neb,
             cls.finalize,
         )
@@ -67,7 +62,7 @@ class Cp2kNebWorkChain(WorkChain):
     def setup(self):
         self.report("Inspecting input and setting up things")
         if "restart_from" in self.inputs:
-            dft_params = load_node(
+            dft_params = orm.load_node(
                 self.inputs.restart_from.value
             ).inputs.dft_params.get_dict()
         else:
@@ -81,16 +76,17 @@ class Cp2kNebWorkChain(WorkChain):
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.neb_params = self.inputs.neb_params.get_dict()
 
-        # the input structure is  the  NEB replica 0 if we do not continue from previous NEB
+        # The input structure is the  NEB replica 0 if we do not continue from previous NEB.
         all_replica_nodes = [self.inputs.structure]
-        # check if restarting
+
+        # Check if restarting.
         if "replicas" in self.inputs:
             for i in range(1, len(self.inputs.replicas) + 1):
                 name = "replica_%s" % str(i).zfill(3)
                 all_replica_nodes.append(self.inputs.replicas[name])
         elif "restart_from" in self.inputs:
             self.report("checking wfn available from previos neb")
-            workcalc = load_node(self.inputs.restart_from.value)
+            workcalc = orm.load_node(self.inputs.restart_from.value)
             n_previous_replica = workcalc.inputs.neb_params["number_of_replica"]
             all_replica_nodes = [
                 workcalc.outputs["opt_replica_%s" % str(i).zfill(3)]
@@ -99,7 +95,7 @@ class Cp2kNebWorkChain(WorkChain):
         else:
             return self.exit_codes.ERROR_UUIDS
 
-        # check for existing wfn files and create copy commands
+        # Check for existing wfn files and create copy commands.
         self.ctx.should_run_scf = False
         if "wfn_cp_commands" in self.inputs:
             self.ctx.wfn_cp_commands = self.inputs.wfn_cp_commands.value
@@ -114,49 +110,32 @@ class Cp2kNebWorkChain(WorkChain):
         if len(self.ctx.wfn_cp_commands) == 0:
             self.ctx.should_run_scf = True
 
-        # replica files with tags must be after structure_with_tags.
+        # Replica files with tags must be after structure_with_tags.
         self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"] = []
         tags = self.ctx.structure_with_tags.get_tags().astype(np.int32).tolist()
-        #        self.ctx.files["replica_001_xyz"] = make_geom_file(
-        #            self.ctx.structure_with_tags, "replica_001.xyz", tags=tags
-        #        )
-        #        self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"] = [
-        #            {"COORD_FILE_NAME": "replica_001.xyz"}
-        #        ]
 
         for i, node in enumerate(all_replica_nodes):
             filename = "replica_%s" % str(i).zfill(3) + ".xyz"
             self.ctx.files[filename.replace(".", "_")] = make_geom_file(
                 node.get_ase(), filename, tags=tags
             )
-            # and update input dictionary.
+            # Update the input dictionary.
             self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"].append(
                 {"COORD_FILE_NAME": filename}
             )
 
-        #        for replica in self.inputs.replicas:
-        #            structure = self.inputs.replicas[replica].get_ase()
-        #            filename = replica + ".xyz"
-        #            self.ctx.files[filename.replace(".", "_")] = make_geom_file(
-        #                structure, filename, tags=tags
-        #            )
-        #            # and update input dictionary.
-        #            self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"].append(
-        #                {"COORD_FILE_NAME": filename}
-        #            )
-
-        # constraints.
+        # Constraints.
         if "constraints" in self.ctx.sys_params:
             self.ctx.input_dict["MOTION"]["CONSTRAINT"] = get_constraints_section(
                 self.ctx.sys_params["constraints"]
             )
-        # colvars.
+        # Colvars.
         if "colvars" in self.ctx.sys_params:
             self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"].update(
                 get_colvars_section(self.ctx.sys_params["colvars"])
             )
 
-        # neb parameters.
+        # NEB parameters.
         for param in [
             "align_frames",
             "band_type",
@@ -178,7 +157,7 @@ class Cp2kNebWorkChain(WorkChain):
                 "OPTIMIZE_END_POINTS"
             ] = self.ctx.neb_params["optimize_end_points"]
 
-        # resources
+        # Resources
         self.ctx.options = self.inputs.options
         if self.inputs.dft_params["protocol"] == "debug":
             self.ctx.options = {
@@ -189,8 +168,9 @@ class Cp2kNebWorkChain(WorkChain):
                     "num_cores_per_mpiproc": 1,
                 },
             }
-        self.ctx.scf_options = deepcopy(self.ctx.options)
-        # numper of mpi processes for scf derived from nproc_replica
+        self.ctx.scf_options = copy.deepcopy(self.ctx.options)
+
+        # Number of mpi processes for scf derived from nproc_replica
         self.ctx.scf_options["resources"]["num_machines"] = int(
             self.ctx.neb_params["nproc_rep"]
             / self.ctx.options["resources"]["num_mpiprocs_per_machine"]
@@ -198,7 +178,6 @@ class Cp2kNebWorkChain(WorkChain):
         self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
         )
-        # --------------------------------------------------
 
     def should_run_scf(self):
         """Function that returns whether to run or not the first scf step"""
@@ -214,24 +193,14 @@ class Cp2kNebWorkChain(WorkChain):
         )
 
         builder = Cp2kCalculation.get_builder()
-        builder.structure = StructureData(ase=structure_with_tags)
+        builder.structure = orm.StructureData(ase=structure_with_tags)
         builder.code = self.inputs.code
         builder.file = files
-
-        # resources
         builder.metadata.options = self.ctx.scf_options
-
-        # label
         builder.metadata.label = "scf"
-
-        # parser
         builder.metadata.options.parser_name = "cp2k_advanced_parser"
-
-        # walltime
         input_dict["GLOBAL"]["WALLTIME"] = 86000
-
-        # cp2k input dictionary
-        builder.parameters = Dict(input_dict)
+        builder.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)
         self.report(f"Submitted scf of the initial geometry: {future.pk}")
@@ -243,17 +212,12 @@ class Cp2kNebWorkChain(WorkChain):
             return self.exit_codes.ERROR_TERMINATION
 
         builder = Cp2kCalculation.get_builder()
-        # code
         builder.code = self.inputs.code
-        # structure
-        builder.structure = StructureData(ase=self.ctx.structure_with_tags)
+        builder.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
         builder.file = self.ctx.files
-        # resources
         builder.metadata.options = self.ctx.options
-        # parser
         builder.metadata.options.parser_name = "nanotech_empa.cp2k_neb_parser"
-        # additional retrieved files
-        builder.settings = Dict(
+        builder.settings = orm.Dict(
             dict={"additional_retrieve_list": ["*.xyz", "*.out", "*.ener"]}
         )
 
@@ -277,12 +241,8 @@ class Cp2kNebWorkChain(WorkChain):
                 cp_commands += wfn_cp_command + "\n"
 
         builder.metadata.options.prepend_text = cp_commands
-
-        # cp2k input dictionary
-        builder.parameters = Dict(self.ctx.input_dict)
-
-        future = self.submit(builder)
-        self.to_context(neb=future)
+        builder.parameters = orm.Dict(self.ctx.input_dict)
+        self.to_context(neb=self.submit(builder))
 
     def finalize(self):
         self.report("Finalizing.")
@@ -298,7 +258,6 @@ class Cp2kNebWorkChain(WorkChain):
         self.out("replica_distances", self.ctx.neb.outputs["replica_distances"])
         self.out("remote_folder", self.ctx.neb.outputs.remote_folder)
 
-        # Add the workchain pk to the input structure extras
+        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
-
-        return ExitCode(0)
+        return engine.ExitCode(0)
