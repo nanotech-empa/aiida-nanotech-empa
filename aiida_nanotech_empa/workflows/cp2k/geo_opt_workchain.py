@@ -1,38 +1,32 @@
-import os
-import pathlib
-import yaml
 import copy
-import numpy as np
+import pathlib
 
-from aiida.engine import WorkChain, ExitCode
-from aiida.orm import Code, Dict, Str
-from aiida.orm import SinglefileData, StructureData, RemoteData
-from aiida.plugins import WorkflowFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
-    get_kinds_section,
+import numpy as np
+import yaml
+from aiida import engine, orm, plugins
+
+from ..utils import common_utils
+from .cp2k_utils import (
     determine_kinds,
     dict_merge,
-    get_cutoff,
-)
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
     get_colvars_section,
     get_constraints_section,
+    get_cutoff,
+    get_kinds_section,
 )
 
-from aiida_nanotech_empa.utils import common_utils
-
-Cp2kBaseWorkChain = WorkflowFactory("cp2k.base")
+Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
 
-class Cp2kGeoOptWorkChain(WorkChain):
+class Cp2kGeoOptWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.input("code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
-        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
-        spec.input("dft_params", valid_type=Dict)
-        spec.input("sys_params", valid_type=Dict)
+        spec.input("code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input("dft_params", valid_type=orm.Dict)
+        spec.input("sys_params", valid_type=orm.Dict)
         spec.input(
             "options",
             valid_type=dict,
@@ -40,7 +34,7 @@ class Cp2kGeoOptWorkChain(WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
 
-        # workchain outline
+        # Workchain outline.
         spec.outline(cls.setup, cls.submit_calc, cls.finalize)
         spec.outputs.dynamic = True
 
@@ -54,21 +48,11 @@ class Cp2kGeoOptWorkChain(WorkChain):
         self.report("Inspecting input and setting up things")
 
         self.ctx.files = {
-            "basis": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "BASIS_MOLOPT",
-                )
+            "basis": orm.SinglefileData(
+                file=pathlib.Path(__file__).parent / "data" / "BASIS_MOLOPT"
             ),
-            "pseudo": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "POTENTIAL",
-                )
+            "pseudo": orm.SinglefileData(
+                file=pathlib.Path(__file__).parent / "data" / "POTENTIAL"
             ),
         }
 
@@ -77,9 +61,9 @@ class Cp2kGeoOptWorkChain(WorkChain):
 
         self.ctx.n_atoms = len(self.inputs.structure.sites)
 
-        # load input template
+        # Load input template.
         with open(
-            pathlib.Path(__file__).parent / "./protocols/geo_opt_protocol.yml",
+            pathlib.Path(__file__).parent / "protocols" / "geo_opt_protocol.yml",
             encoding="utf-8",
         ) as handle:
             protocols = yaml.safe_load(handle)
@@ -87,20 +71,20 @@ class Cp2kGeoOptWorkChain(WorkChain):
                 protocols[self.ctx.dft_params["protocol"]]
             )
 
-        # vdW section
+        # vdW section.
         if "vdw" in self.ctx.dft_params:
             if not self.ctx.dft_params["vdw"]:
                 self.ctx.input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
         else:
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
 
-        # charge
+        # Charge.
         if "charge" in self.ctx.dft_params:
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["CHARGE"] = self.ctx.dft_params[
                 "charge"
             ]
 
-        # uks
+        # UKS.
         magnetization_per_site = [0 for i in range(self.ctx.n_atoms)]
         if "uks" in self.ctx.dft_params:
             if self.ctx.dft_params["uks"]:
@@ -110,14 +94,14 @@ class Cp2kGeoOptWorkChain(WorkChain):
                     "MULTIPLICITY"
                 ] = self.ctx.dft_params["multiplicity"]
 
-        # get initial magnetization
+        # Get initial magnetization.
         structure_with_tags, kinds_dict = determine_kinds(
             self.inputs.structure, magnetization_per_site
         )
 
         ase_atoms = structure_with_tags.get_ase()
 
-        # non periodic systems only NONE and XYZ implemented:
+        # Non-periodic systems only NONE and XYZ implemented:
         if "periodic" in self.ctx.dft_params:
             if self.ctx.dft_params["periodic"] == "NONE":
                 # make sure cell is big enough for MT poisson solver and center molecule
@@ -140,25 +124,23 @@ class Cp2kGeoOptWorkChain(WorkChain):
         self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol="gpw")
         dict_merge(self.ctx.input_dict, self.ctx.kinds_section)
 
-        # get cutoff
+        # Overwrite cutoff if given in dft_params.
         cutoff = get_cutoff(structure=self.inputs.structure)
-
-        # overwrite cutoff if given in dft_params
         if "cutoff" in self.ctx.dft_params:
             cutoff = self.ctx.dft_params["cutoff"]
 
         self.ctx.input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = cutoff
 
-        # cell symmetry:
+        # Cell symmetry.
         if "symmetry" in self.ctx.sys_params:
             self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"]["CELL"][
                 "SYMMETRY"
             ] = self.ctx.sys_params["symmetry"]
 
-        # cell optimization:
+        # Cell optimization.
         if "cell_opt" in self.ctx.sys_params:
             with open(
-                pathlib.Path(__file__).parent / "./protocols/cell_opt_protocol.yml",
+                pathlib.Path(__file__).parent / "protocols" / "cell_opt_protocol.yml",
                 encoding="utf-8",
             ) as handle:
                 protocols = yaml.safe_load(handle)
@@ -176,18 +158,18 @@ class Cp2kGeoOptWorkChain(WorkChain):
                 if sym in self.ctx.sys_params:
                     self.ctx.input_dict["MOTION"]["CELL_OPT"][sym] = ""
 
-        # constraints
+        # Constraints.
         if "constraints" in self.ctx.sys_params:
             self.ctx.input_dict["MOTION"]["CONSTRAINT"] = get_constraints_section(
                 self.ctx.sys_params["constraints"]
             )
-        # colvars
+        # Colvars.
         if "colvars" in self.ctx.sys_params:
             self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"].update(
                 get_colvars_section(self.ctx.sys_params["colvars"])
             )
 
-        # resources
+        # Resources.
         self.ctx.options = self.inputs.options
         if self.ctx.dft_params["protocol"] == "debug":
             self.ctx.options = {
@@ -201,31 +183,30 @@ class Cp2kGeoOptWorkChain(WorkChain):
         self.ctx.input_dict["GLOBAL"]["WALLTIME"] = self.ctx.options[
             "max_wallclock_seconds"
         ]
-        # --------------------------------------------------
 
     def submit_calc(self):
         self.report("Submitting geometry optimization")
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.code
-        builder.cp2k.structure = StructureData(ase=self.ctx.structure_with_tags)
+        builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
         builder.cp2k.file = self.ctx.files
 
-        # resources
+        # Resources.
         builder.cp2k.metadata.options = self.ctx.options
 
-        # parser
+        # Parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
-        # handlers
-        builder.handler_overrides = Dict({"restart_incomplete_calculation": True})
+        # Handlers.
+        builder.handler_overrides = orm.Dict({"restart_incomplete_calculation": True})
 
-        # restart wfn
+        # Restart wfn.
         if "parent_calc_folder" in self.inputs:
             builder.cp2k.parent_calc_folder = self.inputs.parent_calc_folder
 
-        # cp2k input dictionary
-        builder.cp2k.parameters = Dict(self.ctx.input_dict)
+        # CP2K input dictionary.
+        builder.cp2k.parameters = orm.Dict(self.ctx.input_dict)
 
         future = self.submit(builder)
         self.to_context(geo_opt=future)
@@ -239,10 +220,8 @@ class Cp2kGeoOptWorkChain(WorkChain):
         for out in self.ctx.geo_opt.outputs:
             self.out(out, self.ctx.geo_opt.outputs[out])
 
-        # Add extras
+        # Add extras.
         struc = self.inputs.structure
-        # ase_geom = struc.get_ase()
-        # struc.set_extra("thumbnail", common_utils.thumbnail(ase_struc=ase_geom))
         common_utils.add_extras(struc, "surfaces", self.node.uuid)
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
