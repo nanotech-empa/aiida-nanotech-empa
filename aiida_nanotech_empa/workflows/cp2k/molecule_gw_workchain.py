@@ -1,66 +1,55 @@
 import copy
-import os
 import pathlib
 
 import numpy as np
 import yaml
-from aiida.engine import ExitCode, ToContext, WorkChain, while_
-from aiida.orm import (
-    Bool,
-    Code,
-    Dict,
-    Float,
-    Int,
-    List,
-    SinglefileData,
-    Str,
-    StructureData,
-)
+from aiida import engine, orm
 from aiida_cp2k.calculations import Cp2kCalculation
 
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
-    determine_kinds,
-    dict_merge,
-    get_cutoff,
-    get_kinds_section,
-)
+from .cp2k_utils import determine_kinds, dict_merge, get_cutoff, get_kinds_section
 
 ALLOWED_PROTOCOLS = ["gapw_std", "gapw_hq", "gpw_std"]
 
 
-class Cp2kMoleculeGwWorkChain(WorkChain):
+class Cp2kMoleculeGwWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.input("code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
+        spec.input("code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
 
         spec.input(
             "protocol",
-            valid_type=Str,
-            default=lambda: Str("gapw_std"),
+            valid_type=orm.Str,
+            default=lambda: orm.Str("gapw_std"),
             required=False,
             help="Either 'gapw_std', 'gapw_hq', 'gpw_std'",
         )
 
         spec.input(
             "run_image_charge",
-            valid_type=Bool,
-            default=lambda: Bool(False),
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
             required=False,
             help="Run the image charge correction calculation.",
         )
         spec.input(
-            "z_ic_plane", valid_type=Float, default=lambda: Float(8.22), required=False
+            "z_ic_plane",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(8.22),
+            required=False,
         )
 
         spec.input(
-            "multiplicity", valid_type=Int, default=lambda: Int(0), required=False
+            "multiplicity",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(0),
+            required=False,
         )
         spec.input(
             "magnetization_per_site",
-            valid_type=List,
-            default=lambda: List(list=[]),
+            valid_type=orm.List,
+            default=lambda: orm.List(list=[]),
             required=False,
         )
         spec.input_namespace(
@@ -89,15 +78,15 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
         spec.input(
             "debug",
-            valid_type=Bool,
-            default=lambda: Bool(False),
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
             required=False,
             help="Run with fast parameters for debugging.",
         )
 
         spec.outline(
             cls.setup,
-            while_(cls.scf_is_not_done)(cls.submit_scf, cls.check_scf),
+            engine.while_(cls.scf_is_not_done)(cls.submit_scf, cls.check_scf),
             cls.submit_gw,
             cls.finalize,
         )
@@ -125,14 +114,13 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         )
 
     def setup(self):
-
         self.report("Inspecting input and setting up things")
 
         if self.inputs.protocol not in ALLOWED_PROTOCOLS:
             self.report("Error: protocol not supported.")
             return self.exit_codes.ERROR_TERMINATION
 
-        # Load protocol templates
+        # Load protocol templates.
         with open(
             pathlib.Path(__file__).parent.joinpath("./protocols/gw_protocols.yml"),
             encoding="utf-8",
@@ -144,7 +132,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         magnetization_per_site = copy.deepcopy(self.inputs.magnetization_per_site)
         ghost_per_site = None
 
-        # Add ghost atoms in case of gw-ic
+        # Add ghost atoms in case of gw-ic.
         if self.inputs.run_image_charge:
             atoms = self.inputs.structure.get_ase()
             image = atoms.copy()
@@ -154,18 +142,18 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             ghost_per_site = [0 for a in atoms] + [1 for a in image]
             if magnetization_per_site:
                 magnetization_per_site += [0 for i in range(len(image))]
-            structure = StructureData(ase=atoms + image)
+            structure = orm.StructureData(ase=atoms + image)
 
         structure_with_tags, kinds_dict = determine_kinds(
             structure, magnetization_per_site, ghost_per_site
         )
 
-        # KINDS section
+        # KINDS section.
         self.ctx.kinds_section = get_kinds_section(
             kinds_dict, protocol=self.inputs.protocol
         )
 
-        # make sure cell is big enough for MT poisson solver
+        # Make sure cell is big enough for MT poisson solver.
         if self.inputs.debug:
             extra_cell = 5.0
         else:
@@ -173,7 +161,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         atoms = structure_with_tags.get_ase()
         atoms.cell = 2 * (np.ptp(atoms.positions, axis=0)) + extra_cell
         atoms.center()
-        self.ctx.structure = StructureData(ase=atoms)
+        self.ctx.structure = orm.StructureData(ase=atoms)
 
         # Determine which basis and pseudo files to include
         if self.inputs.protocol in ["gapw_std", "gapw_hq"]:
@@ -184,25 +172,20 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             potential = "POTENTIAL"
 
         self.ctx.files = {
-            "basis": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)), ".", "data", basis
-                )
+            "basis": orm.SinglefileData(
+                file=pathlib.Path(__file__).parent / "data" / basis,
             ),
-            "pseudo": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)), ".", "data", potential
-                )
+            "pseudo": orm.SinglefileData(
+                file=pathlib.Path(__file__).parent / "data" / potential,
             ),
         }
 
         self.ctx.current_scf_protocol = None
         self.ctx.scf_restart_from_last = False
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def scf_is_not_done(self):
-
         if hasattr(self.ctx, "scf"):
             scf_out_params = self.ctx.scf.outputs.output_parameters
 
@@ -223,12 +206,11 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
             if not gap_positive:
                 self.report("Gap is negative, try the next protocol.")
-                # If the SCF converged but the gap was negative,
-                # restart in the next step
+                # If the SCF converged but the gap was negative, restart in the next step
                 self.ctx.scf_restart_from_last = True
                 return True
 
-            self.report("SCF finished well, continue to GW!")
+            self.report("SCF finished well, continue to GW.")
             return False
 
         return True
@@ -245,10 +227,9 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
         input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]["STRIDE"] = "6 6 6"
         input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_SCF"] = 0.2
         input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_EIGVAL"] = 0.2
-        input_dict["FORCE_EVAL"]["DFT"]["SCF"]['OUTER_SCF']["EPS_SCF"] = 0.2
+        input_dict["FORCE_EVAL"]["DFT"]["SCF"]["OUTER_SCF"]["EPS_SCF"] = 0.2
 
     def submit_scf(self):
-
         # Try the next SCF section:
         if self.ctx.current_scf_protocol is None:
             # First try
@@ -265,7 +246,7 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
         self.report(f"Submitting SCF (protocol {self.ctx.current_scf_protocol})")
 
-        # Build the input dictionary
+        # Build the input dictionary.
         step_protocol = self.inputs.protocol.value + "_scf_step"
         input_dict = copy.deepcopy(self.ctx.protocols[step_protocol])
 
@@ -301,23 +282,20 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             )
         builder.metadata.options["parser_name"] = "cp2k_advanced_parser"
 
-        builder.parameters = Dict(input_dict)
+        builder.parameters = orm.Dict(input_dict)
 
-        submitted_node = self.submit(builder)
-        return ToContext(scf=submitted_node)
+        return engine.ToContext(scf=self.submit(builder))
 
     def check_scf(self):
         return (
-            ExitCode(0)
+            engine.ExitCode(0)
             if self.ctx.scf.is_finished_ok
             else self.exit_codes.ERROR_TERMINATION
         )
 
     def submit_gw(self):
-
         self.report("Submitting GW.")
 
-        # -------------------------------------------------------
         # Build the input dictionary
 
         if self.inputs.run_image_charge:
@@ -357,10 +335,9 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
 
         builder.metadata.options["parser_name"] = "nanotech_empa.cp2k_gw_parser"
 
-        builder.parameters = Dict(input_dict)
+        builder.parameters = orm.Dict(input_dict)
 
-        submitted_node = self.submit(builder)
-        return ToContext(second_step=submitted_node)
+        return engine.ToContext(second_step=self.submit(builder))
 
     def finalize(self):
         self.report("Finalizing...")
@@ -380,4 +357,4 @@ class Cp2kMoleculeGwWorkChain(WorkChain):
             "gw_output_parameters", self.ctx.second_step.outputs.gw_output_parameters
         )
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
