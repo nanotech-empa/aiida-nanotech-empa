@@ -4,10 +4,10 @@ import numpy as np
 import yaml
 from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import analyze_structure
-from aiida_nanotech_empa.workflows.cp2k import cp2k_utils
-
 from aiida_nanotech_empa.utils import common_utils
+
+from ..utils import analyze_structure
+from . import cp2k_utils
 
 StructureData = plugins.DataFactory("core.structure")
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
@@ -101,9 +101,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             valid_type=orm.Dict,
             help="""
         multiplicities, dictionary: multiplicity of each fragment. Use 'all' to specify the multiplicity of the whole system.
-        magnetization_per_site: Magnetization per site of the whole system. 
+        magnetization_per_site: Magnetization per site of the whole system.
             Magnetization per site of the fragments will be extracted automatically.
-        charges, dictionary: Charges of each fragment. No need to specify the charge of the full system 
+        charges, dictionary: Charges of each fragment. No need to specify the charge of the full system
             as it would be computed automatically.
         protocol: Protocol to use for the calculation.
         uks: Use unrestricted Kohn-Sham.
@@ -186,7 +186,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             else None,
             fragments=self.inputs.fragments,
         ):
-
             # Re-loading the input dictionary for the given protocol.
             input_dict = load_protocol(
                 fname="geo_opt_protocol.yml",
@@ -279,7 +278,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             self.to_context(**{f"scf.{fragment}": submitted_node})
 
     def run_geo_opts(self):
-
         for fragment in self.inputs.fragments.keys():
             # We deliberately do not run optimisation for the full structure.
             if fragment == "all":
@@ -318,7 +316,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         unrelaxed_separation_energy = energies["all"]
 
         for fragment in list(self.inputs.fragments.keys()):
-
             # The geometry optimisation is not run for the full structure.
             if fragment == "all":
                 continue
