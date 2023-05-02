@@ -1,41 +1,31 @@
 import copy
-import os
 import pathlib
 
 import numpy as np
 import yaml
+from aiida import engine, orm, plugins
 
-from aiida.engine import WorkChain
-from aiida.orm import Code, Dict, List, SinglefileData, StructureData, RemoteData
+from ..utils import common_utils
+from .cp2k_utils import determine_kinds, dict_merge, get_cutoff, get_kinds_section
 
-from aiida.plugins import WorkflowFactory
-
-from aiida_nanotech_empa.utils import common_utils
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
-    determine_kinds,
-    dict_merge,
-    get_cutoff,
-    get_kinds_section,
-)
-
-Cp2kBaseWorkChain = WorkflowFactory("cp2k.base")
+Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
 
-class Cp2kDiagWorkChain(WorkChain):
+class Cp2kDiagWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
-        super(Cp2kDiagWorkChain, cls).define(spec)
+        super().define(spec)
 
-        spec.input("cp2k_code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
-        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
-        spec.input("dft_params", valid_type=Dict, default=lambda: Dict(dict={}))
-        spec.input("pdos_lists", valid_type=List, required=False)
-        spec.input("settings", valid_type=Dict, required=False)
+        spec.input("cp2k_code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input("dft_params", valid_type=orm.Dict, default=lambda: orm.Dict(dict={}))
+        spec.input("pdos_lists", valid_type=orm.List, required=False)
+        spec.input("settings", valid_type=orm.Dict, required=False)
         spec.input(
             "options",
-            valid_type=Dict,
-            default=lambda: Dict(
+            valid_type=orm.Dict,
+            default=lambda: orm.Dict(
                 dict={
                     "max_wallclock_seconds": 600,
                     "resources": {
@@ -66,31 +56,22 @@ class Cp2kDiagWorkChain(WorkChain):
     def setup(self):
         self.report("Setting up workchain")
         self.ctx.files = {
-            "basis": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "BASIS_MOLOPT",
-                )
+            "basis": orm.SinglefileData(
+                file=pathlib.Path(__file__).parent / "data" / "BASIS_MOLOPT",
             ),
-            "pseudo": SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "POTENTIAL",
-                )
+            "pseudo": orm.SinglefileData(
+                file=pathlib.Path(__file__).parent / "data" / "POTENTIAL",
             ),
         }
 
         structure = self.inputs.structure
         self.ctx.n_atoms = len(structure.sites)
 
-        # set up mol UKS parameters
+        # Set up mol UKS parameters.
 
         self.ctx.dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
-        # resources
+
+        # Resources.
         self.ctx.options = self.inputs.options.get_dict()
         if self.ctx.dft_params["protocol"] == "debug":
             self.ctx.options = {
@@ -106,13 +87,14 @@ class Cp2kDiagWorkChain(WorkChain):
             self.ctx.dft_params["spin_up_guess"] = []
             self.ctx.dft_params["spin_dw_guess"] = []
 
-        # get cutoff
+        # Get cutoff.
         self.ctx.cutoff = get_cutoff(structure=structure)
-        # overwrite cutoff if given in dft_params
+
+        # Overwrite cutoff if given in dft_params.
         if "cutoff" in self.ctx.dft_params:
             self.ctx.cutoff = self.ctx.dft_params["cutoff"]
 
-        # get initial magnetization
+        # Get initial magnetization.
         spin_up_guess = self.ctx.dft_params["spin_up_guess"]
         spin_dw_guess = self.ctx.dft_params["spin_dw_guess"]
         magnetization_per_site = [
@@ -124,11 +106,12 @@ class Cp2kDiagWorkChain(WorkChain):
         )
 
         ase_atoms = structure_with_tags.get_ase()
+
         # PERIODIC: only NONE and XYZ are supported
         if self.ctx.dft_params["periodic"] == "NONE":
-            # make sure cell is big enough for MT poisson solver and center positions
+            # Make sure cell is big enough for MT poisson solver and center positions
             if self.ctx.dft_params["protocol"] == "debug":
-                extra_cell = 9.0  # angstrom
+                extra_cell = 9.0  # Angstrom
             else:
                 extra_cell = 15.0
             ase_atoms.cell = 2 * (np.ptp(ase_atoms.positions, axis=0)) + extra_cell
@@ -140,9 +123,9 @@ class Cp2kDiagWorkChain(WorkChain):
     def run_ot_scf(self):
         self.report("Running CP2K OT SCF")
 
-        # load input template
+        # Load input template.
         with open(
-            pathlib.Path(__file__).parent / "./protocols/scf_ot_protocol.yml",
+            pathlib.Path(__file__).parent / "protocols" / "scf_ot_protocol.yml",
             encoding="utf-8",
         ) as handle:
             protocols = yaml.safe_load(handle)
@@ -150,7 +133,7 @@ class Cp2kDiagWorkChain(WorkChain):
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
-        builder.cp2k.structure = StructureData(ase=self.ctx.structure_with_tags)
+        builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
         # restart wfn
@@ -188,7 +171,7 @@ class Cp2kDiagWorkChain(WorkChain):
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
         # cp2k input dictionary
-        builder.cp2k.parameters = Dict(input_dict)
+        builder.cp2k.parameters = orm.Dict(input_dict)
         self.ctx.input_dict = copy.deepcopy(input_dict)
 
         future = self.submit(builder)
@@ -197,7 +180,7 @@ class Cp2kDiagWorkChain(WorkChain):
     def run_diag_scf(self):
         self.report("Running CP2K diagonalization SCF")
         if not common_utils.check_if_calc_ok(self, self.ctx.ot_scf):
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
 
         # load input template
         with open(
@@ -260,7 +243,7 @@ class Cp2kDiagWorkChain(WorkChain):
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
-        builder.cp2k.structure = StructureData(ase=self.ctx.structure_with_tags)
+        builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
         if "settings" in self.inputs:
@@ -270,26 +253,20 @@ class Cp2kDiagWorkChain(WorkChain):
 
         builder.cp2k.metadata.options = self.ctx.options
 
-        # parser
+        # Use the advanced parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
-        # cp2k input dictionary
-        builder.cp2k.parameters = Dict(input_dict)
+        # CP2K input dictionary.
+        builder.cp2k.parameters = orm.Dict(input_dict)
 
-        future = self.submit(builder)
-        self.to_context(diag_scf=future)
+        self.to_context(diag_scf=self.submit(builder))
 
     def finalize(self):
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
             self.report("diagonalization scf failed")
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
 
         self.out("output_parameters", self.ctx.diag_scf.outputs.output_parameters)
         self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         self.report("Work chain is finished")
-
-    # ==========================================================================
-
-
-# ==========================================================================
