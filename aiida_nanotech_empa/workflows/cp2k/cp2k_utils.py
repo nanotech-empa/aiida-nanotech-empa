@@ -14,6 +14,15 @@ import yaml
 from aiida import common, orm
 
 
+class SizeDifferentThanNumberOfAtomsError(ValueError):
+    """Raised when the size of the array is different than the number of atoms."""
+
+    def __init__(self, array_name):
+        super().__init__(
+            f"The size of the array '{array_name}' is different than the number of atoms."
+        )
+
+
 def get_kinds_section(kinds_dict, protocol="gapw_std"):
     """Write the &KIND sections in gw calculations given the structure and the settings_dict"""
 
@@ -106,13 +115,9 @@ def determine_kinds(structure, magnetization_per_site=None, ghost_per_site=None)
         ghost_per_site = [0 for i in range(len(ase_structure))]
 
     if len(magnetization_per_site) != len(ase_structure.numbers):
-        raise ValueError(
-            "The size of `magnetization_per_site` is different from the number of atoms."
-        )
+        raise SizeDifferentThanNumberOfAtomsError("magnetization_per_site")
     if len(ghost_per_site) != len(ase_structure.numbers):
-        raise ValueError(
-            "The size of `ghost_per_site` is different from the number of atoms."
-        )
+        raise SizeDifferentThanNumberOfAtomsError("ghost_per_site")
 
     # Combine atom type with magnetizations and ghost_type
 
