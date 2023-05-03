@@ -1,17 +1,14 @@
 import numpy as np
-from aiida.engine import ExitCode, ToContext, WorkChain, calcfunction, if_
-from aiida.orm import Bool, Code, Dict, Float, Int, List, RemoteData
-from aiida.plugins import WorkflowFactory
+from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import common_utils
-from aiida_nanotech_empa.workflows.gaussian import common
+from ..utils import common_utils
+from . import common
 
-GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
-GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
-
-# Natural orbital processing:
+GaussianBaseWorkChain = plugins.WorkflowFactory("gaussian.base")
+GaussianCubesWorkChain = plugins.WorkflowFactory("gaussian.cubes")
 
 
+# Natural orbital processing.
 def standard_num_odd(no_occs):
     n_odd = 0.0
     for n in no_occs:
@@ -34,21 +31,22 @@ def head_gordon_alt_num_odd(no_occs):
 
 
 def spin_proj_nakano(no_occs, i_hono=None):
-    # "perfect-pairing spin projection scheme"
-    #     Nakano 2011: (Hyper)polarizability density analysis...
-    # More recent citation, also reveals the connection to Yamaguchi's scheme:
-    #     Nakano 2015: Approximate spin projected spin-unrestricted...
+    """
+    "perfect-pairing spin projection scheme"
+        Nakano 2011: (Hyper)polarizability density analysis...
+    More recent citation, also reveals the connection to Yamaguchi's scheme:
+        Nakano 2015: Approximate spin projected spin-unrestricted...
 
-    # Equivalent to "Yamaguchi's scheme"
-    # Original citation:
-    #    Yamaguchi 1988: A spin correction procedure...
-    #    (No radical character BUT singlet-triplet energy gap correction)
-    # Recent citation:
-    #    Minami, Nakano 2012: Diradical Character View of Singlet Fission
-    #    (Radical and multiradical characters)
-    # An application paper:
-    #    Lu 2016: Stable 3,6-Linked Fluorenyl Radical Oligomers with...
-
+    Equivalent to "Yamaguchi's scheme"
+    Original citation:
+       Yamaguchi 1988: A spin correction procedure...
+       (No radical character BUT singlet-triplet energy gap correction)
+    Recent citation:
+       Minami, Nakano 2012: Diradical Character View of Singlet Fission
+       (Radical and multiradical characters)
+    An application paper:
+       Lu 2016: Stable 3,6-Linked Fluorenyl Radical Oligomers with...
+    """
     if i_hono is None:
         no_hono = no_occs[no_occs > 1.0]
         no_luno = no_occs[no_occs <= 1.0]
@@ -59,13 +57,14 @@ def spin_proj_nakano(no_occs, i_hono=None):
     c = np.min([len(no_hono), len(no_luno)])
 
     no_hono = no_hono[::-1]
-    # overlap between pairs
+
+    # Overlap between pairs.
     s = (no_hono[:c] - no_luno[:c]) / 2
 
     no_hono_sp = no_hono[:c] ** 2 / (1 + s**2)
     no_luno_sp = no_luno[:c] ** 2 / (1 + s**2)
 
-    # pad the spin proj array to initial array shape
+    # Pad the spin proj array to initial array shape.
     no_hono_sp = np.pad(
         no_hono_sp,
         (0, len(no_hono) - len(no_hono_sp)),
@@ -82,14 +81,13 @@ def spin_proj_nakano(no_occs, i_hono=None):
     return np.concatenate([no_hono_sp[::-1], no_luno_sp])
 
 
-@calcfunction
+@engine.calcfunction
 def process_natural_orb_occupations(natorb_parameters):
-
     no_occs = natorb_parameters["nooccnos"]
     i_homo = natorb_parameters["homos"][0]
     no_occs_sp = list(spin_proj_nakano(np.array(no_occs), i_hono=i_homo))
 
-    return Dict(
+    return orm.Dict(
         {
             "no_occs": no_occs,
             "no_occs_sp": no_occs_sp,
@@ -101,77 +99,76 @@ def process_natural_orb_occupations(natorb_parameters):
     )
 
 
-class GaussianNatOrbWorkChain(WorkChain):
+class GaussianNatOrbWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
-        spec.input("gaussian_code", valid_type=Code)
+        spec.input("gaussian_code", valid_type=orm.Code)
 
         spec.input(
             "parent_calc_folder",
-            valid_type=RemoteData,
+            valid_type=orm.RemoteData,
             required=True,
             help="parent Gaussian calculation directory",
         )
 
         spec.input(
             "parent_calc_params",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=True,
             help="parent Gaussian calculation output parameters",
         )
 
         spec.input(
             "save_natorb_chk",
-            valid_type=Bool,
+            valid_type=orm.Bool,
             required=False,
-            default=lambda: Bool(False),
+            default=lambda: orm.Bool(False),
             help=(
                 "Save natural orbitals in the chk file."
                 + "Can introduce errors for larger systems"
             ),
         )
 
-        # -------------------------------------------------------------------
-        # CUBE GENERATION INPUTS
+        # Cube inputs generation.
         spec.input(
             "num_natural_orbital_cubes",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(0),
+            default=lambda: orm.Int(0),
             help="Generate cubes for SAVED natural orbitals (n*occ and n*virt).",
         )
-        spec.input("formchk_code", valid_type=Code, required=False)
-        spec.input("cubegen_code", valid_type=Code, required=False)
+        spec.input("formchk_code", valid_type=orm.Code, required=False)
+        spec.input("cubegen_code", valid_type=orm.Code, required=False)
 
         spec.input(
             "edge_space",
-            valid_type=Float,
+            valid_type=orm.Float,
             required=False,
-            default=lambda: Float(3.0),
+            default=lambda: orm.Float(3.0),
             help="Extra cube space in addition to molecule bounding box [ang].",
         )
         spec.input(
             "cubegen_parser_params",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=False,
-            default=lambda: Dict(dict={}),
+            default=lambda: orm.Dict(dict={}),
             help="Additional parameters to cubegen parser.",
         )
         # -------------------------------------------------------------------
 
         spec.input(
             "options",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=False,
             help="Use custom metadata.options instead of the automatic ones.",
         )
 
         spec.outline(
             cls.submit_calc,
-            if_(cls.save_natorb_chk)(
-                cls.submit_save, if_(cls.should_do_cubes)(cls.cubes)
+            engine.if_(cls.save_natorb_chk)(
+                cls.submit_save, engine.if_(cls.should_do_cubes)(cls.cubes)
             ),
             cls.finalize,
         )
@@ -190,7 +187,6 @@ class GaussianNatOrbWorkChain(WorkChain):
         )
 
     def submit_calc(self):
-
         self.ctx.n_atoms = self.inputs.parent_calc_params["natom"]
         self.ctx.basis_set = self.inputs.parent_calc_params["metadata"]["basis_set"]
         self.ctx.comp = self.inputs.gaussian_code.computer
@@ -232,25 +228,23 @@ class GaussianNatOrbWorkChain(WorkChain):
             "multiplicity": -1,  # ignored
         }
 
-        builder.gaussian.parameters = Dict(parameters)
+        builder.gaussian.parameters = orm.Dict(parameters)
 
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
         submitted_node = self.submit(builder)
         submitted_node.description = "naturalorbitals population"
-        return ToContext(natorb=submitted_node)
+        return engine.ToContext(natorb=submitted_node)
 
     def save_natorb_chk(self):
         return self.inputs.save_natorb_chk
 
     def submit_save(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
             return self.exit_codes.ERROR_TERMINATION
 
         builder = GaussianBaseWorkChain.get_builder()
         builder.gaussian.code = self.inputs.gaussian_code
-        # builder.gaussian.parent_calc_folder = self.ctx.natorb.outputs.remote_folder
         builder.gaussian.parent_calc_folder = self.inputs.parent_calc_folder
 
         parameters = {
@@ -275,13 +269,12 @@ class GaussianNatOrbWorkChain(WorkChain):
             "multiplicity": -1,  # ignored
         }
 
-        builder.gaussian.parameters = Dict(parameters)
-
+        builder.gaussian.parameters = orm.Dict(parameters)
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
         submitted_node = self.submit(builder)
         submitted_node.description = "naturalorbitals save"
-        return ToContext(natorb_save=submitted_node)
+        return engine.ToContext(natorb_save=submitted_node)
 
     def should_do_cubes(self):
         codes_set = "formchk_code" in self.inputs and "cubegen_code" in self.inputs
@@ -289,7 +282,6 @@ class GaussianNatOrbWorkChain(WorkChain):
         return self.save_natorb_chk() and codes_set and pos_num_specified
 
     def cubes(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb_save):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -301,18 +293,17 @@ class GaussianNatOrbWorkChain(WorkChain):
         builder.cubegen_code = self.inputs.cubegen_code
         builder.gaussian_calc_folder = self.ctx.natorb_save.outputs.remote_folder
         builder.gaussian_output_params = self.ctx.natorb.outputs.output_parameters
-        builder.orbital_indexes = List(list(range(-n_d + 1, n_u + 1)))
-        builder.natural_orbitals = Bool(True)
+        builder.orbital_indexes = orm.List(list(range(-n_d + 1, n_u + 1)))
+        builder.natural_orbitals = orm.Bool(True)
         builder.edge_space = self.inputs.edge_space
-        builder.dx = Float(0.15)
+        builder.dx = orm.Float(0.15)
         builder.cubegen_parser_name = "nanotech_empa.gaussian.cubegen_pymol"
         builder.cubegen_parser_params = self.inputs.cubegen_parser_params
 
         future = self.submit(builder)
-        return ToContext(cubes=future)
+        return engine.ToContext(cubes=future)
 
     def finalize(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.natorb):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -336,4 +327,4 @@ class GaussianNatOrbWorkChain(WorkChain):
             process_natural_orb_occupations(self.ctx.natorb.outputs.output_parameters),
         )
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
