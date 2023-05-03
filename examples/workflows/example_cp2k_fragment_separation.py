@@ -1,4 +1,4 @@
-import os
+import pathlib
 
 import ase.io
 from aiida import engine, orm, plugins
@@ -8,26 +8,27 @@ Cp2kFragmentSeparationWorkChain = plugins.WorkflowFactory(
     "nanotech_empa.cp2k.fragment_separation"
 )
 
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "h2_on_hbn.xyz"
 
 
 def _example_cp2k_ads_ene(cp2k_code, mult):
     """Example of running a workflow to compute the adsorption energy of a molecule on substrate."""
-    # check test geometry is already in database
-    qb = QueryBuilder()
-    qb.append(Node, filters={"label": {"in": [GEO_FILE]}})
+    # Check test geometry is already in database.
+    qb = orm.QueryBuilder()
+    qb.append(orm.Node, filters={"label": {"in": [GEO_FILE]}})
     structure = None
     for node_tuple in qb.iterall():
         node = node_tuple[0]
         structure = node
     if structure is not None:
-        print("found existing structure: ", structure.pk)
+        print(f"Found existing structure: {structure.pk}")
     else:
-        structure = StructureData(ase=ase.io.read(os.path.join(DATA_DIR, GEO_FILE)))
+        structure = StructureData(ase=ase.io.read(DATA_DIR / GEO_FILE))
         structure.label = GEO_FILE
         structure.store()
-        print("created new structure: ", structure.pk)
+        print(f"Created new structure: {structure.pk}")
     builder = Cp2kFragmentSeparationWorkChain.get_builder()
 
     builder.metadata.label = "CP2K_AdsorptionE"
