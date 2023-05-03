@@ -326,6 +326,6 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
     def finalize(self):
         self.report("Finalizing...")
 
-        # Add the workchain pk to the input structure extras.
+        # Add the workchain uuid to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         return engine.ExitCode(0)

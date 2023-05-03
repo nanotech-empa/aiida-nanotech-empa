@@ -107,6 +107,6 @@ class Cp2kStmWorkChain(engine.WorkChain):
 
         self.out("dft_output_parameters", self.ctx.diag_scf.outputs.output_parameters)
 
-        # Add the workchain pk to the input structure extras.
+        # Add the workchain uuid to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         self.report("Work chain is finished")

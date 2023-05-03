@@ -167,7 +167,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             return self.exit_codes.ERROR_TERMINATION
         self.out("slab_retrieved", self.ctx.slab_diag_scf.outputs.retrieved)
 
-        # Add the workchain pk to the input structure extras.
+        # Add the workchain uuid to the input structure extras.
         common_utils.add_extras(
             self.inputs.slabsys_structure, "surfaces", self.node.uuid
         )
