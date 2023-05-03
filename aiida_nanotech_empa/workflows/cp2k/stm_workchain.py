@@ -1,28 +1,23 @@
 import numpy as np
+from aiida import engine, orm, plugins
 
-from aiida.engine import ToContext, WorkChain
-from aiida.orm import Code, Dict, RemoteData, StructureData
+from ..utils import common_utils
 
-from aiida.plugins import CalculationFactory, WorkflowFactory
-
-from aiida_nanotech_empa.utils import common_utils
-
-
-Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
-StmCalculation = CalculationFactory("nanotech_empa.stm")
+Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
+StmCalculation = plugins.CalculationFactory("nanotech_empa.stm")
 
 
-class Cp2kStmWorkChain(WorkChain):
+class Cp2kStmWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
-        super(Cp2kStmWorkChain, cls).define(spec)
+        super().define(spec)
 
-        spec.input("cp2k_code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
-        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
-        spec.input("dft_params", valid_type=Dict)
-        spec.input("spm_code", valid_type=Code)
-        spec.input("spm_params", valid_type=Dict)
+        spec.input("cp2k_code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input("dft_params", valid_type=orm.Dict)
+        spec.input("spm_code", valid_type=orm.Code)
+        spec.input("spm_params", valid_type=orm.Dict)
         spec.input(
             "options",
             valid_type=dict,
@@ -59,8 +54,8 @@ class Cp2kStmWorkChain(WorkChain):
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
-        builder.dft_params = Dict(self.ctx.dft_params)
-        builder.options = Dict(self.inputs.options)
+        builder.dft_params = orm.Dict(self.ctx.dft_params)
+        builder.options = orm.Dict(self.inputs.options)
         # restart wfn
         if "parent_calc_folder" in self.inputs:
             builder.parent_calc_folder = self.inputs.parent_calc_folder
@@ -71,7 +66,7 @@ class Cp2kStmWorkChain(WorkChain):
     def run_stm(self):
         self.report("STM calculation")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
         inputs = {}
         inputs["metadata"] = {}
         inputs["metadata"]["label"] = "stm"
@@ -95,12 +90,13 @@ class Cp2kStmWorkChain(WorkChain):
         }
         if self.inputs.dft_params["protocol"] == "debug":
             inputs["metadata"]["options"]["max_wallclock_seconds"] = 600
-        # Need to make an explicit instance for the node to be stored to aiida
-        settings = Dict({"additional_retrieve_list": ["stm.npz"]})
+
+        # Need to make an explicit instance for the node to be stored to AiiDA.
+        settings = orm.Dict({"additional_retrieve_list": ["stm.npz"]})
         inputs["settings"] = settings
 
         future = self.submit(StmCalculation, **inputs)
-        return ToContext(stm=future)
+        return engine.ToContext(stm=future)
 
     def finalize(self):
         if "stm.npz" not in [
@@ -111,6 +107,6 @@ class Cp2kStmWorkChain(WorkChain):
 
         self.out("dft_output_parameters", self.ctx.diag_scf.outputs.output_parameters)
 
-        # Add the workchain pk to the input structure extras
+        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         self.report("Work chain is finished")
