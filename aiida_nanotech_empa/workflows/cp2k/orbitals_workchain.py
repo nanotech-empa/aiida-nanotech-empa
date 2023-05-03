@@ -1,28 +1,23 @@
 import numpy as np
-
-from aiida.engine import ToContext, WorkChain
-from aiida.orm import Code, Dict, StructureData, RemoteData
-
-from aiida.plugins import CalculationFactory, WorkflowFactory
+from aiida import engine, orm, plugins
 
 from aiida_nanotech_empa.utils import common_utils
 
+Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
+StmCalculation = plugins.CalculationFactory("nanotech_empa.stm")
 
-Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
-StmCalculation = CalculationFactory("nanotech_empa.stm")
 
-
-class Cp2kOrbitalsWorkChain(WorkChain):
+class Cp2kOrbitalsWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
-        super(Cp2kOrbitalsWorkChain, cls).define(spec)
+        super().define(spec)
 
-        spec.input("cp2k_code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
-        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
-        spec.input("dft_params", valid_type=Dict)
-        spec.input("spm_code", valid_type=Code)
-        spec.input("spm_params", valid_type=Dict)
+        spec.input("cp2k_code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input("dft_params", valid_type=orm.Dict)
+        spec.input("spm_code", valid_type=orm.Code)
+        spec.input("spm_params", valid_type=orm.Dict)
         spec.input(
             "options",
             valid_type=dict,
@@ -57,12 +52,12 @@ class Cp2kOrbitalsWorkChain(WorkChain):
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
-        builder.dft_params = Dict(self.ctx.dft_params)
+        builder.dft_params = orm.Dict(self.ctx.dft_params)
 
-        # restart wfn
+        # Restart wfn.
         if "parent_calc_folder" in self.inputs:
             builder.parent_calc_folder = self.inputs.parent_calc_folder
-        builder.settings = Dict(
+        builder.settings = orm.Dict(
             {
                 "additional_retrieve_list": [
                     "aiida.inp",
@@ -72,7 +67,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
                 ]
             }
         )
-        builder.options = Dict(self.inputs.options)
+        builder.options = orm.Dict(self.inputs.options)
 
         future = self.submit(builder)
         self.to_context(diag_scf=future)
@@ -80,7 +75,7 @@ class Cp2kOrbitalsWorkChain(WorkChain):
     def run_stm(self):
         self.report("STM calculation")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
 
         inputs = {}
         inputs["metadata"] = {}
@@ -93,12 +88,12 @@ class Cp2kOrbitalsWorkChain(WorkChain):
             "max_wallclock_seconds": 3600,
         }
 
-        # Need to make an explicit instance for the node to be stored to aiida
-        settings = Dict({"additional_retrieve_list": ["orb.npz"]})
+        # Need to make an explicit instance for the node to be stored to aiida.
+        settings = orm.Dict({"additional_retrieve_list": ["orb.npz"]})
         inputs["settings"] = settings
 
         future = self.submit(StmCalculation, **inputs)
-        return ToContext(stm=future)
+        return engine.ToContext(stm=future)
 
     def finalize(self):
         if "orb.npz" not in [
@@ -108,8 +103,6 @@ class Cp2kOrbitalsWorkChain(WorkChain):
             return self.exit_codes.ERROR_TERMINATION
         self.out("dft_output_parameters", self.ctx.diag_scf.outputs.output_parameters)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
-        # Add the workchain pk to the input structure extras
+        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         self.report("Work chain is finished")
-
-    # ==========================================================================
