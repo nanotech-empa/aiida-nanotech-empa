@@ -1,84 +1,74 @@
-from aiida.engine import ExitCode, ToContext, WorkChain, if_
-from aiida.engine.processes.functions import calcfunction
-from aiida.orm import Bool, Code, Dict, Int, List, RemoteData, Str
-from aiida.plugins import WorkflowFactory
+from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import common_utils
-from aiida_nanotech_empa.workflows.gaussian import common
+from ..utils import common_utils
+from . import common
 
-GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
-GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
+GaussianBaseWorkChain = plugins.WorkflowFactory("gaussian.base")
+GaussianCubesWorkChain = plugins.WorkflowFactory("gaussian.cubes")
 
 
-@calcfunction
+@engine.calcfunction
 def add_mp2_to_out_params(out_params, mp2_energy):
     new_params = dict(out_params)
     new_params["casmp2_energy_ev"] = mp2_energy.value
-    return Dict(new_params)
+    return orm.Dict(new_params)
 
 
-class GaussianCasscfWorkChain(WorkChain):
+class GaussianCasscfWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
-        spec.input("gaussian_code", valid_type=Code)
+        spec.input("gaussian_code", valid_type=orm.Code)
 
         spec.input(
             "parent_calc_folder",
-            valid_type=RemoteData,
+            valid_type=orm.RemoteData,
             required=True,
             help="parent Gaussian calculation directory",
         )
 
         spec.input(
-            "n", valid_type=Int, required=True, help="Number of electrons CAS(n,m)."
+            "n", valid_type=orm.Int, required=True, help="Number of electrons CAS(n,m)."
         )
-
         spec.input(
-            "m", valid_type=Int, required=True, help="Number of orbitals CAS(n,m)."
+            "m", valid_type=orm.Int, required=True, help="Number of orbitals CAS(n,m)."
         )
-
-        spec.input("basis_set", valid_type=Str, required=True, help="basis_set")
-
+        spec.input("basis_set", valid_type=orm.Str, required=True, help="basis_set")
         spec.input(
             "multiplicity",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(1),
+            default=lambda: orm.Int(1),
             help="spin multiplicity",
         )
-
         spec.input(
             "uno",
-            valid_type=Bool,
+            valid_type=orm.Bool,
             required=False,
-            default=lambda: Bool(False),
+            default=lambda: orm.Bool(False),
             help="Use the natural orbitals from the previous calculation.",
         )
-
         spec.input(
             "mp2",
-            valid_type=Bool,
+            valid_type=orm.Bool,
             required=False,
-            default=lambda: Bool(False),
+            default=lambda: orm.Bool(False),
             help="calculate the MP2 correction (CASMP2).",
         )
-
         spec.input(
             "num_orbital_cubes",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(0),
+            default=lambda: orm.Int(0),
             help="Generate cubes for orbitals (n*occ and n*virt).",
         )
-
-        spec.input("formchk_code", valid_type=Code, required=False)
-        spec.input("cubegen_code", valid_type=Code, required=False)
+        spec.input("formchk_code", valid_type=orm.Code, required=False)
+        spec.input("cubegen_code", valid_type=orm.Code, required=False)
 
         spec.input(
             "options",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=False,
             help="Use custom metadata.options instead of the automatic ones.",
         )
@@ -86,8 +76,8 @@ class GaussianCasscfWorkChain(WorkChain):
         spec.outline(
             cls.setup,
             cls.casscf,
-            if_(cls.should_do_mp2)(cls.casmp2),
-            if_(cls.should_do_cubes)(cls.cubes),
+            engine.if_(cls.should_do_mp2)(cls.casmp2),
+            engine.if_(cls.should_do_cubes)(cls.cubes),
             cls.finalize,
         )
 
@@ -141,17 +131,16 @@ class GaussianCasscfWorkChain(WorkChain):
             "%oldchk": "parent_calc/aiida.chk",
         }
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def casscf(self):
-
         self.report("Submitting CASSCF")
 
         func_str = "CASSCF({},{}{})".format(
             self.inputs.n.value, self.inputs.m.value, ",UNO" if self.inputs.uno else ""
         )
 
-        parameters = Dict(
+        parameters = orm.Dict(
             {
                 "link0_parameters": self.ctx.link0.copy(),
                 "dieze_tag": "#P",
@@ -181,10 +170,9 @@ class GaussianCasscfWorkChain(WorkChain):
         ] = "nanotech_empa.gaussian.casscf"
 
         future = self.submit(builder)
-        return ToContext(casscf=future)
+        return engine.ToContext(casscf=future)
 
     def casmp2(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.casscf):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -192,7 +180,7 @@ class GaussianCasscfWorkChain(WorkChain):
 
         func_str = f"CASSCF({self.inputs.n.value},{self.inputs.m.value})"
 
-        parameters = Dict(
+        parameters = orm.Dict(
             {
                 "link0_parameters": self.ctx.link0.copy(),
                 "dieze_tag": "#P",
@@ -222,10 +210,9 @@ class GaussianCasscfWorkChain(WorkChain):
         ] = "nanotech_empa.gaussian.casscf"
 
         future = self.submit(builder)
-        return ToContext(casmp2=future)
+        return engine.ToContext(casmp2=future)
 
     def cubes(self):
-
         n_d = self.inputs.num_orbital_cubes.value
         n_u = self.inputs.num_orbital_cubes.value
 
@@ -234,18 +221,16 @@ class GaussianCasscfWorkChain(WorkChain):
         builder.cubegen_code = self.inputs.cubegen_code
         builder.gaussian_calc_folder = self.ctx.casscf.outputs.remote_folder
         builder.gaussian_output_params = self.ctx.casscf.outputs.output_parameters
-        builder.orbital_indexes = List(list(range(-n_d + 1, n_u + 1)))
-        builder.natural_orbitals = Bool(True)
-
+        builder.orbital_indexes = orm.List(list(range(-n_d + 1, n_u + 1)))
+        builder.natural_orbitals = orm.Bool(True)
         builder.cubegen_parser_name = "nanotech_empa.gaussian.cubegen_pymol"
-        builder.cubegen_parser_params = Dict(
+        builder.cubegen_parser_params = orm.Dict(
             {"isovalues": [0.050], "orient_cube": True}
         )
         future = self.submit(builder)
-        return ToContext(cubes=future)
+        return engine.ToContext(cubes=future)
 
     def finalize(self):
-
         self.report("Finalizing...")
 
         if not common_utils.check_if_calc_ok(self, self.ctx.casscf):
@@ -268,7 +253,6 @@ class GaussianCasscfWorkChain(WorkChain):
 
         self.out("output_parameters", out_params)
         self.out("casscf_energy_ev", self.ctx.casscf.outputs.casscf_energy_ev)
-
         self.out("remote_folder", self.ctx.casscf.outputs.remote_folder)
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
