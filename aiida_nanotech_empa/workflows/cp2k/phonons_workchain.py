@@ -1,33 +1,24 @@
-from copy import deepcopy
+import copy
 
-from aiida.engine import WorkChain, ExitCode
-from aiida.orm import Code, Dict, Str
-from aiida.orm import StructureData
-from aiida.plugins import CalculationFactory, WorkflowFactory
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
-    get_colvars_section,
-    get_constraints_section,
-)
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import (
-    get_dft_inputs,
-)
+from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import common_utils
+from ..utils import common_utils
+from .cp2k_utils import get_colvars_section, get_constraints_section, get_dft_inputs
 
-Cp2kGeoOptWorkChain = WorkflowFactory("nanotech_empa.cp2k.geo_opt")
-Cp2kCalculation = CalculationFactory("cp2k")
+Cp2kGeoOptWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.geo_opt")
+Cp2kCalculation = plugins.CalculationFactory("cp2k")
 
 
-class Cp2kPhononsWorkChain(WorkChain):
+class Cp2kPhononsWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.input("code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
-        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
-        spec.input("dft_params", valid_type=Dict)
-        spec.input("sys_params", valid_type=Dict)
-        spec.input("phonons_params", valid_type=Dict)
+        spec.input("code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input("dft_params", valid_type=orm.Dict)
+        spec.input("sys_params", valid_type=orm.Dict)
+        spec.input("phonons_params", valid_type=orm.Dict)
         spec.input(
             "options",
             valid_type=dict,
@@ -35,7 +26,6 @@ class Cp2kPhononsWorkChain(WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
 
-        # workchain outline
         spec.outline(
             cls.setup,
             cls.submit_geo_opt,
@@ -66,24 +56,26 @@ class Cp2kPhononsWorkChain(WorkChain):
             "NPROC_REP"
         ] = self.ctx.phonons_params["nproc_rep"]
 
-        # removal of rotations
+        # Removal of rotations.
         if "periodic" in dft_params and dft_params["periodic"] == "NONE":
             self.ctx.input_dict["VIBRATIONAL_ANALYSIS"]["FULLY_PERIODIC"] = ".FALSE."
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MOMENTS"][
                 "PERIODIC"
             ] = ".FALSE."
-        # constraints.
+
+        # Constraints.
         if "constraints" in self.ctx.sys_params:
             self.ctx.input_dict["MOTION"]["CONSTRAINT"] = get_constraints_section(
                 self.ctx.sys_params["constraints"]
             )
-        # colvars.
+
+        # Colvars.
         if "colvars" in self.ctx.sys_params:
             self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"].update(
                 get_colvars_section(self.ctx.sys_params["colvars"])
             )
 
-        # resources
+        # Resources.
         self.ctx.options = self.inputs.options
         if self.inputs.dft_params["protocol"] == "debug":
             self.ctx.options = {
@@ -94,7 +86,7 @@ class Cp2kPhononsWorkChain(WorkChain):
                     "num_cores_per_mpiproc": 1,
                 },
             }
-        self.ctx.geo_options = deepcopy(self.ctx.options)
+        self.ctx.geo_options = copy.deepcopy(self.ctx.options)
         self.ctx.geo_options["resources"]["num_machines"] = int(
             self.ctx.phonons_params["nproc_rep"]
             / self.ctx.options["resources"]["num_mpiprocs_per_machine"]
@@ -102,7 +94,6 @@ class Cp2kPhononsWorkChain(WorkChain):
         self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
         )
-        # --------------------------------------------------
 
     def submit_geo_opt(self):
         """Run geo opt on the initial geometry."""
@@ -111,13 +102,14 @@ class Cp2kPhononsWorkChain(WorkChain):
 
         builder.code = self.inputs.code
         builder.structure = self.inputs.structure
-        # restart wfn
+
+        # Restart WFN.
         if "parent_calc_folder" in self.inputs:
             builder.parent_calc_folder = self.inputs.parent_calc_folder
         builder.dft_params = self.inputs.dft_params
         builder.sys_params = self.inputs.sys_params
         builder.options = self.ctx.geo_options
-        builder.structure = StructureData(ase=self.ctx.structure_with_tags)
+        builder.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
         builder.code = self.inputs.code
 
         future = self.submit(builder)
@@ -129,23 +121,16 @@ class Cp2kPhononsWorkChain(WorkChain):
         if not self.ctx.geo_opt.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
         builder = Cp2kCalculation.get_builder()
-        # code
         builder.code = self.inputs.code
-        # structure
         builder.structure = self.ctx.geo_opt.outputs.output_structure
-        # files
-        # parent_folder
         builder.parent_calc_folder = self.ctx.geo_opt.outputs.remote_folder
         builder.file = self.ctx.files
-        # resources
         builder.metadata.options = self.ctx.options
-        # parser
         builder.metadata.options.parser_name = "cp2k_advanced_parser"
-        # additional retrieved files
-        builder.settings = Dict(dict={"additional_retrieve_list": ["*.eig", "*.mol"]})
-
-        # cp2k input dictionary
-        builder.parameters = Dict(self.ctx.input_dict)
+        builder.settings = orm.Dict(
+            dict={"additional_retrieve_list": ["*.eig", "*.mol"]}
+        )
+        builder.parameters = orm.Dict(self.ctx.input_dict)
 
         future = self.submit(builder)
         self.to_context(phonons=future)
@@ -159,7 +144,7 @@ class Cp2kPhononsWorkChain(WorkChain):
         self.out("output_parameters", self.ctx.geo_opt.outputs.output_parameters)
         self.out("retrieved", self.ctx.phonons.outputs.retrieved)
 
-        # Add the workchain pk to the input structure extras
+        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
