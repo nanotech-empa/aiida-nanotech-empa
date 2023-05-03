@@ -1,109 +1,111 @@
-from aiida.engine import ExitCode, ToContext, WorkChain, if_
-from aiida.orm import Bool, Code, Dict, Float, Int, List, Str, StructureData
-from aiida.plugins import WorkflowFactory
+from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import common_utils
-from aiida_nanotech_empa.workflows.gaussian import common
-
+from ..utils import common_utils
+from . import common
 from .scf_workchain import GaussianScfWorkChain
 
-GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
+GaussianBaseWorkChain = plugins.WorkflowFactory("gaussian.base")
 
 
-class GaussianRelaxWorkChain(WorkChain):
+class GaussianRelaxWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
-        spec.input("gaussian_code", valid_type=Code)
+        spec.input("gaussian_code", valid_type=orm.Code)
 
         spec.input(
-            "structure", valid_type=StructureData, required=True, help="input geometry"
+            "structure",
+            valid_type=orm.StructureData,
+            required=True,
+            help="input geometry",
         )
-        spec.input("functional", valid_type=Str, required=True, help="xc functional")
+        spec.input(
+            "functional", valid_type=orm.Str, required=True, help="xc functional"
+        )
 
-        spec.input("basis_set", valid_type=Str, required=True, help="basis_set")
+        spec.input("basis_set", valid_type=orm.Str, required=True, help="basis_set")
 
         spec.input(
             "multiplicity",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(0),
+            default=lambda: orm.Int(0),
             help="spin multiplicity; 0 means RKS",
         )
 
         spec.input(
             "wfn_stable_opt",
-            valid_type=Bool,
+            valid_type=orm.Bool,
             required=False,
-            default=lambda: Bool(False),
+            default=lambda: orm.Bool(False),
             help="if true, perform wfn stability optimization",
         )
 
         spec.input(
             "tight",
-            valid_type=Bool,
+            valid_type=orm.Bool,
             required=False,
-            default=lambda: Bool(False),
+            default=lambda: orm.Bool(False),
             help="Use tight optimization criteria.",
         )
 
         spec.input(
             "freq",
-            valid_type=Bool,
+            valid_type=orm.Bool,
             required=False,
-            default=lambda: Bool(False),
+            default=lambda: orm.Bool(False),
             help="Also run vibrational analysis.",
         )
 
         spec.input(
             "empirical_dispersion",
-            valid_type=Str,
+            valid_type=orm.Str,
             required=False,
-            default=lambda: Str(""),
+            default=lambda: orm.Str(""),
             help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
         )
 
         spec.input(
             "constraints",
-            valid_type=List,
+            valid_type=orm.List,
             required=False,
-            default=lambda: List(list=[]),
+            default=lambda: orm.List(list=[]),
             help='Supported constraints: ("distance", n1, n2, d)',
         )
 
         # Do an extra SCF step at the end and potentially create cubes.
         spec.input(
             "basis_set_scf",
-            valid_type=Str,
+            valid_type=orm.Str,
             required=False,
             help="Basis set for SCF. If not present, SCF is skipped.",
         )
 
-        spec.input("formchk_code", valid_type=Code, required=False)
-        spec.input("cubegen_code", valid_type=Code, required=False)
+        spec.input("formchk_code", valid_type=orm.Code, required=False)
+        spec.input("cubegen_code", valid_type=orm.Code, required=False)
 
         spec.input(
             "cubes_n_occ",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(0),
+            default=lambda: orm.Int(0),
             help="Number of occupied orbital cubes to generate",
         )
 
         spec.input(
             "cubes_n_virt",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(0),
+            default=lambda: orm.Int(0),
             help="Number of virtual orbital cubes to generate",
         )
 
         spec.input(
             "cubes_edge_space",
-            valid_type=Float,
+            valid_type=orm.Float,
             required=False,
-            default=lambda: Float(3.0),
+            default=lambda: orm.Float(3.0),
             help="Extra cube space in addition to bounding box [ang].",
         )
 
@@ -116,24 +118,24 @@ class GaussianRelaxWorkChain(WorkChain):
 
         spec.input(
             "cubegen_parser_params",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=False,
-            default=lambda: Dict(dict={}),
+            default=lambda: orm.Dict(dict={}),
             help="Additional parameters to cubegen parser.",
         )
 
         spec.input(
             "options",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=False,
             help="Use custom metadata.options instead of automatic.",
         )
 
         spec.outline(
             cls.setup,
-            if_(cls.should_do_wfn_stability)(cls.uks_wfn_stability),
+            engine.if_(cls.should_do_wfn_stability)(cls.uks_wfn_stability),
             cls.optimization,
-            if_(cls.should_do_scf)(cls.scf),
+            engine.if_(cls.should_do_scf)(cls.scf),
             cls.finalize,
         )
 
@@ -192,13 +194,12 @@ class GaussianRelaxWorkChain(WorkChain):
             "%nprocshared": str(num_cores),
         }
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def uks_wfn_stability(self):
-
         self.report("Running UKS WFN Stability")
 
-        parameters = Dict(
+        parameters = orm.Dict(
             {
                 "link0_parameters": self.ctx.link0.copy(),
                 "dieze_tag": "#P",
@@ -226,13 +227,12 @@ class GaussianRelaxWorkChain(WorkChain):
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
         future = self.submit(builder)
-        return ToContext(uks_stab=future)
+        return engine.ToContext(uks_stab=future)
 
     def optimization(self):
-
         self.report("Submitting optimization")
 
-        parameters = Dict(
+        parameters = orm.Dict(
             {
                 "link0_parameters": self.ctx.link0.copy(),
                 "dieze_tag": "#P",
@@ -259,7 +259,7 @@ class GaussianRelaxWorkChain(WorkChain):
             parameters["route_parameters"]["guess"] = "mix"
 
         # In case of the open-shell singlet, take smaller steps to prevent
-        # losing the spin solution
+        # losing the spin solution.
         if self.inputs.multiplicity == 1:
             parameters["route_parameters"]["opt"] = {"maxstep": 10}
 
@@ -297,13 +297,12 @@ class GaussianRelaxWorkChain(WorkChain):
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
         submitted_node = self.submit(builder)
-        return ToContext(opt=submitted_node)
+        return engine.ToContext(opt=submitted_node)
 
     def should_do_scf(self):
         return "basis_set_scf" in self.inputs
 
     def scf(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.opt):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -331,10 +330,9 @@ class GaussianRelaxWorkChain(WorkChain):
             builder.options = self.inputs.options
 
         submitted_node = self.submit(builder)
-        return ToContext(scf=submitted_node)
+        return engine.ToContext(scf=submitted_node)
 
     def finalize(self):
-
         if not common_utils.check_if_calc_ok(self, self.ctx.opt):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -361,4 +359,4 @@ class GaussianRelaxWorkChain(WorkChain):
                 elif cubes_out == "retrieved":
                     self.out("cubes_retrieved", self.ctx.scf.outputs[cubes_out])
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
