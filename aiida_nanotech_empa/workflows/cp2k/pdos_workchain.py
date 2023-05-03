@@ -1,29 +1,28 @@
+import copy
+
 import numpy as np
-from copy import deepcopy
-from aiida.engine import ToContext, WorkChain
-from aiida.orm import Code, Dict, List, StructureData, RemoteData
-from aiida.plugins import CalculationFactory, WorkflowFactory
+from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import common_utils
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import get_cutoff
+from ..utils import common_utils
+from .cp2k_utils import get_cutoff
 
-Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
-OverlapCalculation = CalculationFactory("nanotech_empa.overlap")
+Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
+OverlapCalculation = plugins.CalculationFactory("nanotech_empa.overlap")
 
 
-class Cp2kPdosWorkChain(WorkChain):
+class Cp2kPdosWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
-        spec.input("cp2k_code", valid_type=Code)
-        spec.input("slabsys_structure", valid_type=StructureData)
-        spec.input("mol_structure", valid_type=StructureData)
-        spec.input("pdos_lists", valid_type=List)
-        spec.input("parent_calc_folder", valid_type=RemoteData, required=False)
-        spec.input("dft_params", valid_type=Dict)
-        spec.input("overlap_code", valid_type=Code)
-        spec.input("overlap_params", valid_type=Dict)
+        spec.input("cp2k_code", valid_type=orm.Code)
+        spec.input("slabsys_structure", valid_type=orm.StructureData)
+        spec.input("mol_structure", valid_type=orm.StructureData)
+        spec.input("pdos_lists", valid_type=orm.List)
+        spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input("dft_params", valid_type=orm.Dict)
+        spec.input("overlap_code", valid_type=orm.Code)
+        spec.input("overlap_params", valid_type=orm.Dict)
         spec.input_namespace(
             "options",
             valid_type=int,
@@ -55,16 +54,17 @@ class Cp2kPdosWorkChain(WorkChain):
         emax = float(self.inputs.overlap_params.get_dict()["--emax1"])
         nlumo = int(self.inputs.overlap_params.get_dict()["--nlumo2"])
 
-        # set up slab dft parameters
-        self.ctx.slab_dft_params = deepcopy(self.inputs.dft_params.get_dict())
+        # Set up slab DFT parameters.
+        self.ctx.slab_dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
         self.ctx.slab_dft_params["added_mos"] = np.max(
             [100, int(1.2 * self.ctx.n_slab_atoms * emax / 5.0)]
         )
 
-        # set up mol dft parameters
-        self.ctx.mol_dft_params = deepcopy(self.ctx.slab_dft_params)
+        # Set up mol DFT parameters.
+        self.ctx.mol_dft_params = copy.deepcopy(self.ctx.slab_dft_params)
         self.ctx.mol_dft_params["added_mos"] = nlumo + 2
-        # force same cutoff for molecule and slab
+
+        # Force same cutoff for molecule and slab.
         self.ctx.mol_dft_params["cutoff"] = get_cutoff(self.inputs.slabsys_structure)
         self.ctx.mol_dft_params[
             "elpa_switch"
@@ -97,44 +97,44 @@ class Cp2kPdosWorkChain(WorkChain):
             self.ctx.mol_dft_params["spin_dw_guess"] = mol_spin_dw
 
     def run_diags(self):
-        # slab part
+        # Slab part.
         self.report("Running Diag Workchain for slab")
 
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.slabsys_structure
-        builder.dft_params = Dict(self.ctx.slab_dft_params)
-        builder.settings = Dict({"additional_retrieve_list": ["*.pdos"]})
-        builder.options = Dict(self.ctx.slab_options)
-        # restart wfn
+        builder.dft_params = orm.Dict(self.ctx.slab_dft_params)
+        builder.settings = orm.Dict({"additional_retrieve_list": ["*.pdos"]})
+        builder.options = orm.Dict(self.ctx.slab_options)
+
+        # Restart WFN.
         if "parent_calc_folder" in self.inputs:
             builder.parent_calc_folder = self.inputs.parent_calc_folder
-        # pdos
+        # PDOS.
         if self.inputs.pdos_lists is not None:
-            builder.pdos_lists = List([pdos[0] for pdos in self.inputs.pdos_lists])
+            builder.pdos_lists = orm.List([pdos[0] for pdos in self.inputs.pdos_lists])
 
         slab_future = self.submit(builder)
         self.to_context(slab_diag_scf=slab_future)
-        # end slab part
+        # End slab part.
 
-        # molecule part
+        # Molecule part.
         self.report("Running Diag Workchain for molecule")
 
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.mol_structure
-        builder.dft_params = Dict(self.ctx.mol_dft_params)
-        builder.options = Dict(self.ctx.mol_options)
+        builder.dft_params = orm.Dict(self.ctx.mol_dft_params)
+        builder.options = orm.Dict(self.ctx.mol_options)
 
         mol_future = self.submit(builder)
         self.to_context(mol_diag_scf=mol_future)
-        # end molecule part
+        # End molecule part.
 
     def run_overlap(self):
         for calculation in [self.ctx.slab_diag_scf, self.ctx.mol_diag_scf]:
             if not common_utils.check_if_calc_ok(self, calculation):
-                return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
-
+                return self.exit_codes.ERROR_TERMINATION
         self.report("Running overlap")
 
         inputs = {}
@@ -154,13 +154,10 @@ class Cp2kPdosWorkChain(WorkChain):
 
         if self.inputs.dft_params["protocol"] == "debug":
             inputs["metadata"]["options"]["max_wallclock_seconds"] = 600
-        settings = Dict({"additional_retrieve_list": ["overlap.npz"]})
+        settings = orm.Dict({"additional_retrieve_list": ["overlap.npz"]})
         inputs["settings"] = settings
-
-        # self.report("overlap inputs: " + str(inputs))
-
         future = self.submit(OverlapCalculation, **inputs)
-        return ToContext(overlap=future)
+        return engine.ToContext(overlap=future)
 
     def finalize(self):
         if "overlap.npz" not in [
@@ -170,7 +167,7 @@ class Cp2kPdosWorkChain(WorkChain):
             return self.exit_codes.ERROR_TERMINATION
         self.out("slab_retrieved", self.ctx.slab_diag_scf.outputs.retrieved)
 
-        # Add the workchain pk to the input structure extras
+        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(
             self.inputs.slabsys_structure, "surfaces", self.node.uuid
         )
