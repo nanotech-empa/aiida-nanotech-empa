@@ -1,43 +1,41 @@
-import os
+import pathlib
 
 import ase.io
-from aiida.engine import run_get_node
-from aiida.orm import Bool, Dict, List, Str, StructureData, load_code
-from aiida.plugins import WorkflowFactory
+from aiida import engine, orm, plugins
 
-Cp2kPdosWorkChain = WorkflowFactory("nanotech_empa.cp2k.pdos")
+Cp2kPdosWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.pdos")
 
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "c2h2_on_au111.xyz"
 
 
 def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity, uks):
-    # check test geometry is already in database
-    qb = QueryBuilder()
-    qb.append(Node, filters={"label": {"in": [GEO_FILE]}})
+    # Check test geometry is already in database.
+    qb = orm.QueryBuilder()
+    qb.append(orm.Node, filters={"label": {"in": [GEO_FILE]}})
     structure = None
     for node_tuple in qb.iterall():
         node = node_tuple[0]
         structure = node
     if structure is not None:
-        print("found existing structure: ", structure.pk)
+        print(f"Found existing structure: {structure.pk}")
     else:
-        structure = StructureData(ase=ase.io.read(os.path.join(DATA_DIR, GEO_FILE)))
+        structure = orm.StructureData(ase=ase.io.read(DATA_DIR / GEO_FILE))
         structure.label = GEO_FILE
         structure.store()
-        print("created new structure: ", structure.pk)
+        print(f"Created new structure: {structure.pk}")
 
     builder = Cp2kPdosWorkChain.get_builder()
 
     builder.metadata.label = "CP2K_PDOS"
     builder.metadata.description = "test description"
     builder.cp2k_code = cp2k_code
-    ase_geom_slab = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
+    ase_geom_slab = ase.io.read(DATA_DIR / GEO_FILE)
     ase_geom_mol = ase_geom_slab[0:4]
-    builder.slabsys_structure = StructureData(ase=ase_geom_slab)
-    builder.mol_structure = StructureData(ase=ase_geom_mol)
-    builder.pdos_lists = List([("1..4", "molecule"), ("1", "cat")])
-    builder.dft_params = Dict(
+    builder.slabsys_structure = orm.StructureData(ase=ase_geom_slab)
+    builder.mol_structure = orm.StructureData(ase=ase_geom_mol)
+    builder.pdos_lists = orm.List([("1..4", "molecule"), ("1", "cat")])
+    builder.dft_params = orm.Dict(
         {
             "protocol": "debug",
             "sc_diag": sc_diag,
@@ -49,7 +47,7 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity, uks
         }
     )
     if uks:
-        builder.dft_params = Dict(
+        builder.dft_params = orm.Dict(
             {
                 "protocol": "debug",
                 "sc_diag": sc_diag,
@@ -84,7 +82,7 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity, uks
     }
 
     builder.overlap_code = overlap_code
-    builder.overlap_params = Dict(
+    builder.overlap_params = orm.Dict(
         {
             "--cp2k_input_file1": "parent_slab_folder/aiida.inp",
             "--basis_set_file1": "parent_slab_folder/BASIS_MOLOPT",
@@ -105,14 +103,9 @@ def _example_cp2k_pdos(cp2k_code, overlap_code, sc_diag, force_multiplicity, uks
         }
     )
 
-    _, calc_node = run_get_node(builder)
+    _, calc_node = engine.run_get_node(builder)
 
     assert calc_node.is_finished_ok
-
-    # slabopt_out_dict = dict(calc_node.outputs.output_parameters)
-    # print()
-    # for k in slabopt_out_dict:
-    #    print(f"  {k}: {slabopt_out_dict[k]}")
 
 
 def example_cp2k_pdos_no_sc_diag(cp2k_code, overlap_code):
@@ -126,21 +119,9 @@ def example_cp2k_pdos_sc_diag(cp2k_code, overlap_code):
 if __name__ == "__main__":
     print("#### no sc_diag RKS")
     _example_cp2k_pdos(
-        load_code("cp2k@localhost"),
-        load_code("py_overlap_4576cd@localhost"),
+        orm.load_code("cp2k@localhost"),
+        orm.load_code("py_overlap_4576cd@localhost"),
         False,
         True,
         False,
     )
-    # print("#### sc_diag RKS")
-    # _example_cp2k_pdos(
-    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), True, True,False
-    # )
-    # print("#### no sc_diag UKS no force")
-    # _example_cp2k_pdos(
-    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_overlap_4576cd@daint-mc-em01"), False, False, True
-    # )
-    # print("#### sc_diag UKS force")
-    # _example_cp2k_pdos(
-    #    load_code("cp2k@localhost"), load_code("py_overlap_4576cd@localhost"), True, True, True
-    # )
