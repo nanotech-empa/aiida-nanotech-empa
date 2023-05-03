@@ -76,7 +76,7 @@ standard:
                     EACH:
                         QS_SCF: "0"
                         GEO_OPT: "0"
-                    ADD_LAST: "NUMERIC"                    
+                    ADD_LAST: "NUMERIC"
 low_accuracy:
     GLOBAL:
         EXTENDED_FFT_LENGTHS: ""
@@ -95,7 +95,7 @@ low_accuracy:
             CHARGE: 0
             POISSON:
                 PERIODIC: XYZ
-                POISSON_SOLVER: PERIODIC            
+                POISSON_SOLVER: PERIODIC
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5

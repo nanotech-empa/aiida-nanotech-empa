@@ -7,7 +7,6 @@ Cp2kMoleculeGwWorkChain = WorkflowFactory("nanotech_empa.cp2k.molecule_gw")
 
 
 def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
-
     builder = Cp2kMoleculeGwWorkChain.get_builder()
 
     builder.metadata.label = "Cp2kMoleculeGwWorkChain"
@@ -104,7 +103,6 @@ def example_cp2k_ic_gapw_hq_uks(cp2k_code):
 
 
 if __name__ == "__main__":
-
     for ic in [False, True]:
         for pc in ["gpw_std", "gapw_std", "gapw_hq"]:
             for mult in [0, 1]:

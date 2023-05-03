@@ -46,7 +46,6 @@ def local_code_factory(fixture_localhost):
     def get_code(
         entry_point, executable, label=None, prepend_text=None, append_text=None
     ):
-
         if label is None:
             label = executable
 

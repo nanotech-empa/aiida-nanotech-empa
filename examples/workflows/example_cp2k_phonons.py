@@ -1,32 +1,28 @@
-import os
+import pathlib
+
 import ase.io
-from ase import Atoms
+from aiida import engine, orm, plugins
 
-from aiida.engine import run_get_node
-from aiida.orm import StructureData, load_code
-from aiida.plugins import WorkflowFactory
-
-Cp2kPhononsWorkChain = WorkflowFactory("nanotech_empa.cp2k.phonons")
-
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+Cp2kPhononsWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.phonons")
+DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "c2h2.xyz"
 
 
 def _example_cp2k_phonons(cp2k_code, uks):
     # check test geometry is already in database
-    qb = QueryBuilder()
-    qb.append(Node, filters={"label": {"in": [GEO_FILE]}})
+    qb = orm.QueryBuilder()
+    qb.append(orm.Node, filters={"label": {"in": [GEO_FILE]}})
     structure = None
     for node_tuple in qb.iterall():
         node = node_tuple[0]
         structure = node
     if structure is not None:
-        print("found existing structure: ", structure.pk)
+        print(f"Found existing structure: {structure.pk}")
     else:
-        structure = StructureData(ase=ase.io.read(os.path.join(DATA_DIR, GEO_FILE)))
+        structure = orm.StructureData(ase=ase.io.read(DATA_DIR / GEO_FILE))
         structure.label = GEO_FILE
         structure.store()
-        print("created new structure: ", structure.pk)
+        print(f"Created new structure: {structure.pk}")
 
     builder = Cp2kPhononsWorkChain.get_builder()
 
@@ -69,11 +65,11 @@ def _example_cp2k_phonons(cp2k_code, uks):
     sys_params["colvars"] = "distance atoms 2 3 , distance atoms 1 2"
 
     builder.structure = structure
-    builder.dft_params = Dict(dft_params)
-    builder.sys_params = Dict(sys_params)
-    builder.phonons_params = Dict(phonons_params)
+    builder.dft_params = orm.Dict(dft_params)
+    builder.sys_params = orm.Dict(sys_params)
+    builder.phonons_params = orm.Dict(phonons_params)
 
-    _, calc_node = run_get_node(builder)
+    _, calc_node = engine.run_get_node(builder)
 
     assert calc_node.is_finished_ok
 
@@ -93,7 +89,7 @@ def example_cp2k_phonons_uks(cp2k_code):
 
 if __name__ == "__main__":
     print("#### ", " RKS")
-    _example_cp2k_phonons(load_code("cp2k@localhost"), False)
+    _example_cp2k_phonons(orm.load_code("cp2k@localhost"), False)
 
     print("#### ", " UKS")
-    _example_cp2k_phonons(load_code("cp2k@localhost"), True)
+    _example_cp2k_phonons(orm.load_code("cp2k@localhost"), True)

@@ -1,22 +1,19 @@
-import os
+import pathlib
+
 import ase.io
-from ase import Atoms
+from aiida import engine, orm, plugins
 
-from aiida.engine import run_get_node
-from aiida.orm import Int, List, Str, StructureData, load_code
-from aiida.plugins import WorkflowFactory
+Cp2kGeoOptWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.geo_opt")
 
-Cp2kGeoOptWorkChain = WorkflowFactory("nanotech_empa.cp2k.geo_opt")
-
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEOS = ["h2_on_hbn.xyz", "si_bulk.xyz", "c2h2.xyz"]
 
 
 def _example_cp2k_geo_opt(cp2k_code, sys_type, uks):
-    # check test geometries are already in database
-    qb = QueryBuilder()
+    # Check test geometries are already in database.
+    qb = orm.QueryBuilder()
     qb.append(
-        Node,
+        orm.Node,
         filters={"label": {"in": GEOS}},
     )
     structures = {}
@@ -27,7 +24,7 @@ def _example_cp2k_geo_opt(cp2k_code, sys_type, uks):
         if required in structures:
             print("found existing structure: ", required, structures[required].pk)
         else:
-            structure = StructureData(ase=ase.io.read(os.path.join(DATA_DIR, required)))
+            structure = orm.StructureData(ase=ase.io.read(DATA_DIR / required))
             structure.label = required
             structure.store()
             structures[required] = structure
@@ -101,10 +98,10 @@ def _example_cp2k_geo_opt(cp2k_code, sys_type, uks):
         sys_params["constraints"] = "fixed xy 1 , fixed xyz 2"
 
     builder.structure = structure
-    builder.dft_params = Dict(dict=dft_params)
-    builder.sys_params = Dict(dict=sys_params)
+    builder.dft_params = orm.Dict(dict=dft_params)
+    builder.sys_params = orm.Dict(dict=sys_params)
 
-    _, calc_node = run_get_node(builder)
+    _, calc_node = engine.run_get_node(builder)
 
     assert calc_node.is_finished_ok
 
@@ -125,7 +122,7 @@ def example_cp2k_slab_opt_uks(cp2k_code):
 if __name__ == "__main__":
     for sys_type in ["SlabXY", "Molecule", "Bulk"]:
         print("#### ", sys_type, " RKS")
-        _example_cp2k_geo_opt(load_code("cp2k@localhost"), sys_type, False)
+        _example_cp2k_geo_opt(orm.load_code("cp2k@localhost"), sys_type, False)
 
         print("#### ", sys_type, " UKS")
-        _example_cp2k_geo_opt(load_code("cp2k@localhost"), sys_type, True)
+        _example_cp2k_geo_opt(orm.load_code("cp2k@localhost"), sys_type, True)

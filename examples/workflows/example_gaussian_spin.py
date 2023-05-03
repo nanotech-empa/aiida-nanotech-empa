@@ -15,7 +15,6 @@ OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def _example_gaussian_spin(gaussian_code, formchk_code, cubegen_code):
-
     ase_geom = ase.io.read(os.path.join(DATA_DIR, "benzene-diradical.xyz"))
     ase_geom.cell = np.diag([10.0, 10.0, 10.0])
 

@@ -1,41 +1,40 @@
 import os
-import numpy as np
+import pathlib
 
 import ase.io
-from aiida.engine import run_get_node
-from aiida.orm import Dict, StructureData, load_code
-from aiida.plugins import WorkflowFactory
+import numpy as np
+from aiida import engine, orm, plugins
 
-Cp2kHrstmWorkChain = WorkflowFactory("nanotech_empa.cp2k.hrstm")
+Cp2kHrstmWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.hrstm")
 
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "c2h2_on_au111.xyz"
 
 
 def _example_cp2k_hrstm(
     cp2k_code, afm_code, hrstm_code, sc_diag, force_multiplicity, uks
 ):
-    # check test geometry is already in database
-    qb = QueryBuilder()
-    qb.append(Node, filters={"label": {"in": [GEO_FILE]}})
+    # Check test geometry is already in database.
+    qb = orm.QueryBuilder()
+    qb.append(orm.Node, filters={"label": {"in": [GEO_FILE]}})
     structure = None
     for node_tuple in qb.iterall():
         node = node_tuple[0]
         structure = node
     if structure is not None:
-        print("found existing structure: ", structure.pk)
+        print(f"Found existing structure: {structure.pk}")
     else:
-        structure = StructureData(ase=ase.io.read(os.path.join(DATA_DIR, GEO_FILE)))
+        structure = orm.StructureData(ase=ase.io.read(DATA_DIR / GEO_FILE))
         structure.label = GEO_FILE
         structure.store()
-        print("created new structure: ", structure.pk)
+        print(f"Created new structure: {structure.pk}")
     builder = Cp2kHrstmWorkChain.get_builder()
 
     builder.metadata.label = "Cp2kHrstmWorkChain"
     builder.metadata.description = "test description"
     builder.cp2k_code = cp2k_code
-    ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
-    builder.structure = StructureData(ase=ase_geom)
+    ase_geom = ase.io.read(DATA_DIR / GEO_FILE)
+    builder.structure = orm.StructureData(ase=ase_geom)
     builder.options = {
         "resources": {
             "num_machines": 1,
@@ -44,7 +43,7 @@ def _example_cp2k_hrstm(
         "max_wallclock_seconds": 600,
     }
 
-    builder.dft_params = Dict(
+    builder.dft_params = orm.Dict(
         {
             "protocol": "debug",
             "sc_diag": sc_diag,
@@ -56,7 +55,7 @@ def _example_cp2k_hrstm(
         }
     )
     if uks:
-        builder.dft_params = Dict(
+        builder.dft_params = orm.Dict(
             {
                 "protocol": "debug",
                 "sc_diag": sc_diag,
@@ -81,7 +80,7 @@ def _example_cp2k_hrstm(
     amp = 1.4
     f0 = 22352.5
 
-    ppm_params_dict = Dict(
+    ppm_params_dict = orm.Dict(
         {
             "Catom": 6,
             "Oatom": 8,
@@ -114,16 +113,16 @@ def _example_cp2k_hrstm(
     builder.hrstm_code = hrstm_code
     parent_dir = "parent_calc_folder/"
     ppm_dir = "ppm_calc_folder/"
-    ppmQK = ppm_dir + "Qo%1.2fQc%1.2fK%1.2f/" % (
+    ppm_qk = ppm_dir + "Qo{:1.2f}Qc{:1.2f}K{:1.2f}/".format(
         ppm_params_dict["Ocharge"],
         ppm_params_dict["Ccharge"],
         ppm_params_dict["Oklat"],
     )
     path = os.path.dirname(hrstm_code.get_remote_exec_path()) + "/hrstm_tips/"
     pdos_list = [path + "tip_coeffs.tar.gz"]
-    tip_pos = [ppmQK + "PPpos", ppmQK + "PPdisp"]
+    tip_pos = [ppm_qk + "PPpos", ppm_qk + "PPdisp"]
 
-    hrstm_params = Dict(
+    hrstm_params = orm.Dict(
         {
             "--output": "hrstm",
             "--voltages": ["-0.3", "-0.1"],
@@ -149,7 +148,7 @@ def _example_cp2k_hrstm(
     )
     builder.hrstm_params = hrstm_params
 
-    _, calc_node = run_get_node(builder)
+    _, calc_node = engine.run_get_node(builder)
 
     assert calc_node.is_finished_ok
 
@@ -163,25 +162,12 @@ def example_cp2k_hrstm_sc_diag(cp2k_code, afm_code, hrstm_code):
 
 
 if __name__ == "__main__":
-    # print("#### no sc_diag RKS")
-    # _example_cp2k_stm(
-    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_stm_4576cd@daint-mc-em01"), False, True,False
-    # )
-    # print("#### sc_diag RKS")
-    # _example_cp2k_stm(
-    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_stm_4576cd@daint-mc-em01"), True, True,False
-    # )
-    #
     print("#### no sc_diag UKS no force")
     _example_cp2k_hrstm(
-        load_code("cp2k@localhost"),
-        load_code("py_afm_2pp_@localhost"),
-        load_code("py_hrstm_4576cd@localhost"),
+        orm.load_code("cp2k@localhost"),
+        orm.load_code("py_afm_2pp_@localhost"),
+        orm.load_code("py_hrstm_4576cd@localhost"),
         False,
         False,
         True,
     )
-    # print("#### sc_diag UKS force")
-    # _example_cp2k_stm(
-    #    load_code("cp2k-9.1@daint-mc-em01"), load_code("py_stm_4576cd@daint-mc-em01"), True, True, True
-    # )

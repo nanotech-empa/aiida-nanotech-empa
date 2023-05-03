@@ -1,9 +1,9 @@
 standard:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: '' 
+        EXTENDED_FFT_LENGTHS: ''
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: BAND
-        WALLTIME: 600   
+        WALLTIME: 600
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
@@ -31,27 +31,27 @@ standard:
             PROGRAM_RUN_INFO:
                 INITIAL_CONFIGURATION_INFO: ''
         PRINT:
-            RESTART_HISTORY: 
-                _: 'OFF'   
+            RESTART_HISTORY:
+                _: 'OFF'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
             CELL:
                 PERIODIC: XYZ
-                SYMMETRY: ORTHORHOMBIC        
+                SYMMETRY: ORTHORHOMBIC
         DFT:
             UKS: .FALSE.
             MULTIPLICITY: 0
             CHARGE: 0
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
-            POTENTIAL_FILE_NAME: POTENTIAL   
+            POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: RESTART
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
             POISSON:
                 PERIODIC: XYZ
-                POISSON_SOLVER: PERIODIC                
+                POISSON_SOLVER: PERIODIC
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: USE_GUESS
@@ -71,10 +71,10 @@ standard:
                         ADD_LAST: NUMERIC
                         EACH:
                             GEO_OPT: 1
-                            QS_SCF: 0                    
-                        FILENAME: RESTART                
+                            QS_SCF: 0
+                        FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'            
+                        _: 'OFF'
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -84,14 +84,14 @@ standard:
                         REFERENCE_FUNCTIONAL: PBE
                         R_CUTOFF: 15
                         TYPE: DFTD3
-                XC_FUNCTIONAL: 
+                XC_FUNCTIONAL:
                         _: PBE
 low_accuracy:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: '' 
+        EXTENDED_FFT_LENGTHS: ''
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: BAND
-        WALLTIME: 600   
+        WALLTIME: 600
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
@@ -119,27 +119,27 @@ low_accuracy:
             PROGRAM_RUN_INFO:
                 INITIAL_CONFIGURATION_INFO: ''
         PRINT:
-            RESTART_HISTORY: 
-                _: 'OFF'   
+            RESTART_HISTORY:
+                _: 'OFF'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
             CELL:
                 PERIODIC: XYZ
-                SYMMETRY: ORTHORHOMBIC        
+                SYMMETRY: ORTHORHOMBIC
         DFT:
             UKS: .FALSE.
             MULTIPLICITY: 0
             CHARGE: 0
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
-            POTENTIAL_FILE_NAME: POTENTIAL   
+            POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
             POISSON:
                 PERIODIC: XYZ
-                POISSON_SOLVER: PERIODIC                
+                POISSON_SOLVER: PERIODIC
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: USE_GUESS
@@ -159,10 +159,10 @@ low_accuracy:
                         ADD_LAST: NUMERIC
                         EACH:
                             GEO_OPT: 1
-                            QS_SCF: 0                    
-                        FILENAME: RESTART                
+                            QS_SCF: 0
+                        FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'            
+                        _: 'OFF'
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -172,14 +172,14 @@ low_accuracy:
                         REFERENCE_FUNCTIONAL: PBE
                         R_CUTOFF: 15
                         TYPE: DFTD3
-                XC_FUNCTIONAL: 
+                XC_FUNCTIONAL:
                         _: PBE
 debug:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: '' 
+        EXTENDED_FFT_LENGTHS: ''
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: BAND
-        WALLTIME: 600   
+        WALLTIME: 600
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
@@ -207,27 +207,27 @@ debug:
             PROGRAM_RUN_INFO:
                 INITIAL_CONFIGURATION_INFO: ''
         PRINT:
-            RESTART_HISTORY: 
-                _: 'OFF'   
+            RESTART_HISTORY:
+                _: 'OFF'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
             CELL:
                 PERIODIC: XYZ
-                SYMMETRY: ORTHORHOMBIC        
+                SYMMETRY: ORTHORHOMBIC
         DFT:
             UKS: .FALSE.
             MULTIPLICITY: 0
             CHARGE: 0
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
-            POTENTIAL_FILE_NAME: POTENTIAL   
+            POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
             POISSON:
                 PERIODIC: XYZ
-                POISSON_SOLVER: PERIODIC                
+                POISSON_SOLVER: PERIODIC
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: USE_GUESS
@@ -247,10 +247,10 @@ debug:
                         ADD_LAST: NUMERIC
                         EACH:
                             GEO_OPT: 1
-                            QS_SCF: 0                    
-                        FILENAME: RESTART                
+                            QS_SCF: 0
+                        FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'            
+                        _: 'OFF'
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -260,5 +260,5 @@ debug:
                         REFERENCE_FUNCTIONAL: PBE
                         R_CUTOFF: 15
                         TYPE: DFTD3
-                XC_FUNCTIONAL: 
-                        _: PBE                                       
+                XC_FUNCTIONAL:
+                        _: PBE

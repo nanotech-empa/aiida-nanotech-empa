@@ -1,17 +1,14 @@
-import os
-from ase import Atoms
+import pathlib
 
-from aiida.engine import run_get_node
-from aiida.orm import Int, List, Str, Node, StructureData, load_code
-from aiida.plugins import WorkflowFactory
+import ase
+from aiida import engine, orm, plugins
 
-Cp2kNebWorkChain = WorkflowFactory("nanotech_empa.cp2k.neb")
+Cp2kNebWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.neb")
 
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = pathlib.Path(__file__).parent.absolute()
 
 
 def _example_cp2k_neb(cp2k_code, uks, restart_uuid):
-
     builder = Cp2kNebWorkChain.get_builder()
 
     builder.metadata.label = "CP2K_NEB"
@@ -28,10 +25,10 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid):
 
     # define structures
 
-    # check if test structure is already in database
-    qb = QueryBuilder()
+    # Check if test structure is already in the database.
+    qb = orm.QueryBuilder()
     qb.append(
-        Node,
+        orm.Node,
         filters={
             "label": {
                 "in": [
@@ -53,8 +50,8 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid):
             uuids = [available_structures["auto_test_neb_ini_structure"]]
             print("found ini: ", available_structures["auto_test_neb_ini_structure"])
         else:
-            ini = StructureData(
-                ase=Atoms(
+            ini = orm.StructureData(
+                ase=ase.Atoms(
                     "HCCH",
                     positions=[
                         [1, 2, 2],
@@ -73,8 +70,8 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid):
             uuids.append(available_structures["auto_test_neb_rep_structure"])
             print("found rep: ", available_structures["auto_test_neb_rep_structure"])
         else:
-            rep = StructureData(
-                ase=Atoms(
+            rep = orm.StructureData(
+                ase=ase.Atoms(
                     "HCCH",
                     positions=[
                         [1, 2, 2],
@@ -93,8 +90,8 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid):
             uuids.append(available_structures["auto_test_neb_fin_structure"])
             print("found fin: ", available_structures["auto_test_neb_fin_structure"])
         else:
-            fin = StructureData(
-                ase=Atoms(
+            fin = orm.StructureData(
+                ase=ase.Atoms(
                     "HCCH",
                     positions=[
                         [1, 2, 2],
@@ -110,16 +107,16 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid):
             uuids.append(fin.uuid)
             print("created fin: ", fin.uuid)
 
-        builder.structure = load_node(uuids[0])
+        builder.structure = orm.load_node(uuids[0])
         replicas = {}
         for i in range(1, 3):
-            name = "replica_%s" % str(i).zfill(3)
-            replicas[name] = load_node(uuids[i])
+            name = f"replica_{str(i).zfill(3)}"
+            replicas[name] = orm.load_node(uuids[i])
         builder.replicas = replicas
 
     else:
-        builder.structure = load_node(restart_uuid).inputs.structure
-        builder.restart_from = Str(restart_uuid)
+        builder.structure = orm.load_node(restart_uuid).inputs.structure
+        builder.restart_from = orm.Str(restart_uuid)
 
     dft_params = {
         "protocol": "debug",
@@ -154,11 +151,11 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid):
         "optimize_end_points": ".TRUE.",
     }
 
-    builder.dft_params = Dict(dict=dft_params)
-    builder.sys_params = Dict(dict=sys_params)
-    builder.neb_params = Dict(dict=neb_params)
+    builder.dft_params = orm.Dict(dict=dft_params)
+    builder.sys_params = orm.Dict(dict=sys_params)
+    builder.neb_params = orm.Dict(dict=neb_params)
 
-    _, calc_node = run_get_node(builder)
+    _, calc_node = engine.run_get_node(builder)
 
     assert calc_node.is_finished_ok
 
@@ -175,10 +172,10 @@ def example_cp2k_neb_uks(cp2k_code):
 
 if __name__ == "__main__":
     print("####  RKS")
-    uuid1 = _example_cp2k_neb(load_code("cp2k@localhost"), False, None)
+    uuid1 = _example_cp2k_neb(orm.load_code("cp2k@localhost"), False, None)
 
     print("####  UKS")
-    uuid2 = _example_cp2k_neb(load_code("cp2k@localhost"), True, None)
+    uuid2 = _example_cp2k_neb(orm.load_code("cp2k@localhost"), True, None)
 
     print("### restarting from ", uuid2)
-    uuid3 = _example_cp2k_neb(load_code("cp2k@localhost"), True, uuid2)
+    uuid3 = _example_cp2k_neb(orm.load_code("cp2k@localhost"), True, uuid2)
