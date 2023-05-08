@@ -1,12 +1,9 @@
 import os
 
-import ase.io
-from aiida.engine import run_get_node
-from aiida.orm import Bool, Float, Int, List, Str, StructureData, load_code
-from aiida.plugins import WorkflowFactory
-from ase import Atoms
+import ase
+from aiida import engine, orm, plugins
 
-Cp2kAdsorbedGwIcWorkChain = WorkflowFactory("nanotech_empa.cp2k.ads_gw_ic")
+Cp2kAdsorbedGwIcWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.ads_gw_ic")
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 GEO_FILE = "h2_on_au111.xyz"
@@ -23,21 +20,21 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
         # Convert ase tags to magnetization list
         mag_list = [-1 if t == 1 else 1 if t == 2 else 0 for t in ase_geom.get_tags()]
     else:
-        ase_geom = Atoms(
+        ase_geom = ase.Atoms(
             "HH", positions=[[0, 0, 0], [0.75, 0, 0]], cell=[4.0, 4.0, 4.0]
         )
         mag_list = [-1, 1]
-        builder.ads_height = Float(3.0)
+        builder.ads_height = orm.Float(3.0)
 
-    builder.structure = StructureData(ase=ase_geom)
-    builder.magnetization_per_site = List(mag_list)
+    builder.structure = orm.StructureData(ase=ase_geom)
+    builder.magnetization_per_site = orm.List(mag_list)
 
-    builder.protocol = Str("gpw_std")
-    builder.multiplicity = Int(1)
+    builder.protocol = orm.Str("gpw_std")
+    builder.multiplicity = orm.Int(1)
 
-    builder.geometry_mode = Str("ads_geo")
+    builder.geometry_mode = orm.Str("ads_geo")
 
-    builder.debug = Bool(True)
+    builder.debug = orm.Bool(True)
     builder.options.scf = {
         "max_wallclock_seconds": 600,
         "resources": {
@@ -62,7 +59,7 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
             "num_cores_per_mpiproc": 1,
         },
     }
-    _, calc_node = run_get_node(builder)
+    _, calc_node = engine.run_get_node(builder)
 
     assert calc_node.is_finished_ok
 
@@ -83,6 +80,6 @@ def example_cp2k_ads_gw_ic_implicit_slab(cp2k_code):
 
 if __name__ == "__main__":
     print("# Slab in geometry explicitly #")
-    _example_cp2k_ads_gw_ic(load_code("cp2k@localhost"), slab_included=True)
+    _example_cp2k_ads_gw_ic(orm.load_code("cp2k@localhost"), slab_included=True)
     print("# Slab specified implicitly #")
-    _example_cp2k_ads_gw_ic(load_code("cp2k@localhost"), slab_included=False)
+    _example_cp2k_ads_gw_ic(orm.load_code("cp2k@localhost"), slab_included=False)

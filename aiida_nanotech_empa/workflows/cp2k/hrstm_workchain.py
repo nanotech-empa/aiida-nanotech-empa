@@ -5,8 +5,8 @@ from aiida import engine, orm, plugins
 
 from ...utils import common_utils
 from . import cp2k_utils
+from .diag_workchain import Cp2kDiagWorkChain
 
-Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 HrstmCalculation = plugins.CalculationFactory("nanotech_empa.hrstm")
 AfmCalculation = plugins.CalculationFactory("nanotech_empa.afm")
 

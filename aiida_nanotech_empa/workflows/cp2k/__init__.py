@@ -4,6 +4,7 @@ from .diag_workchain import Cp2kDiagWorkChain
 from .fragment_separation import Cp2kFragmentSeparationWorkChain
 from .geo_opt_workchain import Cp2kGeoOptWorkChain
 from .hrstm_workchain import Cp2kHrstmWorkChain
+from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
 from .molecule_opt_gw_workchain import Cp2kMoleculeOptGwWorkChain
 from .neb_workchain import Cp2kNebWorkChain
 from .orbitals_workchain import Cp2kOrbitalsWorkChain
@@ -16,6 +17,7 @@ __all__ = (
     "Cp2kGeoOptWorkChain",
     "Cp2kFragmentSeparationWorkChain",
     "Cp2kAdsorbedGwIcWorkChain",
+    "Cp2kMoleculeGwWorkChain",
     "Cp2kMoleculeOptGwWorkChain",
     "Cp2kPdosWorkChain",
     "Cp2kOrbitalsWorkChain",
