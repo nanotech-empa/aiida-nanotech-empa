@@ -3,14 +3,8 @@ import copy
 import numpy as np
 from aiida import engine, orm, plugins
 
-from ..utils import common_utils
-from .cp2k_utils import (
-    get_colvars_section,
-    get_constraints_section,
-    get_dft_inputs,
-    make_geom_file,
-    mk_wfn_cp_commands,
-)
+from ...utils import common_utils
+from . import cp2k_utils
 
 Cp2kCalculation = plugins.CalculationFactory("cp2k")
 
@@ -72,7 +66,9 @@ class Cp2kNebWorkChain(engine.WorkChain):
             self.ctx.files,
             self.ctx.input_dict,
             self.ctx.structure_with_tags,
-        ) = get_dft_inputs(dft_params, self.inputs.structure, "neb_protocol.yml")
+        ) = cp2k_utils.get_dft_inputs(
+            dft_params, self.inputs.structure, "neb_protocol.yml"
+        )
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.neb_params = self.inputs.neb_params.get_dict()
 
@@ -100,7 +96,7 @@ class Cp2kNebWorkChain(engine.WorkChain):
         if "wfn_cp_commands" in self.inputs:
             self.ctx.wfn_cp_commands = self.inputs.wfn_cp_commands.value
         else:
-            self.ctx.wfn_cp_commands = mk_wfn_cp_commands(
+            self.ctx.wfn_cp_commands = cp2k_utils.mk_wfn_cp_commands(
                 nreplicas=self.ctx.neb_params["number_of_replica"],
                 replica_nodes=all_replica_nodes,
                 selected_computer=self.inputs.code.computer,
@@ -116,7 +112,7 @@ class Cp2kNebWorkChain(engine.WorkChain):
 
         for i, node in enumerate(all_replica_nodes):
             filename = "replica_%s" % str(i).zfill(3) + ".xyz"
-            self.ctx.files[filename.replace(".", "_")] = make_geom_file(
+            self.ctx.files[filename.replace(".", "_")] = cp2k_utils.make_geom_file(
                 node.get_ase(), filename, tags=tags
             )
             # Update the input dictionary.
@@ -126,13 +122,13 @@ class Cp2kNebWorkChain(engine.WorkChain):
 
         # Constraints.
         if "constraints" in self.ctx.sys_params:
-            self.ctx.input_dict["MOTION"]["CONSTRAINT"] = get_constraints_section(
-                self.ctx.sys_params["constraints"]
-            )
+            self.ctx.input_dict["MOTION"][
+                "CONSTRAINT"
+            ] = cp2k_utils.get_constraints_section(self.ctx.sys_params["constraints"])
         # Colvars.
         if "colvars" in self.ctx.sys_params:
             self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"].update(
-                get_colvars_section(self.ctx.sys_params["colvars"])
+                cp2k_utils.get_colvars_section(self.ctx.sys_params["colvars"])
             )
 
         # NEB parameters.
@@ -186,7 +182,7 @@ class Cp2kNebWorkChain(engine.WorkChain):
     def first_scf(self):
         """Run scf on the initial geometry."""
 
-        files, input_dict, structure_with_tags = get_dft_inputs(
+        files, input_dict, structure_with_tags = cp2k_utils.get_dft_inputs(
             self.inputs.dft_params.get_dict(),
             self.inputs.structure,
             "scf_ot_protocol.yml",

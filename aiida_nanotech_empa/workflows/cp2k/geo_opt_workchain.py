@@ -5,15 +5,8 @@ import numpy as np
 import yaml
 from aiida import engine, orm, plugins
 
-from ..utils import common_utils
-from .cp2k_utils import (
-    determine_kinds,
-    dict_merge,
-    get_colvars_section,
-    get_constraints_section,
-    get_cutoff,
-    get_kinds_section,
-)
+from ...utils import common_utils
+from . import cp2k_utils
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
@@ -95,7 +88,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
                 ] = self.ctx.dft_params["multiplicity"]
 
         # Get initial magnetization.
-        structure_with_tags, kinds_dict = determine_kinds(
+        structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(
             self.inputs.structure, magnetization_per_site
         )
 
@@ -121,11 +114,13 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             # to be done: more cases
 
         self.ctx.structure_with_tags = ase_atoms
-        self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol="gpw")
-        dict_merge(self.ctx.input_dict, self.ctx.kinds_section)
+        self.ctx.kinds_section = cp2k_utils.get_kinds_section(
+            kinds_dict, protocol="gpw"
+        )
+        cp2k_utils.dict_merge(self.ctx.input_dict, self.ctx.kinds_section)
 
         # Overwrite cutoff if given in dft_params.
-        cutoff = get_cutoff(structure=self.inputs.structure)
+        cutoff = cp2k_utils.get_cutoff(structure=self.inputs.structure)
         if "cutoff" in self.ctx.dft_params:
             cutoff = self.ctx.dft_params["cutoff"]
 
@@ -160,13 +155,13 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         # Constraints.
         if "constraints" in self.ctx.sys_params:
-            self.ctx.input_dict["MOTION"]["CONSTRAINT"] = get_constraints_section(
-                self.ctx.sys_params["constraints"]
-            )
+            self.ctx.input_dict["MOTION"][
+                "CONSTRAINT"
+            ] = cp2k_utils.get_constraints_section(self.ctx.sys_params["constraints"])
         # Colvars.
         if "colvars" in self.ctx.sys_params:
             self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"].update(
-                get_colvars_section(self.ctx.sys_params["colvars"])
+                cp2k_utils.get_colvars_section(self.ctx.sys_params["colvars"])
             )
 
         # Resources.

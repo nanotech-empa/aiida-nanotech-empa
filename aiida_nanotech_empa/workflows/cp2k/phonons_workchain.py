@@ -2,8 +2,8 @@ import copy
 
 from aiida import engine, orm, plugins
 
-from ..utils import common_utils
-from .cp2k_utils import get_colvars_section, get_constraints_section, get_dft_inputs
+from ...utils import common_utils
+from . import cp2k_utils
 
 Cp2kGeoOptWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.geo_opt")
 Cp2kCalculation = plugins.CalculationFactory("cp2k")
@@ -49,7 +49,9 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
             self.ctx.files,
             self.ctx.input_dict,
             self.ctx.structure_with_tags,
-        ) = get_dft_inputs(dft_params, self.inputs.structure, "phonons_protocol.yml")
+        ) = cp2k_utils.get_dft_inputs(
+            dft_params, self.inputs.structure, "phonons_protocol.yml"
+        )
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.phonons_params = self.inputs.phonons_params.get_dict()
         self.ctx.input_dict["VIBRATIONAL_ANALYSIS"][
@@ -65,14 +67,14 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
 
         # Constraints.
         if "constraints" in self.ctx.sys_params:
-            self.ctx.input_dict["MOTION"]["CONSTRAINT"] = get_constraints_section(
-                self.ctx.sys_params["constraints"]
-            )
+            self.ctx.input_dict["MOTION"][
+                "CONSTRAINT"
+            ] = cp2k_utils.get_constraints_section(self.ctx.sys_params["constraints"])
 
         # Colvars.
         if "colvars" in self.ctx.sys_params:
             self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"].update(
-                get_colvars_section(self.ctx.sys_params["colvars"])
+                cp2k_utils.get_colvars_section(self.ctx.sys_params["colvars"])
             )
 
         # Resources.

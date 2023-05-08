@@ -1,6 +1,6 @@
 from aiida import engine, orm
 
-from ..utils import common_utils
+from ...utils import common_utils
 from .relax_workchain import GaussianRelaxWorkChain
 from .scf_workchain import GaussianScfWorkChain
 

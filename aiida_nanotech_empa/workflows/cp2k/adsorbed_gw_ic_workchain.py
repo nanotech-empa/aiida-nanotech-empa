@@ -1,8 +1,8 @@
 import numpy as np
 from aiida import engine, orm
 
+from .geo_opt_workchain import Cp2kGeoOptWorkChain
 from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
-from .molecule_opt_workchain import Cp2kMoleculeOptWorkChain
 
 IC_PLANE_HEIGHTS = {
     "Au(111)": 1.42,  # Kharche J. Phys. Chem. Lett. 7, 1526–1533 (2016).
@@ -265,7 +265,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         return self.inputs.geometry_mode.value == "gas_opt"
 
     def gas_opt(self):
-        builder = Cp2kMoleculeOptWorkChain.get_builder()
+        builder = Cp2kGeoOptWorkChain.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.mol_struct
         builder.multiplicity = self.inputs.multiplicity

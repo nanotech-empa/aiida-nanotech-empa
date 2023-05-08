@@ -1,16 +1,14 @@
 import pathlib
 
 import numpy as np
-from aiida import engine, orm
-from aiida.plugins import CalculationFactory, WorkflowFactory
+from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import make_geom_file
+from ...utils import common_utils
+from . import cp2k_utils
 
-from ..utils import common_utils
-
-Cp2kDiagWorkChain = WorkflowFactory("nanotech_empa.cp2k.diag")
-HrstmCalculation = CalculationFactory("nanotech_empa.hrstm")
-AfmCalculation = CalculationFactory("nanotech_empa.afm")
+Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
+HrstmCalculation = plugins.CalculationFactory("nanotech_empa.hrstm")
+AfmCalculation = plugins.CalculationFactory("nanotech_empa.afm")
 
 
 class Cp2kHrstmWorkChain(engine.WorkChain):
@@ -62,7 +60,7 @@ class Cp2kHrstmWorkChain(engine.WorkChain):
         self.ctx.dft_params["added_mos"] = added_mos
 
         self.ctx.files = {
-            "geo_no_labels": make_geom_file(ase_geom, "geom.xyz"),
+            "geo_no_labels": cp2k_utils.make_geom_file(ase_geom, "geom.xyz"),
             "2pp": orm.SinglefileData(
                 file=pathlib.Path(__file__).parent / "data" / "atomtypes_2pp.ini"
             ),

@@ -1,6 +1,6 @@
 from aiida import engine, orm, plugins
 
-from ..utils import common_utils
+from ...utils import common_utils
 from . import common
 
 GaussianBaseWorkChain = plugins.WorkflowFactory("gaussian.base")

@@ -47,20 +47,20 @@ dev = [
 ]
 
 [project.entry-points."aiida.parsers"]
-"nanotech_empa.pp" = "aiida_nanotech_empa.parsers.pp_parser:PpParser"
-"nanotech_empa.cp2k_gw_parser" = "aiida_nanotech_empa.parsers.cp2k_gw_parser:Cp2kGwParser"
-"nanotech_empa.cp2k_neb_parser" = "aiida_nanotech_empa.parsers.cp2k_neb_parser:Cp2kNebParser"
+"nanotech_empa.pp" = "aiida_nanotech_empa.parsers:PpParser"
+"nanotech_empa.cp2k_gw_parser" = "aiida_nanotech_empa.parsers:Cp2kGwParser"
+"nanotech_empa.cp2k_neb_parser" = "aiida_nanotech_empa.parsers:Cp2kNebParser"
 "nanotech_empa.gaussian.cubegen_pymol" = "aiida_nanotech_empa.parsers.cubegen_pymol_parser:CubegenPymolParser"
-"nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.parsers.gaussian_casscf_parser:GaussianCasscfParser"
+"nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.parsers:GaussianCasscfParser"
 
 [project.entry-points."aiida.calculations"]
-"nanotech_empa.stm" = "aiida_nanotech_empa.plugins.stm:StmCalculation"
-"nanotech_empa.overlap" = "aiida_nanotech_empa.plugins.overlap:OverlapCalculation"
-"nanotech_empa.afm" = "aiida_nanotech_empa.plugins.afm:AfmCalculation"
-"nanotech_empa.hrstm" = "aiida_nanotech_empa.plugins.hrstm:HrstmCalculation"
+"nanotech_empa.stm" = "aiida_nanotech_empa.plugins:StmCalculation"
+"nanotech_empa.overlap" = "aiida_nanotech_empa.plugins:OverlapCalculation"
+"nanotech_empa.afm" = "aiida_nanotech_empa.plugins:AfmCalculation"
+"nanotech_empa.hrstm" = "aiida_nanotech_empa.plugins:HrstmCalculation"
 
 [project.entry-points."aiida.workflows"]
-"nanotech_empa.nanoribbon" = "aiida_nanotech_empa.workflows.qe.nanoribbon:NanoribbonWorkChain"
+"nanotech_empa.nanoribbon" = "aiida_nanotech_empa.workflows.qe:NanoribbonWorkChain"
 "nanotech_empa.gaussian.scf" = "aiida_nanotech_empa.workflows.gaussian:GaussianScfWorkChain"
 "nanotech_empa.gaussian.relax" = "aiida_nanotech_empa.workflows.gaussian:GaussianRelaxWorkChain"
 "nanotech_empa.gaussian.delta_scf" = "aiida_nanotech_empa.workflows.gaussian:GaussianDeltaScfWorkChain"
@@ -70,23 +70,23 @@ dev = [
 "nanotech_empa.gaussian.constr_opt_chain" = "aiida_nanotech_empa.workflows.gaussian:GaussianConstrOptChainWorkChain"
 "nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.workflows.gaussian:GaussianCasscfWorkChain"
 "nanotech_empa.gaussian.casscf_series" = "aiida_nanotech_empa.workflows.gaussian:GaussianCasscfSeriesWorkChain"
-"nanotech_empa.cp2k.geo_opt" = "aiida_nanotech_empa.workflows.cp2k.geo_opt_workchain:Cp2kGeoOptWorkChain"
-"nanotech_empa.cp2k.fragment_separation" = "aiida_nanotech_empa.workflows.cp2k.fragment_separation:Cp2kFragmentSeparationWorkChain"
-"nanotech_empa.cp2k.ads_gw_ic" = "aiida_nanotech_empa.workflows.cp2k.adsorbed_gw_ic_workchain:Cp2kAdsorbedGwIcWorkChain"
-"nanotech_empa.cp2k.mol_opt_gw" = "aiida_nanotech_empa.workflows.cp2k.molecule_opt_gw_workchain:Cp2kMoleculeOptGwWorkChain"
-"nanotech_empa.cp2k.pdos" = "aiida_nanotech_empa.workflows.cp2k.pdos_workchain:Cp2kPdosWorkChain"
-"nanotech_empa.cp2k.orbitals" = "aiida_nanotech_empa.workflows.cp2k.orbitals_workchain:Cp2kOrbitalsWorkChain"
-"nanotech_empa.cp2k.stm" = "aiida_nanotech_empa.workflows.cp2k.stm_workchain:Cp2kStmWorkChain"
-"nanotech_empa.cp2k.afm" = "aiida_nanotech_empa.workflows.cp2k.afm_workchain:Cp2kAfmWorkChain"
-"nanotech_empa.cp2k.hrstm" = "aiida_nanotech_empa.workflows.cp2k.hrstm_workchain:Cp2kHrstmWorkChain"
-"nanotech_empa.cp2k.diag" = "aiida_nanotech_empa.workflows.cp2k.diag_workchain:Cp2kDiagWorkChain"
-"nanotech_empa.cp2k.replica" = "aiida_nanotech_empa.workflows.cp2k.replica_workchain:Cp2kReplicaWorkChain"
-"nanotech_empa.cp2k.neb" = "aiida_nanotech_empa.workflows.cp2k.neb_workchain:Cp2kNebWorkChain"
-"nanotech_empa.cp2k.phonons" = "aiida_nanotech_empa.workflows.cp2k.phonons_workchain:Cp2kPhononsWorkChain"
+"nanotech_empa.cp2k.geo_opt" = "aiida_nanotech_empa.workflows.cp2k:Cp2kGeoOptWorkChain"
+"nanotech_empa.cp2k.fragment_separation" = "aiida_nanotech_empa.workflows.cp2k:Cp2kFragmentSeparationWorkChain"
+"nanotech_empa.cp2k.ads_gw_ic" = "aiida_nanotech_empa.workflows.cp2k:Cp2kAdsorbedGwIcWorkChain"
+"nanotech_empa.cp2k.mol_opt_gw" = "aiida_nanotech_empa.workflows.cp2k:Cp2kMoleculeOptGwWorkChain"
+"nanotech_empa.cp2k.pdos" = "aiida_nanotech_empa.workflows.cp2k:Cp2kPdosWorkChain"
+"nanotech_empa.cp2k.orbitals" = "aiida_nanotech_empa.workflows.cp2k:Cp2kOrbitalsWorkChain"
+"nanotech_empa.cp2k.stm" = "aiida_nanotech_empa.workflows.cp2k:Cp2kStmWorkChain"
+"nanotech_empa.cp2k.afm" = "aiida_nanotech_empa.workflows.cp2k:Cp2kAfmWorkChain"
+"nanotech_empa.cp2k.hrstm" = "aiida_nanotech_empa.workflows.cp2k:Cp2kHrstmWorkChain"
+"nanotech_empa.cp2k.diag" = "aiida_nanotech_empa.workflows.cp2k:Cp2kDiagWorkChain"
+"nanotech_empa.cp2k.replica" = "aiida_nanotech_empa.workflows.cp2k:Cp2kReplicaWorkChain"
+"nanotech_empa.cp2k.neb" = "aiida_nanotech_empa.workflows.cp2k:Cp2kNebWorkChain"
+"nanotech_empa.cp2k.phonons" = "aiida_nanotech_empa.workflows.cp2k:Cp2kPhononsWorkChain"
 
 
 [project.entry-points."aiida.schedulers"]
-slurm_ethz_euler = "aiida_nanotech_empa.schedulers.slurm_ethz_euler:ETHZEulerSlurmScheduler"
+slurm_ethz_euler = "aiida_nanotech_empa.schedulers:ETHZEulerSlurmScheduler"
 
 [tool.bumpver]
 current_version = "v1.0.0a0"

@@ -1,7 +1,7 @@
 import numpy as np
 from aiida import engine, orm, plugins
 
-from ..utils import common_utils
+from ...utils import common_utils
 
 PwCalculation = plugins.CalculationFactory("quantumespresso.pw")
 PpCalculation = plugins.CalculationFactory("quantumespresso.pp")

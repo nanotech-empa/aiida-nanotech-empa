@@ -3,13 +3,8 @@ import math
 import numpy as np
 from aiida import engine, orm, plugins
 
-from .cp2k_utils import (
-    compute_colvars,
-    get_colvars_section,
-    get_constraints_section,
-    get_dft_inputs,
-)
-from .utils import common_utils
+from ...utils import common_utils
+from . import cp2k_utils
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 Cp2kCalculation = plugins.CalculationFactory("cp2k")
@@ -162,7 +157,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
     def first_scf(self):
         """Run scf on the initial geometry."""
 
-        files, input_dict, structure_with_tags = get_dft_inputs(
+        files, input_dict, structure_with_tags = cp2k_utils.get_dft_inputs(
             self.inputs.dft_params.get_dict(),
             self.ctx.lowest_energy_structure,
             "scf_ot_protocol.yml",
@@ -189,7 +184,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         ase_structure = self.ctx.lowest_energy_structure.get_ase()
         colvars = self.inputs.sys_params["colvars"]
         self.ctx.colvars_values = [
-            cv[1] for cv in compute_colvars(colvars, ase_structure)
+            cv[1] for cv in cp2k_utils.compute_colvars(colvars, ase_structure)
         ]
         self.report(f"actual CVs values: {self.ctx.colvars_values}")
         if self.ctx.propagation_step == 0:
@@ -227,7 +222,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             if self.ctx.colvars_increments[index] != 0:
                 structure = self.ctx.lowest_energy_structure
 
-                files, input_dict, structure_with_tags = get_dft_inputs(
+                files, input_dict, structure_with_tags = cp2k_utils.get_dft_inputs(
                     self.inputs.dft_params, structure, "geo_opt_protocol.yml"
                 )
 
@@ -248,12 +243,16 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                     builder.cp2k.parent_calc_folder = self.ctx.restart_folder
 
                 if "constraints" in self.inputs.sys_params:
-                    input_dict["MOTION"]["CONSTRAINT"] = get_constraints_section(
+                    input_dict["MOTION"][
+                        "CONSTRAINT"
+                    ] = cp2k_utils.get_constraints_section(
                         self.inputs.sys_params["constraints"]
                     )
                 if "colvars" in self.inputs.sys_params:
                     input_dict["FORCE_EVAL"]["SUBSYS"].update(
-                        get_colvars_section(self.inputs.sys_params["colvars"])
+                        cp2k_utils.get_colvars_section(
+                            self.inputs.sys_params["colvars"]
+                        )
                     )
                 # Update constraints.
                 submitted_cvs = ""

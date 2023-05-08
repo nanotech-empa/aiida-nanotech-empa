@@ -6,7 +6,7 @@ import yaml
 from aiida import engine, orm
 from aiida_cp2k.calculations import Cp2kCalculation
 
-from .cp2k_utils import determine_kinds, dict_merge, get_cutoff, get_kinds_section
+from . import cp2k_utils
 
 ALLOWED_PROTOCOLS = ["gapw_std", "gapw_hq", "gpw_std"]
 
@@ -128,7 +128,7 @@ class Cp2kMoleculeGwWorkChain(engine.WorkChain):
             self.ctx.protocols = yaml.safe_load(handle)
 
         structure = self.inputs.structure
-        self.ctx.cutoff = get_cutoff(structure=structure)
+        self.ctx.cutoff = cp2k_utils.get_cutoff(structure=structure)
         magnetization_per_site = copy.deepcopy(self.inputs.magnetization_per_site)
         ghost_per_site = None
 
@@ -144,12 +144,12 @@ class Cp2kMoleculeGwWorkChain(engine.WorkChain):
                 magnetization_per_site += [0 for i in range(len(image))]
             structure = orm.StructureData(ase=atoms + image)
 
-        structure_with_tags, kinds_dict = determine_kinds(
+        structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(
             structure, magnetization_per_site, ghost_per_site
         )
 
         # KINDS section.
-        self.ctx.kinds_section = get_kinds_section(
+        self.ctx.kinds_section = cp2k_utils.get_kinds_section(
             kinds_dict, protocol=self.inputs.protocol
         )
 
@@ -255,7 +255,7 @@ class Cp2kMoleculeGwWorkChain(engine.WorkChain):
 
         self._check_and_set_uks(input_dict)
 
-        dict_merge(input_dict, self.ctx.kinds_section)
+        cp2k_utils.dict_merge(input_dict, self.ctx.kinds_section)
 
         input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = self.ctx.cutoff
 
@@ -310,7 +310,7 @@ class Cp2kMoleculeGwWorkChain(engine.WorkChain):
 
         self._check_and_set_uks(input_dict)
 
-        dict_merge(input_dict, self.ctx.kinds_section)
+        cp2k_utils.dict_merge(input_dict, self.ctx.kinds_section)
 
         input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = self.ctx.cutoff
 

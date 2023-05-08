@@ -1,8 +1,8 @@
 import numpy as np
 from aiida import engine, orm
 
+from .geo_opt_workchain import Cp2kGeoOptWorkChain
 from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
-from .molecule_opt_workchain import Cp2kMoleculeOptWorkChain
 
 
 @engine.calcfunction
@@ -136,7 +136,7 @@ class Cp2kMoleculeOptGwWorkChain(engine.WorkChain):
         return self.inputs.geo_opt.value
 
     def gas_opt(self):
-        builder = Cp2kMoleculeOptWorkChain.get_builder()
+        builder = Cp2kGeoOptWorkChain.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.mol_struct
         builder.multiplicity = self.inputs.multiplicity
@@ -147,7 +147,7 @@ class Cp2kMoleculeOptGwWorkChain(engine.WorkChain):
             builder.protocol = orm.Str("debug")
         builder.options = self.inputs.options.geo_opt
         builder.metadata.description = "Submitted by Cp2kMoleculeOptGwWorkChain."
-        builder.metadata.label = "Cp2kMoleculeOptWorkChain"
+        builder.metadata.label = "Cp2kGeoOptWorkChain"
         return engine.ToContext(gas_opt=self.submit(builder))
 
     def check_gas_opt(self):

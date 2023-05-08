@@ -5,8 +5,8 @@ import numpy as np
 import yaml
 from aiida import engine, orm, plugins
 
-from ..utils import common_utils
-from .cp2k_utils import determine_kinds, dict_merge, get_cutoff, get_kinds_section
+from ...utils import common_utils
+from . import cp2k_utils
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
@@ -88,7 +88,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             self.ctx.dft_params["spin_dw_guess"] = []
 
         # Get cutoff.
-        self.ctx.cutoff = get_cutoff(structure=structure)
+        self.ctx.cutoff = cp2k_utils.get_cutoff(structure=structure)
 
         # Overwrite cutoff if given in dft_params.
         if "cutoff" in self.ctx.dft_params:
@@ -101,7 +101,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             1 if i in spin_up_guess else -1 if i in spin_dw_guess else 0
             for i in range(self.ctx.n_atoms)
         ]
-        structure_with_tags, kinds_dict = determine_kinds(
+        structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(
             structure, magnetization_per_site
         )
 
@@ -118,7 +118,9 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             ase_atoms.center()
 
         self.ctx.structure_with_tags = ase_atoms
-        self.ctx.kinds_section = get_kinds_section(kinds_dict, protocol="gpw")
+        self.ctx.kinds_section = cp2k_utils.get_kinds_section(
+            kinds_dict, protocol="gpw"
+        )
 
     def run_ot_scf(self):
         self.report("Running CP2K OT SCF")
@@ -160,7 +162,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = self.ctx.cutoff
 
         # KINDS section
-        dict_merge(input_dict, self.ctx.kinds_section)
+        cp2k_utils.dict_merge(input_dict, self.ctx.kinds_section)
 
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = 86000

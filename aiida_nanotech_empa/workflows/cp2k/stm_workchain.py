@@ -1,7 +1,7 @@
 import numpy as np
 from aiida import engine, orm, plugins
 
-from ..utils import common_utils
+from ...utils import common_utils
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 StmCalculation = plugins.CalculationFactory("nanotech_empa.stm")

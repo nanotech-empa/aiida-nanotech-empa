@@ -68,43 +68,6 @@ def get_kinds_section(kinds_dict, protocol="gapw_std"):
     return {"FORCE_EVAL": {"SUBSYS": {"KIND": kinds}}}
 
 
-# def tags_and_magnetization(structure, magnetization_per_site):
-#    """Gather the same atoms with the same magnetization into one atomic kind."""
-#    ase_structure = structure.get_ase()
-#    if magnetization_per_site:
-#        if len(magnetization_per_site) != len(ase_structure.numbers):
-#            raise ValueError(
-#                "The size of `magnetization_per_site` is different from the number of atoms."
-#            )
-#
-#        # Combine atom type with magnetizations.
-#        complex_symbols = [
-#            f"{symbol}_{magn}"
-#            for symbol, magn in zip(
-#                ase_structure.get_chemical_symbols(), magnetization_per_site
-#            )
-#        ]
-#        # Assign a unique tag for every atom kind. do not use set in enumerate to avoid random order...!
-#        combined = {
-#            symbol: tag + 1
-#            for tag, symbol in enumerate(list(dict.fromkeys(complex_symbols).keys()))
-#        }
-#        # Assigning correct tags to every atom.
-#        tags = [combined[key] for key in complex_symbols]
-#        ase_structure.set_tags(tags)
-#        # Tag-magnetization correspondance.
-#        tags_correspondance = {
-#            str(value): float(key.split("_")[1]) for key, value in combined.items()
-#        }
-#        return StructureData(ase=ase_structure), Dict(tags_correspondance)
-#
-#    # we force tags to be 0 if magnetization vector is not provided, this ensures we do not get a structure with unnecessary labels
-#
-#    tags = [0 for i in range(len(ase_structure))]
-#    ase_structure.set_tags(tags)
-#    return StructureData(ase=ase_structure), None
-
-
 def determine_kinds(structure, magnetization_per_site=None, ghost_per_site=None):
     """Gather the same atoms with the same magnetization into one atomic kind."""
     ase_structure = structure.get_ase()
@@ -168,58 +131,6 @@ def determine_kinds(structure, magnetization_per_site=None, ghost_per_site=None)
             kind_name = element
         info_dict = {"mag": mag, "ghost": ghost}
         kinds_dict[kind_name] = info_dict
-
-    #    if magnetization_per_site is None or len(magnetization_per_site) == 0:
-    #        magnetization_per_site = [0 for i in range(len(ase_structure))]
-    #    if ghost_per_site is None:
-    #        ghost_per_site = [0 for i in range(len(ase_structure))]
-    #
-    #    if len(magnetization_per_site) != len(ase_structure.numbers):
-    #        raise ValueError(
-    #            "The size of `magnetization_per_site` is different from the number of atoms."
-    #        )
-    #    if len(ghost_per_site) != len(ase_structure.numbers):
-    #        raise ValueError(
-    #            "The size of `ghost_per_site` is different from the number of atoms."
-    #        )
-    #
-    #    # Combine atom type with magnetizations and ghost_type
-    #    complex_symbols = [
-    #        f"{symbol}_{magn}_{ghost}"
-    #        for symbol, magn, ghost in zip(
-    #            ase_structure.get_chemical_symbols(), magnetization_per_site, ghost_per_site
-    #        )
-    #    ]
-    #
-    #    # Assign a unique tag for every atom kind. Use OrderedDict for order
-    #    unique_complex_symbols = list(
-    #        collections.OrderedDict().fromkeys(complex_symbols).keys()
-    #    )
-    #    combined = collections.OrderedDict()
-    #
-    #    element_tag_counter = {}
-    #    for c_symbol in unique_complex_symbols:
-    #        element = c_symbol.split("_")[0]
-    #        if element not in element_tag_counter:
-    #            element_tag_counter[element] = 1
-    #        else:
-    #            element_tag_counter[element] += 1
-    #        combined[c_symbol] = element_tag_counter[element]
-    #
-    #    # Assigning correct tags to every atom.
-    #    tags = [combined[key] for key in complex_symbols]
-    #    ase_structure.set_tags(tags)
-    #
-    #    kinds_dict = collections.OrderedDict()
-    #
-    #    for c_symbol, tag in combined.items():
-    #        element = c_symbol.split("_")[0]
-    #        mag = float(c_symbol.split("_")[1])
-    #        ghost = int(c_symbol.split("_")[2])
-    #
-    #        kind_name = element + str(tag)
-    #        info_dict = {"mag": mag, "ghost": ghost}
-    #        kinds_dict[kind_name] = info_dict
 
     return orm.StructureData(ase=ase_structure), kinds_dict
 

@@ -3,8 +3,8 @@ import copy
 import numpy as np
 from aiida import engine, orm, plugins
 
-from ..utils import common_utils
-from .cp2k_utils import get_cutoff
+from ...utils import common_utils
+from . import cp2k_utils
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 OverlapCalculation = plugins.CalculationFactory("nanotech_empa.overlap")
@@ -65,7 +65,9 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         self.ctx.mol_dft_params["added_mos"] = nlumo + 2
 
         # Force same cutoff for molecule and slab.
-        self.ctx.mol_dft_params["cutoff"] = get_cutoff(self.inputs.slabsys_structure)
+        self.ctx.mol_dft_params["cutoff"] = cp2k_utils.get_cutoff(
+            self.inputs.slabsys_structure
+        )
         self.ctx.mol_dft_params[
             "elpa_switch"
         ] = False  # Elpa can cause problems with small systems

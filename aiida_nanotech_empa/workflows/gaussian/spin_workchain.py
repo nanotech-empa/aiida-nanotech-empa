@@ -1,7 +1,7 @@
 import numpy as np
 from aiida import engine, orm, plugins
 
-from ..utils import common_utils
+from ...utils import common_utils
 from .delta_scf_workchain import GaussianDeltaScfWorkChain
 from .natorb_workchain import GaussianNatOrbWorkChain
 from .relax_workchain import GaussianRelaxWorkChain

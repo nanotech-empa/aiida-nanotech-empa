@@ -3,8 +3,8 @@ import os
 import numpy as np
 from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import common_utils
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import make_geom_file
+from ...utils import common_utils
+from . import cp2k_utils
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 AfmCalculation = plugins.CalculationFactory("nanotech_empa.afm")
@@ -58,7 +58,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
             added_mos = np.max([100, int(1.2 * n_atoms * 2 / 5.0)])
             self.ctx.dft_params["added_mos"] = added_mos
         self.ctx.files = {
-            "geo_no_labels": make_geom_file(ase_geom, "geom.xyz"),
+            "geo_no_labels": cp2k_utils.make_geom_file(ase_geom, "geom.xyz"),
             "pp": orm.SinglefileData(
                 file=os.path.join(
                     os.path.dirname(os.path.realpath(__file__)),

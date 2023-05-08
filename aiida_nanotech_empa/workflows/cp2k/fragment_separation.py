@@ -4,9 +4,7 @@ import numpy as np
 import yaml
 from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import common_utils
-
-from ..utils import analyze_structure
+from ...utils import analyze_structure, common_utils
 from . import cp2k_utils
 
 StructureData = plugins.DataFactory("core.structure")

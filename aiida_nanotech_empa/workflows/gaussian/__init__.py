@@ -8,7 +8,7 @@ from .relax_workchain import GaussianRelaxWorkChain
 from .scf_workchain import GaussianScfWorkChain
 from .spin_workchain import GaussianSpinWorkChain
 
-__all__ = [
+__all__ = (
     "GaussianScfWorkChain",
     "GaussianRelaxWorkChain",
     "GaussianDeltaScfWorkChain",
@@ -18,4 +18,4 @@ __all__ = [
     "GaussianConstrOptChainWorkChain",
     "GaussianCasscfWorkChain",
     "GaussianCasscfSeriesWorkChain",
-]
+)
