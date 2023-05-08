@@ -73,8 +73,7 @@ class GaussianSpinWorkChain(engine.WorkChain):
         )
 
     def submit_opts(self):
-        # Multiplicity 0 means RKS calculation
-
+        # Multiplicity 0 means RKS calculation.
         for mult in self.inputs.multiplicity_list:
             label = f"m{mult}_opt"
 
