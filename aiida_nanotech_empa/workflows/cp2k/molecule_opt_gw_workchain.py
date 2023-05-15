@@ -1,12 +1,11 @@
 import numpy as np
-from aiida.engine import ExitCode, ToContext, WorkChain, calcfunction, if_
-from aiida.orm import Bool, Code, Int, List, Str, StructureData
+from aiida import engine, orm
 
+from .geo_opt_workchain import Cp2kGeoOptWorkChain
 from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
-from .molecule_opt_workchain import Cp2kMoleculeOptWorkChain
 
 
-@calcfunction
+@engine.calcfunction
 def analyze_structure(structure, mag_per_site):
     mol_atoms = structure.get_ase()
 
@@ -23,14 +22,13 @@ def analyze_structure(structure, mag_per_site):
         ]
 
     return {
-        "mol_struct": StructureData(ase=mol_atoms),
-        "mol_mag_per_site": List(mps),
+        "mol_struct": orm.StructureData(ase=mol_atoms),
+        "mol_mag_per_site": orm.List(mps),
     }
 
 
-class Cp2kMoleculeOptGwWorkChain(WorkChain):
-    """
-    WorkChain to  optimize molecule and run GW
+class Cp2kMoleculeOptGwWorkChain(engine.WorkChain):
+    """WorkChain to  optimize molecule and run GW:
 
     Two different ways to run:
     1) optimize geo and run gw
@@ -40,23 +38,28 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.input("code", valid_type=Code)
+        spec.input("code", valid_type=orm.Code)
 
-        spec.input("structure", valid_type=StructureData, help="An isolated molecule.")
+        spec.input(
+            "structure", valid_type=orm.StructureData, help="An isolated molecule."
+        )
         spec.input(
             "protocol",
-            valid_type=Str,
-            default=lambda: Str("gpw_std"),
+            valid_type=orm.Str,
+            default=lambda: orm.Str("gpw_std"),
             required=False,
             help="Protocol supported by the GW workchain.",
         )
         spec.input(
-            "multiplicity", valid_type=Int, default=lambda: Int(0), required=False
+            "multiplicity",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(0),
+            required=False,
         )
         spec.input(
             "magnetization_per_site",
-            valid_type=List,
-            default=lambda: List(list=[]),
+            valid_type=orm.List,
+            default=lambda: orm.List(list=[]),
             required=False,
         )
         spec.input_namespace(
@@ -84,22 +87,22 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         )
         spec.input(
             "debug",
-            valid_type=Bool,
-            default=lambda: Bool(False),
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
             required=False,
             help="Run with fast parameters for debugging.",
         )
         spec.input(
             "geo_opt",
-            valid_type=Bool,
-            default=lambda: Bool(True),
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
             required=False,
             help="Perform geo opt step.",
         )
 
         spec.outline(
             cls.setup,
-            if_(cls.gas_opt_selected)(cls.gas_opt, cls.check_gas_opt),
+            engine.if_(cls.gas_opt_selected)(cls.gas_opt, cls.check_gas_opt),
             cls.gw,
             cls.finalize,
         )
@@ -127,34 +130,33 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         self.ctx.mol_struct = an_out["mol_struct"]
         self.ctx.mol_mag_per_site = an_out["mol_mag_per_site"]
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def gas_opt_selected(self):
         return self.inputs.geo_opt.value
 
     def gas_opt(self):
-        builder = Cp2kMoleculeOptWorkChain.get_builder()
+        builder = Cp2kGeoOptWorkChain.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.mol_struct
         builder.multiplicity = self.inputs.multiplicity
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
-        builder.vdw = Bool(True)
-        builder.protocol = Str("standard")
+        builder.vdw = orm.Bool(True)
+        builder.protocol = orm.Str("standard")
         if self.inputs.debug.value:
-            builder.protocol = Str("debug")
+            builder.protocol = orm.Str("debug")
         builder.options = self.inputs.options.geo_opt
         builder.metadata.description = "Submitted by Cp2kMoleculeOptGwWorkChain."
-        builder.metadata.label = "Cp2kMoleculeOptWorkChain"
-        submitted_node = self.submit(builder)
-        return ToContext(gas_opt=submitted_node)
+        builder.metadata.label = "Cp2kGeoOptWorkChain"
+        return engine.ToContext(gas_opt=self.submit(builder))
 
     def check_gas_opt(self):
         if not self.ctx.gas_opt.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
-        # set the optimized geometry as ctx geometry
 
+        # Set the optimized geometry as ctx geometry.
         self.ctx.mol_struct = self.ctx.gas_opt.outputs.output_structure
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def gw(self):
         self.report("Submitting GW.")
@@ -170,7 +172,7 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         builder.options.gw = self.inputs.options.gw
         builder.metadata.description = "gw"
         submitted_node = self.submit(builder)
-        return ToContext(gw=submitted_node)
+        return engine.ToContext(gw=submitted_node)
 
     def finalize(self):
         self.report("Finalizing...")
@@ -182,8 +184,8 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         self.out("gw_output_parameters", gw_out_params)
 
         self.out("output_structure", self.ctx.mol_struct)
-        # Add the workchain pk to the input/geo_opt structure extras
 
+        # Add the workchain pk to the input/geo_opt structure extras.
         struc_to_label = self.ctx.mol_struct
         extras_label = "Cp2kMoleculeOptGwWorkChain_pks"
         if extras_label not in struc_to_label.base.extras.all:
@@ -193,4 +195,4 @@ class Cp2kMoleculeOptGwWorkChain(WorkChain):
         extras_list.append(self.node.pk)
         struc_to_label.base.extras.set(extras_label, extras_list)
 
-        return ExitCode(0)
+        return engine.ExitCode(0)

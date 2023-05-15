@@ -1,5 +1,5 @@
+import copy
 import itertools
-from copy import deepcopy
 
 import more_itertools as mit
 import numpy as np
@@ -228,7 +228,7 @@ class StructureAnalyzer(HasTraits):
         if len(possible_mol_atoms) > 0:
             # conne = conne_matrix(frame[possible_mol_atoms])
             fragments = molecules(possible_mol_atoms, frame)
-            all_molecules = deepcopy(fragments)
+            all_molecules = copy.deepcopy(fragments)
             # remove isolated atoms
             for frag in fragments:
                 if len(frag) == 1:

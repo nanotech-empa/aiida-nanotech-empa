@@ -1,0 +1,87 @@
+standard:
+    SCF_GUESS: RESTART
+    EPS_SCF: "1.0E-6"
+    MAX_SCF: "500"
+    CHOLESKY: INVERSE
+    SMEAR:
+        _: "ON"
+        FIXED_MAGNETIC_MOMENT: "-100"
+        METHOD: FERMI_DIRAC
+        ELECTRONIC_TEMPERATURE: "100"
+    MIXING:
+        METHOD: "BROYDEN_MIXING"
+        ALPHA: "0.1"
+        BETA: "1.5"
+        NBUFFER: "8"
+    DIAGONALIZATION:
+        ALGORITHM: STANDARD
+    OUTER_SCF:
+        MAX_SCF: "10"
+        EPS_SCF: "1.0E-6"
+    PRINT:
+        RESTART:
+            ADD_LAST: NUMERIC
+            EACH:
+                GEO_OPT: "0"
+                QS_SCF: "0"
+            FILENAME: RESTART
+        RESTART_HISTORY:
+            _: "OFF"
+low_accuracy:
+    SCF_GUESS: RESTART
+    EPS_SCF: "1.0E-5"
+    MAX_SCF: "500"
+    CHOLESKY: INVERSE
+    SMEAR:
+        _: "ON"
+        FIXED_MAGNETIC_MOMENT: "-100"
+        METHOD: FERMI_DIRAC
+        ELECTRONIC_TEMPERATURE: "100"
+    MIXING:
+        METHOD: "BROYDEN_MIXING"
+        ALPHA: "0.1"
+        BETA: "1.5"
+        NBUFFER: "8"
+    DIAGONALIZATION:
+        ALGORITHM: STANDARD
+    OUTER_SCF:
+        MAX_SCF: "10"
+        EPS_SCF: "1.0E-5"
+    PRINT:
+        RESTART:
+            ADD_LAST: NUMERIC
+            EACH:
+                GEO_OPT: "0"
+                QS_SCF: "0"
+            FILENAME: RESTART
+        RESTART_HISTORY:
+            _: "OFF"
+debug:
+    SCF_GUESS: RESTART
+    EPS_SCF: "1.0E-1"
+    MAX_SCF: "500"
+    CHOLESKY: INVERSE
+    SMEAR:
+        _: "ON"
+        FIXED_MAGNETIC_MOMENT: "-100"
+        METHOD: FERMI_DIRAC
+        ELECTRONIC_TEMPERATURE: "100"
+    MIXING:
+        METHOD: "BROYDEN_MIXING"
+        ALPHA: "0.1"
+        BETA: "1.5"
+        NBUFFER: "8"
+    DIAGONALIZATION:
+        ALGORITHM: STANDARD
+    OUTER_SCF:
+        MAX_SCF: "10"
+        EPS_SCF: "1.0E-1"
+    PRINT:
+        RESTART:
+            ADD_LAST: NUMERIC
+            EACH:
+                GEO_OPT: "0"
+                QS_SCF: "0"
+            FILENAME: RESTART
+        RESTART_HISTORY:
+            _: "OFF"

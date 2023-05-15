@@ -1,81 +1,89 @@
-from aiida.engine import ExitCode, ToContext, WorkChain, while_
-from aiida.orm import Bool, Code, Dict, Int, List, Str, StructureData
+from aiida import engine, orm
 
-from aiida_nanotech_empa.utils import common_utils
-
+from ...utils import common_utils
 from .relax_workchain import GaussianRelaxWorkChain
 from .scf_workchain import GaussianScfWorkChain
 
 
-class GaussianConstrOptChainWorkChain(WorkChain):
+class GaussianConstrOptChainWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
-        spec.input("gaussian_code", valid_type=Code)
+        spec.input("gaussian_code", valid_type=orm.Code)
 
         spec.input(
-            "structure", valid_type=StructureData, required=True, help="input geometry"
+            "structure",
+            valid_type=orm.StructureData,
+            required=True,
+            help="input geometry",
         )
 
-        spec.input("functional", valid_type=Str, required=True, help="xc functional")
+        spec.input(
+            "functional", valid_type=orm.Str, required=True, help="xc functional"
+        )
 
-        spec.input("basis_set", valid_type=Str, required=True, help="basis_set")
+        spec.input("basis_set", valid_type=orm.Str, required=True, help="basis_set")
 
         spec.input(
-            "basis_set_scf", valid_type=Str, required=False, help="basis_set for SCF"
+            "basis_set_scf",
+            valid_type=orm.Str,
+            required=False,
+            help="basis_set for SCF",
         )
 
         spec.input(
             "multiplicity",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(0),
+            default=lambda: orm.Int(0),
             help="spin multiplicity; 0 means RKS",
         )
 
         spec.input(
             "extra_scf_mults",
-            valid_type=List,
+            valid_type=orm.List,
             required=False,
-            default=lambda: List(list=[]),
+            default=lambda: orm.List(list=[]),
             help="Extra multiplicites for the SCF",
         )
 
         spec.input(
             "tight",
-            valid_type=Bool,
+            valid_type=orm.Bool,
             required=False,
-            default=lambda: Bool(False),
+            default=lambda: orm.Bool(False),
             help="Use tight optimization criteria.",
         )
 
         spec.input(
             "empirical_dispersion",
-            valid_type=Str,
+            valid_type=orm.Str,
             required=False,
-            default=lambda: Str(""),
+            default=lambda: orm.Str(""),
             help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
         )
 
         spec.input(
             "list_of_constraints",
-            valid_type=List,
+            valid_type=orm.List,
             required=False,
-            default=lambda: List(list=[]),
+            default=lambda: orm.List(list=[]),
             help='Supported constraints: ("distance", n1, n2, d)',
         )
 
         spec.input(
             "options",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=False,
             help="Use custom metadata.options instead of the automatic ones.",
         )
 
         spec.outline(
             cls.setup,
-            while_(cls.any_constraint_left)(cls.submit_opt, cls.submit_extra_mults),
+            engine.while_(cls.any_constraint_left)(
+                cls.submit_opt, cls.submit_extra_mults
+            ),
             cls.finalize,
         )
 
@@ -128,20 +136,20 @@ class GaussianConstrOptChainWorkChain(WorkChain):
             builder.basis_set_scf = self.inputs.basis_set_scf
 
         builder.multiplicity = self.inputs.multiplicity
-        builder.wfn_stable_opt = Bool(self.is_uks())
+        builder.wfn_stable_opt = orm.Bool(self.is_uks())
 
         builder.empirical_dispersion = self.inputs.empirical_dispersion
 
         builder.tight = self.inputs.tight
 
-        builder.constraints = List(cur_constr)
+        builder.constraints = orm.List(cur_constr)
 
         if "options" in self.inputs:
             builder.options = self.inputs.options
 
         submitted_node = self.submit(builder)
         submitted_node.description = label
-        return ToContext(**{label: submitted_node})
+        return engine.ToContext(**{label: submitted_node})
 
     def submit_extra_mults(self):
         opt_label = f"opt_{self.ctx.i_constr-1}"
@@ -159,8 +167,8 @@ class GaussianConstrOptChainWorkChain(WorkChain):
             builder.functional = self.inputs.functional
             builder.empirical_dispersion = self.inputs.empirical_dispersion
             builder.basis_set = self.inputs.basis_set_scf
-            builder.multiplicity = Int(extra_mult)
-            builder.wfn_stable_opt = Bool(True)
+            builder.multiplicity = orm.Int(extra_mult)
+            builder.wfn_stable_opt = orm.Bool(True)
 
             if "options" in self.inputs:
                 builder.options = self.inputs.options
@@ -169,7 +177,7 @@ class GaussianConstrOptChainWorkChain(WorkChain):
             submitted_node.description = label
             self.to_context(**{label: submitted_node})
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def finalize(self):
         self.report("Finalizing...")
@@ -198,4 +206,4 @@ class GaussianConstrOptChainWorkChain(WorkChain):
                     self.ctx[extra_label].outputs.output_parameters,
                 )
 
-        return ExitCode(0)
+        return engine.ExitCode(0)

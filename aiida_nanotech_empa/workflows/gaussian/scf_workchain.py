@@ -1,99 +1,91 @@
-from aiida.engine import ExitCode, ToContext, WorkChain, if_
-from aiida.orm import Bool, Code, Dict, Float, Int, List, RemoteData, Str, StructureData
-from aiida.plugins import WorkflowFactory
+from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import common_utils
-from aiida_nanotech_empa.workflows.gaussian import common
+from ...utils import common_utils
+from . import common
 
-GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
-GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
-
-# -------------------------------------------------------------
-# Work Chain to run SCF and possibly CUBES
-# -------------------------------------------------------------
+GaussianBaseWorkChain = plugins.WorkflowFactory("gaussian.base")
+GaussianCubesWorkChain = plugins.WorkflowFactory("gaussian.cubes")
 
 
-class GaussianScfWorkChain(WorkChain):
+class GaussianScfWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
-        spec.input("gaussian_code", valid_type=Code)
-
+        spec.input("gaussian_code", valid_type=orm.Code)
         spec.input(
-            "structure", valid_type=StructureData, required=True, help="input geometry"
+            "structure",
+            valid_type=orm.StructureData,
+            required=True,
+            help="input geometry",
         )
-
-        spec.input("functional", valid_type=Str, required=True, help="xc functional")
-
-        spec.input("basis_set", valid_type=Str, required=True, help="basis_set")
-
+        spec.input(
+            "functional", valid_type=orm.Str, required=True, help="xc functional"
+        )
+        spec.input("basis_set", valid_type=orm.Str, required=True, help="basis_set")
         spec.input(
             "multiplicity",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(1),
-            help="spin multiplicity; 0 means RKS",
+            default=lambda: orm.Int(1),
+            help="Spin multiplicity; 0 means RKS",
         )
-
         spec.input(
             "wfn_stable_opt",
-            valid_type=Bool,
+            valid_type=orm.Bool,
             required=False,
-            default=lambda: Bool(False),
-            help="if true, perform wfn stability optimization",
+            default=lambda: orm.Bool(False),
+            help="If true, perform wfn stability optimization.",
         )
 
         spec.input(
             "wfn_stable_opt_min_basis",
-            valid_type=Bool,
+            valid_type=orm.Bool,
             required=False,
-            default=lambda: Bool(False),
-            help="if true, perform first a minimal basis stability opt",
+            default=lambda: orm.Bool(False),
+            help="If true, perform first a minimal basis stability opt.",
         )
 
         spec.input(
             "empirical_dispersion",
-            valid_type=Str,
+            valid_type=orm.Str,
             required=False,
-            default=lambda: Str(""),
+            default=lambda: orm.Str(""),
             help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
         )
 
         spec.input(
             "parent_calc_folder",
-            valid_type=RemoteData,
+            valid_type=orm.RemoteData,
             required=False,
             help="the folder of a completed gaussian calculation",
         )
 
-        # -------------------------------------------------------------------
-        # CUBE GENERATION INPUTS
-
-        spec.input("formchk_code", valid_type=Code, required=False)
-        spec.input("cubegen_code", valid_type=Code, required=False)
+        # Inputs for cubes generation.
+        spec.input("formchk_code", valid_type=orm.Code, required=False)
+        spec.input("cubegen_code", valid_type=orm.Code, required=False)
 
         spec.input(
             "cubes_n_occ",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(0),
+            default=lambda: orm.Int(0),
             help="Number of occupied orbital cubes to generate",
         )
 
         spec.input(
             "cubes_n_virt",
-            valid_type=Int,
+            valid_type=orm.Int,
             required=False,
-            default=lambda: Int(0),
+            default=lambda: orm.Int(0),
             help="Number of virtual orbital cubes to generate",
         )
 
         spec.input(
             "cubes_edge_space",
-            valid_type=Float,
+            valid_type=orm.Float,
             required=False,
-            default=lambda: Float(3.0),
+            default=lambda: orm.Float(3.0),
             help="Extra cube space in addition to bounding box [ang].",
         )
 
@@ -106,26 +98,25 @@ class GaussianScfWorkChain(WorkChain):
 
         spec.input(
             "cubegen_parser_params",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=False,
-            default=lambda: Dict(dict={}),
+            default=lambda: orm.Dict(dict={}),
             help="Additional parameters to cubegen parser.",
         )
-        # -------------------------------------------------------------------
 
         spec.input(
             "options",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=False,
             help="Use custom metadata.options instead of the automatic ones.",
         )
 
         spec.outline(
             cls.setup,
-            if_(cls.should_do_min_basis_stable_opt)(cls.min_basis_stable_opt),
+            engine.if_(cls.should_do_min_basis_stable_opt)(cls.min_basis_stable_opt),
             cls.scf,
-            if_(cls.did_scf_fail)(cls.scf),
-            if_(cls.should_do_cubes)(cls.cubes),
+            engine.if_(cls.did_scf_fail)(cls.scf),
+            engine.if_(cls.should_do_cubes)(cls.cubes),
             cls.finalize,
         )
 
@@ -175,11 +166,11 @@ class GaussianScfWorkChain(WorkChain):
         }
 
         # Use default convergence criterion at the start
-        # but switch to conver=7 in case of failure
+        # but switch to conver=7 in case of failure.
         self.ctx.conver = None
         self.ctx.scf_label = "scf"
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def should_do_min_basis_stable_opt(self):
         return self.inputs.wfn_stable_opt_min_basis
@@ -187,7 +178,7 @@ class GaussianScfWorkChain(WorkChain):
     def min_basis_stable_opt(self):
         self.report("Submitting minimal basis stable opt")
 
-        parameters = Dict(
+        parameters = orm.Dict(
             {
                 "link0_parameters": self.ctx.link0.copy(),
                 "dieze_tag": "#P",
@@ -219,12 +210,12 @@ class GaussianScfWorkChain(WorkChain):
         builder.gaussian.metadata.options = self.ctx.metadata_options
 
         future = self.submit(builder)
-        return ToContext(min_stable=future)
+        return engine.ToContext(min_stable=future)
 
     def scf(self):
         self.report("Submitting SCF")
 
-        parameters = Dict(
+        parameters = orm.Dict(
             {
                 "link0_parameters": self.ctx.link0.copy(),
                 "dieze_tag": "#P",
@@ -275,12 +266,12 @@ class GaussianScfWorkChain(WorkChain):
 
         future = self.submit(builder)
         future.description = self.ctx.scf_label
-        return ToContext(**{self.ctx.scf_label: future})
+        return engine.ToContext(**{self.ctx.scf_label: future})
 
     def did_scf_fail(self):
         scf_node = self.ctx[self.ctx.scf_label]
         if not common_utils.check_if_calc_ok(self, scf_node):
-            # set up for conver=7 calculation
+            # Set up for conver=7 calculation.
             self.report("SCF failed with default convergence criterion!")
             self.report("Switching to a looser threshold.")
             self.ctx.conver = 7
@@ -315,15 +306,15 @@ class GaussianScfWorkChain(WorkChain):
             cubegen_code=self.inputs.cubegen_code,
             gaussian_calc_folder=scf_node.outputs.remote_folder,
             gaussian_output_params=scf_node.outputs["output_parameters"],
-            orbital_indexes=List(list=orb_index_list),
-            orbital_index_ref=Str("half_num_el"),
+            orbital_indexes=orm.List(list=orb_index_list),
+            orbital_index_ref=orm.Str("half_num_el"),
             edge_space=self.inputs.cubes_edge_space,
-            dx=Float(0.15),
-            retrieve_cubes=Bool(False),
+            dx=orm.Float(0.15),
+            retrieve_cubes=orm.Bool(False),
             cubegen_parser_name=self.inputs.cubegen_parser_name,
             cubegen_parser_params=self.inputs.cubegen_parser_params,
         )
-        return ToContext(cubes=future)
+        return engine.ToContext(cubes=future)
 
     def finalize(self):
         scf_node = self.ctx[self.ctx.scf_label]
@@ -347,4 +338,4 @@ class GaussianScfWorkChain(WorkChain):
 
         self.out("remote_folder", scf_node.outputs["remote_folder"])
 
-        return ExitCode(0)
+        return engine.ExitCode(0)

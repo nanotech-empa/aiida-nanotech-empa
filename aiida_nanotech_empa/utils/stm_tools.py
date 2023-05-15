@@ -2,9 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from . import igor
-
-ang_2_bohr = 1.0 / 0.52917721067
-hart_2_ev = 27.21138602
+from .helpers import ANG_TO_BOHR, HART_2_EV
 
 
 def process_cube_planes_array(cpa):
@@ -62,11 +60,11 @@ def extrapolate_morb(orb_plane, dx, dy, energy_wrt_vacuum, delta_h):
     """
 
     # Convert everything to a.u.
-    dx = dx * ang_2_bohr
-    dy = dy * ang_2_bohr
-    delta_h = delta_h * ang_2_bohr
+    dx = dx * ANG_TO_BOHR
+    dy = dy * ANG_TO_BOHR
+    delta_h = delta_h * ANG_TO_BOHR
 
-    energy_wrt_vacuum = energy_wrt_vacuum / hart_2_ev
+    energy_wrt_vacuum = energy_wrt_vacuum / HART_2_EV
 
     if energy_wrt_vacuum >= 0.0:
         print("Warning: unbound state, can't extrapolate! Constant extrapolation.")

@@ -1,57 +1,56 @@
 import numpy as np
-from aiida.engine import ExitCode, WorkChain, if_
-from aiida.orm import Code, Dict, Float, Int, List, Str, StructureData
-from aiida.plugins import WorkflowFactory
+from aiida import engine, orm, plugins
 
-from aiida_nanotech_empa.utils import common_utils
-
+from ...utils import common_utils
 from .delta_scf_workchain import GaussianDeltaScfWorkChain
 from .natorb_workchain import GaussianNatOrbWorkChain
 from .relax_workchain import GaussianRelaxWorkChain
 from .scf_workchain import GaussianScfWorkChain
 
-GaussianBaseWorkChain = WorkflowFactory("gaussian.base")
-GaussianCubesWorkChain = WorkflowFactory("gaussian.cubes")
+GaussianBaseWorkChain = plugins.WorkflowFactory("gaussian.base")
+GaussianCubesWorkChain = plugins.WorkflowFactory("gaussian.cubes")
 
 
-class GaussianSpinWorkChain(WorkChain):
+class GaussianSpinWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
-        spec.input("gaussian_code", valid_type=Code)
-        spec.input("formchk_code", valid_type=Code)
-        spec.input("cubegen_code", valid_type=Code)
+        spec.input("gaussian_code", valid_type=orm.Code)
+        spec.input("formchk_code", valid_type=orm.Code)
+        spec.input("cubegen_code", valid_type=orm.Code)
 
         spec.input(
-            "structure", valid_type=StructureData, required=True, help="input geometry"
+            "structure",
+            valid_type=orm.StructureData,
+            required=True,
+            help="input geometry",
         )
-        spec.input("functional", valid_type=Str, required=True, help="xc functional")
+        spec.input(
+            "functional", valid_type=orm.Str, required=True, help="xc functional"
+        )
         spec.input(
             "empirical_dispersion",
-            valid_type=Str,
+            valid_type=orm.Str,
             required=False,
-            default=lambda: Str(""),
+            default=lambda: orm.Str(""),
             help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
         )
-
         spec.input(
-            "basis_set_opt", valid_type=Str, required=True, help="basis_set for opt"
+            "basis_set_opt", valid_type=orm.Str, required=True, help="basis_set for opt"
         )
         spec.input(
-            "basis_set_scf", valid_type=Str, required=True, help="basis_set for scf"
+            "basis_set_scf", valid_type=orm.Str, required=True, help="basis_set for scf"
         )
-
         spec.input(
             "multiplicity_list",
-            valid_type=List,
+            valid_type=orm.List,
             required=True,
             help="spin multiplicities",
         )
-
         spec.input(
             "options",
-            valid_type=Dict,
+            valid_type=orm.Dict,
             required=False,
             help="Use custom metadata.options instead of the automatic ones.",
         )
@@ -61,7 +60,7 @@ class GaussianSpinWorkChain(WorkChain):
             cls.inspect_opts,
             cls.submit_next_steps,
             cls.inspect_next_steps,
-            if_(cls.is_gs_oss)(cls.submit_nat_orb, cls.inspect_nat_orb),
+            engine.if_(cls.is_gs_oss)(cls.submit_nat_orb, cls.inspect_nat_orb),
             cls.finalize,
         )
 
@@ -74,8 +73,7 @@ class GaussianSpinWorkChain(WorkChain):
         )
 
     def submit_opts(self):
-        # multiplicity 0 means RKS calculation
-
+        # Multiplicity 0 means RKS calculation.
         for mult in self.inputs.multiplicity_list:
             label = f"m{mult}_opt"
 
@@ -85,16 +83,16 @@ class GaussianSpinWorkChain(WorkChain):
             builder.functional = self.inputs.functional
             builder.empirical_dispersion = self.inputs.empirical_dispersion
             builder.basis_set = self.inputs.basis_set_opt
-            builder.multiplicity = Int(mult)
+            builder.multiplicity = orm.Int(mult)
 
             builder.basis_set_scf = self.inputs.basis_set_scf
             builder.formchk_code = self.inputs.formchk_code
             builder.cubegen_code = self.inputs.cubegen_code
 
-            builder.cubes_n_occ = Int(2)
-            builder.cubes_n_virt = Int(2)
-            builder.cubes_edge_space = Float(4.0)
-            builder.cubegen_parser_params = Dict(
+            builder.cubes_n_occ = orm.Int(2)
+            builder.cubes_n_virt = orm.Int(2)
+            builder.cubes_edge_space = orm.Float(4.0)
+            builder.cubegen_parser_params = orm.Dict(
                 {
                     "heights": [4.0],
                     "orient_cube": True,
@@ -135,7 +133,7 @@ class GaussianSpinWorkChain(WorkChain):
 
         gs_i = np.argmin(opt_energies)
 
-        # if open-shell singlet is degenerate with closed-shell solution, prefer closed-shell
+        # If open-shell singlet is degenerate with closed-shell solution, prefer closed-shell.
         if (
             self.inputs.multiplicity_list[gs_i] == 1
             and 0 in self.inputs.multiplicity_list
@@ -144,7 +142,7 @@ class GaussianSpinWorkChain(WorkChain):
             if np.abs(opt_energies[cs_i].value - opt_energies[gs_i].value) < 1e-6:
                 gs_i = cs_i
 
-        self.ctx.gs_mult = Int(self.inputs.multiplicity_list[gs_i]).store()
+        self.ctx.gs_mult = orm.Int(self.inputs.multiplicity_list[gs_i]).store()
         self.ctx.gs_energy = opt_energies[gs_i]
         gs_opt_label = f"m{self.ctx.gs_mult.value}_opt"
         self.ctx.gs_structure = self.ctx[gs_opt_label].outputs.output_structure
@@ -157,7 +155,7 @@ class GaussianSpinWorkChain(WorkChain):
         self.out("gs_structure", self.ctx.gs_structure)
         self.out("gs_out_params", self.ctx.gs_out_params)
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def submit_next_steps(self):
         cubes_n_occ = 5
@@ -166,7 +164,6 @@ class GaussianSpinWorkChain(WorkChain):
         cubes_isovalues = [0.010, 0.001]
         cubes_heights = [3.0, 4.0]
 
-        # ------------------------------------------------------
         self.report("Submitting GS cubes")
 
         builder = GaussianCubesWorkChain.get_builder()
@@ -174,10 +171,10 @@ class GaussianSpinWorkChain(WorkChain):
         builder.cubegen_code = self.inputs.cubegen_code
         builder.gaussian_calc_folder = self.ctx.gs_scf_remote_folder
         builder.gaussian_output_params = self.ctx.gs_out_params
-        builder.orbital_indexes = List(cubes_orb_indexes)
-        builder.edge_space = Float(max(cubes_heights))
+        builder.orbital_indexes = orm.List(cubes_orb_indexes)
+        builder.edge_space = orm.Float(max(cubes_heights))
         builder.cubegen_parser_name = "nanotech_empa.gaussian.cubegen_pymol"
-        builder.cubegen_parser_params = Dict(
+        builder.cubegen_parser_params = orm.Dict(
             {
                 "isovalues": cubes_isovalues,
                 "heights": cubes_heights,
@@ -189,7 +186,6 @@ class GaussianSpinWorkChain(WorkChain):
         submitted_node.description = "gs cubes"
         self.to_context(gs_cubes=submitted_node)
 
-        # ------------------------------------------------------
         self.report("Submitting Delta SCF")
 
         builder = GaussianDeltaScfWorkChain.get_builder()
@@ -206,7 +202,6 @@ class GaussianSpinWorkChain(WorkChain):
         submitted_node.description = "delta scf"
         self.to_context(dscf=submitted_node)
 
-        # ------------------------------------------------------
         self.report("Submitting vertical calculations")
 
         for mult in self.inputs.multiplicity_list:
@@ -224,11 +219,11 @@ class GaussianSpinWorkChain(WorkChain):
             builder.functional = self.inputs.functional
             builder.empirical_dispersion = self.inputs.empirical_dispersion
             builder.basis_set = self.inputs.basis_set_scf
-            builder.multiplicity = Int(mult)
+            builder.multiplicity = orm.Int(mult)
             builder.parent_calc_folder = self.ctx[opt_label].outputs.remote_folder
-            builder.cubes_n_occ = Int(cubes_n_occ)
-            builder.cubes_n_virt = Int(cubes_n_virt)
-            builder.cubegen_parser_params = Dict(
+            builder.cubes_n_occ = orm.Int(cubes_n_occ)
+            builder.cubes_n_virt = orm.Int(cubes_n_virt)
+            builder.cubegen_parser_params = orm.Dict(
                 {
                     "isovalues": cubes_isovalues,
                     "heights": cubes_heights,
@@ -244,28 +239,25 @@ class GaussianSpinWorkChain(WorkChain):
             self.to_context(**{label: submitted_node})
 
     def inspect_next_steps(self):
-        # ------------------------------------------------------
         if not common_utils.check_if_calc_ok(self, self.ctx.gs_cubes):
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("gs_cube_images", self.ctx.gs_cubes.outputs.cube_image_folder)
         self.out("gs_cube_planes", self.ctx.gs_cubes.outputs.cube_planes_array)
 
-        # ------------------------------------------------------
         if not common_utils.check_if_calc_ok(self, self.ctx.dscf):
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("gs_ionization_potential", self.ctx.dscf.outputs.ionization_potential)
         self.out("gs_electron_affinity", self.ctx.dscf.outputs.electron_affinity)
 
-        # ------------------------------------------------------
         for mult in self.inputs.multiplicity_list:
             label = f"m{mult}_vert"
 
             if mult == self.ctx.gs_mult:
                 continue
 
-            # check if everything finished nicely
+            # Check if everything finished nicely.
             if not common_utils.check_if_calc_ok(self, self.ctx[label]):
                 return self.exit_codes.ERROR_TERMINATION
 
@@ -281,7 +273,7 @@ class GaussianSpinWorkChain(WorkChain):
                 f"m{mult}_vert_cube_planes", self.ctx[label].outputs.cube_planes_array
             )
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def is_gs_oss(self):
         """Is ground state an open-shell singlet?"""
@@ -307,7 +299,7 @@ class GaussianSpinWorkChain(WorkChain):
 
         self.out("gs_natorb_params", self.ctx.natorb.outputs.natorb_proc_parameters)
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def finalize(self):
         self.report("Finalizing...")

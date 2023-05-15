@@ -1,57 +1,60 @@
 import numpy as np
-from aiida.engine import ToContext, WorkChain, while_
+from aiida import engine, orm, plugins
 
-# AiiDA imports
-from aiida.orm import (
-    Bool,
-    Code,
-    Dict,
-    Float,
-    Int,
-    KpointsData,
-    Str,
-    StructureData,
-    load_group,
-)
-from aiida_quantumespresso.calculations.pp import PpCalculation
-from aiida_quantumespresso.calculations.projwfc import ProjwfcCalculation
+from ...utils import common_utils
 
-# aiida_quantumespresso imports
-from aiida_quantumespresso.calculations.pw import PwCalculation
-
-from aiida_nanotech_empa.utils import common_utils
-
-# from aiida.orm.nodes.data.upf import get_pseudos_dict, get_pseudos_from_structure
+PwCalculation = plugins.CalculationFactory("quantumespresso.pw")
+PpCalculation = plugins.CalculationFactory("quantumespresso.pp")
+ProjwfcCalculation = plugins.CalculationFactory("quantumespresso.projwfc")
 
 
-class NanoribbonWorkChain(WorkChain):
+class NanoribbonWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
         spec.input(
-            "optimize_cell", valid_type=Bool, default=lambda: Bool(True), required=False
+            "optimize_cell",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
+            required=False,
         )
         spec.input(
-            "max_kpoints", valid_type=Int, default=lambda: Int(120), required=False
-        )
-        spec.input("max_nodes", valid_type=Int, default=lambda: Int(24), required=False)
-        spec.input("mem_node", valid_type=Int, default=lambda: Int(64), required=False)
-        spec.input("pw_code", valid_type=Code)
-        spec.input("pp_code", valid_type=Code)
-        spec.input("projwfc_code", valid_type=Code)
-        spec.input("structure", valid_type=StructureData)
-        spec.input(
-            "tot_charge", valid_type=Float, default=lambda: Float(0.0), required=False
+            "max_kpoints",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(120),
+            required=False,
         )
         spec.input(
-            "precision", valid_type=Float, default=lambda: Float(1.0), required=False
+            "max_nodes", valid_type=orm.Int, default=lambda: orm.Int(24), required=False
         )
         spec.input(
-            "num_export_bands", valid_type=Int, default=lambda: Int(8), required=False
+            "mem_node", valid_type=orm.Int, default=lambda: orm.Int(64), required=False
+        )
+        spec.input("pw_code", valid_type=orm.Code)
+        spec.input("pp_code", valid_type=orm.Code)
+        spec.input("projwfc_code", valid_type=orm.Code)
+        spec.input("structure", valid_type=orm.StructureData)
+        spec.input(
+            "tot_charge",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(0.0),
+            required=False,
+        )
+        spec.input(
+            "precision",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(1.0),
+            required=False,
+        )
+        spec.input(
+            "num_export_bands",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(8),
+            required=False,
         )
         spec.input(
             "pseudo_family",
-            valid_type=Str,
+            valid_type=orm.Str,
             required=True,
             help="An alternative to specifying the pseudo potentials manually in `pseudos`: one can specify the name "
             "of an existing pseudo potential family and the work chain will generate the pseudos automatically "
@@ -69,7 +72,7 @@ class NanoribbonWorkChain(WorkChain):
             cls.run_export_pdos,
             cls.run_bands_lowres,
             cls.prepare_export_orbitals,
-            while_(cls.should_run_export_orbitals)(
+            engine.while_(cls.should_run_export_orbitals)(
                 cls.run_export_orbitals,
             ),
             cls.run_export_spinden,
@@ -79,7 +82,6 @@ class NanoribbonWorkChain(WorkChain):
 
         spec.exit_code(300, "CALC_FAILED", message="The calculation failed.")
 
-    # =========================================================================
     def run_cell_opt1(self):
         if self.inputs.optimize_cell.value:
             structure = self.inputs.structure
@@ -96,7 +98,6 @@ class NanoribbonWorkChain(WorkChain):
         self.report("Skipping: cell_opt = False")
         return
 
-    # =========================================================================
     def run_cell_opt2(self):
         if self.inputs.optimize_cell.value:
             prev_calc = self.ctx.cell_opt1
@@ -118,7 +119,6 @@ class NanoribbonWorkChain(WorkChain):
         self.report("Skipping: cell_opt = False")
         return
 
-    # =========================================================================
     def run_scf(self):
         if self.inputs.optimize_cell.value:
             prev_calc = self.ctx.cell_opt2
@@ -142,7 +142,6 @@ class NanoribbonWorkChain(WorkChain):
             wallhours=4,
         )
 
-    # =========================================================================
     def run_export_hartree(self):
         self.report("Running pp.x to export hartree potential")
         label = "export_hartree"
@@ -162,7 +161,7 @@ class NanoribbonWorkChain(WorkChain):
         cell_b = structure.cell[1][1]
         cell_c = structure.cell[2][2]
 
-        builder.parameters = Dict(
+        builder.parameters = orm.Dict(
             {
                 "INPUTPP": {
                     "plot_num": 11,  # the V_bare + V_H potential
@@ -206,20 +205,9 @@ class NanoribbonWorkChain(WorkChain):
             "max_wallclock_seconds": 1200,  # 30 minutes
             "withmpi": True,
         }
-        builder.settings = Dict({"cmdline": ["-npools", str(npools)]})
+        builder.settings = orm.Dict({"cmdline": ["-npools", str(npools)]})
+        return engine.ToContext(**{label: self.submit(builder)})
 
-        #        builder.metadata.options = {
-        #            "resources": {
-        #                "num_machines": int(1),
-        #            },
-        #            "max_wallclock_seconds": 1200,
-        #            "withmpi": True,
-        #        }
-
-        running = self.submit(builder)
-        return ToContext(**{label: running})
-
-    # =========================================================================
     def run_bands(self):
         if not common_utils.check_if_calc_ok(self, self.ctx.export_hartree):
             return self.exit_codes.CALC_FAILED
@@ -241,7 +229,6 @@ class NanoribbonWorkChain(WorkChain):
             wallhours=6,
         )
 
-    # =========================================================================
     def run_export_pdos(self):
         prev_calc = self.ctx.bands
         if not common_utils.check_if_calc_ok(self, prev_calc):
@@ -273,7 +260,7 @@ class NanoribbonWorkChain(WorkChain):
         builder.parent_folder = prev_calc.outputs.remote_folder
 
         # use the same number of pools as in bands calculation
-        builder.parameters = Dict(
+        builder.parameters = orm.Dict(
             {
                 "projwfc": {
                     "ngauss": 1,
@@ -294,7 +281,7 @@ class NanoribbonWorkChain(WorkChain):
             "withmpi": True,
         }
 
-        builder.settings = Dict(
+        builder.settings = orm.Dict(
             {
                 "additional_retrieve_list": [
                     "./out/aiida.save/*.xml",
@@ -307,9 +294,8 @@ class NanoribbonWorkChain(WorkChain):
         )
 
         future = self.submit(builder)
-        return ToContext(**{label: future})
+        return engine.ToContext(**{label: future})
 
-    # =========================================================================
     def run_bands_lowres(self):
         if not common_utils.check_if_calc_ok(self, self.ctx.export_pdos):
             return self.exit_codes.CALC_FAILED
@@ -333,7 +319,6 @@ class NanoribbonWorkChain(WorkChain):
             wallhours=2,
         )
 
-    # =========================================================================
     def prepare_export_orbitals(self):
         prev_calc = self.ctx.bands_lowres
         if not common_utils.check_if_calc_ok(self, prev_calc):
@@ -369,16 +354,16 @@ class NanoribbonWorkChain(WorkChain):
         self.ctx.export_orbitals_options = {
             "resources": {
                 "num_machines": int(nnodes),
-                # int(prev_calc.attributes['resources']['num_machines']),
                 "num_mpiprocs_per_machine": self.inputs.pp_code.computer.get_default_mpiprocs_per_machine(),
             },
-            "max_wallclock_seconds": nhours * 60 * 60,  # 6 hours
-            # Add the post-processing python scripts
+            "max_wallclock_seconds": nhours * 60 * 60,
+            # Add the post-processing python scripts.
             "withmpi": True,
             "parser_name": "nanotech_empa.pp",
         }
-        # npools = int(prev_calc.inputs.settings['cmdline'][1])
-        self.ctx.export_orbitals_settings = Dict({"cmdline": ["-npools", str(npools)]})
+        self.ctx.export_orbitals_settings = orm.Dict(
+            {"cmdline": ["-npools", str(npools)]}
+        )
 
         kband1 = max(
             int(prev_calc.res.number_of_electrons / 2)
@@ -399,13 +384,11 @@ class NanoribbonWorkChain(WorkChain):
         return self.ctx.export_orbitals_band_number <= kband2
 
     def run_export_orbitals(self):
-        # check if previous calc was okay
+        # Check if the previous calculation has finished successfully.
         if self.ctx.export_orbitals_band_number == self.ctx.first_band:
             to_check = "bands_lowres"
         else:
-            to_check = "export_orbitals_{}".format(
-                self.ctx.export_orbitals_band_number - 1
-            )
+            to_check = f"export_orbitals_{self.ctx.export_orbitals_band_number-1}"
         if not common_utils.check_if_calc_ok(self, getattr(self.ctx, to_check)):
             return self.exit_codes.CALC_FAILED
 
@@ -426,15 +409,14 @@ class NanoribbonWorkChain(WorkChain):
         self.ctx.export_orbitals_parameters["INPUTPP"][
             "kband(2)"
         ] = self.ctx.export_orbitals_band_number
-        builder.parameters = Dict(self.ctx.export_orbitals_parameters)
+        builder.parameters = orm.Dict(self.ctx.export_orbitals_parameters)
 
         # Running the calculation.
         running = self.submit(builder)
         label = f"export_orbitals_{self.ctx.export_orbitals_band_number}"
         self.ctx.export_orbitals_band_number += 1
-        return ToContext(**{label: running})
+        return engine.ToContext(**{label: running})
 
-    # =========================================================================
     def run_export_spinden(self):
         self.report("Running pp.x to compute spinden")
         label = "export_spinden"
@@ -456,13 +438,11 @@ class NanoribbonWorkChain(WorkChain):
         )
         # Reconsider the following lines, when https://gitlab.com/QEF/q-e/-/issues/221 is fixed.
         npools = 1
-        # nnodes = int(prev_calc.attributes['resources']['num_machines'])
-        # npools = int(prev_calc.inputs.settings.get_dict()['cmdline'][1])
         if nspin == 1:
             self.report("Skipping, got only one spin channel")
             return
 
-        builder.parameters = Dict(
+        builder.parameters = orm.Dict(
             {
                 "INPUTPP": {
                     "plot_num": 6,  # spin polarization (rho(up)-rho(down))
@@ -484,20 +464,17 @@ class NanoribbonWorkChain(WorkChain):
             "parser_name": "nanotech_empa.pp",
         }
 
-        builder.settings = Dict({"cmdline": ["-npools", str(npools)]})
+        builder.settings = orm.Dict({"cmdline": ["-npools", str(npools)]})
 
         future = self.submit(builder)
-        return ToContext(**{label: future})
-
-    # =========================================================================
+        return engine.ToContext(**{label: future})
 
     def run_closing(self):
         self.report("Running final check")
         # Getting and checking the previous calculation.
         nspin = self.ctx.scf.res.number_of_spin_components
 
-        # ---
-        # check if previous calc was okay
+        # Check if previous calc was okay.
         if nspin > 1:
             prev_calc = self.ctx.export_spinden
             if not common_utils.check_if_calc_ok(self, prev_calc):
@@ -510,7 +487,6 @@ class NanoribbonWorkChain(WorkChain):
         self.report("END of workchain")
         return
 
-    # =========================================================================
     def _submit_pw_calc(
         self,
         structure,
@@ -530,10 +506,9 @@ class NanoribbonWorkChain(WorkChain):
         builder.code = self.inputs.pw_code
         builder.structure = structure
         builder.parameters = self._get_parameters(structure, tot_charge, runtype, label)
-        # builder.pseudos = validate_and_prepare_pseudos_inputs(
-        #    structure, None, self.inputs.pseudo_family)
-        # loading family from input
-        family_pseudo = load_group(self.inputs.pseudo_family.value)
+
+        # Loading family from input.
+        family_pseudo = orm.load_group(self.inputs.pseudo_family.value)
         builder.pseudos = family_pseudo.get_pseudos(structure=structure)
 
         if parent_folder:
@@ -592,12 +567,11 @@ class NanoribbonWorkChain(WorkChain):
             "max_wallclock_seconds": wallhours * 60 * 60,
         }
 
-        builder.parallelization = Dict({"npool": int(npools)})
+        builder.parallelization = orm.Dict({"npool": int(npools)})
 
         future = self.submit(builder)
-        return ToContext(**{label: future})
+        return engine.ToContext(**{label: future})
 
-    # =========================================================================
     def _get_parameters(self, structure, tot_charge, runtype, label):
         params = {
             "CONTROL": {
@@ -624,24 +598,20 @@ class NanoribbonWorkChain(WorkChain):
         if label == "cell_opt1":
             params["CONTROL"]["forc_conv_thr"] = 0.0005
         if runtype == "vc-relax":
-            # in y and z direction there is only vacuum
+            # In y and z direction there is only vacuum.
             params["CELL"] = {"cell_dofree": "x"}
-
-        # if runtype == "bands":
-        #     params['CONTROL']['restart_mode'] = 'restart'
 
         start_mag = self._get_magnetization(structure)
         if any(m != 0 for m in start_mag.values()):
             params["SYSTEM"]["nspin"] = 2
             params["SYSTEM"]["starting_magnetization"] = start_mag
 
-        return Dict(params)
+        return orm.Dict(params)
 
-    # =========================================================================
     def _get_kpoints(self, nx, use_symmetry=True):
         nx = max(1, nx)
 
-        kpoints = KpointsData()
+        kpoints = orm.KpointsData()
         if use_symmetry:
             kpoints.set_kpoints_mesh([nx, 1, 1], offset=[0.0, 0.0, 0.0])
         else:
@@ -650,7 +620,6 @@ class NanoribbonWorkChain(WorkChain):
             kpoints.set_kpoints(points)
         return kpoints
 
-    # =========================================================================
     def _get_magnetization(self, structure):
         start_mag = {}
         for i in structure.kinds:

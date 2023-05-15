@@ -1,0 +1,264 @@
+standard:
+    GLOBAL:
+        EXTENDED_FFT_LENGTHS: ''
+        PRINT_LEVEL: MEDIUM
+        RUN_TYPE: BAND
+        WALLTIME: 600
+    MOTION:
+        CONSTRAINT:
+            FIXED_ATOMS:
+                LIST: ''
+        BAND:
+            ALIGN_FRAMES: .FALSE.
+            BAND_TYPE: CI-NEB
+            CI_NEB:
+                NSTEPS_IT: 5
+            CONVERGENCE_CONTROL:
+                MAX_DR: 0.002
+                MAX_FORCE: 0.0001
+                RMS_DR: 0.005
+                RMS_FORCE: 0.001
+            CONVERGENCE_INFO :
+                _: ''
+            K_SPRING: 0.05
+            NPROC_REP: 1
+            NUMBER_OF_REPLICA: 3
+            OPTIMIZE_BAND:
+                DIIS:
+                    MAX_STEPS: 1000
+                OPTIMIZE_END_POINTS: .FALSE.
+                OPT_TYPE: DIIS
+            PROGRAM_RUN_INFO:
+                INITIAL_CONFIGURATION_INFO: ''
+        PRINT:
+            RESTART_HISTORY:
+                _: 'OFF'
+    FORCE_EVAL:
+        METHOD: Quickstep
+        SUBSYS:
+            CELL:
+                PERIODIC: XYZ
+                SYMMETRY: ORTHORHOMBIC
+        DFT:
+            UKS: .FALSE.
+            MULTIPLICITY: 0
+            CHARGE: 0
+            BASIS_SET_FILE_NAME: BASIS_MOLOPT
+            POTENTIAL_FILE_NAME: POTENTIAL
+            RESTART_FILE_NAME: RESTART
+            MGRID:
+                CUTOFF: 600
+                NGRIDS: 5
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
+            QS:
+                EPS_DEFAULT: 1.0E-14
+                EXTRAPOLATION: USE_GUESS
+                METHOD: GPW
+            SCF:
+                SCF_GUESS: RESTART
+                EPS_SCF: 1.0E-7
+                MAX_SCF: 40
+                OT:
+                    MINIMIZER: CG
+                    PRECONDITIONER: FULL_SINGLE_INVERSE
+                OUTER_SCF:
+                    EPS_SCF: 1.0E-7
+                    MAX_SCF: 50
+                PRINT:
+                    RESTART:
+                        ADD_LAST: NUMERIC
+                        EACH:
+                            GEO_OPT: 1
+                            QS_SCF: 0
+                        FILENAME: RESTART
+                    RESTART_HISTORY:
+                        _: 'OFF'
+            XC:
+                VDW_POTENTIAL:
+                    DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
+                    PAIR_POTENTIAL:
+                        CALCULATE_C9_TERM: .TRUE.
+                        PARAMETER_FILE_NAME: dftd3.dat
+                        REFERENCE_FUNCTIONAL: PBE
+                        R_CUTOFF: 15
+                        TYPE: DFTD3
+                XC_FUNCTIONAL:
+                        _: PBE
+low_accuracy:
+    GLOBAL:
+        EXTENDED_FFT_LENGTHS: ''
+        PRINT_LEVEL: MEDIUM
+        RUN_TYPE: BAND
+        WALLTIME: 600
+    MOTION:
+        CONSTRAINT:
+            FIXED_ATOMS:
+                LIST: ''
+        BAND:
+            ALIGN_FRAMES: .FALSE.
+            BAND_TYPE: CI-NEB
+            CI_NEB:
+                NSTEPS_IT: 5
+            CONVERGENCE_CONTROL:
+                MAX_DR: 0.002
+                MAX_FORCE: 0.00045
+                RMS_DR: 0.005
+                RMS_FORCE: 0.003
+            CONVERGENCE_INFO :
+                _: ''
+            K_SPRING: 0.05
+            NPROC_REP: 1
+            NUMBER_OF_REPLICA: 3
+            OPTIMIZE_BAND:
+                DIIS:
+                    MAX_STEPS: 1000
+                OPTIMIZE_END_POINTS: .FALSE.
+                OPT_TYPE: DIIS
+            PROGRAM_RUN_INFO:
+                INITIAL_CONFIGURATION_INFO: ''
+        PRINT:
+            RESTART_HISTORY:
+                _: 'OFF'
+    FORCE_EVAL:
+        METHOD: Quickstep
+        SUBSYS:
+            CELL:
+                PERIODIC: XYZ
+                SYMMETRY: ORTHORHOMBIC
+        DFT:
+            UKS: .FALSE.
+            MULTIPLICITY: 0
+            CHARGE: 0
+            BASIS_SET_FILE_NAME: BASIS_MOLOPT
+            POTENTIAL_FILE_NAME: POTENTIAL
+            RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+            MGRID:
+                CUTOFF: 600
+                NGRIDS: 5
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
+            QS:
+                EPS_DEFAULT: 1.0E-14
+                EXTRAPOLATION: USE_GUESS
+                METHOD: GPW
+            SCF:
+                SCF_GUESS: RESTART
+                EPS_SCF: 1.0E-6
+                MAX_SCF: 40
+                OT:
+                    MINIMIZER: CG
+                    PRECONDITIONER: FULL_SINGLE_INVERSE
+                OUTER_SCF:
+                    EPS_SCF: 1.0E-6
+                    MAX_SCF: 50
+                PRINT:
+                    RESTART:
+                        ADD_LAST: NUMERIC
+                        EACH:
+                            GEO_OPT: 1
+                            QS_SCF: 0
+                        FILENAME: RESTART
+                    RESTART_HISTORY:
+                        _: 'OFF'
+            XC:
+                VDW_POTENTIAL:
+                    DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
+                    PAIR_POTENTIAL:
+                        CALCULATE_C9_TERM: .TRUE.
+                        PARAMETER_FILE_NAME: dftd3.dat
+                        REFERENCE_FUNCTIONAL: PBE
+                        R_CUTOFF: 15
+                        TYPE: DFTD3
+                XC_FUNCTIONAL:
+                        _: PBE
+debug:
+    GLOBAL:
+        EXTENDED_FFT_LENGTHS: ''
+        PRINT_LEVEL: MEDIUM
+        RUN_TYPE: BAND
+        WALLTIME: 600
+    MOTION:
+        CONSTRAINT:
+            FIXED_ATOMS:
+                LIST: ''
+        BAND:
+            ALIGN_FRAMES: .FALSE.
+            BAND_TYPE: CI-NEB
+            CI_NEB:
+                NSTEPS_IT: 1
+            CONVERGENCE_CONTROL:
+                MAX_DR: 5
+                MAX_FORCE: 5
+                RMS_DR: 5
+                RMS_FORCE: 5
+            CONVERGENCE_INFO :
+                _: ''
+            K_SPRING: 0.05
+            NPROC_REP: 1
+            NUMBER_OF_REPLICA: 3
+            OPTIMIZE_BAND:
+                DIIS:
+                    MAX_STEPS: 2
+                OPTIMIZE_END_POINTS: .FALSE.
+                OPT_TYPE: DIIS
+            PROGRAM_RUN_INFO:
+                INITIAL_CONFIGURATION_INFO: ''
+        PRINT:
+            RESTART_HISTORY:
+                _: 'OFF'
+    FORCE_EVAL:
+        METHOD: Quickstep
+        SUBSYS:
+            CELL:
+                PERIODIC: XYZ
+                SYMMETRY: ORTHORHOMBIC
+        DFT:
+            UKS: .FALSE.
+            MULTIPLICITY: 0
+            CHARGE: 0
+            BASIS_SET_FILE_NAME: BASIS_MOLOPT
+            POTENTIAL_FILE_NAME: POTENTIAL
+            RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+            MGRID:
+                CUTOFF: 600
+                NGRIDS: 5
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
+            QS:
+                EPS_DEFAULT: 1.0E-14
+                EXTRAPOLATION: USE_GUESS
+                METHOD: GPW
+            SCF:
+                SCF_GUESS: RESTART
+                EPS_SCF: 1.0E-1
+                MAX_SCF: 40
+                OT:
+                    MINIMIZER: CG
+                    PRECONDITIONER: FULL_SINGLE_INVERSE
+                OUTER_SCF:
+                    EPS_SCF: 1.0E-1
+                    MAX_SCF: 50
+                PRINT:
+                    RESTART:
+                        ADD_LAST: NUMERIC
+                        EACH:
+                            GEO_OPT: 1
+                            QS_SCF: 0
+                        FILENAME: RESTART
+                    RESTART_HISTORY:
+                        _: 'OFF'
+            XC:
+                VDW_POTENTIAL:
+                    DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
+                    PAIR_POTENTIAL:
+                        CALCULATE_C9_TERM: .TRUE.
+                        PARAMETER_FILE_NAME: dftd3.dat
+                        REFERENCE_FUNCTIONAL: PBE
+                        R_CUTOFF: 15
+                        TYPE: DFTD3
+                XC_FUNCTIONAL:
+                        _: PBE

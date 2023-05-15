@@ -1,36 +1,25 @@
 standard:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: ''
+        EXTENDED_FFT_LENGTHS: ""
         PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
+        RUN_TYPE: ENERGY
         WALLTIME: 600
-    MOTION:
-        GEO_OPT:
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 0.000100
-            MAX_ITER: 1000
-            OPTIMIZER: BFGS
-        PRINT:
-            RESTART_HISTORY:
-                _: 'OFF'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
             CELL:
-                PERIODIC: NONE
-                SYMMETRY: ORTHORHOMBIC
+                PERIODIC: XYZ
         DFT:
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             CHARGE: 0
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
-            POISSON:
-                PERIODIC: NONE
-                PSOLVER: MT
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -50,11 +39,11 @@ standard:
                     RESTART:
                         ADD_LAST: NUMERIC
                         EACH:
-                            GEO_OPT: 1
+                            GEO_OPT: 0
                             QS_SCF: 0
                         FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'
+                        _: "OFF"
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -65,58 +54,51 @@ standard:
                         R_CUTOFF: 15
                         TYPE: DFTD3
                 XC_FUNCTIONAL:
-                        _: PBE
+                    _: PBE
             PRINT:
                 MO_CUBES:
-                    NHOMO: '1'
-                    NLUMO: '1'
-                    STRIDE: '4 4 4'
+                    NHOMO: "1"
+                    NLUMO: "1"
+                    STRIDE: "4 4 4"
                     EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
+                        QS_SCF: "0"
+                        GEO_OPT: "0"
+                    ADD_LAST: "NUMERIC"
                 E_DENSITY_CUBE:
-                    STRIDE: '4 4 4'
+                    STRIDE: "2 2 2"
                     EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
+                        QS_SCF: "0"
+                        GEO_OPT: "0"
+                    ADD_LAST: "NUMERIC"
+                V_HARTREE_CUBE:
+                    STRIDE: "2 2 2"
+                    FILENAME: "HART"
+                    EACH:
+                        QS_SCF: "0"
+                        GEO_OPT: "0"
+                    ADD_LAST: "NUMERIC"
 low_accuracy:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: ''
+        EXTENDED_FFT_LENGTHS: ""
         PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
+        RUN_TYPE: ENERGY
         WALLTIME: 600
-    MOTION:
-        GEO_OPT:
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 0.00045
-            RMS_DR: 0.0015
-            RMS_FORCE: 0.0003
-            MAX_DR: 0.003
-            MAX_ITER: 1000
-            OPTIMIZER: BFGS
-        PRINT:
-            RESTART_HISTORY:
-                _: 'OFF'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
             CELL:
-                PERIODIC: NONE
-                SYMMETRY: ORTHORHOMBIC
+                PERIODIC: XYZ
         DFT:
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             CHARGE: 0
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
-            POISSON:
-                PERIODIC: NONE
-                PSOLVER: MT
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -140,7 +122,7 @@ low_accuracy:
                             QS_SCF: 0
                         FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'
+                        _: "OFF"
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -151,58 +133,51 @@ low_accuracy:
                         R_CUTOFF: 15
                         TYPE: DFTD3
                 XC_FUNCTIONAL:
-                        _: PBE
+                    _: PBE
             PRINT:
                 MO_CUBES:
-                    NHOMO: '1'
-                    NLUMO: '1'
-                    STRIDE: '4 4 4'
+                    NHOMO: "1"
+                    NLUMO: "1"
+                    STRIDE: "4 4 4"
                     EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
+                        QS_SCF: "0"
+                        GEO_OPT: "0"
+                    ADD_LAST: "NUMERIC"
                 E_DENSITY_CUBE:
-                    STRIDE: '4 4 4'
+                    STRIDE: "2 2 2"
                     EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
+                        QS_SCF: "0"
+                        GEO_OPT: "0"
+                    ADD_LAST: "NUMERIC"
+                V_HARTREE_CUBE:
+                    STRIDE: "2 2 2"
+                    FILENAME: "HART"
+                    EACH:
+                        QS_SCF: "0"
+                        GEO_OPT: "0"
+                    ADD_LAST: "NUMERIC"
 debug:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: ''
+        EXTENDED_FFT_LENGTHS: ""
         PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
+        RUN_TYPE: ENERGY
         WALLTIME: 600
-    MOTION:
-        GEO_OPT:
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 0.1
-            RMS_DR: 0.1
-            RMS_FORCE: 0.1
-            MAX_DR: 0.1
-            MAX_ITER: 1000
-            OPTIMIZER: BFGS
-        PRINT:
-            RESTART_HISTORY:
-                _: 'OFF'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
             CELL:
-                PERIODIC: NONE
-                SYMMETRY: ORTHORHOMBIC
+                PERIODIC: XYZ
         DFT:
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             CHARGE: 0
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
-            POISSON:
-                PERIODIC: NONE
-                PSOLVER: MT
             QS:
                 EPS_DEFAULT: 1.0E-14
                 EXTRAPOLATION: ASPC
@@ -210,13 +185,13 @@ debug:
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 1.0E-2
+                EPS_SCF: 5.0E-2
                 MAX_SCF: 40
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 1.0E-2
+                    EPS_SCF: 5.0E-2
                     MAX_SCF: 50
                 PRINT:
                     RESTART:
@@ -226,7 +201,7 @@ debug:
                             QS_SCF: 0
                         FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'
+                        _: "OFF"
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -237,19 +212,26 @@ debug:
                         R_CUTOFF: 15
                         TYPE: DFTD3
                 XC_FUNCTIONAL:
-                        _: PBE
+                    _: PBE
             PRINT:
                 MO_CUBES:
-                    NHOMO: '1'
-                    NLUMO: '1'
-                    STRIDE: '4 4 4'
+                    NHOMO: "1"
+                    NLUMO: "1"
+                    STRIDE: "4 4 4"
                     EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
+                        QS_SCF: "0"
+                        GEO_OPT: "0"
+                    ADD_LAST: "NUMERIC"
                 E_DENSITY_CUBE:
-                    STRIDE: '4 4 4'
+                    STRIDE: "2 2 2"
                     EACH:
-                        QS_SCF: '0'
-                        GEO_OPT: '0'
-                    ADD_LAST: 'NUMERIC'
+                        QS_SCF: "0"
+                        GEO_OPT: "0"
+                    ADD_LAST: "NUMERIC"
+                V_HARTREE_CUBE:
+                    STRIDE: "2 2 2"
+                    FILENAME: "HART"
+                    EACH:
+                        QS_SCF: "0"
+                        GEO_OPT: "0"
+                    ADD_LAST: "NUMERIC"

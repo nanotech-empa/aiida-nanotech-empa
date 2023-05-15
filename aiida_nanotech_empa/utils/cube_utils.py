@@ -1,14 +1,10 @@
-"""
-Routines regarding gaussian cube files
-"""
-
 import collections
 
 import ase
 import numpy as np
 from aiida_gaussian.utils.cube import Cube
 
-ANG_TO_BOHR = 1.8897259886
+from ..helpers import ANG_TO_BOHR
 
 
 def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):

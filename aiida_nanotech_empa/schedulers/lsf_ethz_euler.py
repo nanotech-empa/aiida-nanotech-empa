@@ -21,10 +21,10 @@ class ETHZEulerLsfScheduler(LsfScheduler):
             new_lines = []
             for line in lsf_script_lines:
                 if line.startswith("#BSUB -M"):
-                    # Skip the BSUB -M line
+                    # Skip the BSUB -M line.
                     continue
                 if not line.startswith("#") and not rusage_added:
-                    # Add the rusage line after the other #BSUB commands
+                    # Add the rusage line after the other #BSUB commands.
                     rusage_line = '#BSUB -R "rusage[mem={},scratch={}]"'.format(
                         mem_per_proc_mb, 2 * mem_per_proc_mb
                     )
@@ -35,5 +35,5 @@ class ETHZEulerLsfScheduler(LsfScheduler):
 
             return "\n".join(new_lines)
 
-        # If memory is not specified, just use the default LSF script
+        # If memory is not specified, just use the default LSF script.
         return super()._get_submit_script_header(job_tmpl)

@@ -1,4 +1,4 @@
-import os
+import pathlib
 
 import ase.io
 from aiida import engine, orm, plugins
@@ -8,20 +8,33 @@ Cp2kFragmentSeparationWorkChain = plugins.WorkflowFactory(
     "nanotech_empa.cp2k.fragment_separation"
 )
 
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "h2_on_hbn.xyz"
 
 
 def _example_cp2k_ads_ene(cp2k_code, mult):
     """Example of running a workflow to compute the adsorption energy of a molecule on substrate."""
-
+    # Check test geometry is already in database.
+    qb = orm.QueryBuilder()
+    qb.append(orm.Node, filters={"label": {"in": [GEO_FILE]}})
+    structure = None
+    for node_tuple in qb.iterall():
+        node = node_tuple[0]
+        structure = node
+    if structure is not None:
+        print(f"Found existing structure: {structure.pk}")
+    else:
+        structure = StructureData(ase=ase.io.read(DATA_DIR / GEO_FILE))
+        structure.label = GEO_FILE
+        structure.store()
+        print(f"Created new structure: {structure.pk}")
     builder = Cp2kFragmentSeparationWorkChain.get_builder()
 
-    builder.metadata.label = "Cp2kFragmentSeparationWorkChain"
-    builder.metadata.description = "test description"
+    builder.metadata.label = "CP2K_AdsorptionE"
+    builder.metadata.description = "h2 on hbn slab"
     builder.code = cp2k_code
-    ase_geom = ase.io.read(os.path.join(DATA_DIR, GEO_FILE))
-    builder.structure = StructureData(ase=ase_geom)
+    builder.structure = structure
     builder.fixed_atoms = orm.List(
         list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     )
@@ -31,20 +44,26 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
         "slab": orm.List(list=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
     }
 
-    builder.multiplicities = {
-        "all": orm.Int(mult),
-        "molecule": orm.Int(mult),
-        "slab": orm.Int(0),
-    }
-
     mag = []
+    uks = False
     if mult == 1:
-        builder.uks = orm.Bool(True)
-        mag = [0 for i in ase_geom]
+        uks = True
+        mag = [0 for i in structure.get_ase()]
         mag[0] = 1
         mag[1] = -1
 
-    builder.magnetization_per_site = orm.List(list=mag)
+    dft_params = {
+        "uks": uks,
+        "multiplicities": {
+            "all": mult,
+            "molecule": mult,
+            "slab": mult,
+        },
+        "magnetization_per_site": mag,
+        "protocol": "debug",
+    }
+
+    builder.dft_params = orm.Dict(dft_params)
 
     builder.options = {
         "all": {
@@ -69,8 +88,6 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
             },
         },
     }
-
-    builder.protocol = orm.Str("debug")
 
     _, calc_node = engine.run_get_node(builder)
 

@@ -25,9 +25,6 @@ def _get_gaussian_mem_mb(total_mem_kb, computer):
     return (total_mem_kb // 1024 - 100) // 1.25
 
 
-# -------------------------------------------------------------------------------------
-
-
 def setup_context_variables(self_):
     pymatgen_structure = self_.inputs.structure.get_pymatgen_molecule()
     self_.ctx.n_atoms = pymatgen_structure.num_sites
@@ -46,15 +43,17 @@ def setup_context_variables(self_):
 
 
 def determine_comp_resources(num_atoms, basis_set=""):
-    # Very small basis sets:
+    # Very small basis sets.
     if basis_set.lower() in ("sto-3g", "sv", "svp", "def2sv", "def2svp"):
         num_cores = int(np.round(num_atoms / 20))
         mem_per_core = 512
-    # Large basis sets:
+
+    # Large basis sets.
     elif basis_set.lower() in ("6-311g*", "6-311g**", "6-311+g*", "6-311+g**"):
         num_cores = int(np.round(num_atoms / 16))
         mem_per_core = 4096
-    # Default:
+
+    # Default.
     else:
         num_cores = int(np.round(num_atoms / 18))
         mem_per_core = 2048
@@ -70,11 +69,10 @@ def determine_comp_resources(num_atoms, basis_set=""):
 def get_default_metadata_options(num_atoms, computer, basis_set):
     num_cores, memory_mb = determine_comp_resources(num_atoms, basis_set)
 
-    options = {}
-
-    options["max_memory_kb"] = _get_total_mem_kb(memory_mb, computer)
-
-    options["max_wallclock_seconds"] = 24 * 60 * 60
+    options = {
+        "max_memory_kb": _get_total_mem_kb(memory_mb, computer),
+        "max_wallclock_seconds": 24 * 60 * 60,
+    }
 
     if "lsf" in computer.scheduler_type:
         # LSF scheduler has some peculiarities:
@@ -137,7 +135,7 @@ def determine_metadata_options(self_):
             self_.ctx.n_atoms, self_.ctx.comp, bset
         )
 
-    # Always use the gaussian_advanced_parser
+    # Always use the gaussian_advanced_parser.
     self_.ctx.metadata_options["parser_name"] = "gaussian.advanced"
 
     return True
@@ -169,11 +167,9 @@ def get_total_number_of_cores(resources, computer):
 
 def get_gaussian_cores_and_memory(options, computer):
     num_cores = get_total_number_of_cores(options["resources"], computer)
-
     if "max_memory_kb" not in options:
         # If no memory is specified for the scheduler, set 2GB memory to Gaussian
         memory_mb = 2048
     else:
         memory_mb = _get_gaussian_mem_mb(options["max_memory_kb"], computer)
-
     return num_cores, memory_mb

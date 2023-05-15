@@ -1,9 +1,8 @@
 import numpy as np
-from aiida.engine import ExitCode, ToContext, WorkChain, calcfunction, if_
-from aiida.orm import Bool, Code, Dict, Float, Int, List, Str, StructureData
+from aiida import engine, orm
 
+from .geo_opt_workchain import Cp2kGeoOptWorkChain
 from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
-from .molecule_opt_workchain import Cp2kMoleculeOptWorkChain
 
 IC_PLANE_HEIGHTS = {
     "Au(111)": 1.42,  # Kharche J. Phys. Chem. Lett. 7, 1526–1533 (2016).
@@ -31,7 +30,7 @@ def geometrical_analysis(ase_geo, substr_elem):
     return mol_atoms, surf_z
 
 
-@calcfunction
+@engine.calcfunction
 def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
     ase_geo = structure.get_ase()
     substr_elem = substrate.value.split("(")[0]
@@ -40,7 +39,9 @@ def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
 
     if surf_z is None:
         if ads_h is None:
-            return ExitCode(300, "Ads. height not specified for isolated molecule.")
+            return engine.ExitCode(
+                300, "Ads. height not specified for isolated molecule."
+            )
         # Adsorption height is defined from the geometrical center of the molecule
         surf_z = np.mean(mol_atoms.positions[:, 2]) - ads_h.value
 
@@ -65,13 +66,13 @@ def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
         ]
 
     return {
-        "mol_struct": StructureData(ase=mol_atoms),
-        "image_plane_z": Float(imag_plane_z),
-        "mol_mag_per_site": List(mps),
+        "mol_struct": orm.StructureData(ase=mol_atoms),
+        "image_plane_z": orm.Float(imag_plane_z),
+        "mol_mag_per_site": orm.List(mps),
     }
 
 
-@calcfunction
+@engine.calcfunction
 def calc_gw_ic_parameters(gw_params, ic_params):
     gw_evals = gw_params["gw_eval"]
     ic_deltas = ic_params["ic_delta"]
@@ -106,10 +107,10 @@ def calc_gw_ic_parameters(gw_params, ic_params):
         "scf_levels": gw_params["g0w0_e_scf"],
     }
 
-    return Dict(gw_ic_params)
+    return orm.Dict(gw_ic_params)
 
 
-class Cp2kAdsorbedGwIcWorkChain(WorkChain):
+class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
     """
     WorkChain to run GW and IC for an adsorbed system
 
@@ -121,42 +122,45 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.input("code", valid_type=Code)
+        spec.input("code", valid_type=orm.Code)
 
         spec.input(
             "structure",
-            valid_type=StructureData,
+            valid_type=orm.StructureData,
             help="A molecule on a substrate or an isolated molecule.",
         )
         spec.input(
             "ads_height",
-            valid_type=Float,
+            valid_type=orm.Float,
             required=False,
             help=(
-                "Ads. height from the molecular geometrical center."
+                "Adsoprtion height from the molecular geometrical center."
                 "Required if an isolated molecule is specified."
             ),
         )
         spec.input(
             "substrate",
-            valid_type=Str,
-            default=lambda: Str("Au(111)"),
+            valid_type=orm.Str,
+            default=lambda: orm.Str("Au(111)"),
             help="Substrate type, determines the image charge plane.",
         )
         spec.input(
             "protocol",
-            valid_type=Str,
-            default=lambda: Str("gpw_std"),
+            valid_type=orm.Str,
+            default=lambda: orm.Str("gpw_std"),
             required=False,
             help="Protocol supported by the GW workchain.",
         )
         spec.input(
-            "multiplicity", valid_type=Int, default=lambda: Int(0), required=False
+            "multiplicity",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(0),
+            required=False,
         )
         spec.input(
             "magnetization_per_site",
-            valid_type=List,
-            default=lambda: List(list=[]),
+            valid_type=orm.List,
+            default=lambda: orm.List(list=[]),
             required=False,
         )
         spec.input_namespace(
@@ -189,23 +193,23 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         )
         spec.input(
             "debug",
-            valid_type=Bool,
-            default=lambda: Bool(False),
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
             required=False,
             help="Run with fast parameters for debugging.",
         )
 
         spec.input(
             "geometry_mode",
-            valid_type=Str,
-            default=lambda: Str("ads_geo"),
+            valid_type=orm.Str,
+            default=lambda: orm.Str("ads_geo"),
             required=False,
             help="Possibilities: ads_geo, gas_opt",
         )
 
         spec.outline(
             cls.setup,
-            if_(cls.gas_opt_selected)(cls.gas_opt, cls.check_gas_opt),
+            engine.if_(cls.gas_opt_selected)(cls.gas_opt, cls.check_gas_opt),
             cls.ic,
             cls.gw,
             cls.finalize,
@@ -255,25 +259,25 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         self.ctx.image_plane_z = an_out["image_plane_z"]
         self.ctx.mol_mag_per_site = an_out["mol_mag_per_site"]
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
 
     def gas_opt_selected(self):
         return self.inputs.geometry_mode.value == "gas_opt"
 
     def gas_opt(self):
-        builder = Cp2kMoleculeOptWorkChain.get_builder()
+        builder = Cp2kGeoOptWorkChain.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.mol_struct
         builder.multiplicity = self.inputs.multiplicity
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
-        builder.vdw = Bool(True)
-        builder.protocol = Str("standard")
+        builder.vdw = orm.Bool(True)
+        builder.protocol = orm.Str("standard")
         if self.inputs.debug.value:
-            builder.protocol = Str("debug")
+            builder.protocol = orm.Str("debug")
         builder.options = self.inputs.options.scf
         builder.metadata.description = "gas_opt"
         submitted_node = self.submit(builder)
-        return ToContext(gas_opt=submitted_node)
+        return engine.ToContext(gas_opt=submitted_node)
 
     def check_gas_opt(self):
         if not self.ctx.gas_opt.is_finished_ok:
@@ -284,8 +288,8 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         gas_opt_ase = self.ctx.gas_opt.outputs.output_structure.get_ase()
         gas_opt_geo_center = np.mean(gas_opt_ase.positions, axis=0)
         gas_opt_ase.positions += ads_mol_geo_center - gas_opt_geo_center
-        self.ctx.mol_struct = StructureData(ase=gas_opt_ase)
-        return ExitCode(0)
+        self.ctx.mol_struct = orm.StructureData(ase=gas_opt_ase)
+        return engine.ExitCode(0)
 
     def ic(self):
         self.report("Submitting IC.")
@@ -299,13 +303,13 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.multiplicity = self.inputs.multiplicity
         builder.debug = self.inputs.debug
-        builder.run_image_charge = Bool(True)
+        builder.run_image_charge = orm.Bool(True)
         builder.z_ic_plane = self.ctx.image_plane_z
         builder.options.scf = self.inputs.options.scf
         builder.options.gw = self.inputs.options.ic
         builder.metadata.description = "ic"
         submitted_node = self.submit(builder)
-        return ToContext(ic=submitted_node)
+        return engine.ToContext(ic=submitted_node)
 
     def gw(self):
         if not self.ctx.ic.is_finished_ok:
@@ -324,7 +328,7 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         builder.options.gw = self.inputs.options.gw
         builder.metadata.description = "gw"
         submitted_node = self.submit(builder)
-        return ToContext(gw=submitted_node)
+        return engine.ToContext(gw=submitted_node)
 
     def finalize(self):
         self.report("Finalizing...")
@@ -351,4 +355,4 @@ class Cp2kAdsorbedGwIcWorkChain(WorkChain):
         extras_list.append(self.node.pk)
         self.inputs.structure.base.extras.set(extras_label, extras_list)
 
-        return ExitCode(0)
+        return engine.ExitCode(0)
