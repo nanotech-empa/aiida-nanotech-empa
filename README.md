@@ -26,7 +26,10 @@ pip install aiida-nanotech-empa
 
 ## For maintainers
 
-To create a new release, clone the repository, install development dependencies with `pip install '.[dev]'`, and then execute `bumpver update --major/--minor/--patch`.
+To create a new release, clone the repository, install development dependencies with `pip install '.[dev]'`, and then execute `bumpver update --dry --major (--minor/--patch)`.
+This will display the changes that will be made to the repository - check them carefully.
+
+Once you are happy with the changes, remove the `--dry` option and re-execute the command.
 This will:
 
   1. Create a tagged release with bumped version and push it to the repository.
@@ -34,6 +37,5 @@ This will:
 
 Additional notes:
 
-  - Use the `--dry` option to preview the release change.
   - The release tag (e.g. a/b/rc) is determined from the last release.
-    Use the `--tag` option to switch the release tag.
+    Use the `--tag beta (alpha/gamma)`  option to switch the release tag.
