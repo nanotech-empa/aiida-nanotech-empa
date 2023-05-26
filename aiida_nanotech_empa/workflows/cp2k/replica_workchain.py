@@ -172,6 +172,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         builder.metadata.options = self.inputs.options
         builder.metadata.label = "scf"
         builder.metadata.options.parser_name = "cp2k_advanced_parser"
+        input_dict["GLOBAL"]["WALLTIME"] = self.inputs.options["max_wallclock_seconds"]
         builder.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)
@@ -193,7 +194,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             self.ctx.CVs_to_increment = self.ctx.CVs_cases[self.ctx.lowest_energy_calc]
 
     def update_colvars_increments(self):
-        """Computes teh increments for the CVs according to deviation from target.
+        """Computes the increments for the CVs according to deviation from target.
         If the target value is reached wihtin the increment, set increment to 0.
         Deviation from target is computed wrt actual value of CVs while new CVs
         are computed as previous target plus increment to avoid slow diverging deviations
@@ -270,6 +271,9 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                     )
                     submitted_cvs += " " + str(target)
                 self.ctx.CVs_cases.append(current_cvs_targets)
+                input_dict["GLOBAL"]["WALLTIME"] = self.inputs.options[
+                    "max_wallclock_seconds"
+                ]
                 builder.cp2k.parameters = orm.Dict(input_dict)
 
                 submitted_calculation = self.submit(builder)
