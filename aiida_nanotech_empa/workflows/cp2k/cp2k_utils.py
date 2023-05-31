@@ -743,6 +743,32 @@ def eval_cv_angle(details, atoms):
     return ["angle", points_xyz.get_angle(0, 1, 2, mic=True)]
 
 
+def cv_torsion(details):
+    """Returns the CP2K dictionary input section for the angle CV  between atoms or points.
+    cv_torsion('angle point atoms 2 3  point fix_point 8.36 6.78 5.0 point atoms 3 4 end'.split())
+    returns
+    {'ANGLE': {'POINT': [{'TYPE': 'GEO_CENTER', 'ATOMS': '2 3 '}, {'TYPE': 'FIX_POINT', 'XYZ': '8.36 6.78 5.0 '},
+    {'TYPE': 'GEO_CENTER', 'ATOMS': '3 4 '}], 'ATOMS': '1 2 3'}}
+    """
+    # WEIGHTS NOT IMPLEMENTED
+    # case ATOMS and no points not implemented
+
+    points = get_points(details)
+    return_dict = {"TORSION": {}}
+    if points:
+        return_dict["TORSION"].update(points)
+    return_dict["TORSION"]["ATOMS"] = "1 2 3 4"
+
+    return return_dict
+
+
+def eval_cv_torsion(details, atoms):
+    """Evaluates the CV angle between the atoms defined in the CV."""
+    the_cv = cv_torsion(details)
+    points_xyz = get_points_coords(the_cv["TORSION"]["POINT"], atoms)
+    return ["angle", points_xyz.get_dihedral(0, 1, 2, 3, mic=True)]
+
+
 def cv_angle_plane_plane(details):
     """CV anagle between two planes.
     cv_angle_plane_plane('angle_plane_plane point fix_point 12.1 7.5  5.
@@ -898,5 +924,7 @@ def compute_colvars(colvars, atoms):
             allcvs.append(eval_cv_angle_plane_plane(details, atoms))
         elif details[0].lower() == "bond_rotation":
             allcvs.append(eval_cv_bond_rotation(details, atoms))
+        elif details[0].lower() == "torsion":
+            allcvs.append(eval_cv_torsion(details, atoms))
 
     return allcvs
