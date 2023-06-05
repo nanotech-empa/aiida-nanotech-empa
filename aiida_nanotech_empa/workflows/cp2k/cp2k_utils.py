@@ -747,7 +747,7 @@ def cv_torsion(details):
     """Returns the CP2K dictionary input section for the angle CV  between atoms or points.
     cv_torsion('angle point atoms 2 3  point fix_point 8.36 6.78 5.0 point atoms 3 4 end'.split())
     returns
-    {'ANGLE': {'POINT': [{'TYPE': 'GEO_CENTER', 'ATOMS': '2 3 '}, {'TYPE': 'FIX_POINT', 'XYZ': '8.36 6.78 5.0 '},
+    {'TORSION': {'POINT': [{'TYPE': 'GEO_CENTER', 'ATOMS': '2 3 '}, {'TYPE': 'FIX_POINT', 'XYZ': '8.36 6.78 5.0 '},
     {'TYPE': 'GEO_CENTER', 'ATOMS': '3 4 '}], 'ATOMS': '1 2 3'}}
     """
     # WEIGHTS NOT IMPLEMENTED
@@ -876,6 +876,8 @@ def get_colvars_section(colvars):
             allcvs.append(cv_angle_plane_plane(details))
         elif details[0].lower() == "bond_rotation":
             allcvs.append(cv_bond_rotation(details))
+        elif details[0].lower() == "torsion":
+            allcvs.append(cv_torsion(details))
 
     return {"COLVAR": allcvs}
 
