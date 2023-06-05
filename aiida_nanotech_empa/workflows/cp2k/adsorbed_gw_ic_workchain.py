@@ -149,7 +149,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             default=lambda: orm.Str("gpw_std"),
             required=False,
-            help="Protocol supported by the GW workchain.",
+            help="Protocol supported by the Cp2kMoleculeGwWorkChain.",
         )
         spec.input(
             "multiplicity",
@@ -191,14 +191,6 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
             required=False,
             help="Define options for the GW cacluation: walltime, memory, CPUs, etc.",
         )
-        spec.input(
-            "debug",
-            valid_type=orm.Bool,
-            default=lambda: orm.Bool(False),
-            required=False,
-            help="Run with fast parameters for debugging.",
-        )
-
         spec.input(
             "geometry_mode",
             valid_type=orm.Str,
@@ -272,8 +264,6 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.vdw = orm.Bool(True)
         builder.protocol = orm.Str("standard")
-        if self.inputs.debug.value:
-            builder.protocol = orm.Str("debug")
         builder.options = self.inputs.options.scf
         builder.metadata.description = "gas_opt"
         submitted_node = self.submit(builder)
@@ -302,7 +292,6 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.structure = self.ctx.mol_struct
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.multiplicity = self.inputs.multiplicity
-        builder.debug = self.inputs.debug
         builder.run_image_charge = orm.Bool(True)
         builder.z_ic_plane = self.ctx.image_plane_z
         builder.options.scf = self.inputs.options.scf
@@ -323,7 +312,6 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.structure = self.ctx.mol_struct
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.multiplicity = self.inputs.multiplicity
-        builder.debug = self.inputs.debug
         builder.options.scf = self.inputs.options.scf
         builder.options.gw = self.inputs.options.gw
         builder.metadata.description = "gw"

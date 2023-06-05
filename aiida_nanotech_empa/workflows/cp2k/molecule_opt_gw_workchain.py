@@ -143,8 +143,6 @@ class Cp2kMoleculeOptGwWorkChain(engine.WorkChain):
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.vdw = orm.Bool(True)
         builder.protocol = orm.Str("standard")
-        if self.inputs.debug.value:
-            builder.protocol = orm.Str("debug")
         builder.options = self.inputs.options.geo_opt
         builder.metadata.description = "Submitted by Cp2kMoleculeOptGwWorkChain."
         builder.metadata.label = "Cp2kGeoOptWorkChain"

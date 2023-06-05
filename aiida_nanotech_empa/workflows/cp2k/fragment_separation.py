@@ -1,7 +1,6 @@
 import pathlib
 
 import numpy as np
-import yaml
 from aiida import engine, orm, plugins
 
 from ...utils import analyze_structure, common_utils
@@ -11,15 +10,6 @@ StructureData = plugins.DataFactory("core.structure")
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
 DATA_DIR = pathlib.Path(__file__).parent.absolute() / "data"
-
-
-def load_protocol(fname, protocol):
-    """Load a protocol from a file."""
-    with open(
-        pathlib.Path(__file__).parent / "protocols" / fname, encoding="utf-8"
-    ) as fhandle:
-        protocols = yaml.safe_load(fhandle)
-        return protocols[protocol]
 
 
 # @engine.calcfunction
@@ -93,7 +83,14 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             help="List of indices of atoms defining individual fragments.",
         )
 
-        # dft parameters
+        spec.input(
+            "protocol",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("standard"),
+            required=False,
+            help="Protocol supported by the Cp2kBaseWorkChain.",
+        )
+
         spec.input(
             "dft_params",
             valid_type=orm.Dict,
@@ -103,7 +100,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             Magnetization per site of the fragments will be extracted automatically.
         charges, dictionary: Charges of each fragment. No need to specify the charge of the full system
             as it would be computed automatically.
-        protocol: Protocol to use for the calculation.
         uks: Use unrestricted Kohn-Sham.
         """,
         )
@@ -185,9 +181,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             fragments=self.inputs.fragments,
         ):
             # Re-loading the input dictionary for the given protocol.
-            input_dict = load_protocol(
+            input_dict = cp2k_utils.load_protocol(
                 fname="geo_opt_protocol.yml",
-                protocol=self.inputs.dft_params["protocol"],
+                protocol=self.inputs.protocol.value,
             )
 
             self.report(

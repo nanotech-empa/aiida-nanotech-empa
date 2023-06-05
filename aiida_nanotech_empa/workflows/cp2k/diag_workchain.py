@@ -2,7 +2,6 @@ import copy
 import pathlib
 
 import numpy as np
-import yaml
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
@@ -20,6 +19,13 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
         spec.input("dft_params", valid_type=orm.Dict, default=lambda: orm.Dict(dict={}))
+        spec.input(
+            "protocol",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("standard"),
+            required=False,
+            help="Protocol supported by the Cp2kBaseWorkChain.",
+        )
         spec.input("pdos_lists", valid_type=orm.List, required=False)
         spec.input("settings", valid_type=orm.Dict, required=False)
         spec.input(
@@ -73,15 +79,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         # Resources.
         self.ctx.options = self.inputs.options.get_dict()
-        if self.ctx.dft_params["protocol"] == "debug":
-            self.ctx.options = {
-                "max_wallclock_seconds": 600,
-                "resources": {
-                    "num_machines": 1,
-                    "num_mpiprocs_per_machine": 1,
-                    "num_cores_per_mpiproc": 1,
-                },
-            }
 
         if not self.ctx.dft_params["uks"]:
             self.ctx.dft_params["spin_up_guess"] = []
@@ -107,13 +104,13 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         ase_atoms = structure_with_tags.get_ase()
 
-        # PERIODIC: only NONE and XYZ are supported
+        # Periodic: only NONE and XYZ are supported.
         if self.ctx.dft_params["periodic"] == "NONE":
-            # Make sure cell is big enough for MT poisson solver and center positions
-            if self.ctx.dft_params["protocol"] == "debug":
-                extra_cell = 9.0  # Angstrom
+            # Make sure cell is big enough for MT poisson solver and center positions.
+            if self.inputs.protocol == "debug":
+                extra_cell = 9.0  # Angstrom.
             else:
-                extra_cell = 15.0
+                extra_cell = 15.0  # Angstrom.
             ase_atoms.cell = 2 * (np.ptp(ase_atoms.positions, axis=0)) + extra_cell
             ase_atoms.center()
 
@@ -126,13 +123,11 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.report("Running CP2K OT SCF")
 
         # Load input template.
-        with open(
-            pathlib.Path(__file__).parent / "protocols" / "scf_ot_protocol.yml",
-            encoding="utf-8",
-        ) as handle:
-            protocols = yaml.safe_load(handle)
-            input_dict = copy.deepcopy(protocols[self.ctx.dft_params["protocol"]])
+        input_dict = cp2k_utils.load_protocol(
+            "scf_ot_protocol.yml", self.inputs.protocol.value
+        )
 
+        # Set workflow inputs.
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
@@ -158,7 +153,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
                 "multiplicity"
             ]
 
-        # cutoff
+        # CUTOFF.
         input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = self.ctx.cutoff
 
         # KINDS section
@@ -169,10 +164,10 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         builder.cp2k.metadata.options = self.ctx.options
 
-        # parser
+        # Parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
-        # cp2k input dictionary
+        # CP2K input dictionary.
         builder.cp2k.parameters = orm.Dict(input_dict)
         self.ctx.input_dict = copy.deepcopy(input_dict)
 
@@ -184,13 +179,10 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         if not common_utils.check_if_calc_ok(self, self.ctx.ot_scf):
             return self.exit_codes.ERROR_TERMINATION
 
-        # load input template
-        with open(
-            pathlib.Path(__file__).parent / "./protocols/scf_diag_protocol.yml",
-            encoding="utf-8",
-        ) as handle:
-            protocols = yaml.safe_load(handle)
-            scf_dict = copy.deepcopy(protocols[self.ctx.dft_params["protocol"]])
+        # Load input template.
+        scf_dict = cp2k_utils.load_protocol(
+            "scf_diag_protocol.yml", self.inputs.protocol
+        )
 
         input_dict = copy.deepcopy(self.ctx.input_dict)
         if self.ctx.dft_params["elpa_switch"]:
@@ -204,7 +196,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
                 "added_mos"
             ]
 
-        # pdos
+        # PDOS
         if "pdos_lists" in self.inputs:
             pdos_list_dicts = [
                 {"COMPONENTS": "", "LIST": e} for e in self.inputs.pdos_lists

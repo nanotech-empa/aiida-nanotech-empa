@@ -1,8 +1,6 @@
-import copy
 import pathlib
 
 import numpy as np
-import yaml
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
@@ -18,6 +16,13 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         spec.input("code", valid_type=orm.Code)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input(
+            "protocol",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("standard"),
+            required=False,
+            help="Protocol supported by the Cp2kBaseWorkChain.",
+        )
         spec.input("dft_params", valid_type=orm.Dict)
         spec.input("sys_params", valid_type=orm.Dict)
         spec.input(
@@ -51,18 +56,10 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
-
         self.ctx.n_atoms = len(self.inputs.structure.sites)
-
-        # Load input template.
-        with open(
-            pathlib.Path(__file__).parent / "protocols" / "geo_opt_protocol.yml",
-            encoding="utf-8",
-        ) as handle:
-            protocols = yaml.safe_load(handle)
-            self.ctx.input_dict = copy.deepcopy(
-                protocols[self.ctx.dft_params["protocol"]]
-            )
+        self.ctx.input_dict = cp2k_utils.load_protocol(
+            "geo_opt_protocol.yml", self.inputs.protocol.value
+        )
 
         # vdW section.
         if "vdw" in self.ctx.dft_params:
@@ -97,8 +94,8 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         # Non-periodic systems only NONE and XYZ implemented:
         if "periodic" in self.ctx.dft_params:
             if self.ctx.dft_params["periodic"] == "NONE":
-                # make sure cell is big enough for MT poisson solver and center molecule
-                if self.ctx.dft_params["protocol"] == "debug":
+                # Make sure cell is big enough for MT poisson solver and center molecule.
+                if self.inputs.protocol == "debug":
                     extra_cell = 5.0
                 else:
                     extra_cell = 15.0
@@ -134,14 +131,9 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         # Cell optimization.
         if "cell_opt" in self.ctx.sys_params:
-            with open(
-                pathlib.Path(__file__).parent / "protocols" / "cell_opt_protocol.yml",
-                encoding="utf-8",
-            ) as handle:
-                protocols = yaml.safe_load(handle)
-                cell_input_dict = copy.deepcopy(
-                    protocols[self.ctx.dft_params["protocol"]]
-                )
+            cell_input_dict = cp2k_utils.load_protocol(
+                "cell_opt_protocol.yml", self.inputs.protocol.value
+            )
             self.ctx.input_dict["GLOBAL"]["RUN_TYPE"] = "CELL_OPT"
             self.ctx.input_dict["MOTION"] = cell_input_dict["MOTION"]
             self.ctx.input_dict["FORCE_EVAL"]["STRESS_TENSOR"] = "ANALYTICAL"
@@ -166,15 +158,6 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         # Resources.
         self.ctx.options = self.inputs.options
-        if self.ctx.dft_params["protocol"] == "debug":
-            self.ctx.options = {
-                "max_wallclock_seconds": 600,
-                "resources": {
-                    "num_machines": 1,
-                    "num_mpiprocs_per_machine": 1,
-                    "num_cores_per_mpiproc": 1,
-                },
-            }
         self.ctx.input_dict["GLOBAL"]["WALLTIME"] = self.ctx.options[
             "max_wallclock_seconds"
         ]
