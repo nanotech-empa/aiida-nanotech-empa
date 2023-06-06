@@ -181,7 +181,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         # Load input template.
         scf_dict = cp2k_utils.load_protocol(
-            "scf_diag_protocol.yml", self.inputs.protocol
+            "scf_diag_protocol.yml", self.inputs.protocol.value
         )
 
         input_dict = copy.deepcopy(self.ctx.input_dict)
