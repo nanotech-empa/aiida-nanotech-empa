@@ -95,7 +95,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         if "periodic" in self.ctx.dft_params:
             if self.ctx.dft_params["periodic"] == "NONE":
                 # Make sure cell is big enough for MT poisson solver and center molecule.
-                if self.inputs.protocol == "debug":
+                if self.inputs.protocol.value == "debug":
                     extra_cell = 5.0
                 else:
                     extra_cell = 15.0
