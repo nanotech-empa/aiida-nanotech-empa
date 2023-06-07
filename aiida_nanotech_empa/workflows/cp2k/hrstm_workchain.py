@@ -19,6 +19,13 @@ class Cp2kHrstmWorkChain(engine.WorkChain):
         spec.input("cp2k_code", valid_type=orm.Code)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input(
+            "protocol",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("standard"),
+            required=False,
+            help="Protocol supported by the Cp2kDiagWorkChain.",
+        )
         spec.input("dft_params", valid_type=orm.Dict)
         spec.input(
             "options",
@@ -71,10 +78,11 @@ class Cp2kHrstmWorkChain(engine.WorkChain):
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
+        builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.dft_params)
         builder.options = orm.Dict(self.ctx.options)
 
-        # restart wfn
+        # Restart WFN.
         if "parent_calc_folder" in self.inputs:
             builder.parent_calc_folder = self.inputs.parent_calc_folder
 
@@ -84,7 +92,7 @@ class Cp2kHrstmWorkChain(engine.WorkChain):
     def run_ppm(self):
         self.report("Running PPM")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
         inputs = {}
         inputs["geo_no_labels"] = self.ctx.files["geo_no_labels"]
         inputs["metadata"] = {}
@@ -92,7 +100,7 @@ class Cp2kHrstmWorkChain(engine.WorkChain):
         inputs["code"] = self.inputs.ppm_code
         inputs["parameters"] = self.inputs.ppm_params
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
-        # TODO set atom types properly
+        # TODO set atom types properly.
         inputs["atomtypes"] = self.ctx.files["2pp"]
         inputs["metadata"]["options"] = {
             "max_wallclock_seconds": 21600,

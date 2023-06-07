@@ -1,5 +1,4 @@
 import collections
-import copy
 import io
 import numbers
 import os
@@ -167,7 +166,16 @@ def get_cutoff(structure=None):
     return max([atom_data["cutoff"][element] for element in elements])
 
 
-def get_dft_inputs(dft_params, structure, template):
+def load_protocol(fname, protocol=None):
+    """Load a protocol from a file."""
+    with open(
+        pathlib.Path(__file__).parent / "protocols" / fname, encoding="utf-8"
+    ) as fhandle:
+        protocols = yaml.safe_load(fhandle)
+        return protocols[protocol] if protocol else protocols
+
+
+def get_dft_inputs(dft_params, structure, template, protocol):
     ase_atoms = structure.get_ase()
     files = {
         "basis": orm.SinglefileData(
@@ -187,14 +195,9 @@ def get_dft_inputs(dft_params, structure, template):
             )
         ),
     }
-    # load input template
-    protocol = "./protocols/" + template
-    with open(
-        pathlib.Path(__file__).parent / protocol,
-        encoding="utf-8",
-    ) as handle:
-        protocols = yaml.safe_load(handle)
-        input_dict = copy.deepcopy(protocols[dft_params["protocol"]])
+
+    # Load input template.
+    input_dict = load_protocol(template, protocol)
 
     # vdW section
     if "vdw" in dft_params:
@@ -224,7 +227,7 @@ def get_dft_inputs(dft_params, structure, template):
     if "periodic" in dft_params:
         if dft_params["periodic"] == "NONE":
             # make sure cell is big enough for MT poisson solver and center molecule
-            if dft_params["protocol"] == "debug":
+            if protocol == "debug":
                 extra_cell = 5.0
             else:
                 extra_cell = 15.0

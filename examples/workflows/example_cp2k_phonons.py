@@ -1,6 +1,7 @@
 import pathlib
 
 import ase.io
+import click
 from aiida import engine, orm, plugins
 
 Cp2kPhononsWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.phonons")
@@ -8,7 +9,7 @@ DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "c2h2.xyz"
 
 
-def _example_cp2k_phonons(cp2k_code, uks):
+def _example_cp2k_phonons(cp2k_code, uks, n_nodes, n_cores_per_node):
     # check test geometry is already in database
     qb = orm.QueryBuilder()
     qb.append(orm.Node, filters={"label": {"in": [GEO_FILE]}})
@@ -32,29 +33,29 @@ def _example_cp2k_phonons(cp2k_code, uks):
     builder.options = {
         "max_wallclock_seconds": 600,
         "resources": {
-            "num_machines": 3,
-            "num_mpiprocs_per_machine": 1,
+            "num_machines": n_nodes,
+            "num_mpiprocs_per_machine": n_cores_per_node,
             "num_cores_per_mpiproc": 1,
         },
     }
 
-    dft_params = {
-        "protocol": "debug",
-        "cutoff": 300,
-    }
+    builder.protocol = orm.Str("debug")
 
     if uks:
         magnetization_per_site = [0 for i in range(len(structure.sites))]
         magnetization_per_site[1] = 1
         magnetization_per_site[2] = -1
         dft_params = {
-            "protocol": "debug",
             "uks": uks,
             "magnetization_per_site": magnetization_per_site,
             "charge": 0,
             "periodic": "XYZ",
             "vdw": False,
             "multiplicity": 1,
+            "cutoff": 300,
+        }
+    else:
+        dft_params = {
             "cutoff": 300,
         }
 
@@ -73,11 +74,6 @@ def _example_cp2k_phonons(cp2k_code, uks):
 
     assert calc_node.is_finished_ok
 
-    # phonons_out_dict = dict(calc_node.outputs.output_parameters)
-    # print()
-    # for k in phonons_out_dict:
-    #    print(f"  {k}: {phonons_out_dict[k]}")
-
 
 def example_cp2k_phonons_rks(cp2k_code):
     _example_cp2k_phonons(cp2k_code, "SlabXY", False)
@@ -87,9 +83,27 @@ def example_cp2k_phonons_uks(cp2k_code):
     _example_cp2k_phonons(cp2k_code, "SlabXY", True)
 
 
-if __name__ == "__main__":
+@click.command("cli")
+@click.argument("cp2k_code", default="cp2k@localhost")
+@click.option("-n", "--n-nodes", default=3)
+@click.option("-c", "--n-cores-per-node", default=1)
+def run_all(cp2k_code, n_nodes, n_cores_per_node):
     print("#### ", " RKS")
-    _example_cp2k_phonons(orm.load_code("cp2k@localhost"), False)
+    _example_cp2k_phonons(
+        orm.load_code(cp2k_code),
+        uks=False,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
+    )
 
     print("#### ", " UKS")
-    _example_cp2k_phonons(orm.load_code("cp2k@localhost"), True)
+    _example_cp2k_phonons(
+        orm.load_code(cp2k_code),
+        uks=True,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
+    )
+
+
+if __name__ == "__main__":
+    run_all()
