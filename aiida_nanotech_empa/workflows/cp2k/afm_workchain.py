@@ -102,7 +102,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
     def run_afms(self):
         self.report("Running PP")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
         afm_pp_inputs = {}
 
         afm_pp_inputs["geo_no_labels"] = self.ctx.files["geo_no_labels"]

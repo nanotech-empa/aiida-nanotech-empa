@@ -92,7 +92,7 @@ class Cp2kHrstmWorkChain(engine.WorkChain):
     def run_ppm(self):
         self.report("Running PPM")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
         inputs = {}
         inputs["geo_no_labels"] = self.ctx.files["geo_no_labels"]
         inputs["metadata"] = {}
@@ -100,7 +100,7 @@ class Cp2kHrstmWorkChain(engine.WorkChain):
         inputs["code"] = self.inputs.ppm_code
         inputs["parameters"] = self.inputs.ppm_params
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
-        # TODO set atom types properly
+        # TODO set atom types properly.
         inputs["atomtypes"] = self.ctx.files["2pp"]
         inputs["metadata"]["options"] = {
             "max_wallclock_seconds": 21600,

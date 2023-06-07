@@ -227,7 +227,7 @@ def get_dft_inputs(dft_params, structure, template, protocol):
     if "periodic" in dft_params:
         if dft_params["periodic"] == "NONE":
             # make sure cell is big enough for MT poisson solver and center molecule
-            if dft_params["protocol"] == "debug":
+            if protocol == "debug":
                 extra_cell = 5.0
             else:
                 extra_cell = 15.0

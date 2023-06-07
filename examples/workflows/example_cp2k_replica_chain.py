@@ -1,6 +1,7 @@
 import pathlib
 
-import ase
+import ase.io
+import click
 from aiida import engine, orm, plugins
 
 Cp2kReplicaWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.replica")
@@ -9,7 +10,9 @@ DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "c2h4.xyz"
 
 
-def _example_cp2k_replicachain(cp2k_code, targets, restart_uuid):
+def _example_cp2k_replicachain(
+    cp2k_code, targets, restart_uuid, n_nodes, n_cores_per_node
+):
     # check if test geometry is already in database
     qb = orm.QueryBuilder()
     qb.append(orm.Node, filters={"label": {"in": [GEO_FILE]}})
@@ -35,16 +38,16 @@ def _example_cp2k_replicachain(cp2k_code, targets, restart_uuid):
     builder.options = {
         "max_wallclock_seconds": 600,
         "resources": {
-            "num_machines": 1,
-            "num_mpiprocs_per_machine": 1,
+            "num_machines": n_nodes,
+            "num_mpiprocs_per_machine": n_cores_per_node,
             "num_cores_per_mpiproc": 1,
         },
     }
 
     builder.structure = orm.StructureData(ase=ase.io.read(DATA_DIR / GEO_FILE))
+    builder.protocol = orm.Str("debug")
 
     dft_params = {
-        "protocol": "debug",
         "periodic": "NONE",
         "vdw": False,
         "cutoff": 300,
@@ -73,12 +76,28 @@ def example_cp2k_replicachain_rks(cp2k_code):
     _example_cp2k_replicachain(cp2k_code, pk1)
 
 
-if __name__ == "__main__":
+@click.command("cli")
+@click.argument("cp2k_code", default="cp2k@localhost")
+@click.option("-n", "--n-nodes", default=1)
+@click.option("-c", "--n-cores-per-node", default=1)
+def run_all(cp2k_code, n_nodes, n_cores_per_node):
     print("#### RKS")
-    pk1 = _example_cp2k_replicachain(
-        orm.load_code("cp2k@localhost"), [1.40, 1.21, 1.87], None
+    uuid = _example_cp2k_replicachain(
+        cp2k_code=orm.load_code(cp2k_code),
+        targets=[1.40, 1.21, 1.87],
+        restart_uuid=None,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
     )
-    print(f"#### RKS continuation from pk {pk1}")
-    pk2 = _example_cp2k_replicachain(
-        orm.load_code("cp2k@localhost"), [1.47, 1.27, 1.87], pk1
+    print(f"#### RKS continuation from uuid ({uuid})")
+    _example_cp2k_replicachain(
+        cp2k_code=orm.load_code(cp2k_code),
+        targets=[1.47, 1.27, 1.87],
+        restart_uuid=uuid,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
     )
+
+
+if __name__ == "__main__":
+    run_all()

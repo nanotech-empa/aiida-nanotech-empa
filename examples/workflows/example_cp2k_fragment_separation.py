@@ -1,6 +1,7 @@
 import pathlib
 
 import ase.io
+import click
 from aiida import engine, orm, plugins
 
 StructureData = plugins.DataFactory("core.structure")
@@ -13,7 +14,7 @@ DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "h2_on_hbn.xyz"
 
 
-def _example_cp2k_ads_ene(cp2k_code, mult):
+def _example_cp2k_ads_ene(cp2k_code, mult, n_nodes, n_cores_per_node):
     """Example of running a workflow to compute the adsorption energy of a molecule on substrate."""
     # Check test geometry is already in database.
     qb = orm.QueryBuilder()
@@ -60,31 +61,31 @@ def _example_cp2k_ads_ene(cp2k_code, mult):
             "slab": mult,
         },
         "magnetization_per_site": mag,
-        "protocol": "debug",
     }
 
     builder.dft_params = orm.Dict(dft_params)
+    builder.protocol = orm.Str("debug")
 
     builder.options = {
         "all": {
             "max_wallclock_seconds": 1200,
             "resources": {
-                "num_machines": 1,
-                "num_mpiprocs_per_machine": 1,
+                "num_machines": n_nodes,
+                "num_mpiprocs_per_machine": n_cores_per_node,
             },
         },
         "molecule": {
             "max_wallclock_seconds": 1200,
             "resources": {
-                "num_machines": 1,
-                "num_mpiprocs_per_machine": 1,
+                "num_machines": n_nodes,
+                "num_mpiprocs_per_machine": n_cores_per_node,
             },
         },
         "slab": {
             "max_wallclock_seconds": 1200,
             "resources": {
-                "num_machines": 1,
-                "num_mpiprocs_per_machine": 1,
+                "num_machines": n_nodes,
+                "num_mpiprocs_per_machine": n_cores_per_node,
             },
         },
     }
@@ -107,9 +108,27 @@ def example_cp2k_slabopt_uks(cp2k_code):
     _example_cp2k_ads_ene(cp2k_code, 1)
 
 
-if __name__ == "__main__":
+@click.command("cli")
+@click.argument("cp2k_code", default="cp2k@localhost")
+@click.option("-n", "--n-nodes", default=1)
+@click.option("-c", "--n-cores-per-node", default=1)
+def run_all(cp2k_code, n_nodes, n_cores_per_node):
     print("#### RKS")
-    _example_cp2k_ads_ene(orm.load_code("cp2k@localhost"), 0)
+    _example_cp2k_ads_ene(
+        orm.load_code(cp2k_code),
+        mult=0,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
+    )
 
     print("#### UKS")
-    _example_cp2k_ads_ene(orm.load_code("cp2k@localhost"), 1)
+    _example_cp2k_ads_ene(
+        orm.load_code(cp2k_code),
+        mult=1,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
+    )
+
+
+if __name__ == "__main__":
+    run_all()

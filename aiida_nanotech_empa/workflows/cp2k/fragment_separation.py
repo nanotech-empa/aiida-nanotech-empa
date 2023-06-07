@@ -88,7 +88,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             default=lambda: orm.Str("standard"),
             required=False,
-            help="Protocol supported by the Cp2kBaseWorkChain.",
+            help="Protocol used by the work chain (geo_opt_protocol).",
         )
 
         spec.input(

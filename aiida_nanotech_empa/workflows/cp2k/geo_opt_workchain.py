@@ -21,7 +21,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             default=lambda: orm.Str("standard"),
             required=False,
-            help="Protocol supported by the Cp2kBaseWorkChain.",
+            help="Protocol supported by the work chain (geo_opt_protocol).",
         )
         spec.input("dft_params", valid_type=orm.Dict)
         spec.input("sys_params", valid_type=orm.Dict)

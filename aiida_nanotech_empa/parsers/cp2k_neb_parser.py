@@ -87,9 +87,7 @@ class Cp2kNebParser(parsers.Parser):
     def _parse_trajectory(self):
         """CP2K trajectory parser."""
 
-        fname = (
-            self.node.process_class._DEFAULT_RESTART_FILE_NAME
-        )  # pylint: disable=protected-access
+        fname = self.node.process_class._DEFAULT_RESTART_FILE_NAME
 
         # Check if the restart file is present.
         if fname not in self.retrieved.list_object_names():
@@ -122,7 +120,16 @@ class Cp2kNebParser(parsers.Parser):
         element_list = [
             re.sub(r"[0-9]+", "", line[0]) for line in coord_set_with_elements
         ]
-        tags = [int(re.findall(r"\d+", line[0])[0]) for line in coord_set_with_elements]
+
+        # Extract tags from the element labels
+        tags = []
+        for line in coord_set_with_elements:
+            try:
+                to_append = re.findall(r"\d+", line[0])[0]
+            except IndexError:
+                to_append = 0
+
+            tags.append(int(to_append))
 
         for i_rep, rep_coord_lines in enumerate(replica_coord_line_sets):
             positions = np.array(rep_coord_lines, np.float64)

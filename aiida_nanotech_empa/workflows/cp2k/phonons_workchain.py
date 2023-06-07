@@ -57,7 +57,10 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
             self.ctx.input_dict,
             self.ctx.structure_with_tags,
         ) = cp2k_utils.get_dft_inputs(
-            dft_params, self.inputs.structure, "phonons_protocol.yml"
+            dft_params,
+            self.inputs.structure,
+            "phonons_protocol.yml",
+            protocol=self.inputs.protocol.value,
         )
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.phonons_params = self.inputs.phonons_params.get_dict()
@@ -86,15 +89,6 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
 
         # Resources.
         self.ctx.options = self.inputs.options
-        if self.inputs.dft_params["protocol"] == "debug":
-            self.ctx.options = {
-                "max_wallclock_seconds": 600,
-                "resources": {
-                    "num_machines": 3,
-                    "num_mpiprocs_per_machine": 1,
-                    "num_cores_per_mpiproc": 1,
-                },
-            }
         self.ctx.geo_options = copy.deepcopy(self.ctx.options)
         self.ctx.geo_options["resources"]["num_machines"] = int(
             self.ctx.phonons_params["nproc_rep"]

@@ -37,7 +37,7 @@ def _example_cp2k_afm(
         print(f"Created new structure: {structure.pk}")
     builder = Cp2kAfmWorkChain.get_builder()
 
-    builder.metadata.label = "Cp2kAfmWorkChain"
+    builder.metadata.label = "CP2K_AFM"
     builder.metadata.description = "test description"
     builder.cp2k_code = cp2k_code
     ase_geom = ase.io.read(DATA_DIR / GEO_FILE)
@@ -140,6 +140,14 @@ def _example_cp2k_afm(
     _, calc_node = engine.run_get_node(builder)
 
     assert calc_node.is_finished_ok
+
+
+def example_cp2k_afm_no_sc_diag(cp2k_code, afm_code1, afm_code2):
+    _example_cp2k_afm(cp2k_code, afm_code1, afm_code2, False, True, False)
+
+
+def example_cp2k_afm_sc_diag(cp2k_code, afm_code1, afm_code2):
+    _example_cp2k_afm(cp2k_code, afm_code1, afm_code2, True, True, True)
 
 
 @click.command("cli")

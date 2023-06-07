@@ -168,7 +168,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             self.inputs.dft_params.get_dict(),
             self.ctx.lowest_energy_structure,
             "scf_ot_protocol.yml",
-            self.inputs.protocol,
+            self.inputs.protocol.value,
         )
 
         builder = Cp2kCalculation.get_builder()
@@ -234,7 +234,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                     self.inputs.dft_params,
                     structure,
                     "geo_opt_protocol.yml",
-                    self.inputs.protocol,
+                    self.inputs.protocol.value,
                 )
 
                 builder = Cp2kBaseWorkChain.get_builder()
