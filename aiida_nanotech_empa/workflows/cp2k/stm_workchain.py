@@ -97,7 +97,7 @@ class Cp2kStmWorkChain(engine.WorkChain):
             "resources": {"num_machines": n_machines},
             "max_wallclock_seconds": 36000,
         }
-        if self.inputs.dft_params["protocol"] == "debug":
+        if self.inputs.protocol.value == "debug":
             inputs["metadata"]["options"]["max_wallclock_seconds"] = 600
 
         # Need to make an explicit instance for the node to be stored to AiiDA.
