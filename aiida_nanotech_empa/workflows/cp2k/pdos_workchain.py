@@ -20,6 +20,13 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         spec.input("mol_structure", valid_type=orm.StructureData)
         spec.input("pdos_lists", valid_type=orm.List)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input(
+            "protocol",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("standard"),
+            required=False,
+            help="Protocol supported by the Cp2kDiagWorkChain workchain.",
+        )
         spec.input("dft_params", valid_type=orm.Dict)
         spec.input("overlap_code", valid_type=orm.Code)
         spec.input("overlap_params", valid_type=orm.Dict)
@@ -105,6 +112,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.slabsys_structure
+        builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.slab_dft_params)
         builder.settings = orm.Dict({"additional_retrieve_list": ["*.pdos"]})
         builder.options = orm.Dict(self.ctx.slab_options)
@@ -126,6 +134,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.mol_structure
+        builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.mol_dft_params)
         builder.options = orm.Dict(self.ctx.mol_options)
 
@@ -153,9 +162,6 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             "resources": {"num_machines": n_machines},
             "max_wallclock_seconds": 86400,
         }
-
-        if self.inputs.dft_params["protocol"] == "debug":
-            inputs["metadata"]["options"]["max_wallclock_seconds"] = 600
         settings = orm.Dict({"additional_retrieve_list": ["overlap.npz"]})
         inputs["settings"] = settings
         future = self.submit(OverlapCalculation, **inputs)

@@ -23,6 +23,13 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
         spec.input("restart_from", valid_type=orm.Str, required=False)
+        spec.input(
+            "protocol",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("standard"),
+            required=False,
+            help="Protocol supported by the Cp2kBaseWorkChain.",
+        )
         spec.input("dft_params", valid_type=orm.Dict)
         spec.input("sys_params", valid_type=orm.Dict)
         spec.input(
@@ -161,6 +168,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             self.inputs.dft_params.get_dict(),
             self.ctx.lowest_energy_structure,
             "scf_ot_protocol.yml",
+            self.inputs.protocol.value,
         )
 
         builder = Cp2kCalculation.get_builder()
@@ -224,7 +232,10 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                 structure = self.ctx.lowest_energy_structure
 
                 files, input_dict, structure_with_tags = cp2k_utils.get_dft_inputs(
-                    self.inputs.dft_params, structure, "geo_opt_protocol.yml"
+                    self.inputs.dft_params,
+                    structure,
+                    "geo_opt_protocol.yml",
+                    self.inputs.protocol.value,
                 )
 
                 builder = Cp2kBaseWorkChain.get_builder()

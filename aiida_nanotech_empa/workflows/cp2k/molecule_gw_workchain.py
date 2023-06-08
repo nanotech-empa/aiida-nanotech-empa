@@ -2,7 +2,6 @@ import copy
 import pathlib
 
 import numpy as np
-import yaml
 from aiida import engine, orm
 from aiida_cp2k.calculations import Cp2kCalculation
 
@@ -120,13 +119,7 @@ class Cp2kMoleculeGwWorkChain(engine.WorkChain):
             self.report("Error: protocol not supported.")
             return self.exit_codes.ERROR_TERMINATION
 
-        # Load protocol templates.
-        with open(
-            pathlib.Path(__file__).parent.joinpath("./protocols/gw_protocols.yml"),
-            encoding="utf-8",
-        ) as handle:
-            self.ctx.protocols = yaml.safe_load(handle)
-
+        self.ctx.protocols = cp2k_utils.load_cp2k_protocol("gw_protocols.yml")
         structure = self.inputs.structure
         self.ctx.cutoff = cp2k_utils.get_cutoff(structure=structure)
         magnetization_per_site = copy.deepcopy(self.inputs.magnetization_per_site)

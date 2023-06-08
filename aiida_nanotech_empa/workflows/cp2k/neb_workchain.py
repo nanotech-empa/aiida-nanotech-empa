@@ -23,6 +23,13 @@ class Cp2kNebWorkChain(engine.WorkChain):
         )
         spec.input("wfn_cp_commands", valid_type=orm.Str, required=False)
         spec.input("restart_from", valid_type=orm.Str, required=False)
+        spec.input(
+            "protocol",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("standard"),
+            required=False,
+            help="Protocol supported by the Cp2kDiagWorkChain.",
+        )
         spec.input("dft_params", valid_type=orm.Dict)
         spec.input("sys_params", valid_type=orm.Dict)
         spec.input("neb_params", valid_type=orm.Dict)
@@ -67,7 +74,10 @@ class Cp2kNebWorkChain(engine.WorkChain):
             self.ctx.input_dict,
             self.ctx.structure_with_tags,
         ) = cp2k_utils.get_dft_inputs(
-            dft_params, self.inputs.structure, "neb_protocol.yml"
+            dft_params,
+            self.inputs.structure,
+            "neb_protocol.yml",
+            self.inputs.protocol.value,
         )
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.neb_params = self.inputs.neb_params.get_dict()
@@ -155,15 +165,6 @@ class Cp2kNebWorkChain(engine.WorkChain):
 
         # Resources
         self.ctx.options = self.inputs.options
-        if self.inputs.dft_params["protocol"] == "debug":
-            self.ctx.options = {
-                "max_wallclock_seconds": 600,
-                "resources": {
-                    "num_machines": 3,
-                    "num_mpiprocs_per_machine": 1,
-                    "num_cores_per_mpiproc": 1,
-                },
-            }
         self.ctx.scf_options = copy.deepcopy(self.ctx.options)
 
         # Number of mpi processes for scf derived from nproc_replica
@@ -186,6 +187,7 @@ class Cp2kNebWorkChain(engine.WorkChain):
             self.inputs.dft_params.get_dict(),
             self.inputs.structure,
             "scf_ot_protocol.yml",
+            self.inputs.protocol.value,
         )
 
         builder = Cp2kCalculation.get_builder()

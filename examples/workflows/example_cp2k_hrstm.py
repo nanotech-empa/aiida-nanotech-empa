@@ -2,6 +2,7 @@ import os
 import pathlib
 
 import ase.io
+import click
 import numpy as np
 from aiida import engine, orm, plugins
 
@@ -12,7 +13,14 @@ GEO_FILE = "c2h2_on_au111.xyz"
 
 
 def _example_cp2k_hrstm(
-    cp2k_code, afm_code, hrstm_code, sc_diag, force_multiplicity, uks
+    cp2k_code,
+    afm_code,
+    hrstm_code,
+    sc_diag,
+    force_multiplicity,
+    uks,
+    n_nodes,
+    n_cores_per_node,
 ):
     # Check test geometry is already in database.
     qb = orm.QueryBuilder()
@@ -42,10 +50,22 @@ def _example_cp2k_hrstm(
         },
         "max_wallclock_seconds": 600,
     }
+    builder.protocol = orm.Str("debug")
 
-    builder.dft_params = orm.Dict(
-        {
-            "protocol": "debug",
+    if uks:
+        dft_params = {
+            "sc_diag": sc_diag,
+            "force_multiplicity": force_multiplicity,
+            "elpa_switch": False,
+            "periodic": "XYZ",
+            "uks": uks,
+            "multiplicity": 1,
+            "smear_t": 150,
+            "spin_up_guess": [0],
+            "spin_dw_guess": [1],
+        }
+    else:
+        dft_params = {
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
             "elpa_switch": False,
@@ -53,23 +73,7 @@ def _example_cp2k_hrstm(
             "uks": uks,
             "smear_t": 150,
         }
-    )
-    if uks:
-        builder.dft_params = orm.Dict(
-            {
-                "protocol": "debug",
-                "sc_diag": sc_diag,
-                "force_multiplicity": force_multiplicity,
-                "elpa_switch": False,
-                "periodic": "XYZ",
-                "uks": uks,
-                "multiplicity": 1,
-                "smear_t": 150,
-                "spin_up_guess": [0],
-                "spin_dw_guess": [1],
-            }
-        )
-
+    builder.dft_params = orm.Dict(dft_params)
     builder.ppm_code = afm_code
 
     cell = ase_geom.cell
@@ -161,13 +165,25 @@ def example_cp2k_hrstm_sc_diag(cp2k_code, afm_code, hrstm_code):
     _example_cp2k_hrstm(cp2k_code, afm_code, hrstm_code, True, True, True)
 
 
-if __name__ == "__main__":
+@click.command("cli")
+@click.argument("cp2k_code", default="cp2k@localhost")
+@click.argument("ppafm2_code", default="2ppafm@localhost")
+@click.argument("hrstm_code", default="hrstm@localhost")
+@click.option("-n", "--n-nodes", default=1)
+@click.option("-c", "--n-cores-per-node", default=1)
+def run_all(cp2k_code, ppafm2_code, hrstm_code, n_nodes, n_cores_per_node):
     print("#### no sc_diag UKS no force")
     _example_cp2k_hrstm(
-        orm.load_code("cp2k@localhost"),
-        orm.load_code("py_afm_2pp_@localhost"),
-        orm.load_code("py_hrstm_4576cd@localhost"),
-        False,
-        False,
-        True,
+        orm.load_code(cp2k_code),
+        orm.load_code(ppafm2_code),
+        orm.load_code(hrstm_code),
+        sc_diag=False,
+        force_multiplicity=False,
+        uks=True,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
     )
+
+
+if __name__ == "__main__":
+    run_all()

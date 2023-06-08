@@ -1,6 +1,7 @@
 import pathlib
 
 import ase.io
+import click
 import numpy as np
 from aiida import engine, orm, plugins
 
@@ -11,7 +12,14 @@ GEO_FILE = "c2h2_on_au111.xyz"
 
 
 def _example_cp2k_afm(
-    cp2k_code, afm_code1, afm_code2, sc_diag, force_multiplicity, uks
+    cp2k_code,
+    afm_code1,
+    afm_code2,
+    sc_diag,
+    force_multiplicity,
+    uks,
+    n_nodes,
+    n_cores_per_node,
 ):
     # Check test geometry is already in database
     qb = orm.QueryBuilder()
@@ -29,22 +37,22 @@ def _example_cp2k_afm(
         print(f"Created new structure: {structure.pk}")
     builder = Cp2kAfmWorkChain.get_builder()
 
-    builder.metadata.label = "Cp2kAfmWorkChain"
+    builder.metadata.label = "CP2K_AFM"
     builder.metadata.description = "test description"
     builder.cp2k_code = cp2k_code
     ase_geom = ase.io.read(DATA_DIR / GEO_FILE)
     builder.structure = orm.StructureData(ase=ase_geom)
     builder.options = {
         "resources": {
-            "num_machines": 1,
-            "num_mpiprocs_per_machine": 1,
+            "num_machines": n_nodes,
+            "num_mpiprocs_per_machine": n_cores_per_node,
         },
         "max_wallclock_seconds": 600,
     }
 
+    builder.protocol = orm.Str("debug")
     builder.dft_params = orm.Dict(
         {
-            "protocol": "debug",
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
             "elpa_switch": False,
@@ -56,7 +64,6 @@ def _example_cp2k_afm(
     if uks:
         builder.dft_params = orm.Dict(
             {
-                "protocol": "debug",
                 "sc_diag": sc_diag,
                 "force_multiplicity": force_multiplicity,
                 "elpa_switch": False,
@@ -143,13 +150,25 @@ def example_cp2k_afm_sc_diag(cp2k_code, afm_code1, afm_code2):
     _example_cp2k_afm(cp2k_code, afm_code1, afm_code2, True, True, True)
 
 
-if __name__ == "__main__":
+@click.command("cli")
+@click.argument("cp2k_code", default="cp2k@localhost")
+@click.argument("ppafm_code", default="ppafm@localhost")
+@click.argument("ppafm2_code", default="2ppafm@localhost")
+@click.option("-n", "--n-nodes", default=1)
+@click.option("-c", "--n-cores-per-node", default=1)
+def run_all(cp2k_code, ppafm_code, ppafm2_code, n_nodes, n_cores_per_node):
     print("#### no sc_diag UKS no force")
     _example_cp2k_afm(
-        orm.load_code("cp2k@localhost"),
-        orm.load_code("py_afm_pp_@localhost"),
-        orm.load_code("py_afm_2pp_@localhost"),
-        False,
-        False,
-        True,
+        cp2k_code=orm.load_code(cp2k_code),
+        afm_code1=orm.load_code(ppafm_code),
+        afm_code2=orm.load_code(ppafm2_code),
+        sc_diag=False,
+        force_multiplicity=False,
+        uks=True,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
     )
+
+
+if __name__ == "__main__":
+    run_all()

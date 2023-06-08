@@ -1,6 +1,7 @@
 import pathlib
 
 import ase.io
+import click
 from aiida import engine, orm, plugins
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
@@ -9,7 +10,9 @@ DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "c2h2.xyz"
 
 
-def _example_cp2k_diag(cp2k_code, sc_diag, force_multiplicity, uks):
+def _example_cp2k_diag(
+    cp2k_code, sc_diag, force_multiplicity, uks, n_nodes, n_cores_per_node
+):
     builder = Cp2kDiagWorkChain.get_builder()
 
     builder.metadata.label = "Cp2kDiagWorkChain"
@@ -27,9 +30,9 @@ def _example_cp2k_diag(cp2k_code, sc_diag, force_multiplicity, uks):
             ]
         }
     )
+    builder.protocol = orm.Str("debug")
     builder.dft_params = orm.Dict(
         {
-            "protocol": "debug",
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
             "elpa_switch": False,
@@ -43,7 +46,6 @@ def _example_cp2k_diag(cp2k_code, sc_diag, force_multiplicity, uks):
     if uks:
         builder.dft_params = orm.Dict(
             {
-                "protocol": "debug",
                 "sc_diag": sc_diag,
                 "force_multiplicity": force_multiplicity,
                 "elpa_switch": False,
@@ -61,8 +63,8 @@ def _example_cp2k_diag(cp2k_code, sc_diag, force_multiplicity, uks):
         {
             "max_wallclock_seconds": 600,
             "resources": {
-                "num_machines": 1,
-                "num_mpiprocs_per_machine": 1,
+                "num_machines": n_nodes,
+                "num_mpiprocs_per_machine": n_cores_per_node,
                 "num_cores_per_mpiproc": 1,
             },
         }
@@ -81,12 +83,48 @@ def example_cp2k_diag_sc_diag(cp2k_code):
     _example_cp2k_diag(cp2k_code, True, True, True)
 
 
-if __name__ == "__main__":
+@click.command("cli")
+@click.argument("cp2k_code", default="cp2k@localhost")
+@click.option("-n", "--n-nodes", default=1)
+@click.option("-c", "--n-cores-per-node", default=1)
+def run_all(cp2k_code, n_nodes, n_cores_per_node):
     print("#### no sc_diag RKS")
-    _example_cp2k_diag(orm.load_code("cp2k@localhost"), False, True, False)
+    _example_cp2k_diag(
+        orm.load_code(cp2k_code),
+        sc_diag=False,
+        force_multiplicity=True,
+        uks=False,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
+    )
     print("#### sc_diag RKS")
-    _example_cp2k_diag(orm.load_code("cp2k@localhost"), True, True, False)
+    _example_cp2k_diag(
+        orm.load_code(cp2k_code),
+        sc_diag=True,
+        force_multiplicity=True,
+        uks=False,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
+    )
     print("#### no sc_diag UKS no force")
-    _example_cp2k_diag(orm.load_code("cp2k@localhost"), False, False, True)
+    _example_cp2k_diag(
+        orm.load_code(cp2k_code),
+        sc_diag=False,
+        force_multiplicity=False,
+        uks=True,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
+    )
     print("#### sc_diag UKS force")
-    _example_cp2k_diag(orm.load_code("cp2k@localhost"), True, True, True)
+    _example_cp2k_diag(
+        orm.load_code(cp2k_code),
+        sc_diag=True,
+        force_multiplicity=True,
+        uks=True,
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
+    )
+
+
+if __name__ == "__main__":
+    run_all()

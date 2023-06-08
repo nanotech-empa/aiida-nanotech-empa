@@ -16,6 +16,13 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
         spec.input("code", valid_type=orm.Code)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input(
+            "protocol",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("standard"),
+            required=False,
+            help="Protocol supported by the Cp2kGeoOptWorkChain.",
+        )
         spec.input("dft_params", valid_type=orm.Dict)
         spec.input("sys_params", valid_type=orm.Dict)
         spec.input("phonons_params", valid_type=orm.Dict)
@@ -50,7 +57,10 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
             self.ctx.input_dict,
             self.ctx.structure_with_tags,
         ) = cp2k_utils.get_dft_inputs(
-            dft_params, self.inputs.structure, "phonons_protocol.yml"
+            dft_params,
+            self.inputs.structure,
+            "phonons_protocol.yml",
+            protocol=self.inputs.protocol.value,
         )
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.phonons_params = self.inputs.phonons_params.get_dict()
@@ -79,15 +89,6 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
 
         # Resources.
         self.ctx.options = self.inputs.options
-        if self.inputs.dft_params["protocol"] == "debug":
-            self.ctx.options = {
-                "max_wallclock_seconds": 600,
-                "resources": {
-                    "num_machines": 3,
-                    "num_mpiprocs_per_machine": 1,
-                    "num_cores_per_mpiproc": 1,
-                },
-            }
         self.ctx.geo_options = copy.deepcopy(self.ctx.options)
         self.ctx.geo_options["resources"]["num_machines"] = int(
             self.ctx.phonons_params["nproc_rep"]
@@ -108,6 +109,7 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
         # Restart WFN.
         if "parent_calc_folder" in self.inputs:
             builder.parent_calc_folder = self.inputs.parent_calc_folder
+        builder.protocol = self.inputs.protocol
         builder.dft_params = self.inputs.dft_params
         builder.sys_params = self.inputs.sys_params
         builder.options = self.ctx.geo_options

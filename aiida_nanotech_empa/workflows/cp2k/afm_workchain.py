@@ -18,6 +18,13 @@ class Cp2kAfmWorkChain(engine.WorkChain):
         spec.input("cp2k_code", valid_type=orm.Code)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
+        spec.input(
+            "protocol",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("standard"),
+            required=False,
+            help="Protocol supported by the Cp2kDiagWorkChain.",
+        )
         spec.input("dft_params", valid_type=orm.Dict)
         spec.input(
             "options",
@@ -28,7 +35,6 @@ class Cp2kAfmWorkChain(engine.WorkChain):
 
         spec.input("afm_pp_code", valid_type=orm.Code)
         spec.input("afm_pp_params", valid_type=orm.Dict)
-
         spec.input("afm_2pp_code", valid_type=orm.Code)
         spec.input("afm_2pp_params", valid_type=orm.Dict)
 
@@ -82,6 +88,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.inputs.structure
+        builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.dft_params)
         builder.options = orm.Dict(self.inputs.options)
 
@@ -95,7 +102,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
     def run_afms(self):
         self.report("Running PP")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-            return self.exit_codes.ERROR_TERMINATION  # pylint: disable=no-member
+            return self.exit_codes.ERROR_TERMINATION
         afm_pp_inputs = {}
 
         afm_pp_inputs["geo_no_labels"] = self.ctx.files["geo_no_labels"]
