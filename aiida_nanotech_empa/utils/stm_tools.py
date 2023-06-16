@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from ..helpers import ANG_TO_BOHR, HART_2_EV
 from . import igor
-from .helpers import ANG_TO_BOHR, HART_2_EV
 
 
 def process_cube_planes_array(cpa):
