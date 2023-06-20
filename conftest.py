@@ -1,31 +1,30 @@
 """pytest fixtures for simplified testing."""
-import os
-import pathlib
 import shutil
+import subprocess
 
 import pytest
 from aiida.common import exceptions
 from aiida.orm import Code, Computer, QueryBuilder
-from aiida.plugins import GroupFactory
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
-
-SSSP_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "examples/data/sssp_minimal"
-)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_sssp_pseudos(aiida_profile):
     """Create an SSSP pseudo potential family from scratch."""
-    aiida_profile.clear_profile()
-    sssp_family = GroupFactory("pseudo.family.sssp")
-    label = "SSSP/1.1/PBE/efficiency"
-    # label = 'SSSP_modified'
-    my_path = pathlib.Path(SSSP_DIR)
-    family = sssp_family.create_from_folder(my_path, label)
-    family.store()
-    # return family
+    subprocess.run(
+        [
+            "aiida-pseudo",
+            "install",
+            "sssp",
+            "-p",
+            "efficiency",
+            "-x",
+            "PBE",
+            "-v",
+            "1.2",
+        ]
+    )
 
 
 @pytest.fixture
@@ -89,9 +88,6 @@ def local_code_factory(fixture_localhost):
         return code.store()
 
     return get_code
-
-
-# --------------------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="function")
