@@ -1,15 +1,16 @@
 standard:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: ''
+        EXTENDED_FFT_LENGTHS: ""
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: BAND
         WALLTIME: 600
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
-                LIST: ''
+                LIST: ""
         BAND:
             ALIGN_FRAMES: .FALSE.
+            ROTATE_FRAMES: .FALSE.
             BAND_TYPE: CI-NEB
             CI_NEB:
                 NSTEPS_IT: 5
@@ -18,8 +19,8 @@ standard:
                 MAX_FORCE: 0.0001
                 RMS_DR: 0.005
                 RMS_FORCE: 0.001
-            CONVERGENCE_INFO :
-                _: ''
+            CONVERGENCE_INFO:
+                _: ""
             K_SPRING: 0.05
             NPROC_REP: 1
             NUMBER_OF_REPLICA: 3
@@ -29,10 +30,10 @@ standard:
                 OPTIMIZE_END_POINTS: .FALSE.
                 OPT_TYPE: DIIS
             PROGRAM_RUN_INFO:
-                INITIAL_CONFIGURATION_INFO: ''
+                INITIAL_CONFIGURATION_INFO: ""
         PRINT:
             RESTART_HISTORY:
-                _: 'OFF'
+                _: "OFF"
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
@@ -74,7 +75,7 @@ standard:
                             QS_SCF: 0
                         FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'
+                        _: "OFF"
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -85,19 +86,20 @@ standard:
                         R_CUTOFF: 15
                         TYPE: DFTD3
                 XC_FUNCTIONAL:
-                        _: PBE
+                    _: PBE
 low_accuracy:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: ''
+        EXTENDED_FFT_LENGTHS: ""
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: BAND
         WALLTIME: 600
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
-                LIST: ''
+                LIST: ""
         BAND:
             ALIGN_FRAMES: .FALSE.
+            ROTATE_FRAMES: .FALSE.
             BAND_TYPE: CI-NEB
             CI_NEB:
                 NSTEPS_IT: 5
@@ -106,8 +108,8 @@ low_accuracy:
                 MAX_FORCE: 0.00045
                 RMS_DR: 0.005
                 RMS_FORCE: 0.003
-            CONVERGENCE_INFO :
-                _: ''
+            CONVERGENCE_INFO:
+                _: ""
             K_SPRING: 0.05
             NPROC_REP: 1
             NUMBER_OF_REPLICA: 3
@@ -117,10 +119,10 @@ low_accuracy:
                 OPTIMIZE_END_POINTS: .FALSE.
                 OPT_TYPE: DIIS
             PROGRAM_RUN_INFO:
-                INITIAL_CONFIGURATION_INFO: ''
+                INITIAL_CONFIGURATION_INFO: ""
         PRINT:
             RESTART_HISTORY:
-                _: 'OFF'
+                _: "OFF"
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
@@ -161,7 +163,7 @@ low_accuracy:
                             QS_SCF: 0
                         FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'
+                        _: "OFF"
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -172,19 +174,20 @@ low_accuracy:
                         R_CUTOFF: 15
                         TYPE: DFTD3
                 XC_FUNCTIONAL:
-                        _: PBE
+                    _: PBE
 debug:
     GLOBAL:
-        EXTENDED_FFT_LENGTHS: ''
+        EXTENDED_FFT_LENGTHS: ""
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: BAND
         WALLTIME: 600
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
-                LIST: ''
+                LIST: ""
         BAND:
             ALIGN_FRAMES: .FALSE.
+            ROTATE_FRAMES: .FALSE.
             BAND_TYPE: CI-NEB
             CI_NEB:
                 NSTEPS_IT: 1
@@ -193,8 +196,8 @@ debug:
                 MAX_FORCE: 5
                 RMS_DR: 5
                 RMS_FORCE: 5
-            CONVERGENCE_INFO :
-                _: ''
+            CONVERGENCE_INFO:
+                _: ""
             K_SPRING: 0.05
             NPROC_REP: 1
             NUMBER_OF_REPLICA: 3
@@ -204,10 +207,10 @@ debug:
                 OPTIMIZE_END_POINTS: .FALSE.
                 OPT_TYPE: DIIS
             PROGRAM_RUN_INFO:
-                INITIAL_CONFIGURATION_INFO: ''
+                INITIAL_CONFIGURATION_INFO: ""
         PRINT:
             RESTART_HISTORY:
-                _: 'OFF'
+                _: "OFF"
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
@@ -248,7 +251,7 @@ debug:
                             QS_SCF: 0
                         FILENAME: RESTART
                     RESTART_HISTORY:
-                        _: 'OFF'
+                        _: "OFF"
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -259,4 +262,4 @@ debug:
                         R_CUTOFF: 15
                         TYPE: DFTD3
                 XC_FUNCTIONAL:
-                        _: PBE
+                    _: PBE
