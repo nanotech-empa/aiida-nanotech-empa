@@ -46,7 +46,6 @@ standard:
             CHARGE: 0
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL
-            RESTART_FILE_NAME: RESTART
             MGRID:
                 CUTOFF: 600
                 NGRIDS: 5
