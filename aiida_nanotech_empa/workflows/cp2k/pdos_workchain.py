@@ -156,7 +156,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         inputs["parent_slab_folder"] = self.ctx.slab_diag_scf.outputs.remote_folder
         inputs["parent_mol_folder"] = self.ctx.mol_diag_scf.outputs.remote_folder
 
-        n_machines = 4 if self.ctx.n_slab_atoms < 2000 else 8
+        n_machines = 4 if self.ctx.n_slab_atoms < 1000 else 8
 
         inputs["metadata"]["options"] = {
             "resources": {"num_machines": n_machines},
