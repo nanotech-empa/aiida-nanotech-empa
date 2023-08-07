@@ -365,34 +365,37 @@ def structure_available_wfn(
     if hostname != current_hostname:
         return None
 
-    # check if UKS or RKS and in ase of UKS if matching magnetization options
-    orig_dft_params = generating_workchain.inputs.dft_params.get_dict()
-    was_uks = "uks" in orig_dft_params and orig_dft_params["uks"]
-    is_uks = "uks" in dft_params and orig_dft_params["uks"]
-    if was_uks != is_uks:
-        return None
-
-    if is_uks:
-        magnow = dft_params["magnetization_per_site"]
-        nmagnow = [-i for i in magnow]
-        same_magnetization = (
-            orig_dft_params["magnetization_per_site"] == magnow
-            or orig_dft_params["magnetization_per_site"] == nmagnow
-        )
-        same_multiplicity = (
-            orig_dft_params["multiplicity"] == dft_params["multiplicity"]
-        )
-        if not (same_magnetization and same_multiplicity):
+    # check if UKS or RKS and in case of UKS if matching magnetization options
+    try:
+        orig_dft_params = generating_workchain.inputs.dft_params.get_dict()
+        was_uks = "uks" in orig_dft_params and orig_dft_params["uks"]
+        is_uks = "uks" in dft_params and orig_dft_params["uks"]
+        if was_uks != is_uks:
             return None
 
-    was_charge = 0
-    if "charge" in orig_dft_params:
-        was_charge = orig_dft_params["charge"]
-    charge = 0
-    if "charge" in dft_params:
-        charge = dft_params["charge"]
+        if is_uks:
+            magnow = dft_params["magnetization_per_site"]
+            nmagnow = [-i for i in magnow]
+            same_magnetization = (
+                orig_dft_params["magnetization_per_site"] == magnow
+                or orig_dft_params["magnetization_per_site"] == nmagnow
+            )
+            same_multiplicity = (
+                orig_dft_params["multiplicity"] == dft_params["multiplicity"]
+            )
+            if not (same_magnetization and same_multiplicity):
+                return None
 
-    if charge != was_charge:
+        was_charge = 0
+        if "charge" in orig_dft_params:
+            was_charge = orig_dft_params["charge"]
+        charge = 0
+        if "charge" in dft_params:
+            charge = dft_params["charge"]
+
+        if charge != was_charge:
+            return None
+    except (KeyError, AttributeError, common.NotExistentAttributeError):
         return None
 
     if generating_workchain.label == "CP2K_NEB":
