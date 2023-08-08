@@ -73,7 +73,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         structure = self.inputs.structure
         self.ctx.n_atoms = len(structure.sites)
 
-        self.ctx.dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
+        self.ctx.dft_params = self.inputs.dft_params.get_dict()
 
         # Resources.
         self.ctx.options = self.inputs.options.get_dict()
