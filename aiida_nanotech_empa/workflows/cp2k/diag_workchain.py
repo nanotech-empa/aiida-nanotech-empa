@@ -73,16 +73,10 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         structure = self.inputs.structure
         self.ctx.n_atoms = len(structure.sites)
 
-        # Set up mol UKS parameters.
-
-        self.ctx.dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
+        self.ctx.dft_params = self.inputs.dft_params.get_dict()
 
         # Resources.
         self.ctx.options = self.inputs.options.get_dict()
-
-        if not self.ctx.dft_params["uks"]:
-            self.ctx.dft_params["spin_up_guess"] = []
-            self.ctx.dft_params["spin_dw_guess"] = []
 
         # Get cutoff.
         self.ctx.cutoff = cp2k_utils.get_cutoff(structure=structure)
@@ -92,32 +86,29 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             self.ctx.cutoff = self.ctx.dft_params["cutoff"]
 
         # Get initial magnetization.
-        spin_up_guess = self.ctx.dft_params["spin_up_guess"]
-        spin_dw_guess = self.ctx.dft_params["spin_dw_guess"]
-        magnetization_per_site = [
-            1 if i in spin_up_guess else -1 if i in spin_dw_guess else 0
-            for i in range(self.ctx.n_atoms)
-        ]
+        magnetization_per_site = [0 for i in range(len(self.inputs.structure.sites))]
+        if "uks" in self.ctx.dft_params and self.ctx.dft_params["uks"]:
+            magnetization_per_site = self.ctx.dft_params["magnetization_per_site"]
+
         structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(
             structure, magnetization_per_site
         )
+        self.ctx.structure_with_tags = structure_with_tags.get_ase()
+        self._handle_periodicity(self.ctx.structure_with_tags)
 
-        ase_atoms = structure_with_tags.get_ase()
+        self.ctx.kinds_section = cp2k_utils.get_kinds_section(
+            kinds_dict, protocol="gpw"
+        )
 
-        # Periodic: only NONE and XYZ are supported.
+    def _handle_periodicity(self, structure):
         if self.ctx.dft_params["periodic"] == "NONE":
             # Make sure cell is big enough for MT poisson solver and center positions.
             if self.inputs.protocol == "debug":
                 extra_cell = 9.0  # Angstrom.
             else:
                 extra_cell = 15.0  # Angstrom.
-            ase_atoms.cell = 2 * (np.ptp(ase_atoms.positions, axis=0)) + extra_cell
-            ase_atoms.center()
-
-        self.ctx.structure_with_tags = ase_atoms
-        self.ctx.kinds_section = cp2k_utils.get_kinds_section(
-            kinds_dict, protocol="gpw"
-        )
+            structure.cell = 2 * (np.ptp(structure.positions, axis=0)) + extra_cell
+            structure.center()
 
     def run_ot_scf(self):
         self.report("Running CP2K OT SCF")

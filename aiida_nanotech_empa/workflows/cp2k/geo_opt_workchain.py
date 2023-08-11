@@ -56,7 +56,6 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
-        self.ctx.n_atoms = len(self.inputs.structure.sites)
         self.ctx.input_dict = cp2k_utils.load_protocol(
             "geo_opt_protocol.yml", self.inputs.protocol.value
         )
@@ -75,14 +74,13 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             ]
 
         # UKS.
-        magnetization_per_site = [0 for i in range(self.ctx.n_atoms)]
-        if "uks" in self.ctx.dft_params:
-            if self.ctx.dft_params["uks"]:
-                magnetization_per_site = self.ctx.dft_params["magnetization_per_site"]
-                self.ctx.input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
-                self.ctx.input_dict["FORCE_EVAL"]["DFT"][
-                    "MULTIPLICITY"
-                ] = self.ctx.dft_params["multiplicity"]
+        magnetization_per_site = [0 for i in range(len(self.inputs.structure.sites))]
+        if "uks" in self.ctx.dft_params and self.ctx.dft_params["uks"]:
+            magnetization_per_site = self.ctx.dft_params["magnetization_per_site"]
+            self.ctx.input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
+            self.ctx.input_dict["FORCE_EVAL"]["DFT"][
+                "MULTIPLICITY"
+            ] = self.ctx.dft_params["multiplicity"]
 
         # Get initial magnetization.
         structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(
