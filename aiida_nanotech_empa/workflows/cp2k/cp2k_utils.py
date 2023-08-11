@@ -604,7 +604,7 @@ def get_points(details):
 
 
 def get_points_coords(points, atoms):
-    """Returns an ase Atoms object with H atoms positiones at the cartesian coordinates defined by the CP2K CV points."""
+    """Returns an ase Atoms object with H atoms positioned at the cartesian coordinates defined by the CP2K CV points."""
     coords = []
     for point in points:
         if point["TYPE"] == "FIX_POINT":
@@ -678,6 +678,7 @@ def cv_dist(details):
     # case of points
     else:
         return_dict = {"DISTANCE": points}
+        return_dict["DISTANCE"].update({"ATOMS": "1 2"})
 
     if axis:
         return_dict["DISTANCE"].update({"AXIS": details[axis[0] + 1].upper()})
