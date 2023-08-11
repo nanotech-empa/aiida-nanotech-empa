@@ -79,10 +79,16 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         emax = float(self.inputs.overlap_params.get_dict()["--emax1"])
         nlumo = int(self.inputs.overlap_params.get_dict()["--nlumo2"])
 
+        dft_parameters = self.inputs.dft_params.get_dict()
+        charges = dft_parameters.pop("charges")
+        multiplicities = dft_parameters.pop("multiplicities")
+
         # Set up DFT parameters of the whole system.
         slab_info = next(structure_generator)
         self.ctx.structure = slab_info["structure"]
-        self.ctx.dft_parameters = self.inputs.dft_params.get_dict()
+        self.ctx.dft_parameters = copy.deepcopy(dft_parameters)
+        self.ctx.dft_parameters["charge"] = charges["all"]
+        self.ctx.dft_parameters["multiplicity"] = multiplicities["all"]
         self.ctx.dft_parameters["added_mos"] = np.max(
             [100, int(1.2 * self.ctx.n_slab_atoms * emax / 5.0)]
         )
@@ -90,15 +96,17 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         # Use the same cutoff for molecule and slab.
         self.ctx.dft_parameters["cutoff"] = cp2k_utils.get_cutoff(self.ctx.structure)
 
-        # Set up mol DFT parameters.
+        # Set up molecular DFT parameters.
         molecule_info = next(structure_generator)
         self.ctx.molecule_structure = molecule_info["structure"]
-        self.ctx.mol_dft_params = copy.deepcopy(self.ctx.dft_parameters)
-        self.ctx.mol_dft_params["added_mos"] = nlumo + 2
-        self.ctx.mol_dft_params[
+        self.ctx.mol_dft_parameters = copy.deepcopy(self.ctx.dft_parameters)
+        self.ctx.mol_dft_parameters["charge"] = charges["molecule"]
+        self.ctx.mol_dft_parameters["multiplicity"] = multiplicities["molecule"]
+        self.ctx.mol_dft_parameters["added_mos"] = nlumo + 2
+        self.ctx.mol_dft_parameters[
             "elpa_switch"
         ] = False  # Elpa can cause problems with small systems
-        self.ctx.mol_dft_params["magnetization_per_site"] = molecule_info[
+        self.ctx.mol_dft_parameters["magnetization_per_site"] = molecule_info[
             "magnetization_per_site"
         ]
 
@@ -129,7 +137,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.ctx.molecule_structure
         builder.protocol = self.inputs.protocol
-        builder.dft_params = orm.Dict(self.ctx.mol_dft_params)
+        builder.dft_params = orm.Dict(self.ctx.mol_dft_parameters)
         builder.options = orm.Dict(self.inputs.options["molecule"])
         self.to_context(mol_diag_scf=self.submit(builder))
 
