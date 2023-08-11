@@ -144,6 +144,7 @@ class Cp2kNebWorkChain(engine.WorkChain):
         # NEB parameters.
         for param in [
             "align_frames",
+            "rotate_frames",
             "band_type",
             "k_spring",
             "nproc_rep",
