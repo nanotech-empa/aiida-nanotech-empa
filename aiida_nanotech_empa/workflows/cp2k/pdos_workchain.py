@@ -81,14 +81,15 @@ class Cp2kPdosWorkChain(engine.WorkChain):
 
         dft_parameters = self.inputs.dft_params.get_dict()
         charges = dft_parameters.pop("charges")
-        multiplicities = dft_parameters.pop("multiplicities")
+        multiplicities = dft_parameters.pop("multiplicities", {})
 
         # Set up DFT parameters of the whole system.
         slab_info = next(structure_generator)
         self.ctx.structure = slab_info["structure"]
         self.ctx.dft_parameters = copy.deepcopy(dft_parameters)
         self.ctx.dft_parameters["charge"] = charges["all"]
-        self.ctx.dft_parameters["multiplicity"] = multiplicities["all"]
+        if "all" in multiplicities:
+            self.ctx.dft_parameters["multiplicity"] = multiplicities["all"]
         self.ctx.dft_parameters["added_mos"] = np.max(
             [100, int(1.2 * self.ctx.n_slab_atoms * emax / 5.0)]
         )
@@ -101,7 +102,8 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         self.ctx.molecule_structure = molecule_info["structure"]
         self.ctx.mol_dft_parameters = copy.deepcopy(self.ctx.dft_parameters)
         self.ctx.mol_dft_parameters["charge"] = charges["molecule"]
-        self.ctx.mol_dft_parameters["multiplicity"] = multiplicities["molecule"]
+        if "molecule" in multiplicities:
+            self.ctx.mol_dft_parameters["multiplicity"] = multiplicities["molecule"]
         self.ctx.mol_dft_parameters["added_mos"] = nlumo + 2
         self.ctx.mol_dft_parameters[
             "elpa_switch"
