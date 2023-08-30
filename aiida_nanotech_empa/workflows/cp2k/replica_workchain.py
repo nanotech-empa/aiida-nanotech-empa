@@ -184,7 +184,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         builder.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)
-        self.report(f"Submitted scf of the initial geometry: {future.pk}")
+        self.report(f"Submitted SCF of the initial geometry: {future.pk}")
         self.to_context(initial_scf=future)
 
     def update_colvars_values(self):
@@ -211,9 +211,9 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         for index, colvar in enumerate(self.ctx.colvars_values):
             if (
                 math.fabs(self.inputs.sys_params["colvars_targets"][index] - colvar)
-                > self.inputs.sys_params["colvars_increments"][index]
+                > math.fabs(self.inputs.sys_params["colvars_increments"][index])
                 and math.fabs(self.inputs.sys_params["colvars_increments"][index])
-                > 0.0001
+                > 0.001
             ):
                 self.ctx.colvars_increments.append(
                     math.fabs(self.inputs.sys_params["colvars_increments"][index])
@@ -289,7 +289,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
 
                 submitted_calculation = self.submit(builder)
                 self.report(
-                    f"Submitted geo opt: {submitted_calculation.pk}, with {submitted_cvs}"
+                    f"Submitted GEO OPT: {submitted_calculation.pk}, with {submitted_cvs}"
                 )
                 self.to_context(
                     **{
@@ -310,7 +310,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             if not common_utils.check_if_calc_ok(self, calculation):
                 return self.exit_codes.ERROR_TERMINATION
             results.append((calculation.outputs.output_parameters["energy_scf"], index))
-        self.report(f"energies {results}")
+        self.report(f"Energies: {results}")
         results.sort(key=lambda x: x[0])
         self.ctx.lowest_energy_calc = results[0][1]
         lowest_energy_base_workchain = getattr(
@@ -327,7 +327,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         )
         self.ctx.lowest_energy = results[0][0]
         self.report(
-            f"The lowest energy at step {self.ctx.propagation_step :04} is {self.ctx.lowest_energy}"
+            f"The lowest energy at step {self.ctx.propagation_step :04} is: {self.ctx.lowest_energy}"
         )
         self.report(f"geometry: {self.ctx.lowest_energy_structure.pk}")
         self.report(f"target CVs {self.ctx.CVs_cases[self.ctx.lowest_energy_calc]}")
