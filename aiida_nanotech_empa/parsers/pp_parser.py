@@ -28,8 +28,6 @@ class PpParser(BasePpParser):
         voxel_array = cube.cell / np.atleast_2d(cube.data.shape).T
         numbers = cube.ase_atoms.numbers
 
-        # data_units = self.units_dict[self.output_parameters["plot_num"]]
-
         arraydata = orm.ArrayData()
         arraydata.set_array("voxel", voxel_array)
         arraydata.set_array("data", cube.data)
