@@ -28,7 +28,7 @@ dependencies = [
     "aiida-pseudo~=1.0",
     "aiida-cp2k~=2.0",
     "ase~=3.21",
-    "aiida-gaussian~=2.0",
+    #"aiida-gaussian~=2.0",
     "pillow>=8.0.0",
     "more-itertools",
 ]
