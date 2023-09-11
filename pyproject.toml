@@ -76,6 +76,7 @@ dev = [
 "nanotech_empa.cp2k.molecule_gw" = "aiida_nanotech_empa.workflows.cp2k:Cp2kMoleculeGwWorkChain"
 "nanotech_empa.cp2k.mol_opt_gw" = "aiida_nanotech_empa.workflows.cp2k:Cp2kMoleculeOptGwWorkChain"
 "nanotech_empa.cp2k.pdos" = "aiida_nanotech_empa.workflows.cp2k:Cp2kPdosWorkChain"
+"nanotech_empa.cp2k.pdos_two_structures" = "aiida_nanotech_empa.workflows.cp2k:Cp2kPdosTwoStructuresWorkChain"
 "nanotech_empa.cp2k.orbitals" = "aiida_nanotech_empa.workflows.cp2k:Cp2kOrbitalsWorkChain"
 "nanotech_empa.cp2k.stm" = "aiida_nanotech_empa.workflows.cp2k:Cp2kStmWorkChain"
 "nanotech_empa.cp2k.afm" = "aiida_nanotech_empa.workflows.cp2k:Cp2kAfmWorkChain"
