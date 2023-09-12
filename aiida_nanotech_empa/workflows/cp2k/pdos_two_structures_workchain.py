@@ -70,14 +70,14 @@ class Cp2kPdosTwoStructuresWorkChain(engine.WorkChain):
 
     def setup(self):
         self.report("Setting up workchain")
-        structure_generator = split_structure.split_structure(
-            structure=self.inputs.structure,
-            fixed_atoms=[],
-            magnetization_per_site=self.inputs.dft_params["magnetization_per_site"]
-            if "magnetization_per_site" in self.inputs.dft_params
-            else None,
-            fragments={"molecule": self.inputs.molecule_indices},
-        )
+        # structure_generator = split_structure.split_structure(
+        #    structure=self.inputs.structure,
+        #    fixed_atoms=[],
+        #    magnetization_per_site=self.inputs.dft_params["magnetization_per_site"]
+        #    if "magnetization_per_site" in self.inputs.dft_params
+        #    else None,
+        #    fragments={"molecule": self.inputs.molecule_indices},
+        # )
 
         self.ctx.n_slab_atoms = len(self.inputs.structure.sites)
         emax = float(self.inputs.overlap_params.get_dict()["--emax1"])
