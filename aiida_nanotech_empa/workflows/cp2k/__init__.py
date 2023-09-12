@@ -12,6 +12,7 @@ from .pdos_workchain import Cp2kPdosWorkChain
 from .phonons_workchain import Cp2kPhononsWorkChain
 from .replica_workchain import Cp2kReplicaWorkChain
 from .stm_workchain import Cp2kStmWorkChain
+from .pdos_two_structures_workchain import Cp2kPdosTwoStructuresWorkChain
 
 __all__ = (
     "Cp2kGeoOptWorkChain",
@@ -28,4 +29,5 @@ __all__ = (
     "Cp2kReplicaWorkChain",
     "Cp2kNebWorkChain",
     "Cp2kPhononsWorkChain",
+    "Cp2kPdosTwoStructuresWorkChain",
 )
