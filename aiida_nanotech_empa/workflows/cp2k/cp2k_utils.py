@@ -418,6 +418,7 @@ def structure_available_wfn(
         # In all other cases, e.g. geo opt, replica, ...
         # use the standard name
         wfn_name = "aiida-RESTART.wfn"
+        create_a_copy = True
 
     wfn_exists = False
     try:
