@@ -438,6 +438,7 @@ def structure_available_wfn(
         return None
 
     if create_a_copy:
+        # if the wfn from which I want to restart has a name different from aiida-RESTART.wfn I need to create a copy
         copy_wfn(
             computer=generating_workchain.inputs.code.computer,
             wfn_search_path=wfn_search_path,
