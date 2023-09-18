@@ -8,11 +8,11 @@ from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
 from .molecule_opt_gw_workchain import Cp2kMoleculeOptGwWorkChain
 from .neb_workchain import Cp2kNebWorkChain
 from .orbitals_workchain import Cp2kOrbitalsWorkChain
+from .pdos_two_structures_workchain import Cp2kPdosTwoStructuresWorkChain
 from .pdos_workchain import Cp2kPdosWorkChain
 from .phonons_workchain import Cp2kPhononsWorkChain
 from .replica_workchain import Cp2kReplicaWorkChain
 from .stm_workchain import Cp2kStmWorkChain
-from .pdos_two_structures_workchain import Cp2kPdosTwoStructuresWorkChain
 
 __all__ = (
     "Cp2kGeoOptWorkChain",
