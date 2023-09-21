@@ -29,5 +29,4 @@ __all__ = (
     "Cp2kReplicaWorkChain",
     "Cp2kNebWorkChain",
     "Cp2kPhononsWorkChain",
-    "Cp2kPdosTwoStructuresWorkChain",
 )
