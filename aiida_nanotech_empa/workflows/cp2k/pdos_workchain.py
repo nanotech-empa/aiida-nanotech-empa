@@ -20,11 +20,13 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         spec.input("overlap_code", valid_type=orm.Code)
 
         # Structures.
+        # Whole system
         spec.input(
             "structure",
             valid_type=orm.StructureData,
             help="Coordinates of the whole system.",
         )
+        # Portion of the system, could also be not derived from the whole system
         spec.input(
             "fragment_structure",
             valid_type=orm.StructureData,
