@@ -10,7 +10,9 @@ class OverlapCalculation(engine.CalcJob):
             "parent_slab_folder", valid_type=orm.RemoteData, help="slab scf folder"
         )
         spec.input(
-            "parent_mol_folder", valid_type=orm.RemoteData, help="molecule scf folder"
+            "parent_fragment_folder",
+            valid_type=orm.RemoteData,
+            help="molecule scf folder",
         )
         spec.input("settings", valid_type=orm.Dict, help="special settings")
 
