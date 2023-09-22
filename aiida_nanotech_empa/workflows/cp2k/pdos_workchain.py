@@ -30,7 +30,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         spec.input(
             "fragment_structure",
             valid_type=orm.StructureData,
-            help="Coordinates of the fraction system.",
+            help="Coordinates of the fragment system.",
         )
 
         spec.input("pdos_lists", valid_type=orm.List)
@@ -73,7 +73,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
     def setup(self):
         self.report("Setting up workchain")
 
-        self.ctx.n_slab_atoms = len(self.inputs.structure.sites)
+        self.ctx.n_all_atoms = len(self.inputs.structure.sites)
         emax = float(self.inputs.overlap_params.get_dict()["--emax1"])
         nlumo = int(self.inputs.overlap_params.get_dict()["--nlumo2"])
 
@@ -92,14 +92,14 @@ class Cp2kPdosWorkChain(engine.WorkChain):
                 "all"
             ]
         self.ctx.dft_parameters["added_mos"] = np.max(
-            [100, int(1.2 * self.ctx.n_slab_atoms * emax / 5.0)]
+            [100, int(1.2 * self.ctx.n_all_atoms * emax / 5.0)]
         )
 
-        # Use the same cutoff for fragment and slab.
+        # Use the same cutoff for fragment and whole system.
         self.ctx.dft_parameters["cutoff"] = cp2k_utils.get_cutoff(self.ctx.structure)
 
         # Set up fragment DFT parameters.
-        self.ctx.fragment_structure = self.inputs.fraction_structure
+        self.ctx.fragment_structure = self.inputs.fragment_structure
         self.ctx.fragment_dft_parameters = copy.deepcopy(self.ctx.dft_parameters)
         self.ctx.fragment_dft_parameters["charge"] = charges["fragment"]
         if "fragment" in multiplicities:
@@ -117,15 +117,15 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         ] = False  # Elpa can cause problems with small systems
 
     def run_diags(self):
-        # Slab part.
-        self.report("Running Diag Workchain for slab")
+        # Whole system  part.
+        self.report("Running Diag Workchain for whole system")
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.ctx.structure
         builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.dft_parameters)
         builder.settings = orm.Dict({"additional_retrieve_list": ["*.pdos"]})
-        builder.options = orm.Dict(self.inputs.options["slab"])
+        builder.options = orm.Dict(self.inputs.options["all"])
 
         # Restart WFN.
         if "parent_calc_folder" in self.inputs:
@@ -135,7 +135,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         if self.inputs.pdos_lists is not None:
             builder.pdos_lists = orm.List([pdos[0] for pdos in self.inputs.pdos_lists])
 
-        self.to_context(slab_diag_scf=self.submit(builder))
+        self.to_context(all_diag_scf=self.submit(builder))
 
         # Fragment part.
         self.report("Running Diag Workchain for fragment")
@@ -148,19 +148,25 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         self.to_context(fragment_diag_scf=self.submit(builder))
 
     def run_overlap(self):
-        for calculation in [self.ctx.slab_diag_scf, self.ctx.fragment_diag_scf]:
+        for calculation in [self.ctx.all_diag_scf, self.ctx.fragment_diag_scf]:
             if not common_utils.check_if_calc_ok(self, calculation):
                 return self.exit_codes.ERROR_TERMINATION
         self.report("Running overlap")
         builder = OverlapCalculation.get_builder()
         builder.code = self.inputs.overlap_code
         builder.parameters = self.inputs.overlap_params
-        builder.parent_slab_folder = self.ctx.slab_diag_scf.outputs.remote_folder
+        builder.parent_all_folder = self.ctx.all_diag_scf.outputs.remote_folder
         builder.parent_fragment_folder = (
             self.ctx.fragment_diag_scf.outputs.remote_folder
         )
 
-        n_machines = 4 if self.ctx.n_slab_atoms < 2000 else 8
+        # set n_machines to 1 4 8 if n_all_atoms < 100 2000 or else
+        if self.ctx.n_all_atoms < 100:
+            n_machines = 1
+        elif self.ctx.n_all_atoms < 2000:
+            n_machines = 4
+        else:
+            n_machines = 8
 
         builder.metadata = {
             "label": "overlap",
@@ -180,7 +186,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         ]:
             self.report("Overlap calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
-        self.out("slab_retrieved", self.ctx.slab_diag_scf.outputs.retrieved)
+        self.out("slab_retrieved", self.ctx.all_diag_scf.outputs.retrieved)
 
         # Add the workchain uuid to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
