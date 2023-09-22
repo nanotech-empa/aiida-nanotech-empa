@@ -32,13 +32,13 @@ def _example_cp2k_pdos(
     builder = Cp2kPdosWorkChain.get_builder()
 
     builder.metadata.label = "CP2K_PDOS"
-    builder.metadata.description = "automatic test PDOS"
     builder.cp2k_code = cp2k_code
     builder.structure = structures["c2h2_on_au111.xyz"]
     builder.fragment_structure = structures["c2h2_for_pdos.xyz"]
     builder.pdos_lists = orm.List([("1..4", "C2H2"), ("1", "C_at")])
     builder.protocol = orm.Str("debug")
     if uks:
+        builder.metadata.description = "automatic test PDOS UKS"
         dft_params = {
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
@@ -46,12 +46,14 @@ def _example_cp2k_pdos(
             "periodic": "XYZ",
             "uks": uks,
             "multiplicities": {"all": 1, "fragment": 1},
+            "magnetization_per_site": {"fragment": [0, 1, -1, 0]},
             "charges": {"all": 0, "fragment": 0},
             "smear_t": 150,
             "spin_up_guess": [0],
             "spin_dw_guess": [1],
         }
     else:
+        builder.metadata.description = "automatic test PDOS RKS"
         dft_params = {
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
@@ -130,6 +132,16 @@ def run_all(cp2k_code, overlap_code, n_nodes, n_cores_per_node):
         sc_diag=False,
         force_multiplicity=True,
         uks=False,
+        n_nodes=1,
+        n_cores_per_node=1,
+    )
+    print("#### sc_diag UKS magnetization guess only on fragment")
+    _example_cp2k_pdos(
+        orm.load_code(cp2k_code),
+        orm.load_code(overlap_code),
+        sc_diag=True,
+        force_multiplicity=True,
+        uks=True,
         n_nodes=1,
         n_cores_per_node=1,
     )
