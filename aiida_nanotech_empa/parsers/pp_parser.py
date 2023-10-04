@@ -15,7 +15,8 @@ class PpParser(BasePpParser):
     :param data_file_str: the data file read in as a single string
     """
 
-    def parse_gaussian(self, data_file_str):
+    @staticmethod
+    def parse_gaussian(data_file_str, data_units):
         with io.StringIO(data_file_str) as data_file_handle:
             cube = Cube.from_file_handle(data_file_handle)
 
@@ -26,8 +27,6 @@ class PpParser(BasePpParser):
         new_pos_au = cube.ase_atoms.positions * ANG_TO_BOHR
         voxel_array = cube.cell / np.atleast_2d(cube.data.shape).T
         numbers = cube.ase_atoms.numbers
-
-        data_units = self.units_dict[self.output_parameters["plot_num"]]
 
         arraydata = orm.ArrayData()
         arraydata.set_array("voxel", voxel_array)
