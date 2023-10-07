@@ -7,10 +7,14 @@ class OverlapCalculation(engine.CalcJob):
         super().define(spec)
         spec.input("parameters", valid_type=orm.Dict, help="Overlap input parameters")
         spec.input(
-            "parent_slab_folder", valid_type=orm.RemoteData, help="slab scf folder"
+            "parent_all_folder",
+            valid_type=orm.RemoteData,
+            help="whole system scf folder",
         )
         spec.input(
-            "parent_mol_folder", valid_type=orm.RemoteData, help="molecule scf folder"
+            "parent_fragment_folder",
+            valid_type=orm.RemoteData,
+            help="fragment scf folder",
         )
         spec.input("settings", valid_type=orm.Dict, help="special settings")
 
@@ -56,10 +60,10 @@ class OverlapCalculation(engine.CalcJob):
         calcinfo.retrieve_list = settings.pop("additional_retrieve_list", [])
 
         # Symlinks.
-        if "parent_slab_folder" in self.inputs:
-            comp_uuid = self.inputs.parent_slab_folder.computer.uuid
-            remote_path = self.inputs.parent_slab_folder.get_remote_path()
-            copy_info = (comp_uuid, remote_path, "parent_slab_folder/")
+        if "parent_all_folder" in self.inputs:
+            comp_uuid = self.inputs.parent_all_folder.computer.uuid
+            remote_path = self.inputs.parent_all_folder.get_remote_path()
+            copy_info = (comp_uuid, remote_path, "parent_all_folder/")
             if (
                 self.inputs.code.computer.uuid == comp_uuid
             ):  # if running on the same computer - make a symlink
@@ -68,10 +72,10 @@ class OverlapCalculation(engine.CalcJob):
             else:
                 calcinfo.remote_copy_list.append(copy_info)
 
-        if "parent_mol_folder" in self.inputs:
-            comp_uuid = self.inputs.parent_mol_folder.computer.uuid
-            remote_path = self.inputs.parent_mol_folder.get_remote_path()
-            copy_info = (comp_uuid, remote_path, "parent_mol_folder/")
+        if "parent_fragment_folder" in self.inputs:
+            comp_uuid = self.inputs.parent_fragment_folder.computer.uuid
+            remote_path = self.inputs.parent_fragment_folder.get_remote_path()
+            copy_info = (comp_uuid, remote_path, "parent_fragment_folder/")
             if (
                 self.inputs.code.computer.uuid == comp_uuid
             ):  # if running on the same computer - make a symlink

@@ -18,8 +18,7 @@ def _example_cp2k_geo_opt(cp2k_code, sys_type, uks, n_nodes, n_cores_per_node):
         filters={"label": {"in": GEOS}},
     )
     structures = {}
-    for node_tuple in qb.iterall():
-        node = node_tuple[0]
+    for node in qb.all(flat=True):
         structures[node.label] = node
     for required in GEOS:
         if required in structures:
