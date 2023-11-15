@@ -156,9 +156,9 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         # Resources.
         self.ctx.options = self.inputs.options
-        self.ctx.input_dict["GLOBAL"]["WALLTIME"] = self.ctx.options[
-            "max_wallclock_seconds"
-        ]
+        self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
+            600, self.ctx.options["max_wallclock_seconds"] - 600
+        )
 
     def submit_calc(self):
         self.report("Submitting geometry optimization")

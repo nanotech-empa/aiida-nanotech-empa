@@ -180,7 +180,9 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         builder.metadata.options = self.inputs.options
         builder.metadata.label = "scf"
         builder.metadata.options.parser_name = "cp2k_advanced_parser"
-        input_dict["GLOBAL"]["WALLTIME"] = self.inputs.options["max_wallclock_seconds"]
+        input_dict["GLOBAL"]["WALLTIME"] = max(
+            600, self.inputs.options["max_wallclock_seconds"] - 600
+        )
         builder.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)
@@ -282,9 +284,9 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                     )
                     submitted_cvs += " " + str(target)
                 self.ctx.CVs_cases.append(current_cvs_targets)
-                input_dict["GLOBAL"]["WALLTIME"] = self.inputs.options[
-                    "max_wallclock_seconds"
-                ]
+                input_dict["GLOBAL"]["WALLTIME"] = max(
+                    600, self.inputs.options["max_wallclock_seconds"] - 600
+                )
                 builder.cp2k.parameters = orm.Dict(input_dict)
 
                 submitted_calculation = self.submit(builder)

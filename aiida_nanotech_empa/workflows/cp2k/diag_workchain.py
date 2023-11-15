@@ -151,7 +151,9 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         cp2k_utils.dict_merge(input_dict, self.ctx.kinds_section)
 
         # Setup walltime.
-        input_dict["GLOBAL"]["WALLTIME"] = 86000
+        input_dict["GLOBAL"]["WALLTIME"] = max(
+            600, self.ctx.options["max_wallclock_seconds"] - 600
+        )
 
         builder.cp2k.metadata.options = self.ctx.options
 
@@ -224,7 +226,9 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["OUTER_SCF"]["EPS_SCF"] = "1.0E-1"
 
         # Setup walltime.
-        input_dict["GLOBAL"]["WALLTIME"] = 86000
+        input_dict["GLOBAL"]["WALLTIME"] = max(
+            600, self.ctx.options["max_wallclock_seconds"] - 600
+        )
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
