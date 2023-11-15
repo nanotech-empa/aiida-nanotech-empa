@@ -356,8 +356,10 @@ def structure_available_wfn(
 
     if generating_workchain is None:
         return None
-
-    if generating_workchain.inputs.code.computer is None:
+    try:
+        if generating_workchain.inputs.code.computer is None:
+            return None
+    except:  # aiida.common.exceptions.NotExistentAttributeError
         return None
 
     hostname = generating_workchain.inputs.code.computer.hostname
