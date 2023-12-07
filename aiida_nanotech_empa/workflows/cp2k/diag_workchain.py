@@ -180,7 +180,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         input_dict = copy.deepcopy(self.ctx.input_dict)
         if self.ctx.dft_params["elpa_switch"]:
             input_dict["GLOBAL"]["PREFERRED_DIAG_LIBRARY"] = "ELPA"
-            input_dict["GLOBAL"]["ELPA_KERNEL"] = "AUTO"
+            input_dict["GLOBAL"]["ELPA_KERNEL"] = "AVX2_BLOCK2"
             input_dict["GLOBAL"]["DBCSR"] = {"USE_MPI_ALLOCATOR": ".FALSE."}
         input_dict["FORCE_EVAL"]["DFT"].pop("SCF")
         input_dict["FORCE_EVAL"]["DFT"]["SCF"] = scf_dict

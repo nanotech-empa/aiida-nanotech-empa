@@ -91,7 +91,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         if "all" in multiplicities:
             self.ctx.dft_parameters["multiplicity"] = multiplicities["all"]
         self.ctx.dft_parameters["added_mos"] = np.max(
-            [100, int(1.2 * self.ctx.n_slab_atoms * emax / 5.0)]
+            [20, int(1.2 * self.ctx.n_slab_atoms * emax / 5.0)]
         )
 
         # Use the same cutoff for molecule and slab.
