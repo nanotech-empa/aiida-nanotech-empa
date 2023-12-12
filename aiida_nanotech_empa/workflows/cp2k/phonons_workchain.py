@@ -91,8 +91,11 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
         self.ctx.options = self.inputs.options
         self.ctx.geo_options = copy.deepcopy(self.ctx.options)
         self.ctx.geo_options["resources"]["num_machines"] = int(
-            self.ctx.phonons_params["nproc_rep"]
-            / self.ctx.options["resources"]["num_mpiprocs_per_machine"]
+            max(
+                1,
+                self.ctx.phonons_params["nproc_rep"]
+                / self.ctx.options["resources"]["num_mpiprocs_per_machine"],
+            )
         )
         self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
