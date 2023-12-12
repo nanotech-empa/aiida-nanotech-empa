@@ -420,7 +420,7 @@ def structure_available_wfn(
         create_a_copy = False
 
     wfn_exists = False
-    try:
+    try:  # noqa TRY101
         wfn_search_path = (
             generating_workchain.outputs.remote_folder.get_remote_path()
             + "/"
