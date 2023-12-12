@@ -27,6 +27,10 @@ class OverlapCalculation(engine.CalcJob):
 
         # Create code info.
         codeinfo = common.CodeInfo()
+
+        # Temporary hardcode the withmpi option to True.
+        codeinfo.withmpi = True
+
         codeinfo.code_uuid = self.inputs.code.uuid
 
         param_dict = self.inputs.parameters.get_dict()
