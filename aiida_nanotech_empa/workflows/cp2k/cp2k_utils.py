@@ -368,7 +368,7 @@ def structure_available_wfn(
         return None
 
     # check if UKS or RKS and in case of UKS if matching magnetization options
-    try:
+    try:  # noqa TRY101
         orig_dft_params = generating_workchain.inputs.dft_params.get_dict()
         was_uks = "uks" in orig_dft_params and orig_dft_params["uks"]
         is_uks = "uks" in dft_params and orig_dft_params["uks"]
