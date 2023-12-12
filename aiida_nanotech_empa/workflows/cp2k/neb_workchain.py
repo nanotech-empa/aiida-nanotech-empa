@@ -198,7 +198,9 @@ class Cp2kNebWorkChain(engine.WorkChain):
         builder.metadata.options = self.ctx.scf_options
         builder.metadata.label = "scf"
         builder.metadata.options.parser_name = "cp2k_advanced_parser"
-        input_dict["GLOBAL"]["WALLTIME"] = 86000
+        input_dict["GLOBAL"]["WALLTIME"] = max(
+            600, self.ctx.options["max_wallclock_seconds"] - 600
+        )
         builder.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)

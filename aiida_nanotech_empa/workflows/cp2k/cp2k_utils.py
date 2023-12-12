@@ -356,8 +356,10 @@ def structure_available_wfn(
 
     if generating_workchain is None:
         return None
-
-    if generating_workchain.inputs.code.computer is None:
+    try:
+        if generating_workchain.inputs.code.computer is None:
+            return None
+    except common.NotExistentAttributeError:
         return None
 
     hostname = generating_workchain.inputs.code.computer.hostname
@@ -415,9 +417,10 @@ def structure_available_wfn(
         # In all other cases, e.g. geo opt, replica, ...
         # use the standard name
         wfn_name = "aiida-RESTART.wfn"
+        create_a_copy = False
 
     wfn_exists = False
-    try:
+    try:  # noqa TRY101
         wfn_search_path = (
             generating_workchain.outputs.remote_folder.get_remote_path()
             + "/"

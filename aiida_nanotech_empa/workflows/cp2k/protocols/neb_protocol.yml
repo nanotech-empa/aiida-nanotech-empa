@@ -4,6 +4,7 @@ standard:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: BAND
         WALLTIME: 600
+        ELPA_KERNEL: AVX2_BLOCK2
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
@@ -92,6 +93,7 @@ low_accuracy:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: BAND
         WALLTIME: 600
+        ELPA_KERNEL: AVX2_BLOCK2
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
@@ -180,6 +182,7 @@ debug:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: BAND
         WALLTIME: 600
+        ELPA_KERNEL: AVX2_BLOCK2
     MOTION:
         CONSTRAINT:
             FIXED_ATOMS:
