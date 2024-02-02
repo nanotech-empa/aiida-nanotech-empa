@@ -6,6 +6,7 @@ from . import cp2k_utils
 
 # Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 Cp2kCalculation = plugins.CalculationFactory("cp2k")
+TrajectoryData = plugins.DataFactory("array.trajectory")
 
 
 # function to check if all ase structures have the same cell
@@ -30,34 +31,18 @@ def split_structures(ase_structures):
     return split_structures
 
 
-def reorder_structures(ase_structures, cell_tolerance=1e-4):
-    """Here we would need a clever function to reorder the structures in the trajectory.
-    This one is not gdoing a good job. It is just a placeholder:
-    [[5. 5. 5.]
-    [6. 5. 5.]]
-    [[5.  5.  5. ]
-    [6.2 5.  5. ]]
-    [[5.  5.  5. ]
-    [6.3 5.  5. ]]
-    [[5. 5. 5.]
-    [7. 5. 5.]]
-    [[5. 5. 5.]
-    [5. 5. 5.]]
-    If the strcutures do not all have the same cell exit with an error.
-    """
-    if not check_cell(ase_structures, 1e-4):
-        return None
-    # tobeincluded = [(i + 1, s) for i, s in enumerate(ase_structures[1:])]
-    # reordered = [(0, ase_structures[0])]
-    # while tobeincluded:
-    #    last = reordered[-1][1]
-    #    distances = [
-    #        np.linalg.norm(last.get_positions() - s[1].get_positions())
-    #        for s in tobeincluded
-    #    ]
-    #    index = np.argmin(distances)
-    #    reordered.append(tobeincluded.pop(index))
-    return ase_structures
+@calcfunction
+def create_batches(trajectory, batch_size):
+    """Create batches of the trajectory."""
+    ase_structures = trajectory.get_ase()
+    if not check_cell(ase_structures):
+        raise ValueError("The cell of the structures in the trajectory is not the same.")
+    split_structures = split_structures(ase_structures)
+    batches = []
+    for ss in split_structures:
+        for i in range(0, len(ss), batch_size):
+            batches.append(ss[i : i + batch_size])
+    return batches
 
 
 class Cp2kReftrajMdWorkChain(engine.WorkChain):
@@ -70,7 +55,8 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
 
         # Define the inputs of the workflow.
         spec.input("code", valid_type=orm.Code)
-        spec.input("trajectory", valid_type=orm.StructureData)
+        spec.input("trajectory", valid_type=TrajectoryData)
+        spec.input("batch_size", valid_type=orm.Int, default=lambda: orm.Int(10))
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
         spec.input("restart_from", valid_type=orm.Str, required=False)
         spec.input(
@@ -91,20 +77,9 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
 
         spec.outline(
             cls.setup,  # create batches, if reordering of structures create indexing
-            engine.if_(
-                cls.should_run_scf
-            )(  # if no .wfn valid is available do one SCF before all batches
-                cls.first_scf,
-                cls.to_outputs,
-            ),
-            engine.while_(cls.should_run_simulations)(
-                cls.run_constrained_geo_opts,
-                cls.update_latest_structure,
-                cls.update_colvars_values,
-                cls.update_colvars_increments,
-                cls.to_outputs,
-            ),
-            cls.finalize,
+            cls.first_scf,  # Run the first SCF to get the initial wavefunction
+            cls.run_reftraj_batches,  # Run the batches of the reftraj simulations
+            cls.merge_batches_output,
         )
 
         spec.outputs.dynamic = True
@@ -115,96 +90,6 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
     def setup(self):
         """Initialize the workchain process."""
         self.report("Inspecting input and setting up things")
-
-        # Restart from previous workchain
-        if "restart_from" in self.inputs:
-            self.report(
-                f"Retrieving previous steps from {self.inputs.restart_from.value} and continuing"
-            )
-            previous_replica = orm.load_node(self.inputs.restart_from.value)
-            previous_structures = list(previous_replica.outputs.structures)
-            previous_structures.sort()
-
-            self.ctx.lowest_energy_structure = previous_replica.outputs.structures[
-                previous_structures[-1]
-            ]
-            for struc in previous_structures:
-                self.out(
-                    f"structures.{struc}", previous_replica.outputs.structures[struc]
-                )
-                self.out(f"details.{struc}", previous_replica.outputs.details[struc])
-            self.ctx.CVs_to_increment = previous_replica.outputs.details[struc][
-                "cvs_target"
-            ]
-            self.ctx.colvars_values = previous_replica.outputs.details[struc][
-                "cvs_actual"
-            ]
-            self.ctx.should_run_scf = False
-            self.ctx.propagation_step = (
-                len(previous_structures) - 1
-            )  # continue form this step
-            self.update_colvars_increments()
-            self.ctx.should_run_simulations = True
-            self.ctx.restart_folder = list(
-                self.ctx.lowest_energy_structure.get_incoming(
-                    node_class=orm.CalcJobNode
-                )
-            )[-1][0].outputs.remote_folder
-            self.report(f"data from workchain: {previous_replica.pk}")
-            self.report(f"actual CVs: {self.ctx.colvars_values}")
-            self.report(f"CVs to increment: {self.ctx.CVs_to_increment}")
-            self.report(
-                f"starting from geometry: {self.ctx.lowest_energy_structure.pk}"
-            )
-            self.report(f"retrieved the following steps: {previous_structures} ")
-        else:
-            self.ctx.lowest_energy_structure = self.inputs.structure
-            self.ctx.should_run_scf = True
-            self.ctx.should_run_simulations = True
-            self.ctx.propagation_step = 0
-        return engine.ExitCode(0)
-
-    def should_run_scf(self):
-        """Function that returnns whether to run or not the first scf step"""
-        return self.ctx.should_run_scf
-
-    def to_outputs(self):
-        """Function to update step by step the workcain output"""
-        if self.ctx.propagation_step == 0:
-            self.out(
-                "details.initial_scf",
-                orm.Dict(
-                    dict={
-                        "output_parameters": dict(
-                            self.ctx.initial_scf.outputs.output_parameters
-                        ),
-                        "cvs_target": self.ctx.colvars_values,
-                        "cvs_actual": self.ctx.colvars_values,
-                        "d2prev": 0,
-                    }
-                ).store(),
-            )
-            self.out("structures.initial_scf", self.ctx.lowest_energy_structure)
-            self.report("Updated output for the initial_scf step")
-        else:
-            self.out(
-                f"details.step_{self.ctx.propagation_step - 1 :04}",
-                orm.Dict(
-                    dict={
-                        "output_parameters": dict(
-                            self.ctx.lowest_energy_output_parameters
-                        ),
-                        "cvs_target": self.ctx.CVs_cases[self.ctx.lowest_energy_calc],
-                        "cvs_actual": self.ctx.colvars_values,
-                        "d2prev": self.ctx.d2prev,
-                    }
-                ).store(),
-            )
-            self.out(
-                f"structures.step_{self.ctx.propagation_step - 1 :04}",
-                self.ctx.lowest_energy_structure,
-            )
-            self.report(f"Updated output for step {self.ctx.propagation_step - 1 :04}")
         return engine.ExitCode(0)
 
     def first_scf(self):
@@ -217,20 +102,45 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
             self.inputs.protocol.value,
         )
 
-        builder = Cp2kCalculation.get_builder()
-        builder.structure = orm.StructureData(ase=structure_with_tags)
-        builder.code = self.inputs.code
-        builder.file = files
+        builder = Cp2kBaseWorkChain.get_builder()
+        builder.cp2k.structure = orm.StructureData(ase=structure_with_tags)
+        builder.cp2k.code = self.inputs.code
+        builder.cp2k.file = files
         if "parent_calc_folder" in self.inputs:
-            builder.parent_calc_folder = self.inputs.parent_calc_folder
-        builder.metadata.options = self.inputs.options
-        builder.metadata.label = "scf"
-        builder.metadata.options.parser_name = "cp2k_advanced_parser"
+            builder.cp2k.parent_calc_folder = self.inputs.parent_calc_folder
+        builder.cp2k.metadata.options = self.inputs.options
+        builder.cp2k.metadata.label = "scf"
+        builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
         input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.inputs.options["max_wallclock_seconds"] - 600
         )
-        builder.parameters = orm.Dict(input_dict)
+        cp2k.ctx.input_dict = input_dict
+        builder.cp2k.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)
         self.report(f"Submitted SCF of the initial geometry: {future.pk}")
-        self.to_context(initial_scf=future)
+        self.ToContext(initial_scf=future)
+    
+    def run_reftraj_batches(self):
+
+        for i_batch, trajectory_batch in enumerate(create_batches(self.inputs.trajectory, batch_size=self.inputs.batch_size)):
+            self.report(f"Running batch of {len(trajectory_batch)} structures")
+            # create the input for the reftraj workchain
+            builder = Cp2kBaseWorkChain.get_builder()
+            builder.cp2k.trajectory = trajectory_batch
+            builder.cp2k.code = self.inputs.code
+            builder.cp2k.parameters = orm.Dict(dict=self.ctx.input_dict)
+  
+            builder.cp2k.parent_calc_folder = self.ctx.initial_scf.outputs.remote_folder
+            future = self.submit(Cp2kBaseWorkChain, **reftraj_input)
+            self.report(f"Submitted reftraj batch: {i_batch} with pk: {future.pk}")
+            key = f"reftraj_batch_{i_batch}"
+            self.to_context(**{key: future})
+
+    def merge_batches_output(self):
+        """Merge the output of the succefull batches only."""
+        merged_traj = []
+        for i_batch in range(self.ctx.n_batches):
+            merged_traj.extend(self.ctx[f"reftraj_batch_{i_batch}"].outputs.trajectory)
+        return merged_traj
+
