@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 from aiida import engine, orm, plugins
 
@@ -19,13 +17,18 @@ def check_cell(ase_structures, cell_tolerance=1e-4):
             return False
     return True
 
-#fuction that takes a list of ase structures and returns different leists where in each list teh structures have the same cell and the same formula
+
+# fuction that takes a list of ase structures and returns different leists where in each list teh structures have the same cell and the same formula
 def split_structures(ase_structures):
     """Split the structures in the trajectory in different lists based on the cell and the formula."""
     formulas = [s.get_chemical_formula() for s in ase_structures]
     unique_formulas = list(set(formulas))
-    split_structures = [[s for s, f in zip(ase_structures, formulas) if f == uf] for uf in unique_formulas]
+    split_structures = [
+        [s for s, f in zip(ase_structures, formulas) if f == uf]
+        for uf in unique_formulas
+    ]
     return split_structures
+
 
 def reorder_structures(ase_structures, cell_tolerance=1e-4):
     """Here we would need a clever function to reorder the structures in the trajectory.
@@ -44,9 +47,9 @@ def reorder_structures(ase_structures, cell_tolerance=1e-4):
     """
     if not check_cell(ase_structures, 1e-4):
         return None
-    #tobeincluded = [(i + 1, s) for i, s in enumerate(ase_structures[1:])]
-    #reordered = [(0, ase_structures[0])]
-    #while tobeincluded:
+    # tobeincluded = [(i + 1, s) for i, s in enumerate(ase_structures[1:])]
+    # reordered = [(0, ase_structures[0])]
+    # while tobeincluded:
     #    last = reordered[-1][1]
     #    distances = [
     #        np.linalg.norm(last.get_positions() - s[1].get_positions())
