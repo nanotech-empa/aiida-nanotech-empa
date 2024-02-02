@@ -36,7 +36,9 @@ def create_batches(trajectory, batch_size):
     """Create batches of the trajectory."""
     ase_structures = trajectory.get_ase()
     if not check_cell(ase_structures):
-        raise ValueError("The cell of the structures in the trajectory is not the same.")
+        raise ValueError(
+            "The cell of the structures in the trajectory is not the same."
+        )
     split_structures = split_structures(ase_structures)
     batches = []
     for ss in split_structures:
@@ -120,17 +122,18 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
         future = self.submit(builder)
         self.report(f"Submitted SCF of the initial geometry: {future.pk}")
         self.ToContext(initial_scf=future)
-    
-    def run_reftraj_batches(self):
 
-        for i_batch, trajectory_batch in enumerate(create_batches(self.inputs.trajectory, batch_size=self.inputs.batch_size)):
+    def run_reftraj_batches(self):
+        for i_batch, trajectory_batch in enumerate(
+            create_batches(self.inputs.trajectory, batch_size=self.inputs.batch_size)
+        ):
             self.report(f"Running batch of {len(trajectory_batch)} structures")
             # create the input for the reftraj workchain
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.trajectory = trajectory_batch
             builder.cp2k.code = self.inputs.code
             builder.cp2k.parameters = orm.Dict(dict=self.ctx.input_dict)
-  
+
             builder.cp2k.parent_calc_folder = self.ctx.initial_scf.outputs.remote_folder
             future = self.submit(Cp2kBaseWorkChain, **reftraj_input)
             self.report(f"Submitted reftraj batch: {i_batch} with pk: {future.pk}")
@@ -143,4 +146,3 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
         for i_batch in range(self.ctx.n_batches):
             merged_traj.extend(self.ctx[f"reftraj_batch_{i_batch}"].outputs.trajectory)
         return merged_traj
-
