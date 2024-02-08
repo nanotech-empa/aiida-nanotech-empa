@@ -35,15 +35,17 @@ This will:
   1. Create a tagged release with bumped version and push it to the repository.
   2. Trigger a GitHub actions workflow that creates a GitHub release.
 
-## Acknowledgements
-We acknowledge support from:
-* the [NCCR MARVEL](http://nccr-marvel.ch/) funded by the Swiss National Science Foundation;
-* the [swissuniversities P-5 project "Materials Cloud"](https://www.materialscloud.org/swissuniversities).
 
-<img src="https://raw.githubusercontent.com/aiidateam/aiida-quantumespresso/develop/docs/source/images/MARVEL.png" width="250px" height="131px"/>
-<img src="https://raw.githubusercontent.com/aiidateam/aiida-quantumespresso/develop/docs/source/images/swissuniversities.png" width="300px" height="35px"/>
 
 Additional notes:
 
   - The release tag (e.g. a/b/rc) is determined from the last release.
     Use the `--tag beta (alpha/gamma)`  option to switch the release tag.
+    
+## Acknowledgements
+We acknowledge support from:
+* the [NCCR MARVEL](http://nccr-marvel.ch/) funded by the Swiss National Science Foundation;
+* the [swissuniversities P-5 project "Materials Cloud"](https://www.materialscloud.org/swissuniversities).
+<img src="https://github.com/nanotech-empa/aiida-nanotech-empa/blob/master/images/MARVEL.png" width="250px" height="131px"/>
+<img src="https://github.com/nanotech-empa/aiida-nanotech-empa/blob/master/images/swissuniversities.png" width="300px" height="35px"/>
+
