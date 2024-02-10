@@ -95,11 +95,11 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
         builder.cp2k.metadata.options = self.inputs.options
         builder.cp2k.metadata.label = "structures_1_to_1"
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
-        input_dict["GLOBAL"]["WALLTIME"] = max(
+        self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.inputs.options["max_wallclock_seconds"] - 600
         )
 
-        builder.cp2k.parameters = orm.Dict(input_dict)
+        builder.cp2k.parameters = orm.Dict(self.ctx.input_dict)
 
         future = self.submit(builder)
         self.report(f"Submitted structures 1 to 1: {future.pk}")
@@ -122,6 +122,10 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
             builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
             builder.cp2k.trajectory = self.inputs.trajectory
             builder.cp2k.code = self.inputs.code
+            builder.cp2k.file = self.ctx.files
+            builder.cp2k.metadata.options = self.inputs.options
+            builder.cp2k.metadata.label = f"structures_{batch[0]}_to_{batch[1]}"
+            builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
 
             builder.cp2k.parent_calc_folder = (
