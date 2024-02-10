@@ -9,41 +9,14 @@ Cp2kCalculation = plugins.CalculationFactory("cp2k")
 TrajectoryData = plugins.DataFactory("array.trajectory")
 
 
-# function to check if all ase structures have the same cell
-def check_cell(ase_structures, cell_tolerance=1e-4):
-    """Check if all the structures in the trajectory have the same cell."""
-    cell = ase_structures[0].get_cell()
-    for s in ase_structures[1:]:
-        if not np.allclose(cell, s.get_cell(), atol=cell_tolerance):
-            return False
-    return True
-
-
-# fuction that takes a list of ase structures and returns different leists where in each list teh structures have the same cell and the same formula
-def split_structures(ase_structures):
-    """Split the structures in the trajectory in different lists based on the cell and the formula."""
-    formulas = [s.get_chemical_formula() for s in ase_structures]
-    unique_formulas = list(set(formulas))
-    split_structures = [
-        [s for s, f in zip(ase_structures, formulas) if f == uf]
-        for uf in unique_formulas
-    ]
-    return split_structures
-
-
 @calcfunction
 def create_batches(trajectory, batch_size):
-    """Create batches of the trajectory."""
-    ase_structures = trajectory.get_ase()
-    if not check_cell(ase_structures):
-        raise ValueError(
-            "The cell of the structures in the trajectory is not the same."
-        )
-    split_structures = split_structures(ase_structures)
+    """Create a list of touples with integers as batches indeces. Start from 1 for CP2K input."""
+    n_structures = trajectory.get_array("positions").shape[0]
     batches = []
-    for ss in split_structures:
-        for i in range(0, len(ss), batch_size):
-            batches.append(ss[i : i + batch_size])
+    for i_batch in range(1, n_structures, batch_size):
+        batches.append((i_batch, min(i_batch + batch_size - 1, n_structures)))
+
     return batches
 
 
@@ -92,6 +65,13 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
     def setup(self):
         """Initialize the workchain process."""
         self.report("Inspecting input and setting up things")
+
+        # create an ase Atoms object from the first structure of the trajectory
+        cell = self.inputs.trajectory.get_array("cells")[0]
+        positions = self.inputs.trajectory.get_array("positions")[0]
+        symbols = self.inputs.trajectory.symbols
+        ase_structure = Atoms(symbols, positions=positions, cell=cell)
+
         return engine.ExitCode(0)
 
     def first_scf(self):

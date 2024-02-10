@@ -2,20 +2,31 @@ standard:
     GLOBAL:
         EXTENDED_FFT_LENGTHS: ''
         PRINT_LEVEL: MEDIUM
-        RUN_TYPE: GEO_OPT
-        WALLTIME: 600
+        RUN_TYPE: MD
+        WALLTIME: '600'
         ELPA_KERNEL: AVX2_BLOCK2
     MOTION:
         MD:
+            STEPS: '100'
             ENSEMBLE: 'REFTRAJ'
-                REFTRAJ:
-                    EVAL_FORCES: '.TRUE.'
-                TRAJ_FILE_NAME: 'aiida-traj.xyz'
+            REFTRAJ:
+                FIRST_SNAPSHOT: '1'
+                LAST_SNAPSHOT: '100'
+                STRIDE: '1'
+                EVAL_FORCES: '.TRUE.'
+                TRAJ_FILE_NAME: 'reftraj.xyz'
+                VARIABLE_VOLUME: .TRUE.
+                CELL_FILE_NAME: 'reftraj.cell'
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
             FORCES:
+                EACH:
+                    MD: '1'
                 FORMAT: 'XYZ'
+            CELL:
+                EACH:
+                    MD: '1'
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
@@ -24,42 +35,41 @@ standard:
                 SYMMETRY: ORTHORHOMBIC
         DFT:
             UKS: .FALSE.
-            MULTIPLICITY: 0
-            CHARGE: 0
+            MULTIPLICITY: '0'
+            CHARGE: '0'
             BASIS_SET_FILE_NAME: BASIS_MOLOPT
             POTENTIAL_FILE_NAME: POTENTIAL
             RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
             MGRID:
-                CUTOFF: 600
-                NGRIDS: 5
+                CUTOFF: '600'
+                NGRIDS: '5'
             POISSON:
                 PERIODIC: XYZ
                 POISSON_SOLVER: PERIODIC
             QS:
-                EPS_DEFAULT: 1.0E-14
+                EPS_DEFAULT: '1.0E-14'
                 EXTRAPOLATION: ASPC
-                EXTRAPOLATION_ORDER: 3
+                EXTRAPOLATION_ORDER: '3'
                 METHOD: GPW
             SCF:
                 SCF_GUESS: RESTART
-                EPS_SCF: 1.0E-7
-                MAX_SCF: 40
+                EPS_SCF: '1.0E-7'
+                MAX_SCF: '40'
                 OT:
                     MINIMIZER: CG
                     PRECONDITIONER: FULL_SINGLE_INVERSE
                 OUTER_SCF:
-                    EPS_SCF: 1.0E-7
-                    MAX_SCF: 50
+                    EPS_SCF: '1.0E-7'
+                    MAX_SCF: '50'
                 PRINT:
                     RESTART:
                         ADD_LAST: NUMERIC
                         EACH:
-                            GEO_OPT: 1
-                            QS_SCF: 0
+                            MD: '1'
                         FILENAME: RESTART
                     RESTART_HISTORY:
                         _: 'OFF'
-                        BACKUP_COPIES: 0
+                        BACKUP_COPIES: '0'
             XC:
                 VDW_POTENTIAL:
                     DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
@@ -67,7 +77,7 @@ standard:
                         CALCULATE_C9_TERM: .TRUE.
                         PARAMETER_FILE_NAME: dftd3.dat
                         REFERENCE_FUNCTIONAL: PBE
-                        R_CUTOFF: 15
+                        R_CUTOFF: '15'
                         TYPE: DFTD3
                 XC_FUNCTIONAL:
                         _: PBE
@@ -76,7 +86,7 @@ low_accuracy:
         EXTENDED_FFT_LENGTHS: ''
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: GEO_OPT
-        WALLTIME: 600
+        WALLTIME: '600'
         ELPA_KERNEL: AVX2_BLOCK2
     MOTION:
         MD:
