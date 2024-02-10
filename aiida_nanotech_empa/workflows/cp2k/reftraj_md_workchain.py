@@ -1,9 +1,10 @@
+from copy import deepcopy
+
 import numpy as np
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
 from . import cp2k_utils
-from copy import deepcopy
 
 # Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 Cp2kCalculation = plugins.CalculationFactory("cp2k")
