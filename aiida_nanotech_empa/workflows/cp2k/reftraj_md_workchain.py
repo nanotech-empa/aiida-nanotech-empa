@@ -3,6 +3,7 @@ from aiida import engine, orm, plugins
 
 from ...utils import common_utils
 from . import cp2k_utils
+from copy import deepcopy
 
 # Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 Cp2kCalculation = plugins.CalculationFactory("cp2k")
@@ -107,12 +108,19 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
             create_batches(self.inputs.trajectory, batch_size=self.inputs.batch_size)
         ):
             self.report(f"Running structures {batch[0]} to {batch[1]}")
+
+            # update the input_dict with the new batch
+            input_dict = deepcopy(self.ctx.input_dict)
+            input_dict["MOTION]"]["MD"]["STEPS"] = 1 + batch[1] - batch[0]
+            input_dict["MOTION"]["MD"]["REFTRAJ"]["FIRST_SNAPSHOT"] = batch[0]
+            input_dict["MOTION"]["MD"]["REFTRAJ"]["LAST_SNAPSHOT"] = batch[1]
+
             # create the input for the reftraj workchain
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
             builder.cp2k.trajectory = self.inputs.trajectory
             builder.cp2k.code = self.inputs.code
-            builder.cp2k.parameters = orm.Dict(dict=self.ctx.input_dict)
+            builder.cp2k.parameters = orm.Dict(dict=input_dict)
 
             builder.cp2k.parent_calc_folder = (
                 self.ctx.first_structure.outputs.remote_folder
