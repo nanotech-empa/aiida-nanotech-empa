@@ -69,13 +69,15 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
         """Initialize the workchain process."""
         self.report("Inspecting input and setting up things")
 
-        self.ctx.files, self.ctx.input_dict, self.ctx.structure_with_tags = (
-            cp2k_utils.get_dft_inputs(
-                self.inputs.dft_params.get_dict(),
-                self.inputs.trajectory,
-                "md_reftraj_protocol.yml",
-                self.inputs.protocol.value,
-            )
+        (
+            self.ctx.files,
+            self.ctx.input_dict,
+            self.ctx.structure_with_tags,
+        ) = cp2k_utils.get_dft_inputs(
+            self.inputs.dft_params.get_dict(),
+            self.inputs.trajectory,
+            "md_reftraj_protocol.yml",
+            self.inputs.protocol.value,
         )
         return engine.ExitCode(0)
 
