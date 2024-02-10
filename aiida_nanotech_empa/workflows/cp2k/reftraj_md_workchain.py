@@ -11,10 +11,13 @@ TrajectoryData = plugins.DataFactory("array.trajectory")
 
 @calcfunction
 def create_batches(trajectory, batch_size):
-    """Create a list of touples with integers as batches indeces. Start from 1 for CP2K input."""
-    n_structures = trajectory.get_array("positions").shape[0]
+    """Create a list of touples with integers as batches indeces. Counting start from 1 for CP2K input,
+    batches start from 2 since the first structure runs separately.
+    """
+    n_structures = trajectory.get_shape("positions")[1]
     batches = []
-    for i_batch in range(1, n_structures, batch_size):
+
+    for i_batch in range(2, n_structures + 1, batch_size):
         batches.append((i_batch, min(i_batch + batch_size - 1, n_structures)))
 
     return batches
@@ -52,7 +55,7 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
 
         spec.outline(
             cls.setup,  # create batches, if reordering of structures create indexing
-            cls.first_scf,  # Run the first SCF to get the initial wavefunction
+            cls.first_structure,  # Run the first SCF to get the initial wavefunction
             cls.run_reftraj_batches,  # Run the batches of the reftraj simulations
             cls.merge_batches_output,
         )
@@ -66,55 +69,54 @@ class Cp2kReftrajMdWorkChain(engine.WorkChain):
         """Initialize the workchain process."""
         self.report("Inspecting input and setting up things")
 
-        # create an ase Atoms object from the first structure of the trajectory
-        cell = self.inputs.trajectory.get_array("cells")[0]
-        positions = self.inputs.trajectory.get_array("positions")[0]
-        symbols = self.inputs.trajectory.symbols
-        ase_structure = Atoms(symbols, positions=positions, cell=cell)
-
+        self.ctx.files, self.ctx.input_dict, self.ctx.structure_with_tags = (
+            cp2k_utils.get_dft_inputs(
+                self.inputs.dft_params.get_dict(),
+                self.inputs.trajectory,
+                "md_reftraj_protocol.yml",
+                self.inputs.protocol.value,
+            )
+        )
         return engine.ExitCode(0)
 
-    def first_scf(self):
+    def first_structure(self):
         """Run scf on the initial geometry."""
 
-        files, input_dict, structure_with_tags = cp2k_utils.get_dft_inputs(
-            self.inputs.dft_params.get_dict(),
-            self.ctx.lowest_energy_structure,
-            "scf_ot_protocol.yml",
-            self.inputs.protocol.value,
-        )
-
         builder = Cp2kBaseWorkChain.get_builder()
-        builder.cp2k.structure = orm.StructureData(ase=structure_with_tags)
+        builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
+        builder.cp2k.trajectory = self.inputs.trajectory
         builder.cp2k.code = self.inputs.code
-        builder.cp2k.file = files
+        builder.cp2k.file = self.ctx.files
         if "parent_calc_folder" in self.inputs:
             builder.cp2k.parent_calc_folder = self.inputs.parent_calc_folder
         builder.cp2k.metadata.options = self.inputs.options
-        builder.cp2k.metadata.label = "scf"
+        builder.cp2k.metadata.label = "structures_1_to_1"
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
         input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.inputs.options["max_wallclock_seconds"] - 600
         )
-        cp2k.ctx.input_dict = input_dict
+
         builder.cp2k.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)
-        self.report(f"Submitted SCF of the initial geometry: {future.pk}")
-        self.ToContext(initial_scf=future)
+        self.report(f"Submitted structures 1 to 1: {future.pk}")
+        self.ToContext(first_structure=future)
 
     def run_reftraj_batches(self):
-        for i_batch, trajectory_batch in enumerate(
+        for i_batch, batch in enumerate(
             create_batches(self.inputs.trajectory, batch_size=self.inputs.batch_size)
         ):
-            self.report(f"Running batch of {len(trajectory_batch)} structures")
+            self.report(f"Running structures {batch[0]} to {batch[1]}")
             # create the input for the reftraj workchain
             builder = Cp2kBaseWorkChain.get_builder()
-            builder.cp2k.trajectory = trajectory_batch
+            builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
+            builder.cp2k.trajectory = self.inputs.trajectory
             builder.cp2k.code = self.inputs.code
             builder.cp2k.parameters = orm.Dict(dict=self.ctx.input_dict)
 
-            builder.cp2k.parent_calc_folder = self.ctx.initial_scf.outputs.remote_folder
+            builder.cp2k.parent_calc_folder = (
+                self.ctx.first_structure.outputs.remote_folder
+            )
             future = self.submit(Cp2kBaseWorkChain, **reftraj_input)
             self.report(f"Submitted reftraj batch: {i_batch} with pk: {future.pk}")
             key = f"reftraj_batch_{i_batch}"
