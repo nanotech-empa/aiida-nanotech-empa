@@ -1,10 +1,9 @@
-import pathlib
 import os
 import random
-import numpy as np
 
 import ase.io
 import click
+import numpy as np
 from aiida import engine, orm, plugins
 from ase import Atoms
 
@@ -14,7 +13,6 @@ TrajectoryData = DataFactory("core.array.trajectory")
 
 
 def _example_cp2k_reftraj(cp2k_code):
-
     thisdir = os.path.dirname(os.path.realpath(__file__))
 
     # Structure.
@@ -79,7 +77,7 @@ def _example_cp2k_reftraj(cp2k_code):
 
 
 def example_cp2k_reftraj(cp2k_code):
-    pk1 = _example_cp2k_reftraj(cp2k_code)
+    _example_cp2k_reftraj(cp2k_code)
     # _example_cp2k_replicachain(cp2k_code, pk1)
 
 
