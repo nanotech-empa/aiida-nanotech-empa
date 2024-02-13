@@ -5,7 +5,6 @@ import ase.io
 import click
 import numpy as np
 from aiida import engine, orm, plugins
-from ase import Atoms
 
 Cp2kMdReftrajWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.reftraj")
 StructureData = DataFactory("core.structure")
@@ -40,8 +39,8 @@ def _example_cp2k_reftraj(cp2k_code):
     trajectory.set_trajectory(symbols, positions, cells=cells)
 
     builder = Cp2kMdReftrajWorkChain.get_builder()
-    if restart_uuid is not None:
-        builder.restart_from = orm.Str(restart_uuid)
+    # if restart_uuid is not None:
+    #    builder.restart_from = orm.Str(restart_uuid)
 
     builder.metadata.label = "CP2K_RefTraj"
     builder.metadata.description = "test description"
@@ -90,7 +89,7 @@ def run_all(cp2k_code):
     uuid = _example_cp2k_reftraj(
         cp2k_code=orm.load_code(cp2k_code),
     )
-    # print(f"#### RKS continuation from uuid ({uuid})")
+    print(f"#### RKS continuation from uuid ({uuid}) to be implemented")
     # _example_cp2k_replicachain(
     #    cp2k_code=orm.load_code(cp2k_code),
     #    targets=[1.47, 1.27, 1.87],
