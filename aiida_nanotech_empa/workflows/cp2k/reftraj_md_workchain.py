@@ -6,16 +6,16 @@ from aiida import engine, orm, plugins
 from ...utils import common_utils
 from . import cp2k_utils
 
-# Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
-Cp2kCalculation = plugins.CalculationFactory("cp2k")
+Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
+#Cp2kRefTrajWorkChain = plugins.WorkflowFactory("cp2k.reftraj")
 TrajectoryData = plugins.DataFactory("array.trajectory")
 
 
-@calcfunction
+@engine.calcfunction
 def create_batches(trajectory, num_batches,steps_completed):
     """Create lists of consecutive integers. Counting start from 1 for CP2K input.
     """
-    lst=[i for i in range trajectory.get_shape('positions')[0]]
+    lst=[i+1 for i in range(trajectory.get_shape('positions')[0])]
     for i in steps_completed:
         lst.remove(i)
     max_batch_size = int(len(lst)/num_batches)
@@ -32,10 +32,10 @@ def create_batches(trajectory, num_batches,steps_completed):
             current_list = []
     if current_list:
         consecutive_lists.append(current_list)
-    return consecutive_lists
+    return orm.List(consecutive_lists)
 
 
-class Cp2kMdReftrajWorkChain(engine.WorkChain):
+class Cp2kRefTrajWorkChain(engine.WorkChain):
     """Workflow to run Replica Chain calculations with CP2K."""
 
     @classmethod
@@ -45,6 +45,7 @@ class Cp2kMdReftrajWorkChain(engine.WorkChain):
 
         # Define the inputs of the workflow.
         spec.input("code", valid_type=orm.Code)
+        #spec.input("structure", valid_type=orm.StructureData)
         spec.input("trajectory", valid_type=TrajectoryData)
         spec.input("num_batches", valid_type=orm.Int, default=lambda: orm.Int(10))
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
@@ -69,7 +70,7 @@ class Cp2kMdReftrajWorkChain(engine.WorkChain):
             cls.setup,  # create batches, if reordering of structures create indexing
             cls.first_structure,  # Run the first SCF to get the initial wavefunction
             cls.run_reftraj_batches,  # Run the batches of the reftraj simulations
-            #cls.merge_batches_output,
+            cls.merge_batches_output,
         )
 
         spec.outputs.dynamic = True
@@ -91,18 +92,27 @@ class Cp2kMdReftrajWorkChain(engine.WorkChain):
             "md_reftraj_protocol.yml",
             self.inputs.protocol.value,
         )
+        self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
+            600, self.inputs.options["max_wallclock_seconds"] - 600
+        )        
         self.ctx.steps_completed = []
         # create batches avoiding steps already completed.
-        self.ctx.batches = create_batches(self.inputs.trajectory, self.inputs.num_batches,self.inputs.steps_completed)
+        self.ctx.batches = create_batches(self.inputs.trajectory, self.inputs.num_batches,self.ctx.steps_completed).get_list()
         return engine.ExitCode(0)
 
     def first_structure(self):
         """Run scf on the initial geometry."""
-
         input_dict = deepcopy(self.ctx.input_dict)
-        first_snapshot = self.ctx.batches[0].pop(0)
+        batches = self.ctx.batches
+        first_snapshot = batches[0].pop(0)
+        self.ctx.batches = batches
+        
+        self.report(f"Running structure {first_snapshot} to {first_snapshot} ")
+        
         input_dict["MOTION"]["MD"]["REFTRAJ"]["FIRST_SNAPSHOT"] = first_snapshot
         input_dict["MOTION"]["MD"]["REFTRAJ"]["LAST_SNAPSHOT"] = first_snapshot
+        
+        # create the input for the reftraj workchain
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
         builder.cp2k.trajectory = self.inputs.trajectory
@@ -113,23 +123,21 @@ class Cp2kMdReftrajWorkChain(engine.WorkChain):
         builder.cp2k.metadata.options = self.inputs.options
         builder.cp2k.metadata.label = f"structures_{first_snapshot}_to_{first_snapshot}"
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
-        self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
-            600, self.inputs.options["max_wallclock_seconds"] - 600
-        )
 
-        builder.cp2k.parameters = orm.Dict(self.ctx.input_dict)
+        builder.cp2k.parameters = orm.Dict(dict=input_dict)
 
         future = self.submit(builder)
-        self.report(f"Submitted structures 1 to 1: {future.pk}")
-        self.ToContext(first_structure=future)
+        self.report(f"Submitted structures {first_snapshot} to {first_snapshot}: {future.pk}")
+        self.to_context(first_structure=future)
 
     def run_reftraj_batches(self):
+        self.report(f"Running the reftraj batches {self.ctx.batches} ")
         for batch in self.ctx.batches:
-            self.report(f"Running structures {batch[0]} to {batch[-1]}")
+            self.report(f"Running structures {batch[0]} to {batch[-1]} ")
 
             # update the input_dict with the new batch
             input_dict = deepcopy(self.ctx.input_dict)
-            input_dict["MOTION]"]["MD"]["STEPS"] = 1 + batch[0] - batch[-1]
+            input_dict["MOTION"]["MD"]["STEPS"] = 1 + batch[0] - batch[-1]
             input_dict["MOTION"]["MD"]["REFTRAJ"]["FIRST_SNAPSHOT"] = batch[0]
             input_dict["MOTION"]["MD"]["REFTRAJ"]["LAST_SNAPSHOT"] = batch[-1]
 
@@ -143,18 +151,21 @@ class Cp2kMdReftrajWorkChain(engine.WorkChain):
             builder.cp2k.metadata.label = f"structures_{batch[0]}_to_{batch[-1]}"
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
-
             builder.cp2k.parent_calc_folder = (
                 self.ctx.first_structure.outputs.remote_folder
             )
-            future = self.submit(Cp2kBaseWorkChain, **reftraj_input)
-            self.report(f"Submitted reftraj batch: {batch[0]}_to_{batch[-1]} with pk: {future.pk}")
+            
+            future = self.submit(builder)
+            
             key = f"reftraj_batch_{batch[0]}_to_{batch[-1]}"
-            self.to_context(**{key: future})
+            self.report(f"Submitted reftraj batch: {key} with pk: {future.pk}")
+            
+            self.to_context(**{key: engine.append_(future)})
 
     def merge_batches_output(self):
         """Merge the output of the succefull batches only."""
-        merged_traj = []
-        for i_batch in range(self.ctx.n_batches):
-            merged_traj.extend(self.ctx[f"reftraj_batch_{i_batch}"].outputs.trajectory)
-        return merged_traj
+        self.report("done")
+        #merged_traj = []
+        #for i_batch in range(self.ctx.n_batches):
+        #    merged_traj.extend(self.ctx[f"reftraj_batch_{i_batch}"].outputs.trajectory)
+        return engine.ExitCode(0)

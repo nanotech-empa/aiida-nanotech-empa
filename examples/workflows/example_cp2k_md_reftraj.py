@@ -6,7 +6,7 @@ import click
 import numpy as np
 from aiida import engine, orm, plugins
 
-Cp2kMdReftrajWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.reftraj")
+Cp2kReftrajWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.reftraj")
 StructureData = DataFactory("core.structure")
 TrajectoryData = DataFactory("core.array.trajectory")
 
@@ -15,14 +15,14 @@ def _example_cp2k_reftraj(cp2k_code):
     thisdir = os.path.dirname(os.path.realpath(__file__))
 
     # Structure.
-    structure = StructureData(ase=ase.io.read(os.path.join(thisdir, ".", "h2.xyz")))
+    #structure = StructureData(ase=ase.io.read(os.path.join(thisdir, ".", "h2.xyz")))
 
     # Trajectory.
     steps = 20
     positions = np.array(
         [
             [
-                [2.52851027, 3.96611323, 3 + 0.05 * random.random()],
+                [2.52851027, 3.96611323, 3.75 + 0.05 * random.random()],
                 [2.52851027, 3.96611323, 3],
             ]
             for i in range(steps)
@@ -38,7 +38,7 @@ def _example_cp2k_reftraj(cp2k_code):
     trajectory = TrajectoryData()
     trajectory.set_trajectory(symbols, positions, cells=cells)
 
-    builder = Cp2kMdReftrajWorkChain.get_builder()
+    builder = Cp2kReftrajWorkChain.get_builder()
     # if restart_uuid is not None:
     #    builder.restart_from = orm.Str(restart_uuid)
 
@@ -54,7 +54,7 @@ def _example_cp2k_reftraj(cp2k_code):
         },
     }
 
-    builder.structure = structure
+    #builder.structure = structure
     builder.trajectory = trajectory
     builder.num_batches = orm.Int(2)
     builder.protocol = orm.Str("debug")
@@ -84,7 +84,7 @@ def example_cp2k_reftraj(cp2k_code):
 @click.argument("cp2k_code", default="cp2k@localhost")
 @click.option("-n", "--n-nodes", default=1)
 @click.option("-c", "--n-cores-per-node", default=1)
-def run_all(cp2k_code):
+def run_all(cp2k_code, n_nodes, n_cores_per_node):
     print("#### RKS")
     uuid = _example_cp2k_reftraj(
         cp2k_code=orm.load_code(cp2k_code),

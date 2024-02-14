@@ -205,8 +205,8 @@ def get_dft_inputs(dft_params, structure, template, protocol):
     # number of atoms
     if isinstance(structure, orm.TrajectoryData):
         natoms = structure.get_shape("positions")[1]
-    else:
-        natoms = len(structure.sites)
+        structure = orm.StructureData(ase=ase.Atoms(structure.symbols, positions=structure.get_array('positions')[0],cell=(structure.get_array('cells')[0])))
+    natoms = len(structure.sites)
 
     # Load input template.
     input_dict = load_protocol(template, protocol)
