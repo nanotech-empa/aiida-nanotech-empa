@@ -169,17 +169,15 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
 
     def merge_batches_output(self):
         """Merge the output of the succefull batches only."""
-        
+
         # merged_traj = []
         # for i_batch in range(self.ctx.n_batches):
         #    merged_traj.extend(self.ctx[f"reftraj_batch_{i_batch}"].outputs.trajectory)
         for batch in self.ctx.batches:
             key = f"reftraj_batch_{batch[0]}_to_{batch[-1]}"
-            if not  getattr(
-            self.ctx, key).is_finished_ok:
+            if not getattr(self.ctx, key).is_finished_ok:
                 self.report(f"Batch {key} failed")
                 return self.exit_codes.ERROR_TERMINATION
-            
+
         self.report("done")
         return engine.ExitCode(0)
-        
