@@ -173,24 +173,34 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
         # merged_traj = []
         # for i_batch in range(self.ctx.n_batches):
         #    merged_traj.extend(self.ctx[f"reftraj_batch_{i_batch}"].outputs.trajectory)
-        positions=[self.ctx.first_structure.outputs.output_trajectory.get_array('positions')]
-        cells=[self.ctx.first_structure.outputs.output_trajectory.get_array('cells')]
-        forces=[self.ctx.first_structure.outputs.output_trajectory.get_array('forces')]
+        positions = [
+            self.ctx.first_structure.outputs.output_trajectory.get_array("positions")
+        ]
+        cells = [self.ctx.first_structure.outputs.output_trajectory.get_array("cells")]
+        forces = [
+            self.ctx.first_structure.outputs.output_trajectory.get_array("forces")
+        ]
         for batch in self.ctx.batches:
             key = f"reftraj_batch_{batch[0]}_to_{batch[-1]}"
             if not getattr(self.ctx, key).is_finished_ok:
                 self.report(f"Batch {key} failed")
                 return self.exit_codes.ERROR_TERMINATION
-            positions.append(getattr(self.ctx, key).outputs.output_trajectory.get_array('positions'))
-            cells.append(getattr(self.ctx, key).outputs.output_trajectory.get_array('cells'))
-            forces.append(getattr(self.ctx, key).outputs.output_trajectory.get_array('forces'))
-        
-        positions=np.concatenate(positions)
-        cells=np.concatenate(cells)
-        forces=np.concatenate(forces)
+            positions.append(
+                getattr(self.ctx, key).outputs.output_trajectory.get_array("positions")
+            )
+            cells.append(
+                getattr(self.ctx, key).outputs.output_trajectory.get_array("cells")
+            )
+            forces.append(
+                getattr(self.ctx, key).outputs.output_trajectory.get_array("forces")
+            )
+
+        positions = np.concatenate(positions)
+        cells = np.concatenate(cells)
+        forces = np.concatenate(forces)
         symbols = self.ctx.first_structure.outputs.output_trajectory.symbols
-        output_trajectory = TrajectoryData()   
-        output_trajectory.set_trajectory(symbols, positions, cells=cells) 
-        self.out('output_trajectory', output_trajectory)
+        output_trajectory = TrajectoryData()
+        output_trajectory.set_trajectory(symbols, positions, cells=cells)
+        self.out("output_trajectory", output_trajectory)
         self.report("done")
         return engine.ExitCode(0)
