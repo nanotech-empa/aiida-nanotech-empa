@@ -116,9 +116,9 @@ def determine_kinds(structure, magnetization_per_site=None, ghost_per_site=None)
                 combined[symbol + "_0_0"] = 0
             else:
                 tag += 1
-                combined[symbol + "_" + str(mag_ghost[0]) + "_" + str(mag_ghost[1])] = (
-                    tag
-                )
+                combined[
+                    symbol + "_" + str(mag_ghost[0]) + "_" + str(mag_ghost[1])
+                ] = tag
 
     # Assigning correct tags to every atom.
     tags1 = [combined[key] for key in complex_symbols]
@@ -205,7 +205,13 @@ def get_dft_inputs(dft_params, structure, template, protocol):
     # number of atoms
     if isinstance(structure, orm.TrajectoryData):
         natoms = structure.get_shape("positions")[1]
-        structure = orm.StructureData(ase=ase.Atoms(structure.symbols, positions=structure.get_array('positions')[0],cell=(structure.get_array('cells')[0])))
+        structure = orm.StructureData(
+            ase=ase.Atoms(
+                structure.symbols,
+                positions=structure.get_array("positions")[0],
+                cell=(structure.get_array("cells")[0]),
+            )
+        )
     natoms = len(structure.sites)
 
     # Load input template.

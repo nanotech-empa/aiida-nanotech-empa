@@ -12,10 +12,10 @@ TrajectoryData = DataFactory("core.array.trajectory")
 
 
 def _example_cp2k_reftraj(cp2k_code):
-    thisdir = os.path.dirname(os.path.realpath(__file__))
+    os.path.dirname(os.path.realpath(__file__))
 
     # Structure.
-    #structure = StructureData(ase=ase.io.read(os.path.join(thisdir, ".", "h2.xyz")))
+    # structure = StructureData(ase=ase.io.read(os.path.join(thisdir, ".", "h2.xyz")))
 
     # Trajectory.
     steps = 20
@@ -54,7 +54,7 @@ def _example_cp2k_reftraj(cp2k_code):
         },
     }
 
-    #builder.structure = structure
+    # builder.structure = structure
     builder.trajectory = trajectory
     builder.num_batches = orm.Int(2)
     builder.protocol = orm.Str("debug")
