@@ -75,7 +75,7 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
         spec.outputs.dynamic = True
         spec.output_namespace("structures", valid_type=orm.StructureData)
         spec.output_namespace("details", valid_type=orm.Dict)
-        spec.exit_code(390, "ERROR_TERMINATION", message="One geo opt failed")
+        spec.exit_code(390, "ERROR_TERMINATION", message="One or more steps failed")
 
     def setup(self):
         """Initialize the workchain process."""
@@ -135,6 +135,8 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
 
     def run_reftraj_batches(self):
         self.report(f"Running the reftraj batches {self.ctx.batches} ")
+        if not self.ctx.first_structure.is_finished_ok:
+            return self.exit_codes.ERROR_TERMINATION
         for batch in self.ctx.batches:
             self.report(f"Running structures {batch[0]} to {batch[-1]} ")
 
@@ -163,12 +165,21 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             key = f"reftraj_batch_{batch[0]}_to_{batch[-1]}"
             self.report(f"Submitted reftraj batch: {key} with pk: {future.pk}")
 
-            self.to_context(**{key: engine.append_(future)})
+            self.to_context(**{key: future})
 
     def merge_batches_output(self):
         """Merge the output of the succefull batches only."""
-        self.report("done")
+        
         # merged_traj = []
         # for i_batch in range(self.ctx.n_batches):
         #    merged_traj.extend(self.ctx[f"reftraj_batch_{i_batch}"].outputs.trajectory)
+        for batch in self.ctx.batches:
+            key = f"reftraj_batch_{batch[0]}_to_{batch[-1]}"
+            if not  getattr(
+            self.ctx, key).is_finished_ok:
+                self.report(f"Batch {key} failed")
+                return self.exit_codes.ERROR_TERMINATION
+            
+        self.report("done")
         return engine.ExitCode(0)
+        
