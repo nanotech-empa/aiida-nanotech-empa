@@ -10,14 +10,15 @@ Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 # Cp2kRefTrajWorkChain = plugins.WorkflowFactory("cp2k.reftraj")
 TrajectoryData = plugins.DataFactory("array.trajectory")
 
+
 @engine.calcfunction
 def merge_trajectories(*trajectories):
     """Merge a list of trajectories into a single one."""
-    positions=[]
-    cells=[]
-    forces=[]
+    positions = []
+    cells = []
+    forces = []
     for trajectory in trajectories:
-        positions.append(trajectory.get_array("positions") )
+        positions.append(trajectory.get_array("positions"))
         try:
             cells.append(trajectory.get_array("cells"))
         except KeyError:
@@ -31,10 +32,11 @@ def merge_trajectories(*trajectories):
     if len(cells) == 0:
         merged_trajectory.set_trajectory(symbols, positions)
     else:
-        merged_trajectory.set_trajectory(symbols, positions, cells=cells)   
+        merged_trajectory.set_trajectory(symbols, positions, cells=cells)
     merged_trajectory.set_array("forces", forces)
-    
+
     return merged_trajectory
+
 
 @engine.calcfunction
 def create_batches(trajectory, num_batches, steps_completed):
@@ -56,7 +58,7 @@ def create_batches(trajectory, num_batches, steps_completed):
             current_list = []
     if current_list:
         consecutive_lists.append(current_list)
-        
+
     # [[1,2,3],[4,5,6]] --> [[1],[2,3],[4,5,6]]
     batches = [[consecutive_lists[0].pop(0)]]
     for batch in consecutive_lists:
@@ -187,8 +189,10 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             builder.cp2k.metadata.label = f"structures_{batch[0]}_to_{batch[-1]}"
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
-            builder.cp2k.parent_calc_folder = getattr(self.ctx, key0).outputs.remote_folder
-            
+            builder.cp2k.parent_calc_folder = getattr(
+                self.ctx, key0
+            ).outputs.remote_folder
+
             future = self.submit(builder)
 
             key = f"reftraj_batch_{batch[0]}_to_{batch[-1]}"
@@ -203,14 +207,20 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
         # for i_batch in range(self.ctx.n_batches):
         #    merged_traj.extend(self.ctx[f"reftraj_batch_{i_batch}"].outputs.trajectory)
 
-
-        trajectories_to_merge=[getattr(self.ctx, f"reftraj_batch_{self.ctx.batches[0][0]}_to_{self.ctx.batches[0][0]}").outputs.output_trajectory]
+        trajectories_to_merge = [
+            getattr(
+                self.ctx,
+                f"reftraj_batch_{self.ctx.batches[0][0]}_to_{self.ctx.batches[0][0]}",
+            ).outputs.output_trajectory
+        ]
         for batch in self.ctx.batches[1:]:
             key = f"reftraj_batch_{batch[0]}_to_{batch[-1]}"
             if not getattr(self.ctx, key).is_finished_ok:
                 self.report(f"Batch {key} failed")
                 return self.exit_codes.ERROR_TERMINATION
-            trajectories_to_merge.append(getattr(self.ctx, key).outputs.output_trajectory)
+            trajectories_to_merge.append(
+                getattr(self.ctx, key).outputs.output_trajectory
+            )
         merged_trajectory = merge_trajectories(*trajectories_to_merge)
 
         self.out("output_trajectory", merged_trajectory)

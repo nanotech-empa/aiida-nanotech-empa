@@ -28,10 +28,7 @@ def _example_cp2k_reftraj(cp2k_code):
         ]
     )
     cells = np.array(
-        [
-            [[5, 0, 0], [0, 5, 0], [0, 0, 5 + 0.0001 * i]]
-            for i in range(steps)
-        ]
+        [[[5, 0, 0], [0, 5, 0], [0, 0, 5 + 0.0001 * i]] for i in range(steps)]
     )
     symbols = ["H", "H"]
     trajectory = TrajectoryData()
