@@ -1,5 +1,4 @@
 import os
-import random
 
 import ase.io
 import click
@@ -22,15 +21,15 @@ def _example_cp2k_reftraj(cp2k_code):
     positions = np.array(
         [
             [
-                [2.52851027, 3.96611323, 3.75 + 0.05 * random.random()],
-                [2.52851027, 3.96611323, 3],
+                [2.528, 3.966, 3.75 + 0.0001 * i],
+                [2.528, 3.966, 3],
             ]
             for i in range(steps)
         ]
     )
     cells = np.array(
         [
-            [[5, 0, 0], [0, 5, 0], [0, 0, 5 + 0.05 * random.random()]]
+            [[5, 0, 0], [0, 5, 0], [0, 0, 5 + 0.0001 * i]]
             for i in range(steps)
         ]
     )
@@ -56,7 +55,7 @@ def _example_cp2k_reftraj(cp2k_code):
 
     # builder.structure = structure
     builder.trajectory = trajectory
-    builder.num_batches = orm.Int(2)
+    builder.num_batches = orm.Int(3)
     builder.protocol = orm.Str("debug")
 
     dft_params = {
