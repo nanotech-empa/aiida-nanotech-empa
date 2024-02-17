@@ -13,26 +13,25 @@ TrajectoryData = plugins.DataFactory("array.trajectory")
 @engine.calcfunction
 def merge_trajectories(*trajectories):
     """Merge a list of trajectories into a single one."""
-    positions=[]
-    cells=[]
-    forces=[]
+
+    arrays = {}
+    traj_keys = trajectories[0].get_arraynames()
+    symbols = trajectories[0].symbols
+    traj_keys.remove('steps')
+    for key in traj_keys:
+        arrays[key]=[]
     for trajectory in trajectories:
-        positions.append(trajectory.get_array("positions") )
-        try:
-            cells.append(trajectory.get_array("cells"))
-        except KeyError:
-            pass
-        forces.append(trajectory.get_array("forces"))
-    symbols = trajectory.symbols
-    positions = np.concatenate(positions)
-    cells = np.concatenate(cells)
-    forces = np.concatenate(forces)
+        for key in traj_keys:
+            arrays[key].append(trajectory.get_array(key))
+
     merged_trajectory = TrajectoryData()
-    if len(cells) == 0:
-        merged_trajectory.set_trajectory(symbols, positions)
+    if 'cells' in traj_keys:
+        merged_trajectory.set_trajectory(symbols, np.concatenate(arrays['positions']),cells=np.concatenate(arrays['cells']))        
     else:
-        merged_trajectory.set_trajectory(symbols, positions, cells=cells)   
-    merged_trajectory.set_array("forces", forces)
+        merged_trajectory.set_trajectory(symbols, np.concatenate(arrays['positions']))  
+    traj_keys = [key for key in traj_keys if key not in ['cells','positions']]
+    for key in traj_keys:
+        merged_trajectory.set_array(key, np.concatenate(arrays[key]))
     
     return merged_trajectory
 
