@@ -18,22 +18,26 @@ def merge_trajectories(*trajectories):
     arrays = {}
     traj_keys = trajectories[0].get_arraynames()
     symbols = trajectories[0].symbols
-    traj_keys.remove('steps')
+    traj_keys.remove("steps")
     for key in traj_keys:
-        arrays[key]=[]
+        arrays[key] = []
     for trajectory in trajectories:
         for key in traj_keys:
             arrays[key].append(trajectory.get_array(key))
 
     merged_trajectory = TrajectoryData()
-    if 'cells' in traj_keys:
-        merged_trajectory.set_trajectory(symbols, np.concatenate(arrays['positions']),cells=np.concatenate(arrays['cells']))        
+    if "cells" in traj_keys:
+        merged_trajectory.set_trajectory(
+            symbols,
+            np.concatenate(arrays["positions"]),
+            cells=np.concatenate(arrays["cells"]),
+        )
     else:
-        merged_trajectory.set_trajectory(symbols, np.concatenate(arrays['positions']))  
-    traj_keys = [key for key in traj_keys if key not in ['cells','positions']]
+        merged_trajectory.set_trajectory(symbols, np.concatenate(arrays["positions"]))
+    traj_keys = [key for key in traj_keys if key not in ["cells", "positions"]]
     for key in traj_keys:
         merged_trajectory.set_array(key, np.concatenate(arrays[key]))
-    
+
     return merged_trajectory
 
 

@@ -10,7 +10,7 @@ StructureData = DataFactory("core.structure")
 TrajectoryData = DataFactory("core.array.trajectory")
 
 
-def _example_cp2k_reftraj(cp2k_code,num_batches=2):
+def _example_cp2k_reftraj(cp2k_code, num_batches=2):
     os.path.dirname(os.path.realpath(__file__))
 
     # Structure.
@@ -82,16 +82,18 @@ def example_cp2k_reftraj(cp2k_code):
 @click.option("-c", "--n-cores-per-node", default=1)
 def run_all(cp2k_code, n_nodes, n_cores_per_node):
     print("#### RKS one batch")
-    uuid1 = _example_cp2k_reftraj(
-        cp2k_code=orm.load_code(cp2k_code),num_batches=1
-    )
+    uuid1 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=1)
     print("#### RKS two batches")
-    uuid2 = _example_cp2k_reftraj(
-        cp2k_code=orm.load_code(cp2k_code),num_batches=2
-    )
+    uuid2 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=2)
     traj1 = orm.load_node(uuid1).outputs.output_trajectory
     traj2 = orm.load_node(uuid2).outputs.output_trajectory
-    assert np.allclose(traj1.get_array('cells'), traj2.get_array('cells'), rtol=1e-07, atol=1e-08, equal_nan=False)
+    assert np.allclose(
+        traj1.get_array("cells"),
+        traj2.get_array("cells"),
+        rtol=1e-07,
+        atol=1e-08,
+        equal_nan=False,
+    )
     print(f"arrays  match")
 
 
