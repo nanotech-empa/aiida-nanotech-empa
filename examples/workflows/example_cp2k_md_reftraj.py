@@ -56,9 +56,13 @@ def _example_cp2k_reftraj(cp2k_code, num_batches=2):
     builder.protocol = orm.Str("debug")
 
     dft_params = {
+        "uks": True,
+        "magnetization_per_site": [0, 1],
+        "charge": 0,
         "periodic": "NONE",
         "vdw": False,
-        "cutoff": 200,
+        "multiplicity": 1,
+        "cutoff": 300,
     }
 
     sys_params = {}
@@ -81,9 +85,9 @@ def example_cp2k_reftraj(cp2k_code):
 @click.option("-n", "--n-nodes", default=1)
 @click.option("-c", "--n-cores-per-node", default=1)
 def run_all(cp2k_code, n_nodes, n_cores_per_node):
-    print("#### RKS one batch")
+    print("#### UKS one batch")
     uuid1 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=1)
-    print("#### RKS two batches")
+    print("#### UKS two batches")
     uuid2 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=2)
     traj1 = orm.load_node(uuid1).outputs.output_trajectory
     traj2 = orm.load_node(uuid2).outputs.output_trajectory

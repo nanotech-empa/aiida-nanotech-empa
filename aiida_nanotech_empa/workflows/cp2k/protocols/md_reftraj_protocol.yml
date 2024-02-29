@@ -14,9 +14,9 @@ standard:
                 LAST_SNAPSHOT: '1'
                 STRIDE: '1'
                 EVAL_FORCES: '.TRUE.'
-                TRAJ_FILE_NAME: 'trajectory.xyz'
+                TRAJ_FILE_NAME: 'aiida-reftraj.xyz'
                 VARIABLE_VOLUME: .TRUE.
-                CELL_FILE_NAME: 'reftraj.cell'
+                CELL_FILE_NAME: 'aiida-reftraj.cell'
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
@@ -97,9 +97,9 @@ low_accuracy:
                 LAST_SNAPSHOT: '1'
                 STRIDE: '1'
                 EVAL_FORCES: '.TRUE.'
-                TRAJ_FILE_NAME: 'trajectory.xyz'
+                TRAJ_FILE_NAME: 'aiida-refttraj.xyz'
                 VARIABLE_VOLUME: .TRUE.
-                CELL_FILE_NAME: 'reftraj.cell'
+                CELL_FILE_NAME: 'aiida-reftraj.cell'
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
@@ -180,9 +180,9 @@ debug:
                 LAST_SNAPSHOT: '1'
                 STRIDE: '1'
                 EVAL_FORCES: '.TRUE.'
-                TRAJ_FILE_NAME: 'trajectory.xyz'
+                TRAJ_FILE_NAME: 'aiida-reftraj.xyz'
                 VARIABLE_VOLUME: .TRUE.
-                CELL_FILE_NAME: 'reftraj.cell'
+                CELL_FILE_NAME: 'aiida-reftraj.cell'
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
