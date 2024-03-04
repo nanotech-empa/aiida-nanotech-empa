@@ -88,9 +88,9 @@ class Cp2kStmWorkChain(engine.WorkChain):
             n_machines = 12
         if self.ctx.n_atoms > 2000:
             n_machines = 18
-        if self.ctx.n_atoms > 3000:
+        if self.ctx.n_atoms > 2500:
             n_machines = 24
-        if self.ctx.n_atoms > 4000:
+        if self.ctx.n_atoms > 3000:
             n_machines = 30
 
         inputs["metadata"]["options"] = {
