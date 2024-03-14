@@ -26,7 +26,7 @@ phonons:
         SUBSYS:
             CELL:
                 PERIODIC: XYZ
-                SYMMETRY: ORTHORHOMBIC
+                SYMMETRY: NONE
         DFT:
             UKS: .FALSE.
             MULTIPLICITY: 0
@@ -126,7 +126,7 @@ standard:
         SUBSYS:
             CELL:
                 PERIODIC: XYZ
-                SYMMETRY: ORTHORHOMBIC
+                SYMMETRY: NONE
         DFT:
             UKS: .FALSE.
             MULTIPLICITY: 0
@@ -226,7 +226,7 @@ low_accuracy:
         SUBSYS:
             CELL:
                 PERIODIC: XYZ
-                SYMMETRY: ORTHORHOMBIC
+                SYMMETRY: NONE
         DFT:
             UKS: .FALSE.
             MULTIPLICITY: 0
@@ -326,7 +326,7 @@ debug:
         SUBSYS:
             CELL:
                 PERIODIC: XYZ
-                SYMMETRY: ORTHORHOMBIC
+                SYMMETRY: NONE
         DFT:
             UKS: .FALSE.
             MULTIPLICITY: 0
