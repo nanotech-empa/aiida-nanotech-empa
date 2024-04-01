@@ -64,9 +64,9 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
         )
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.phonons_params = self.inputs.phonons_params.get_dict()
-        self.ctx.input_dict["VIBRATIONAL_ANALYSIS"][
-            "NPROC_REP"
-        ] = self.ctx.phonons_params["nproc_rep"]
+        self.ctx.input_dict["VIBRATIONAL_ANALYSIS"]["NPROC_REP"] = (
+            self.ctx.phonons_params["nproc_rep"]
+        )
 
         # Removal of rotations.
         if "periodic" in dft_params and dft_params["periodic"] == "NONE":
@@ -77,9 +77,9 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
 
         # Constraints.
         if "constraints" in self.ctx.sys_params:
-            self.ctx.input_dict["MOTION"][
-                "CONSTRAINT"
-            ] = cp2k_utils.get_constraints_section(self.ctx.sys_params["constraints"])
+            self.ctx.input_dict["MOTION"]["CONSTRAINT"] = (
+                cp2k_utils.get_constraints_section(self.ctx.sys_params["constraints"])
+            )
 
         # Colvars.
         if "colvars" in self.ctx.sys_params:

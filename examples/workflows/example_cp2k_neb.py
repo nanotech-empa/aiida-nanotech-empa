@@ -138,9 +138,9 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid, n_nodes, n_cores_per_node):
         }
 
     sys_params = {}
-    sys_params[
-        "constraints"
-    ] = "fixed xyz 1 , collective 1 [ev/angstrom^2] 40 [angstrom] 1.36"
+    sys_params["constraints"] = (
+        "fixed xyz 1 , collective 1 [ev/angstrom^2] 40 [angstrom] 1.36"
+    )
     sys_params["colvars"] = "distance atoms 2 3"
     neb_params = {
         "align_frames": ".TRUE.",

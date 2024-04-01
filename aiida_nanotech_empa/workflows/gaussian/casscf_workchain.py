@@ -165,9 +165,9 @@ class GaussianCasscfWorkChain(engine.WorkChain):
         builder.gaussian.code = self.inputs.gaussian_code
         builder.gaussian.parent_calc_folder = self.inputs.parent_calc_folder
         builder.gaussian.metadata.options = self.ctx.metadata_options
-        builder.gaussian.metadata.options[
-            "parser_name"
-        ] = "nanotech_empa.gaussian.casscf"
+        builder.gaussian.metadata.options["parser_name"] = (
+            "nanotech_empa.gaussian.casscf"
+        )
 
         future = self.submit(builder)
         return engine.ToContext(casscf=future)
@@ -205,9 +205,9 @@ class GaussianCasscfWorkChain(engine.WorkChain):
         builder.gaussian.code = self.inputs.gaussian_code
         builder.gaussian.parent_calc_folder = self.ctx.casscf.outputs.remote_folder
         builder.gaussian.metadata.options = self.ctx.metadata_options
-        builder.gaussian.metadata.options[
-            "parser_name"
-        ] = "nanotech_empa.gaussian.casscf"
+        builder.gaussian.metadata.options["parser_name"] = (
+            "nanotech_empa.gaussian.casscf"
+        )
 
         future = self.submit(builder)
         return engine.ToContext(casmp2=future)

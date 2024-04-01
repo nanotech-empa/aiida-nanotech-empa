@@ -1,6 +1,5 @@
 """AiiDA-CP2K output parser for GW calculations."""
 
-
 from aiida import common, orm
 from aiida_cp2k.parsers import Cp2kBaseParser
 from aiida_cp2k.utils import parse_cp2k_output_advanced

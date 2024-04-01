@@ -69,9 +69,11 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         structure_generator = split_structure.split_structure(
             structure=self.inputs.structure,
             fixed_atoms=[],
-            magnetization_per_site=self.inputs.dft_params["magnetization_per_site"]
-            if "magnetization_per_site" in self.inputs.dft_params
-            else None,
+            magnetization_per_site=(
+                self.inputs.dft_params["magnetization_per_site"]
+                if "magnetization_per_site" in self.inputs.dft_params
+                else None
+            ),
             fragments={"molecule": self.inputs.molecule_indices},
         )
 
@@ -105,9 +107,9 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         if "molecule" in multiplicities:
             self.ctx.mol_dft_parameters["multiplicity"] = multiplicities["molecule"]
         self.ctx.mol_dft_parameters["added_mos"] = nlumo + 2
-        self.ctx.mol_dft_parameters[
-            "elpa_switch"
-        ] = False  # Elpa can cause problems with small systems
+        self.ctx.mol_dft_parameters["elpa_switch"] = (
+            False  # Elpa can cause problems with small systems
+        )
         self.ctx.mol_dft_parameters["magnetization_per_site"] = molecule_info[
             "magnetization_per_site"
         ]
