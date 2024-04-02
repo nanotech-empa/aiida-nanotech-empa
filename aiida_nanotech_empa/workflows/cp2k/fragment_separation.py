@@ -122,9 +122,11 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         for inputs in split_structure.split_structure(
             structure=self.inputs.structure,
             fixed_atoms=self.inputs.fixed_atoms,
-            magnetization_per_site=self.inputs.dft_params["magnetization_per_site"]
-            if "magnetization_per_site" in self.inputs.dft_params
-            else None,
+            magnetization_per_site=(
+                self.inputs.dft_params["magnetization_per_site"]
+                if "magnetization_per_site" in self.inputs.dft_params
+                else None
+            ),
             fragments=self.inputs.fragments,
         ):
             # Re-loading the input dictionary for the given protocol.
@@ -181,9 +183,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
                     "multiplicities" in self.inputs.dft_params
                     and fragment in self.inputs.dft_params["multiplicities"]
                 ):
-                    input_dict["FORCE_EVAL"]["DFT"][
-                        "MULTIPLICITY"
-                    ] = self.inputs.dft_params["multiplicities"][fragment]
+                    input_dict["FORCE_EVAL"]["DFT"]["MULTIPLICITY"] = (
+                        self.inputs.dft_params["multiplicities"][fragment]
+                    )
 
                 # Adding magnetisation tags to the structure and to the CP2K input dictionary.
                 structure, kinds_dict = cp2k_utils.determine_kinds(
@@ -198,9 +200,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             # Fixed atoms
             if "fixed_atoms" in self.inputs:
-                input_dict["MOTION"]["CONSTRAINT"]["FIXED_ATOMS"][
-                    "LIST"
-                ] = analyze_structure.list_to_string_range(inputs["fixed_atoms"])
+                input_dict["MOTION"]["CONSTRAINT"]["FIXED_ATOMS"]["LIST"] = (
+                    analyze_structure.list_to_string_range(inputs["fixed_atoms"])
+                )
 
             # Finally, append auxilary dictionaries to the input dictonary.
             if "auxilary_dictionaries" in self.inputs:

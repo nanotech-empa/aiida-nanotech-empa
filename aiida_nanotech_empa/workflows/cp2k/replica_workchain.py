@@ -257,10 +257,10 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                     builder.cp2k.parent_calc_folder = self.ctx.restart_folder
 
                 if "constraints" in self.inputs.sys_params:
-                    input_dict["MOTION"][
-                        "CONSTRAINT"
-                    ] = cp2k_utils.get_constraints_section(
-                        self.inputs.sys_params["constraints"]
+                    input_dict["MOTION"]["CONSTRAINT"] = (
+                        cp2k_utils.get_constraints_section(
+                            self.inputs.sys_params["constraints"]
+                        )
                     )
                 if "colvars" in self.inputs.sys_params:
                     input_dict["FORCE_EVAL"]["SUBSYS"].update(

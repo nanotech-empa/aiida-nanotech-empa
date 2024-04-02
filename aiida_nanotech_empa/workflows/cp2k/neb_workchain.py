@@ -132,9 +132,9 @@ class Cp2kNebWorkChain(engine.WorkChain):
 
         # Constraints.
         if "constraints" in self.ctx.sys_params:
-            self.ctx.input_dict["MOTION"][
-                "CONSTRAINT"
-            ] = cp2k_utils.get_constraints_section(self.ctx.sys_params["constraints"])
+            self.ctx.input_dict["MOTION"]["CONSTRAINT"] = (
+                cp2k_utils.get_constraints_section(self.ctx.sys_params["constraints"])
+            )
         # Colvars.
         if "colvars" in self.ctx.sys_params:
             self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"].update(
@@ -151,9 +151,9 @@ class Cp2kNebWorkChain(engine.WorkChain):
             "number_of_replica",
         ]:
             if param in self.ctx.neb_params:
-                self.ctx.input_dict["MOTION"]["BAND"][
-                    param.upper()
-                ] = self.ctx.neb_params[param]
+                self.ctx.input_dict["MOTION"]["BAND"][param.upper()] = (
+                    self.ctx.neb_params[param]
+                )
 
         if "nsteps_it" in self.ctx.neb_params:
             self.ctx.input_dict["MOTION"]["BAND"]["CI_NEB"] = {

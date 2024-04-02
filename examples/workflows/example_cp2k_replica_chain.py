@@ -54,12 +54,12 @@ def _example_cp2k_replicachain(
     }
 
     sys_params = {}
-    sys_params[
-        "constraints"
-    ] = "fixed 1 , collective 1 [ev/angstrom^2] 40 [angstrom] 1.33 , collective 2 [ev/angstrom^2] 40 [angstrom] 1.09, collective 3 [ev/angstrom^2] 40 [angstrom] 1.87"
-    sys_params[
-        "colvars"
-    ] = "distance atoms 1 2 , distance atoms 1 3, distance atoms 5 6"
+    sys_params["constraints"] = (
+        "fixed 1 , collective 1 [ev/angstrom^2] 40 [angstrom] 1.33 , collective 2 [ev/angstrom^2] 40 [angstrom] 1.09, collective 3 [ev/angstrom^2] 40 [angstrom] 1.87"
+    )
+    sys_params["colvars"] = (
+        "distance atoms 1 2 , distance atoms 1 3, distance atoms 5 6"
+    )
     sys_params["colvars_targets"] = targets
     sys_params["colvars_increments"] = [0.06, 0.05, 0.0]
     builder.dft_params = orm.Dict(dft_params)

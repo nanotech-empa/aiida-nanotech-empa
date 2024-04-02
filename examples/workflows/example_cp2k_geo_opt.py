@@ -76,15 +76,15 @@ def _example_cp2k_geo_opt(cp2k_code, sys_type, uks, n_nodes, n_cores_per_node):
 
     # adapt parameters to structure
     if sys_type == "SlabXY":
-        sys_params[
-            "constraints"
-        ] = "fixed z 3..18 , collective 1 [ev/angstrom^2] 40 [angstrom] 0.75"
+        sys_params["constraints"] = (
+            "fixed z 3..18 , collective 1 [ev/angstrom^2] 40 [angstrom] 0.75"
+        )
         sys_params["colvars"] = "distance atoms 1 2"
     if sys_type == "Molecule":
         dft_params["periodic"] = "NONE"
-        sys_params[
-            "constraints"
-        ] = "fixed xyz 1 , collective 1 [ev/angstrom^2] 40 [angstrom] 1.36 , collective 2 [ev/angstrom^2] 40 [angstrom] 1.07"
+        sys_params["constraints"] = (
+            "fixed xyz 1 , collective 1 [ev/angstrom^2] 40 [angstrom] 1.36 , collective 2 [ev/angstrom^2] 40 [angstrom] 1.07"
+        )
         sys_params["colvars"] = "distance atoms 2 3 , distance atoms 1 2"
     elif sys_type == "Bulk":
         dft_params["protocol"] = "low_accuracy"

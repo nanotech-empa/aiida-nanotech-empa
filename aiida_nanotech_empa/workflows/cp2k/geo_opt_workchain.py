@@ -78,9 +78,9 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         if "uks" in self.ctx.dft_params and self.ctx.dft_params["uks"]:
             magnetization_per_site = self.ctx.dft_params["magnetization_per_site"]
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
-            self.ctx.input_dict["FORCE_EVAL"]["DFT"][
-                "MULTIPLICITY"
-            ] = self.ctx.dft_params["multiplicity"]
+            self.ctx.input_dict["FORCE_EVAL"]["DFT"]["MULTIPLICITY"] = (
+                self.ctx.dft_params["multiplicity"]
+            )
 
         # Get initial magnetization.
         structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(
@@ -123,9 +123,9 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         # Cell symmetry.
         if "symmetry" in self.ctx.sys_params:
-            self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"]["CELL"][
-                "SYMMETRY"
-            ] = self.ctx.sys_params["symmetry"]
+            self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"]["CELL"]["SYMMETRY"] = (
+                self.ctx.sys_params["symmetry"]
+            )
 
         # Cell optimization.
         if "cell_opt" in self.ctx.sys_params:
@@ -136,18 +136,18 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             self.ctx.input_dict["MOTION"] = cell_input_dict["MOTION"]
             self.ctx.input_dict["FORCE_EVAL"]["STRESS_TENSOR"] = "ANALYTICAL"
             if "cell_opt_constraint" in self.ctx.sys_params:
-                self.ctx.input_dict["MOTION"]["CELL_OPT"][
-                    "CONSTRAINT"
-                ] = self.ctx.sys_params["cell_opt_constraint"]
+                self.ctx.input_dict["MOTION"]["CELL_OPT"]["CONSTRAINT"] = (
+                    self.ctx.sys_params["cell_opt_constraint"]
+                )
             for sym in ["KEEP_SYMMETRY", "KEEP_ANGLES", "KEEP_SPACE_GROUP"]:
                 if sym in self.ctx.sys_params:
                     self.ctx.input_dict["MOTION"]["CELL_OPT"][sym] = ""
 
         # Constraints.
         if "constraints" in self.ctx.sys_params:
-            self.ctx.input_dict["MOTION"][
-                "CONSTRAINT"
-            ] = cp2k_utils.get_constraints_section(self.ctx.sys_params["constraints"])
+            self.ctx.input_dict["MOTION"]["CONSTRAINT"] = (
+                cp2k_utils.get_constraints_section(self.ctx.sys_params["constraints"])
+            )
         # Colvars.
         if "colvars" in self.ctx.sys_params:
             self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"].update(
