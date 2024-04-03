@@ -6,9 +6,14 @@ class CubeHandlerCalculation(engine.CalcJob):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.input("parameters", valid_type=orm.Dict, help="CubeHandler input parameters.")
-        spec.input("parent_calc_folder", valid_type=orm.RemoteData, help="Parent folder containing original cube files.")
-
+        spec.input(
+            "parameters", valid_type=orm.Dict, help="CubeHandler input parameters."
+        )
+        spec.input(
+            "parent_calc_folder",
+            valid_type=orm.RemoteData,
+            help="Parent folder containing original cube files.",
+        )
 
     def prepare_for_submission(self, folder):
         """Create the input files from the input nodes passed to this instance of the `CalcJob`."""
@@ -16,7 +21,7 @@ class CubeHandlerCalculation(engine.CalcJob):
         # Create code info.
         codeinfo = orm.CodeInfo()
         codeinfo.code_uuid = self.inputs.code.uuid
-        param_dict = self.inputs.parameters.get_dict()
+        self.inputs.parameters.get_dict()
         cmdline = []
         codeinfo.cmdline_params = cmdline
 
@@ -43,5 +48,3 @@ class CubeHandlerCalculation(engine.CalcJob):
                 calcinfo.remote_copy_list.append(copy_info)
 
         return calcinfo
-    
-
