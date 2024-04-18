@@ -1,4 +1,4 @@
-from aiida import engine, orm
+from aiida import engine, orm, common
 
 
 class CubeHandlerCalculation(engine.CalcJob):
@@ -15,18 +15,20 @@ class CubeHandlerCalculation(engine.CalcJob):
             help="Parent folder containing original cube files.",
         )
 
+        spec.input("metadata.options.withmpi", valid_type=bool, default=False)
+
     def prepare_for_submission(self, folder):
         """Create the input files from the input nodes passed to this instance of the `CalcJob`."""
 
         # Create code info.
-        codeinfo = orm.CodeInfo()
+        codeinfo = common.CodeInfo()
         codeinfo.code_uuid = self.inputs.code.uuid
         self.inputs.parameters.get_dict()
-        cmdline = []
+        cmdline = ["shrink", "parent_calc_folder/test.cube", "shrinked.cube"]
         codeinfo.cmdline_params = cmdline
 
         # Create calc info.
-        calcinfo = orm.CalcInfo()
+        calcinfo = common.CalcInfo()
         calcinfo.uuid = self.uuid
         calcinfo.cmdline_params = codeinfo.cmdline_params
         calcinfo.codes_info = [codeinfo]

@@ -58,6 +58,7 @@ dev = [
 "nanotech_empa.overlap" = "aiida_nanotech_empa.plugins:OverlapCalculation"
 "nanotech_empa.afm" = "aiida_nanotech_empa.plugins:AfmCalculation"
 "nanotech_empa.hrstm" = "aiida_nanotech_empa.plugins:HrstmCalculation"
+"nanotech_empa.cubehandler" = "aiida_nanotech_empa.plugins:CubeHandlerCalculation"
 
 [project.entry-points."aiida.workflows"]
 "nanotech_empa.nanoribbon" = "aiida_nanotech_empa.workflows.qe:NanoribbonWorkChain"
