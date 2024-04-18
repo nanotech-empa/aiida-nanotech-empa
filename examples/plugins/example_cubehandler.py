@@ -1,15 +1,15 @@
+import click
 from aiida import engine, orm
 from aiida.common.datastructures import StashMode
 
-import click
 
 @click.command("cli")
 @click.argument("cubehandler_code", default="cubehandler@localhost")
 def example_cubehander(cubehandler_code):
     remote_folder = orm.load_node(2470)
     builder = orm.load_code(cubehandler_code).get_builder()
-    
-    builder.parameters = orm.Dict(dict={'some': 'parameters'})
+
+    builder.parameters = orm.Dict(dict={"some": "parameters"})
     builder.parent_calc_folder = remote_folder
 
     builder.metadata.options = {
@@ -21,10 +21,10 @@ def example_cubehander(cubehandler_code):
         "prepend_text": "for file in parent_calc_folder/*.cube; do",
         "append_text": "done",
         "stash": {
-            'source_list': ['parent_calc_folder/*.cube'],
-            'target_base': '/project/s1267/yaa/aiida_stash/',
-            'stash_mode': StashMode.COPY.value,
-        }
+            "source_list": ["parent_calc_folder/*.cube"],
+            "target_base": "/project/s1267/yaa/aiida_stash/",
+            "stash_mode": StashMode.COPY.value,
+        },
     }
 
     _, calc_node = engine.run_get_node(builder)
@@ -32,6 +32,5 @@ def example_cubehander(cubehandler_code):
     assert calc_node.is_finished_ok
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     example_cubehander()

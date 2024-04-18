@@ -1,4 +1,4 @@
-from aiida import engine, orm, common
+from aiida import common, engine, orm
 
 
 class CubeHandlerCalculation(engine.CalcJob):
