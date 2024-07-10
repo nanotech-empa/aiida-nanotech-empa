@@ -198,6 +198,13 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
             required=False,
             help="Possibilities: ads_geo, gas_opt",
         )
+        spec.input(
+            "debug",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Run with fast parameters for debugging.",
+        )
 
         spec.outline(
             cls.setup,
@@ -264,6 +271,8 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.vdw = orm.Bool(True)
         builder.protocol = orm.Str("standard")
+        if self.inputs.debug:
+            builder.protocol = orm.Str("debug")
         builder.options = self.inputs.options.scf
         builder.metadata.description = "gas_opt"
         submitted_node = self.submit(builder)
@@ -297,6 +306,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.options.scf = self.inputs.options.scf
         builder.options.gw = self.inputs.options.ic
         builder.metadata.description = "ic"
+        builder.debug = self.inputs.debug
         submitted_node = self.submit(builder)
         return engine.ToContext(ic=submitted_node)
 

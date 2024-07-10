@@ -1,6 +1,6 @@
 import os
 
-import ase
+import ase,ase.io
 from aiida import engine, orm, plugins
 
 Cp2kAdsorbedGwIcWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.ads_gw_ic")

@@ -119,7 +119,7 @@ class Cp2kMoleculeGwWorkChain(engine.WorkChain):
             self.report("Error: protocol not supported.")
             return self.exit_codes.ERROR_TERMINATION
 
-        self.ctx.protocols = cp2k_utils.load_cp2k_protocol("gw_protocols.yml")
+        self.ctx.protocols = cp2k_utils.load_protocol("gw_protocols.yml")
         structure = self.inputs.structure
         self.ctx.cutoff = cp2k_utils.get_cutoff(structure=structure)
         magnetization_per_site = copy.deepcopy(self.inputs.magnetization_per_site)
