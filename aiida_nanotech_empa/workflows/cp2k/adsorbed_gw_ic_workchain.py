@@ -1,6 +1,8 @@
 import numpy as np
 from aiida import engine, orm
 
+from ...utils import common_utils
+
 from .geo_opt_workchain import Cp2kGeoOptWorkChain
 from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
 
@@ -9,14 +11,18 @@ IC_PLANE_HEIGHTS = {
 }
 
 
-def geometrical_analysis(ase_geo, substr_elem):
+def geometrical_analysis(ase_geo, substr_elem,mol_atoms=None):
     """Simple geometry analysis that returns in the case of
     1) an isolated molecule -> geometry, None
     2) adsorbed system -> molecular geometry, top substr. layer z
     """
-    chem_symbols_arr = np.array(ase_geo.get_chemical_symbols())
-    s_atoms = ase_geo[chem_symbols_arr == substr_elem]
-    non_s_atoms = ase_geo[chem_symbols_arr != substr_elem]
+    
+    if mol_atoms is not None:
+        s_atoms = ase_geo[[atom.index for atom in ase_geo if atom.index not in mol_atoms and atom.symbol == substr_elem]]
+    else:
+        chem_symbols_arr = np.array(ase_geo.get_chemical_symbols())
+        s_atoms = ase_geo[chem_symbols_arr == substr_elem]
+        non_s_atoms = ase_geo[chem_symbols_arr != substr_elem]
     if len(s_atoms) == 0:
         return ase_geo, None
     layer_dz = 1.0  # ang
@@ -25,17 +31,20 @@ def geometrical_analysis(ase_geo, substr_elem):
     ]
     surf_z = np.mean(substr_top_layer.positions[:, 2])
 
-    mol_atoms = non_s_atoms[non_s_atoms.positions[:, 2] > surf_z]
+    if mol_atoms is None:
+        mol_atoms = non_s_atoms[non_s_atoms.positions[:, 2] > surf_z]
+    else:
+        mol_atoms = ase_geo[mol_atoms]
 
     return mol_atoms, surf_z
 
 
 @engine.calcfunction
-def analyze_structure(structure, substrate, mag_per_site, ads_h=None):
+def analyze_structure(structure, substrate, mag_per_site, ads_h=None,molecule_atoms=None):
     ase_geo = structure.get_ase()
     substr_elem = substrate.value.split("(")[0]
 
-    mol_atoms, surf_z = geometrical_analysis(ase_geo, substr_elem)
+    mol_atoms, surf_z = geometrical_analysis(ase_geo, substr_elem,mol_atoms=molecule_atoms)
 
     if surf_z is None:
         if ads_h is None:
@@ -163,6 +172,12 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
             default=lambda: orm.List(list=[]),
             required=False,
         )
+        spec.input(
+            "molecule_atoms",
+            valid_type=orm.List,
+            default=lambda: orm.List(list=[]),
+            required=False,
+        )        
         spec.input_namespace(
             "options",
             valid_type=dict,
@@ -243,11 +258,15 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         if self.inputs.substrate.value not in IC_PLANE_HEIGHTS:
             return self.exit_codes.ERROR_SUBSTR_NOT_SUPPORTED
 
+        molecule_atoms = self.inputs.molecule_atoms
+        if len(molecule_atoms) == 0:
+            molecule_atoms = None
         an_out = analyze_structure(
             self.inputs.structure,
             self.inputs.substrate,
             self.inputs.magnetization_per_site,
             None if "ads_height" not in self.inputs else self.inputs.ads_height,
+            molecule_atoms=molecule_atoms,  
         )
 
         if "mol_struct" not in an_out:
@@ -344,13 +363,9 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
             "gw_ic_parameters", calc_gw_ic_parameters(gw_out_params, ic_out_params)
         )
 
-        # Add the workchain pk to the input structure extras
-        extras_label = "Cp2kAdsorbedGwIcWorkChain_pks"
-        if extras_label not in self.inputs.structure.base.extras.all:
-            extras_list = []
-        else:
-            extras_list = self.inputs.structure.base.extras.all[extras_label]
-        extras_list.append(self.node.pk)
-        self.inputs.structure.base.extras.set(extras_label, extras_list)
+        # Add extras.
+        struc = self.inputs.structure
+        common_utils.add_extras(struc, "surfaces", self.node.uuid)        
+        
 
         return engine.ExitCode(0)
