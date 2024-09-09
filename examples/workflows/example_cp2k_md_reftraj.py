@@ -10,29 +10,38 @@ StructureData = DataFactory("core.structure")
 TrajectoryData = DataFactory("core.array.trajectory")
 
 
-def _example_cp2k_reftraj(cp2k_code, num_batches=2):
+def _example_cp2k_reftraj(cp2k_code, num_batches=2,restart=False):
     os.path.dirname(os.path.realpath(__file__))
 
     # Structure.
     # structure = StructureData(ase=ase.io.read(os.path.join(thisdir, ".", "h2.xyz")))
 
-    # Trajectory.
-    steps = 20
-    positions = np.array(
-        [
+    # check if input trajectory already in database otherwise create it
+    qb = orm.QueryBuilder()
+    qb.append(TrajectoryData, filters={"label": "H2_trajectory"})
+    if qb.count() == 0:
+        steps = 20
+        positions = np.array(
             [
-                [2.528, 3.966, 3.75 + 0.0001 * i],
-                [2.528, 3.966, 3],
+                [
+                    [2.528, 3.966, 3.75 + 0.0001 * i],
+                    [2.528, 3.966, 3],
+                ]
+                for i in range(steps)
             ]
-            for i in range(steps)
-        ]
-    )
-    cells = np.array(
-        [[[5, 0, 0], [0, 5, 0], [0, 0, 5 + 0.0001 * i]] for i in range(steps)]
-    )
-    symbols = ["H", "H"]
-    trajectory = TrajectoryData()
-    trajectory.set_trajectory(symbols, positions, cells=cells)
+        )
+        cells = np.array(
+            [[[5, 0, 0], [0, 5, 0], [0, 0, 5 + 0.0001 * i]] for i in range(steps)]
+        )
+        symbols = ["H", "H"]        
+        trajectory = TrajectoryData()
+        trajectory.set_trajectory(symbols, positions, cells=cells)
+        trajectory.label = "H2_trajectory"
+        trajectory.store()
+        print("stored trajectory ",trajectory.pk)
+    else:
+        trajectory = qb.first()[0]
+        
 
     builder = Cp2kReftrajWorkChain.get_builder()
     # if restart_uuid is not None:
@@ -52,6 +61,8 @@ def _example_cp2k_reftraj(cp2k_code, num_batches=2):
 
     # builder.structure = structure
     builder.trajectory = trajectory
+    if restart:
+        builder.restart = orm.Bool(True)
     builder.num_batches = orm.Int(num_batches)
     builder.protocol = orm.Str("debug")
 
@@ -88,18 +99,27 @@ def run_all(cp2k_code, n_nodes, n_cores_per_node):
     print("#### UKS one batch")
     uuid1 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=1)
     print("#### UKS two batches")
-    uuid2 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=2)
+    uuid2 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=2,restart=False)
+    print("#### UKS two batches restart")
+    uuid3 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=2,restart=True)
     traj1 = orm.load_node(uuid1).outputs.output_trajectory
     traj2 = orm.load_node(uuid2).outputs.output_trajectory
+    traj3 = orm.load_node(uuid3).outputs.output_trajectory
+    print("#### DONE ####")
     assert np.allclose(
         traj1.get_array("cells"),
         traj2.get_array("cells"),
         rtol=1e-07,
         atol=1e-08,
         equal_nan=False,
+    ) and np.allclose(
+        traj1.get_array("cells"),
+        traj3.get_array("cells"),
+        rtol=1e-07,
+        atol=1e-08,
+        equal_nan=False,
     )
     print(f"arrays  match")
-
-
+    
 if __name__ == "__main__":
     run_all()
