@@ -10,7 +10,7 @@ StructureData = DataFactory("core.structure")
 TrajectoryData = DataFactory("core.array.trajectory")
 
 
-def _example_cp2k_reftraj(cp2k_code, num_batches=2,restart=False):
+def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False):
     os.path.dirname(os.path.realpath(__file__))
 
     # Structure.
@@ -33,15 +33,14 @@ def _example_cp2k_reftraj(cp2k_code, num_batches=2,restart=False):
         cells = np.array(
             [[[5, 0, 0], [0, 5, 0], [0, 0, 5 + 0.0001 * i]] for i in range(steps)]
         )
-        symbols = ["H", "H"]        
+        symbols = ["H", "H"]
         trajectory = TrajectoryData()
         trajectory.set_trajectory(symbols, positions, cells=cells)
         trajectory.label = "H2_trajectory"
         trajectory.store()
-        print("stored trajectory ",trajectory.pk)
+        print("stored trajectory ", trajectory.pk)
     else:
         trajectory = qb.first()[0]
-        
 
     builder = Cp2kReftrajWorkChain.get_builder()
     # if restart_uuid is not None:
@@ -99,9 +98,13 @@ def run_all(cp2k_code, n_nodes, n_cores_per_node):
     print("#### UKS one batch")
     uuid1 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=1)
     print("#### UKS two batches")
-    uuid2 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=2,restart=False)
+    uuid2 = _example_cp2k_reftraj(
+        cp2k_code=orm.load_code(cp2k_code), num_batches=2, restart=False
+    )
     print("#### UKS two batches restart")
-    uuid3 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=2,restart=True)
+    uuid3 = _example_cp2k_reftraj(
+        cp2k_code=orm.load_code(cp2k_code), num_batches=2, restart=True
+    )
     traj1 = orm.load_node(uuid1).outputs.output_trajectory
     traj2 = orm.load_node(uuid2).outputs.output_trajectory
     traj3 = orm.load_node(uuid3).outputs.output_trajectory
@@ -120,6 +123,7 @@ def run_all(cp2k_code, n_nodes, n_cores_per_node):
         equal_nan=False,
     )
     print(f"arrays  match")
-    
+
+
 if __name__ == "__main__":
     run_all()
