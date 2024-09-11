@@ -1,15 +1,40 @@
-# pylint: disable=invalid-name
-"""Run simple DFT calculation"""
+class GaussianRelaxWorkChain(engine.WorkChain):
+    @classmethod
+    def define(cls, spec):
+        super().define(spec)
 
+        spec.input("gaussian_code", valid_type=orm.Code)
 
-import sys
+        spec.input(
+            "structure",
+            valid_type=orm.StructureData,
+            required=True,
+            help="input geometry",
+        )
+        spec.input(
+            "functional", valid_type=orm.Str, required=True, help="xc functional"
+        )
 
-import ase.io
-import click
-from aiida.common import NotExistent
-from aiida.engine import run_get_node
-from aiida.orm import Code, Dict, StructureData
-from aiida.plugins import CalculationFactory
+        spec.input("basis_set", valid_type=orm.Str, required=True, help="basis_set")
+
+        spec.input(
+            "multiplicity",
+            valid_type=orm.Int,
+            required=False,
+            default=lambda: orm.Int(0),
+            help="spin multiplicity; 0 means RKS",
+        )
+
+        spec.input(
+            "wfn_stable_opt",
+            valid_type=orm.Bool,
+            required=False,
+            default=lambda: orm.Bool(False),
+            help="if true, perform wfn stability optimization",
+        )
+
+# Create a methane (CH4) molecule using the ASE molecular database
+ch4 = molecule('CH4')
 
 GaussianCalculation = CalculationFactory("gaussian")
 
@@ -18,7 +43,7 @@ def example_dft(gaussian_code):
     """Run a simple gaussian optimization"""
 
     # structure
-    structure = StructureData(ase=ase.io.read("./ch4.xyz"))
+    structure = StructureData(ase=ch4)
 
     num_cores = 1
     memory_mb = 300
@@ -31,17 +56,21 @@ def example_dft(gaussian_code):
                 "%mem": "%dMB" % memory_mb,
                 "%nprocshared": num_cores,
             },
-            "functional": "BLYP",
-            "basis_set": "6-31g",
+            "functional": "B3LYP",
+            "basis_set": "6-311g(d,p)",
             "charge": 0,
             "multiplicity": 1,
             "dieze_tag": "#P",
             "route_parameters": {
                 "scf": {
+                    "maxcycle":2048,
                     "cdiis": None,
+                    "conver":8
                 },
+                "int":"superfine",
+                "guess":"mix",
                 "nosymm": None,
-                "opt": None,
+                "opt": "tight",
             },
         }
     )
