@@ -60,13 +60,13 @@ class GaussianRelaxWorkChain(engine.WorkChain):
             valid_type=orm.Bool,
             required=False,
             help="Conjugate Direct Inversion in the Iterative Subspace",
-        )        
+        )
         spec.input(
             "conver",
             valid_type=orm.Int,
             required=False,
             help="the scf convergece threshold",
-        )        
+        )
         spec.input(
             "int",
             valid_type=orm.Str,
@@ -313,10 +313,10 @@ class GaussianRelaxWorkChain(engine.WorkChain):
 
         if len(opt_dict) != 0:
             parameters["route_parameters"]["opt"] = opt_dict
-        conver = getattr(self.inputs,"conver",None)
-        maxcycle = getattr(self.inputs,"maxcycle",None)
-        grid = getattr(self.inputs,"int",None)
-        cdiis = getattr(self.inputs,"cdiis",None)
+        conver = getattr(self.inputs, "conver", None)
+        maxcycle = getattr(self.inputs, "maxcycle", None)
+        grid = getattr(self.inputs, "int", None)
+        cdiis = getattr(self.inputs, "cdiis", None)
         if grid:
             parameters["route_parameters"]["int"] = grid
         if maxcycle:

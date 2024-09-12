@@ -1,7 +1,8 @@
 import numpy as np
 from aiida import engine, orm, plugins
 
-from ...utils import common_utils,nmr,cycle_tools
+from ...utils import common_utils, cycle_tools, nmr
+
 #from .delta_scf_workchain import GaussianDeltaScfWorkChain
 #from .natorb_workchain import GaussianNatOrbWorkChain
 #from .relax_workchain import GaussianRelaxWorkChain
@@ -14,7 +15,7 @@ GaussianCalculation = plugins.CalculationFactory("gaussian")
 
 @engine.calcfunction
 def nics_structure(structure=None, h=1.0):
-    
+
     ase_geo = structure.get_ase()
     # orient the geometry
     pos = ase_geo.positions
@@ -25,10 +26,10 @@ def nics_structure(structure=None, h=1.0):
     ])
     inds = np.argsort(-extents)
     ase_atoms = ase.Atoms(numbers=ase_geo.numbers, positions=pos[:, inds])
-    ase_atoms_no_h = ase.Atoms([a for a in ase_atoms if a.symbol != 'H'])        
+    ase_atoms_no_h = ase.Atoms([a for a in ase_atoms if a.symbol != 'H'])
     cycles = cycle_tools.dumb_cycle_detection(ase_atoms_no_h, 8)
-    ase_geom = ase_atoms + nmr.find_ref_points(ase_atoms_no_h, cycles, h.value) 
-    return orm.StructureData(ase=ase_geom)   
+    ase_geom = ase_atoms + nmr.find_ref_points(ase_atoms_no_h, cycles, h.value)
+    return orm.StructureData(ase=ase_geom)
 
 class GaussianNicsWorkChain(engine.WorkChain):
     @classmethod
@@ -189,7 +190,7 @@ class GaussianNicsWorkChain(engine.WorkChain):
             builder.structure = self.ctx.gs_structure
             builder.functional = self.inputs.functional
             builder.empirical_dispersion = self.inputs.empirical_dispersion
-            builder.basis_set = 
+            builder.basis_set =
             builder.multiplicity = self.inputs.multiplicity
 
             #if "options" in self.inputs:

@@ -71,13 +71,13 @@ class GaussianScfWorkChain(engine.WorkChain):
             valid_type=orm.Int,
             required=False,
             help="the scf convergece threshold",
-        )  
+        )
         spec.input(
             "cdiis",
             valid_type=orm.Bool,
             required=False,
             help="Conjugate Direct Inversion in the Iterative Subspace",
-        )               
+        )
         spec.input(
             "int",
             valid_type=orm.Str,
@@ -254,15 +254,15 @@ class GaussianScfWorkChain(engine.WorkChain):
                 "charge": 0,
                 "multiplicity": self.ctx.mult,
                 "route_parameters": {
-                    "scf": {"maxcycle": 140 },
+                    "scf": {"maxcycle": 140},
                 },
             }
         )
-        nmr = getattr(self.inputs,"nmr",None)
-        conver = getattr(self.inputs,"conver",None)
-        maxcycle = getattr(self.inputs,"maxcycle",None)
-        grid = getattr(self.inputs,"int",None)
-        cdiis = getattr(self.inputs,"cdiis",None)
+        nmr = getattr(self.inputs, "nmr", None)
+        conver = getattr(self.inputs, "conver", None)
+        maxcycle = getattr(self.inputs, "maxcycle", None)
+        grid = getattr(self.inputs, "int", None)
+        cdiis = getattr(self.inputs, "cdiis", None)
         if grid:
             parameters["route_parameters"]["int"] = grid
         if maxcycle:

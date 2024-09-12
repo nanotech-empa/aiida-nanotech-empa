@@ -4,10 +4,10 @@ from .constr_opt_chain_workchain import GaussianConstrOptChainWorkChain
 from .delta_scf_workchain import GaussianDeltaScfWorkChain
 from .hf_mp2_workchain import GaussianHfMp2WorkChain
 from .natorb_workchain import GaussianNatOrbWorkChain
+from .nics_workchain import GaussianNicsWorkChain
 from .relax_workchain import GaussianRelaxWorkChain
 from .scf_workchain import GaussianScfWorkChain
 from .spin_workchain import GaussianSpinWorkChain
-from .nics_workchain import GaussianNicsWorkChain
 
 __all__ = (
     "GaussianScfWorkChain",
