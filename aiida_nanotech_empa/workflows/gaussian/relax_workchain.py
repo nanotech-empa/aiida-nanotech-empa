@@ -49,7 +49,30 @@ class GaussianRelaxWorkChain(engine.WorkChain):
             default=lambda: orm.Bool(False),
             help="Use tight optimization criteria.",
         )
-
+        spec.input(
+            "maxcycle",
+            valid_type=orm.Int,
+            required=False,
+            help="the maximum number of scf cycles",
+        )
+        spec.input(
+            "cdiis",
+            valid_type=orm.Bool,
+            required=False,
+            help="Conjugate Direct Inversion in the Iterative Subspace",
+        )        
+        spec.input(
+            "conver",
+            valid_type=orm.Int,
+            required=False,
+            help="the scf convergece threshold",
+        )        
+        spec.input(
+            "int",
+            valid_type=orm.Str,
+            required=False,
+            help="the integral grid",
+        )
         spec.input(
             "freq",
             valid_type=orm.Bool,
@@ -290,7 +313,18 @@ class GaussianRelaxWorkChain(engine.WorkChain):
 
         if len(opt_dict) != 0:
             parameters["route_parameters"]["opt"] = opt_dict
-
+        conver = getattr(self.inputs,"conver",None)
+        maxcycle = getattr(self.inputs,"maxcycle",None)
+        grid = getattr(self.inputs,"int",None)
+        cdiis = getattr(self.inputs,"cdiis",None)
+        if grid:
+            parameters["route_parameters"]["int"] = grid
+        if maxcycle:
+            parameters["route_parameters"]["scf"]["maxcycle"] = maxcycle
+        if cdiis:
+            parameters["route_parameters"]["scf"]["cdiis"] = None
+        if conver:
+            parameters["route_parameters"]["scf"]["conver"] = conver
         builder.gaussian.parameters = parameters
         builder.gaussian.structure = self.inputs.structure
         builder.gaussian.code = self.inputs.gaussian_code

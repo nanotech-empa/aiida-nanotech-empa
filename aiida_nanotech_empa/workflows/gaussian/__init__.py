@@ -7,6 +7,7 @@ from .natorb_workchain import GaussianNatOrbWorkChain
 from .relax_workchain import GaussianRelaxWorkChain
 from .scf_workchain import GaussianScfWorkChain
 from .spin_workchain import GaussianSpinWorkChain
+from .nics_workchain import GaussianNicsWorkChain
 
 __all__ = (
     "GaussianScfWorkChain",
@@ -18,4 +19,5 @@ __all__ = (
     "GaussianConstrOptChainWorkChain",
     "GaussianCasscfWorkChain",
     "GaussianCasscfSeriesWorkChain",
+    "GaussianNicsWorkChain",
 )
