@@ -175,11 +175,11 @@ class GaussianNicsWorkChain(engine.WorkChain):
 
         self.out("output_parameters", self.ctx[label].outputs.output_parameters)
         self.out("output_structure", self.ctx.nics.inputs.structure)
-        return engine.ExitCode(0)   
-         
+        return engine.ExitCode(0)
+
     def finalize(self):
         self.report("Finalizing...")
-        
+
         # Add extras.
         struc = self.inputs.structure
         common_utils.add_extras(struc, "surfaces", self.node.uuid)
