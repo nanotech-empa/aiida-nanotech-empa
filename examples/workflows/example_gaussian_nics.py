@@ -1,4 +1,5 @@
 import pathlib
+
 import click
 import numpy as np
 from aiida import engine, orm
@@ -10,7 +11,8 @@ import aiida_nanotech_empa.utils.gaussian_wcs_postprocess as pp
 
 GaussianNicsWorkChain = WorkflowFactory("nanotech_empa.gaussian.nics")
 DATA_DIR = pathlib.Path(__file__).parent.absolute()
-GEO_FILE="naphthalene.xyz"
+GEO_FILE = "naphthalene.xyz"
+
 
 def _example_gaussian_nics(gaussian_code, opt):
     # Check test geometry is already in database.

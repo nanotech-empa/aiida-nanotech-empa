@@ -6,6 +6,7 @@ from ...utils import common_utils, cycle_tools, nmr
 from .relax_workchain import GaussianRelaxWorkChain
 from .scf_workchain import GaussianScfWorkChain
 
+
 @engine.calcfunction
 def prepare_nmr_structure(structure, height):
     ase_geo = structure.get_ase()
