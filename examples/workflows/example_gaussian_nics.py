@@ -1,21 +1,36 @@
+import pathlib
 import click
 import numpy as np
 from aiida import engine, orm
 from aiida.plugins import WorkflowFactory
 from ase.build import molecule
+from ase.io import read
 
 import aiida_nanotech_empa.utils.gaussian_wcs_postprocess as pp
 
 GaussianNicsWorkChain = WorkflowFactory("nanotech_empa.gaussian.nics")
-
+DATA_DIR = pathlib.Path(__file__).parent.absolute()
+GEO_FILE="naphthalene.xyz"
 
 def _example_gaussian_nics(gaussian_code, opt):
-    ase_geom = molecule("C6H6")
-    ase_geom.cell = np.diag([10.0, 10.0, 10.0])
+    # Check test geometry is already in database.
+    qb = orm.QueryBuilder()
+    qb.append(orm.Node, filters={"label": {"==": GEO_FILE}})
+    structure = None
+    for node_tuple in qb.iterall():
+        node = node_tuple[0]
+        structure = node
+    if structure is not None:
+        print("found existing structure: ", structure.pk)
+    else:
+        structure = orm.StructureData(ase=read(DATA_DIR / GEO_FILE))
+        structure.label = GEO_FILE
+        structure.store()
+        print("created new structure: ", structure.pk)
 
     builder = GaussianNicsWorkChain.get_builder()
     builder.gaussian_code = gaussian_code
-    builder.structure = orm.StructureData(ase=ase_geom)
+    builder.structure = structure
     builder.functional = orm.Str("B3LYP")
     builder.basis_set = orm.Str("6-311G(d,p)")
     builder.opt = orm.Bool(opt)
@@ -43,7 +58,7 @@ def run_nics(gaussian_code):
     # uuid = _example_gaussian_nics(orm.load_code(gaussian_code),True)
     # print(f"WorkChain completed uuid: {uuid}")
     print("#### Running Gaussian NICS WorkChain without geo_opt ####")
-    uuid = _example_gaussian_nics(orm.load_code(gaussian_code), False)
+    uuid = _example_gaussian_nics(orm.load_code(gaussian_code), True)
     print(f"WorkChain completed uuid: {uuid}")
 
 
