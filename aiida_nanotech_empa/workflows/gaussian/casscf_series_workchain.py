@@ -267,5 +267,7 @@ class GaussianCasscfSeriesWorkChain(engine.WorkChain):
                         f"{var}_cube_image_folder",
                         self.ctx[var].outputs.cube_image_folder,
                     )
-
+        # Add extras.
+        struc = self.inputs.structure
+        common_utils.add_extras(struc, "surfaces", self.node.uuid)
         return engine.ExitCode(0)

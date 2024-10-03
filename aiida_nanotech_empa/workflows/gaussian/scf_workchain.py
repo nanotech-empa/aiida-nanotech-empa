@@ -60,6 +60,36 @@ class GaussianScfWorkChain(engine.WorkChain):
             required=False,
             help="the folder of a completed gaussian calculation",
         )
+        spec.input(
+            "maxcycle",
+            valid_type=orm.Int,
+            required=False,
+            help="the maximum number of scf cycles",
+        )
+        spec.input(
+            "conver",
+            valid_type=orm.Int,
+            required=False,
+            help="the scf convergece threshold",
+        )
+        spec.input(
+            "cdiis",
+            valid_type=orm.Bool,
+            required=False,
+            help="Conjugate Direct Inversion in the Iterative Subspace",
+        )
+        spec.input(
+            "int",
+            valid_type=orm.Str,
+            required=False,
+            help="the integral grid",
+        )
+        spec.input(
+            "nmr",
+            valid_type=orm.Bool,
+            required=False,
+            help="nmr calculation",
+        )
 
         # Inputs for cubes generation.
         spec.input("formchk_code", valid_type=orm.Code, required=False)
@@ -167,7 +197,7 @@ class GaussianScfWorkChain(engine.WorkChain):
 
         # Use default convergence criterion at the start
         # but switch to conver=7 in case of failure.
-        self.ctx.conver = None
+        self.ctx.conver = getattr(self.inputs, "conver", None)
         self.ctx.scf_label = "scf"
 
         return engine.ExitCode(0)
@@ -228,6 +258,24 @@ class GaussianScfWorkChain(engine.WorkChain):
                 },
             }
         )
+        nmr = getattr(self.inputs, "nmr", None)
+        conver = getattr(self.inputs, "conver", None)
+        maxcycle = getattr(self.inputs, "maxcycle", None)
+        grid = getattr(self.inputs, "int", None)
+        cdiis = getattr(self.inputs, "cdiis", None)
+        if grid:
+            parameters["route_parameters"]["int"] = grid
+        if maxcycle:
+            parameters["route_parameters"]["scf"]["maxcycle"] = maxcycle
+        if cdiis:
+            parameters["route_parameters"]["scf"]["cdiis"] = None
+        if conver:
+            parameters["route_parameters"]["scf"]["conver"] = conver
+        if nmr:
+            if conver is None:
+                conver = 8
+            parameters["route_parameters"]["nmr"] = None
+            parameters["route_parameters"]["cphf"] = {"conver": conver}
         if self.inputs.wfn_stable_opt:
             parameters["route_parameters"]["stable"] = "opt"
         else:

@@ -70,6 +70,7 @@ dev = [
 "nanotech_empa.gaussian.constr_opt_chain" = "aiida_nanotech_empa.workflows.gaussian:GaussianConstrOptChainWorkChain"
 "nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.workflows.gaussian:GaussianCasscfWorkChain"
 "nanotech_empa.gaussian.casscf_series" = "aiida_nanotech_empa.workflows.gaussian:GaussianCasscfSeriesWorkChain"
+"nanotech_empa.gaussian.nics" = "aiida_nanotech_empa.workflows.gaussian:GaussianNicsWorkChain"
 "nanotech_empa.cp2k.geo_opt" = "aiida_nanotech_empa.workflows.cp2k:Cp2kGeoOptWorkChain"
 "nanotech_empa.cp2k.fragment_separation" = "aiida_nanotech_empa.workflows.cp2k:Cp2kFragmentSeparationWorkChain"
 "nanotech_empa.cp2k.ads_gw_ic" = "aiida_nanotech_empa.workflows.cp2k:Cp2kAdsorbedGwIcWorkChain"
