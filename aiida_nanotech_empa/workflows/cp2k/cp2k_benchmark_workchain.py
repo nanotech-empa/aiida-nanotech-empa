@@ -3,6 +3,7 @@ import pathlib
 import re
 
 import numpy as np
+from ...utils import common_utils
 from aiida import engine, orm
 from aiida_cp2k.calculations import Cp2kCalculation
 
@@ -43,7 +44,8 @@ def analyze_speedup(time_dict):
     min_times_per_nnodes = {}
     for nnodes, times in times_per_nnodes.items():
         min_time = min(times)
-        min_times_per_nnodes[nnodes] = min_time
+        if min_time < 100000:
+            min_times_per_nnodes[nnodes] = min_time
 
     # Sort nnodes to find the lowest nnodes (reference)
     sorted_nnodes = sorted(min_times_per_nnodes.keys())
@@ -76,8 +78,8 @@ def analyze_speedup(time_dict):
     summary = "Minimum times per nnodes:\n"
     for nnodes, time in min_times_per_nnodes.items():
         summary+=f"nnodes: {nnodes}, min_time: {time}\n"
-        summary+=f"\nClosest to 60% speedup: nnodes = {closest_to_60}"
-        summary+=f"\nClosest to 50% speedup: nnodes = {closest_to_50}"
+    summary+=f"\nClosest to 60% speedup: nnodes = {closest_to_60}"
+    summary+=f"\nClosest to 50% speedup: nnodes = {closest_to_50}"
 
     return orm.Dict(dict={'summary':summary,'closest_to_60':closest_to_60,'closest_to_50':closest_to_50,'min_times_per_nnodes':min_times_per_nnodes})
 
@@ -340,4 +342,7 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
         result.store()                
         self.out('timings', result)
         self.out('report',analyze_speedup(result))
+        # Add extras.
+        struc = self.inputs.structure
+        common_utils.add_extras(struc, "surfaces", self.node.uuid)
         return engine.ExitCode(0)
