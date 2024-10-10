@@ -1,6 +1,7 @@
 import copy
 import pathlib
 import re
+import math
 
 import numpy as np
 from ...utils import common_utils
@@ -10,6 +11,24 @@ from aiida_cp2k.calculations import Cp2kCalculation
 from . import  cp2k_utils
 
 ALLOWED_PROTOCOLS = ["standard"]
+
+def is_perfect_square(x):
+    """Check if x is a perfect square"""
+    root = int(math.isqrt(x))
+    return root * root == x
+
+def find_multiples_of_ngpus(ngpus,n, max_N):
+    """
+    Returns a list of integers N <= max_N that are multiples of ngpus
+    and such that n * N is a perfect square.
+    """
+    result = []
+    
+    for N in range(ngpus, max_N + 1, ngpus):  # Only multiples of ngpus
+        if is_perfect_square(n * N):
+            result.append(N)
+    
+    return result
 
 @engine.calcfunction
 def analyze_speedup(time_dict):
@@ -38,14 +57,14 @@ def analyze_speedup(time_dict):
         nnodes_str, ntasks_str, nthreads_str = key.split('_')
         nnodes = int(nnodes_str)
         # Collect time for each nnodes
-        times_per_nnodes[nnodes].append(time)
+        if time != 'FAILED':
+            times_per_nnodes[nnodes].append(time)
 
     # Find the minimum time for each nnodes
     min_times_per_nnodes = {}
     for nnodes, times in times_per_nnodes.items():
         min_time = min(times)
-        if min_time < 100000:
-            min_times_per_nnodes[nnodes] = min_time
+        min_times_per_nnodes[nnodes] = min_time
 
     # Sort nnodes to find the lowest nnodes (reference)
     sorted_nnodes = sorted(min_times_per_nnodes.keys())
@@ -97,7 +116,7 @@ def get_timing_from_FolderData(folder_node=None):
     """
     # Load the FolderData node
     if folder_node is None:
-        return orm.Float(100000)
+        return orm.Str('FAILED')
     
     # Check if 'aiida.out' exists in the FolderData
     if 'aiida.out' not in folder_node.list_object_names():
@@ -184,9 +203,16 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
             help="List of #nodes to be used in the benchmark.",
         )
         spec.input(
-            "list_tasks_per_node",
-            valid_type=orm.List,
-            default=lambda: orm.List(list=[6]),
+            "ngpus",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(1),
+            required=True,
+            help="Number of GPUs per node.",
+        )
+        spec.input(
+            "max_tasks_per_node",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(2),
             required=True,
             help="List of #tasks per node to be used in the benchmark.",
         )
@@ -237,9 +263,9 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
             "pseudo": orm.SinglefileData(
                 file=pathlib.Path(__file__).parent / "data" / "POTENTIAL"
             ),
-            "mpswrapper": orm.SinglefileData(
-                file=pathlib.Path(__file__).parent / "data" / "mps-wrapper.sh"
-            ),
+            #"mpswrapper": orm.SinglefileData(
+            #    file=pathlib.Path(__file__).parent / "data" / "mps-wrapper.sh"
+            #),
         }
         self.ctx.input_dict = cp2k_utils.load_protocol(
                 "benchmarks.yml", self.inputs.protocol.value)
@@ -283,7 +309,7 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
 	            mywall=20
              
             # Loop for mpi tasks 
-            for ntasks in self.inputs.list_tasks_per_node:
+            for ntasks in find_multiples_of_ngpus(self.inputs.ngpus.value,nnodes, self.inputs.max_tasks_per_node.value):
                 for nthreads in self.inputs.list_threads_per_task:
                     # Loop for threads,check that nthreads * ntasks <= max_tasks
                     if  nthreads<=self.ctx.max_tasks/ntasks :
@@ -326,7 +352,7 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
         
         for nnodes in self.inputs.list_nodes:
             # Loop for mpi tasks 
-            for ntasks in self.inputs.list_tasks_per_node:
+            for ntasks in find_multiples_of_ngpus(self.inputs.ngpus.value,nnodes, self.inputs.max_tasks_per_node.value):
                 # Loop for mpi tasks
                 for nthreads in self.inputs.list_threads_per_task:
                     # Check that nthreads * ntasks <= 72
