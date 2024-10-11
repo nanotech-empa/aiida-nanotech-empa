@@ -303,11 +303,6 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
         input_dict = self.ctx.input_dict
 
         for nnodes in self.inputs.list_nodes:
-            if nnodes <= 8:
-                mywall=50
-            else:
-	            mywall=20
-             
             # Loop for mpi tasks 
             for ntasks in find_multiples_of_ngpus(self.inputs.ngpus.value,nnodes, self.inputs.max_tasks_per_node.value):
                 for nthreads in self.inputs.list_threads_per_task:
