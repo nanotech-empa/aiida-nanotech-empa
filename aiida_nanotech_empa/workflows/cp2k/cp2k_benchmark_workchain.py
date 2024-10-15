@@ -52,29 +52,30 @@ def analyze_speedup(time_dict):
     times_per_nnodes = defaultdict(list)
 
     # Extract nnodes and collect times
-    for key, time in time_dict.items():
+    for key, time_and_id in time_dict.items():
         # Split the key to get nnodes, ntasks, nthreads
         nnodes_str, ntasks_str, nthreads_str = key.split('_')
         nnodes = int(nnodes_str)
+        time = time_and_id[0]
         # Collect time for each nnodes
         if time != 'FAILED':
-            times_per_nnodes[nnodes].append(time)
+            times_per_nnodes[nnodes].append(time_and_id)
 
     # Find the minimum time for each nnodes
     min_times_per_nnodes = {}
-    for nnodes, times in times_per_nnodes.items():
-        min_time = min(times)
-        min_times_per_nnodes[nnodes] = min_time
+    for nnodes, times_and_ids in times_per_nnodes.items():
+        min_time_and_id = min(times_and_ids, key=lambda x: x[0])
+        min_times_per_nnodes[nnodes] = min_time_and_id
 
     # Sort nnodes to find the lowest nnodes (reference)
     sorted_nnodes = sorted(min_times_per_nnodes.keys())
     Nmin = sorted_nnodes[0]
-    time_Nmin = min_times_per_nnodes[Nmin]
+    time_Nmin = min_times_per_nnodes[Nmin][0]
 
     # Calculate speedup efficiencies
     speedup_efficiencies = {}
     for N, time_N in min_times_per_nnodes.items():
-        actual_speedup = time_Nmin / time_N
+        actual_speedup = time_Nmin / time_N[0]
         ideal_speedup = N / Nmin
         speedup_efficiency = actual_speedup / ideal_speedup  # Should be between 0 and 1
         speedup_efficiencies[N] = speedup_efficiency
@@ -95,8 +96,8 @@ def analyze_speedup(time_dict):
     closest_to_60 = closest_nnodes[0.6]
     closest_to_50 = closest_nnodes[0.5]
     summary = "Minimum times per nnodes:\n"
-    for nnodes, time in min_times_per_nnodes.items():
-        summary+=f"nnodes: {nnodes}, min_time: {time}\n"
+    for nnodes, time_and_id in min_times_per_nnodes.items():
+        summary+=f"nnodes: {nnodes}, min_time: {time_and_id[0]}, job_id: {time_and_id[1]}\n"
     summary+=f"\nClosest to 60% speedup: nnodes = {closest_to_60}"
     summary+=f"\nClosest to 50% speedup: nnodes = {closest_to_50}"
 
@@ -277,6 +278,13 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["MULTIPLICITY"] = multiplicity
 
+        # Wallclock.
+        wallclock = getattr(self.inputs, "wallclock", None)
+        if wallclock:
+            self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
+            600, wallclock.value - 600
+        )
+
         # Get initial magnetization.
         structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(
             self.inputs.structure, magnetization_per_site
@@ -359,7 +367,7 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
                         else:
                             folder_data = current_calc.outputs.retrieved
                         
-                        result[f"{nnodes}_{ntasks}_{nthreads}"] = get_timing_from_FolderData(folder_data).value
+                        result[f"{nnodes}_{ntasks}_{nthreads}"] = (get_timing_from_FolderData(folder_data).value,current_calc.get_job_id())
         result.store()                
         self.out('timings', result)
         self.out('report',analyze_speedup(result))
