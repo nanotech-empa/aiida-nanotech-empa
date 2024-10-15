@@ -138,7 +138,7 @@ def get_timing_from_FolderData(folder_node=None):
         if time_3_ot_cg is None and ' 3 OT CG' in line:
             time_matches = time_pattern.findall(line)
             if time_matches:
-                time_3_ot_cg = float(time_matches[0])  # Assuming time is the last number
+                time_3_ot_cg = float(time_matches[0])  
             else:
                 raise ValueError(f"No time found in line: '{line.strip()}'")
         
@@ -146,7 +146,7 @@ def get_timing_from_FolderData(folder_node=None):
         if time_4_ot_ls is None and '4 OT LS' in line:
             time_matches = time_pattern.findall(line)
             if time_matches:
-                time_4_ot_ls = float(time_matches[0])  # Assuming time is the last number
+                time_4_ot_ls = float(time_matches[0])  
             else:
                 raise ValueError(f"No time found in line: '{line.strip()}'")
         
@@ -155,9 +155,11 @@ def get_timing_from_FolderData(folder_node=None):
             break
     
     if time_3_ot_cg is None:
-        raise ValueError("Could not find ' 3 OT CG' in 'aiida.out'")
+        return orm.Str('FAILED')
+        #raise ValueError("Could not find ' 3 OT CG' in 'aiida.out'")
     if time_4_ot_ls is None:
-        raise ValueError("Could not find '4 OT LS' in 'aiida.out'")
+        return orm.Str('FAILED')
+        #raise ValueError("Could not find '4 OT LS' in 'aiida.out'")
     
     # Return the sum of the two times
     total_time = time_3_ot_cg + time_4_ot_ls
