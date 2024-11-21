@@ -69,7 +69,14 @@ def get_kinds_section(kinds_dict, protocol="gapw_std"):
 
 def determine_kinds(structure, magnetization_per_site=None, ghost_per_site=None):
     """Gather the same atoms with the same magnetization into one atomic kind."""
-    ase_structure = structure.get_ase()
+
+    if isinstance(structure, orm.TrajectoryData):
+        cell = structure.get_array("cells")[0]
+        positions = structure.get_array("positions")[0]
+        symbols = structure.symbols
+        ase_structure = ase.Atoms(symbols, positions=positions, cell=cell)
+    else:
+        ase_structure = structure.get_ase()
 
     if magnetization_per_site is None or len(magnetization_per_site) == 0:
         magnetization_per_site = [0 for i in range(len(ase_structure))]
@@ -176,7 +183,6 @@ def load_protocol(fname, protocol=None):
 
 
 def get_dft_inputs(dft_params, structure, template, protocol):
-    ase_atoms = structure.get_ase()
     files = {
         "basis": orm.SinglefileData(
             file=os.path.join(
@@ -196,6 +202,18 @@ def get_dft_inputs(dft_params, structure, template, protocol):
         ),
     }
 
+    # number of atoms
+    if isinstance(structure, orm.TrajectoryData):
+        natoms = structure.get_shape("positions")[1]
+        structure = orm.StructureData(
+            ase=ase.Atoms(
+                structure.symbols,
+                positions=structure.get_array("positions")[0],
+                cell=(structure.get_array("cells")[0]),
+            )
+        )
+    natoms = len(structure.sites)
+
     # Load input template.
     input_dict = load_protocol(template, protocol)
 
@@ -211,7 +229,7 @@ def get_dft_inputs(dft_params, structure, template, protocol):
         input_dict["FORCE_EVAL"]["DFT"]["CHARGE"] = dft_params["charge"]
 
     # uks
-    magnetization_per_site = [0 for i in range(len(ase_atoms))]
+    magnetization_per_site = [0 for i in range(natoms)]
     if "uks" in dft_params:
         if dft_params["uks"]:
             magnetization_per_site = dft_params["magnetization_per_site"]
