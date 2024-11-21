@@ -2,7 +2,6 @@ import numpy as np
 from aiida import engine, orm
 
 from ...utils import common_utils
-
 from .geo_opt_workchain import Cp2kGeoOptWorkChain
 from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
 
@@ -11,14 +10,20 @@ IC_PLANE_HEIGHTS = {
 }
 
 
-def geometrical_analysis(ase_geo, substr_elem,mol_atoms=None):
+def geometrical_analysis(ase_geo, substr_elem, mol_atoms=None):
     """Simple geometry analysis that returns in the case of
     1) an isolated molecule -> geometry, None
     2) adsorbed system -> molecular geometry, top substr. layer z
     """
-    
+
     if mol_atoms is not None:
-        s_atoms = ase_geo[[atom.index for atom in ase_geo if atom.index not in mol_atoms and atom.symbol == substr_elem]]
+        s_atoms = ase_geo[
+            [
+                atom.index
+                for atom in ase_geo
+                if atom.index not in mol_atoms and atom.symbol == substr_elem
+            ]
+        ]
     else:
         chem_symbols_arr = np.array(ase_geo.get_chemical_symbols())
         s_atoms = ase_geo[chem_symbols_arr == substr_elem]
@@ -40,11 +45,15 @@ def geometrical_analysis(ase_geo, substr_elem,mol_atoms=None):
 
 
 @engine.calcfunction
-def analyze_structure(structure, substrate, mag_per_site, ads_h=None,molecule_atoms=None):
+def analyze_structure(
+    structure, substrate, mag_per_site, ads_h=None, molecule_atoms=None
+):
     ase_geo = structure.get_ase()
     substr_elem = substrate.value.split("(")[0]
 
-    mol_atoms, surf_z = geometrical_analysis(ase_geo, substr_elem,mol_atoms=molecule_atoms)
+    mol_atoms, surf_z = geometrical_analysis(
+        ase_geo, substr_elem, mol_atoms=molecule_atoms
+    )
 
     if surf_z is None:
         if ads_h is None:
@@ -163,12 +172,12 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         )
         spec.input("dft_params", valid_type=orm.Dict)
         spec.input("sys_params", valid_type=orm.Dict)
-        #spec.input(
+        # spec.input(
         #    "molecule_atoms",
         #    valid_type=orm.List,
         #    default=lambda: orm.List(list=[]),
         #    required=False,
-        #)        
+        # )
         spec.input_namespace(
             "options",
             valid_type=dict,
@@ -239,12 +248,12 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
 
     def setup(self):
         self.report("Inspecting input and setting up things.")
-        
+
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
-        
+
         n_atoms = len(self.inputs.structure.get_ase())
-        mags = self.ctx.dft_params.get('magnetization_per_site',[])
+        mags = self.ctx.dft_params.get("magnetization_per_site", [])
         n_mags = len(mags)
         if n_mags not in (0, n_atoms):
             self.report("If set, magnetization_per_site needs a value for every atom.")
@@ -253,7 +262,9 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         if self.inputs.substrate.value not in IC_PLANE_HEIGHTS:
             return self.exit_codes.ERROR_SUBSTR_NOT_SUPPORTED
 
-        molecule_atoms = self.ctx.sys_params.get('molecule_atoms',[])#self.inputs.molecule_atoms
+        molecule_atoms = self.ctx.sys_params.get(
+            "molecule_atoms", []
+        )  # self.inputs.molecule_atoms
         if len(molecule_atoms) == 0:
             molecule_atoms = None
         an_out = analyze_structure(
@@ -261,7 +272,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
             self.inputs.substrate,
             mags,
             None if "ads_height" not in self.inputs else self.inputs.ads_height,
-            molecule_atoms=molecule_atoms,  
+            molecule_atoms=molecule_atoms,
         )
 
         if "mol_struct" not in an_out:
@@ -272,8 +283,8 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         self.ctx.image_plane_z = an_out["image_plane_z"]
         self.ctx.mol_mag_per_site = an_out["mol_mag_per_site"]
         if "magnetization_per_site" in self.ctx.dft_params:
-            self.ctx.dft_params["magnetization_per_site"] = an_out["mol_mag_per_site"] 
-        
+            self.ctx.dft_params["magnetization_per_site"] = an_out["mol_mag_per_site"]
+
         ###
 
         return engine.ExitCode(0)
@@ -318,7 +329,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.protocol = self.inputs.protocol
         builder.structure = self.ctx.mol_struct
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
-        builder.multiplicity = orm.Int(self.ctx.dft_params.get("multiplicity",0))
+        builder.multiplicity = orm.Int(self.ctx.dft_params.get("multiplicity", 0))
         builder.run_image_charge = orm.Bool(True)
         builder.z_ic_plane = self.ctx.image_plane_z
         builder.options.scf = self.inputs.options.scf
@@ -339,7 +350,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.protocol = self.inputs.protocol
         builder.structure = self.ctx.mol_struct
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
-        builder.multiplicity = orm.Int(self.ctx.dft_params.get("multiplicity",0))
+        builder.multiplicity = orm.Int(self.ctx.dft_params.get("multiplicity", 0))
         builder.options.scf = self.inputs.options.scf
         builder.options.gw = self.inputs.options.gw
         builder.metadata.description = "gw"
@@ -351,13 +362,13 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         if not self.ctx.gw.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
 
-        if hasattr(self.ctx, 'gas_opt') and self.ctx.gas_opt is not None:
+        if hasattr(self.ctx, "gas_opt") and self.ctx.gas_opt is not None:
             gas_geo_opt_params = self.ctx.gas_opt.outputs.output_parameters
             self.out("gas_geo_opt_parameters", gas_geo_opt_params)
 
         gw_out_params = self.ctx.gw.outputs.gw_output_parameters
         ic_out_params = self.ctx.ic.outputs.gw_output_parameters
-        
+
         self.out("gw_output_parameters", gw_out_params)
 
         self.out("ic_output_parameters", ic_out_params)
@@ -368,7 +379,6 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
 
         # Add extras.
         struc = self.inputs.structure
-        common_utils.add_extras(struc, "surfaces", self.node.uuid)        
-        
+        common_utils.add_extras(struc, "surfaces", self.node.uuid)
 
         return engine.ExitCode(0)

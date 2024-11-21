@@ -1,6 +1,7 @@
 import os
 
-import ase,ase.io
+import ase
+import ase.io
 from aiida import engine, orm, plugins
 
 Cp2kAdsorbedGwIcWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.ads_gw_ic")
@@ -27,7 +28,7 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
         builder.ads_height = orm.Float(3.0)
 
     builder.structure = orm.StructureData(ase=ase_geom)
-   
+
     dft_params = {
         "uks": True,
         "magnetization_per_site": mag_list,
