@@ -27,12 +27,23 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
         builder.ads_height = orm.Float(3.0)
 
     builder.structure = orm.StructureData(ase=ase_geom)
-    builder.magnetization_per_site = orm.List(mag_list)
+   
+    dft_params = {
+        "uks": True,
+        "magnetization_per_site": mag_list,
+        "charge": 0,
+        "periodic": "XYZ",
+        "vdw": False,
+        "multiplicity": 1,
+        "cutoff": 300,
+    }
 
+    sys_params = {}
     builder.protocol = orm.Str("gpw_std")
-    builder.multiplicity = orm.Int(1)
 
     builder.geometry_mode = orm.Str("ads_geo")
+    builder.sys_params = orm.Dict(dict=sys_params)
+    builder.dft_params = orm.Dict(dict=dft_params)
 
     builder.debug = orm.Bool(True)
     builder.options.scf = {

@@ -126,6 +126,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
     Two different ways to run:
     1) geometry of a molecule adsorbed on a substrate
     2) isolated molecule & adsorption height
+    Magnetization specified on molecule atoms is relabelled for the gas phase calculation
     """
 
     @classmethod
@@ -160,24 +161,14 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
             required=False,
             help="Protocol supported by the Cp2kMoleculeGwWorkChain.",
         )
-        spec.input(
-            "multiplicity",
-            valid_type=orm.Int,
-            default=lambda: orm.Int(0),
-            required=False,
-        )
-        spec.input(
-            "magnetization_per_site",
-            valid_type=orm.List,
-            default=lambda: orm.List(list=[]),
-            required=False,
-        )
-        spec.input(
-            "molecule_atoms",
-            valid_type=orm.List,
-            default=lambda: orm.List(list=[]),
-            required=False,
-        )        
+        spec.input("dft_params", valid_type=orm.Dict)
+        spec.input("sys_params", valid_type=orm.Dict)
+        #spec.input(
+        #    "molecule_atoms",
+        #    valid_type=orm.List,
+        #    default=lambda: orm.List(list=[]),
+        #    required=False,
+        #)        
         spec.input_namespace(
             "options",
             valid_type=dict,
@@ -248,9 +239,13 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
 
     def setup(self):
         self.report("Inspecting input and setting up things.")
-
+        
+        self.ctx.sys_params = self.inputs.sys_params.get_dict()
+        self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        
         n_atoms = len(self.inputs.structure.get_ase())
-        n_mags = len(list(self.inputs.magnetization_per_site))
+        mags = self.ctx.dft_params.get('magnetization_per_site',[])
+        n_mags = len(mags)
         if n_mags not in (0, n_atoms):
             self.report("If set, magnetization_per_site needs a value for every atom.")
             return self.exit_codes.ERROR_TERMINATION
@@ -258,13 +253,13 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         if self.inputs.substrate.value not in IC_PLANE_HEIGHTS:
             return self.exit_codes.ERROR_SUBSTR_NOT_SUPPORTED
 
-        molecule_atoms = self.inputs.molecule_atoms
+        molecule_atoms = self.ctx.sys_params.get('molecule_atoms',[])#self.inputs.molecule_atoms
         if len(molecule_atoms) == 0:
             molecule_atoms = None
         an_out = analyze_structure(
             self.inputs.structure,
             self.inputs.substrate,
-            self.inputs.magnetization_per_site,
+            mags,
             None if "ads_height" not in self.inputs else self.inputs.ads_height,
             molecule_atoms=molecule_atoms,  
         )
@@ -276,6 +271,10 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         self.ctx.mol_struct = an_out["mol_struct"]
         self.ctx.image_plane_z = an_out["image_plane_z"]
         self.ctx.mol_mag_per_site = an_out["mol_mag_per_site"]
+        if "magnetization_per_site" in self.ctx.dft_params:
+            self.ctx.dft_params["magnetization_per_site"] = an_out["mol_mag_per_site"] 
+        
+        ###
 
         return engine.ExitCode(0)
 
@@ -286,14 +285,14 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder = Cp2kGeoOptWorkChain.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.mol_struct
-        builder.multiplicity = self.inputs.multiplicity
-        builder.magnetization_per_site = self.ctx.mol_mag_per_site
-        builder.vdw = orm.Bool(True)
+        builder.sys_params = orm.Dict(dict=self.ctx.sys_params)
+        builder.dft_params = orm.Dict(dict=self.ctx.dft_params)
         builder.protocol = orm.Str("standard")
+        builder.metadata.label = "CP2K_GW_GAS_GeoOpt"
         if self.inputs.debug:
             builder.protocol = orm.Str("debug")
         builder.options = self.inputs.options.scf
-        builder.metadata.description = "gas_opt"
+        builder.metadata.description = "Gas phase geomery optimization"
         submitted_node = self.submit(builder)
         return engine.ToContext(gas_opt=submitted_node)
 
@@ -319,7 +318,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.protocol = self.inputs.protocol
         builder.structure = self.ctx.mol_struct
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
-        builder.multiplicity = self.inputs.multiplicity
+        builder.multiplicity = orm.Int(self.ctx.dft_params.get("multiplicity",0))
         builder.run_image_charge = orm.Bool(True)
         builder.z_ic_plane = self.ctx.image_plane_z
         builder.options.scf = self.inputs.options.scf
@@ -340,7 +339,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.protocol = self.inputs.protocol
         builder.structure = self.ctx.mol_struct
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
-        builder.multiplicity = self.inputs.multiplicity
+        builder.multiplicity = orm.Int(self.ctx.dft_params.get("multiplicity",0))
         builder.options.scf = self.inputs.options.scf
         builder.options.gw = self.inputs.options.gw
         builder.metadata.description = "gw"
@@ -352,9 +351,13 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         if not self.ctx.gw.is_finished_ok:
             return self.exit_codes.ERROR_TERMINATION
 
+        if hasattr(self.ctx, 'gas_opt') and self.ctx.gas_opt is not None:
+            gas_geo_opt_params = self.ctx.gas_opt.outputs.output_parameters
+            self.out("gas_geo_opt_parameters", gas_geo_opt_params)
+
         gw_out_params = self.ctx.gw.outputs.gw_output_parameters
         ic_out_params = self.ctx.ic.outputs.gw_output_parameters
-
+        
         self.out("gw_output_parameters", gw_out_params)
 
         self.out("ic_output_parameters", ic_out_params)
