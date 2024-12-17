@@ -148,4 +148,4 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
             common_utils.add_extras(
                 self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid
             )
-        self.report("Work chain is finished")
+        self.report("The workchain is finished")
