@@ -110,25 +110,28 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
 
         future = self.submit(StmCalculation, **inputs)
         return engine.ToContext(stm=future)
-    
+
     def should_run_cubehandler(self):
         return "cubehandler_code" in self.inputs
-    
+
     def run_cubehandler(self):
         self.report("Running CubeHandler")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
             return self.exit_codes.ERROR_TERMINATIONx
 
         _, node = launch_shell_job(
-        self.inputs.cubehandler_code,
-        arguments =  ['shrink', '.', 'out_cubes'],
-        metadata={
-            'options': {'prepend_text': 'conda activate cubehandler', 'use_symlinks':True},
-            'computer': orm.load_computer('daint-gpu'),
-            'label': 'cube-shrink',
+            self.inputs.cubehandler_code,
+            arguments=["shrink", ".", "out_cubes"],
+            metadata={
+                "options": {
+                    "prepend_text": "conda activate cubehandler",
+                    "use_symlinks": True,
+                },
+                "computer": orm.load_computer("daint-gpu"),
+                "label": "cube-shrink",
             },
-        nodes={'remote_previous_job': self.ctx.diag_scf.outputs.remote_folder},
-        outputs=['out_cubes'],
+            nodes={"remote_previous_job": self.ctx.diag_scf.outputs.remote_folder},
+            outputs=["out_cubes"],
         )
         self.ctx.cubehandler_uuid = node.uuid
 
@@ -142,5 +145,7 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         if "cubehandler_code" in self.inputs:
-            common_utils.add_extras(self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid)
+            common_utils.add_extras(
+                self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid
+            )
         self.report("Work chain is finished")
