@@ -6,7 +6,7 @@ from aiida.common.datastructures import StashMode
 @click.command("cli")
 @click.argument("cubehandler_code", default="cubehandler@localhost")
 def example_cubehander(cubehandler_code):
-    remote_folder = orm.load_node(2470)
+    remote_folder = orm.load_node(1038)
     builder = orm.load_code(cubehandler_code).get_builder()
 
     builder.parameters = orm.Dict(dict={"some": "parameters"})
@@ -18,8 +18,6 @@ def example_cubehander(cubehandler_code):
             "num_mpiprocs_per_machine": 1,
         },
         "max_wallclock_seconds": 600,
-        "prepend_text": "for file in parent_calc_folder/*.cube; do",
-        "append_text": "done",
         "stash": {
             "source_list": ["parent_calc_folder/*.cube"],
             "target_base": "/project/s1267/yaa/aiida_stash/",

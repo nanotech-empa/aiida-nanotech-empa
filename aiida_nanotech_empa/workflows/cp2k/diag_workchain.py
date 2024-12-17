@@ -224,6 +224,14 @@ class Cp2kDiagWorkChain(engine.WorkChain):
                 input_dict["FORCE_EVAL"]["DFT"]["SCF"].pop("SMEAR")
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["EPS_SCF"] = "1.0E-1"
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["OUTER_SCF"]["EPS_SCF"] = "1.0E-1"
+        
+        # Printing orbitals.
+        if "nhomo" in self.ctx.dft_params:
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["NHOMO"] = self.ctx.dft_params["nhomo"]
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["STRIDE"] = "2 2 2"
+        if "nlumo" in self.ctx.dft_params:
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["NLUMO"] = self.ctx.dft_params["nlumo"]
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["STRIDE"] = "2 2 2"
 
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = max(

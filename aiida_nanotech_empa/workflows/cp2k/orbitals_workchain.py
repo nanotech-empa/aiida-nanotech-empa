@@ -1,5 +1,6 @@
 import numpy as np
 from aiida import engine, orm, plugins
+from aiida_shell import launch_shell_job
 
 from ...utils import common_utils
 
@@ -12,7 +13,12 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
     def define(cls, spec):
         super().define(spec)
 
+        # Codes.
         spec.input("cp2k_code", valid_type=orm.Code)
+        spec.input("spm_code", valid_type=orm.Code)
+        spec.input("cubehandler_code", valid_type=orm.Code, required=False)
+
+        # Inputs.
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
         spec.input(
@@ -23,7 +29,6 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
             help="Protocol supported by the Cp2kDiagWorkChain.",
         )
         spec.input("dft_params", valid_type=orm.Dict)
-        spec.input("spm_code", valid_type=orm.Code)
         spec.input("spm_params", valid_type=orm.Dict)
         spec.input(
             "options",
@@ -36,6 +41,9 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
             cls.setup,
             cls.run_diag_scf,
             cls.run_stm,
+            engine.if_(cls.should_run_cubehandler)(
+                cls.run_cubehandler,
+            ),
             cls.finalize,
         )
 
@@ -102,6 +110,27 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
 
         future = self.submit(StmCalculation, **inputs)
         return engine.ToContext(stm=future)
+    
+    def should_run_cubehandler(self):
+        return "cubehandler_code" in self.inputs
+    
+    def run_cubehandler(self):
+        self.report("Running CubeHandler")
+        if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
+            return self.exit_codes.ERROR_TERMINATIONx
+
+        _, node = launch_shell_job(
+        self.inputs.cubehandler_code,
+        arguments =  ['shrink', '.', 'out_cubes'],
+        metadata={
+            'options': {'prepend_text': 'conda activate cubehandler', 'use_symlinks':True},
+            'computer': orm.load_computer('daint-gpu'),
+            'label': 'cube-shrink',
+            },
+        nodes={'remote_previous_job': self.ctx.diag_scf.outputs.remote_folder},
+        outputs=['out_cubes'],
+        )
+        self.ctx.cubehandler_uuid = node.uuid
 
     def finalize(self):
         if "orb.npz" not in [
@@ -111,6 +140,7 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
             return self.exit_codes.ERROR_TERMINATION
         self.out("dft_output_parameters", self.ctx.diag_scf.outputs.output_parameters)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
-        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
+        if "cubehandler_code" in self.inputs:
+            common_utils.add_extras(self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid)
         self.report("Work chain is finished")
