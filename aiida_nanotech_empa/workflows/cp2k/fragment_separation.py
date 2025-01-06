@@ -2,7 +2,7 @@ import pathlib
 
 from aiida import engine, orm, plugins
 
-from ...utils import string_utils, common_utils, split_structure
+from ...utils import common_utils, split_structure, string_utils
 from . import cp2k_utils
 
 StructureData = plugins.DataFactory("core.structure")
