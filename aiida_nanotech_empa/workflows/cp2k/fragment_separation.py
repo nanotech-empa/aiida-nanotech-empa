@@ -2,7 +2,7 @@ import pathlib
 
 from aiida import engine, orm, plugins
 
-from ...utils import analyze_structure, common_utils, split_structure
+from ...utils import string_utils, common_utils, split_structure
 from . import cp2k_utils
 
 StructureData = plugins.DataFactory("core.structure")
@@ -137,7 +137,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             self.report(
                 f"""Running SCF for the fragment '{inputs['label']}' consisting of {len(inputs['structure'].sites)} atoms, """
-                f"""where {analyze_structure.list_to_string_range(inputs['fixed_atoms']) or 'None'} atoms are fixed."""
+                f"""where {string_utils.list_to_string_range(inputs['fixed_atoms']) or 'None'} atoms are fixed."""
             )
 
             # Fragment's label.
@@ -201,7 +201,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             # Fixed atoms
             if "fixed_atoms" in self.inputs:
                 input_dict["MOTION"]["CONSTRAINT"]["FIXED_ATOMS"]["LIST"] = (
-                    analyze_structure.list_to_string_range(inputs["fixed_atoms"])
+                    string_utils.list_to_string_range(inputs["fixed_atoms"])
                 )
 
             # Finally, append auxilary dictionaries to the input dictonary.
