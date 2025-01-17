@@ -618,7 +618,7 @@ def get_points(details):
     for i, point in enumerate(points):
         ids = allids[i]
         if details[point + 1].lower() == "fix_point":
-            allpoints.append({"TYPE": "FIX_POINT", "XYZ": ids})
+            allpoints.append({"TYPE": "FIX_POINT", "XYZ": f"[angstrom] {ids}"})
         else:
             allpoints.append({"TYPE": "GEO_CENTER", "ATOMS": ids})
     return {"POINT": allpoints}
