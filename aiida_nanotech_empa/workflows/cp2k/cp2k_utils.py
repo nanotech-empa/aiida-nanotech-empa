@@ -629,7 +629,9 @@ def get_points_coords(points, atoms):
     coords = []
     for point in points:
         if point["TYPE"] == "FIX_POINT":
-            coords.append([float(i) for i in point["XYZ"].replace("[angstrom]", "").split()])
+            coords.append(
+                [float(i) for i in point["XYZ"].replace("[angstrom]", "").split()]
+            )
         else:
             ids, all_ok = string_range_to_list(point["ATOMS"], shift=-1)
             coords.append(
