@@ -4,7 +4,7 @@ standard:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: MD
         WALLTIME: '600'
-        ELPA_KERNEL: AVX2_BLOCK2
+        ELPA_KERNEL: AUTO
     MOTION:
         MD:
             STEPS: '1'
@@ -87,7 +87,7 @@ low_accuracy:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: MD
         WALLTIME: '600'
-        ELPA_KERNEL: AVX2_BLOCK2
+        ELPA_KERNEL: AUTO
     MOTION:
         MD:
             STEPS: '1'
@@ -170,7 +170,7 @@ debug:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: MD
         WALLTIME: '600'
-        ELPA_KERNEL: AVX2_BLOCK2
+        ELPA_KERNEL: AUTO
     MOTION:
         MD:
             STEPS: '1'
