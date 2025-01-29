@@ -32,8 +32,11 @@ class NanoribbonWorkChain(engine.WorkChain):
             "mem_node", valid_type=orm.Int, default=lambda: orm.Int(64), required=False
         )
         spec.input(
-            "wall_seconds", valid_type=orm.Int, default=lambda: orm.Int(600), required=False
-        )        
+            "wall_seconds",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(600),
+            required=False,
+        )
         spec.input("pw_code", valid_type=orm.Code)
         spec.input("pp_code", valid_type=orm.Code)
         spec.input("projwfc_code", valid_type=orm.Code)
@@ -86,12 +89,16 @@ class NanoribbonWorkChain(engine.WorkChain):
         spec.outputs.dynamic = True
 
         spec.exit_code(300, "CALC_FAILED", message="The calculation failed.")
+
     def setup(self):
         self.report("Starting NanoribbonWorkChain")
-        self.ctx.nproc_mach = self.inputs.pw_code.computer.get_default_mpiprocs_per_machine()
-        if 'alps' in self.inputs.pw_code.computer.hostname:
+        self.ctx.nproc_mach = (
+            self.inputs.pw_code.computer.get_default_mpiprocs_per_machine()
+        )
+        if "alps" in self.inputs.pw_code.computer.hostname:
             self.ctx.nproc_mach = 4
         self.report(f"nproc_mach: {self.ctx.nproc_mach}")
+
     def run_cell_opt1(self):
         if self.inputs.optimize_cell.value:
             structure = self.inputs.structure
@@ -104,7 +111,7 @@ class NanoribbonWorkChain(engine.WorkChain):
                 min_kpoints=int(1),
                 max_nodes=self.inputs.max_nodes.value,
                 mem_node=self.inputs.mem_node.value,
-                wallseconds=self.inputs.wall_seconds.value, # max 24 hours
+                wallseconds=self.inputs.wall_seconds.value,  # max 24 hours
             )
         self.report("Skipping: cell_opt = False")
         return
@@ -126,7 +133,7 @@ class NanoribbonWorkChain(engine.WorkChain):
                 min_kpoints=int(1),
                 max_nodes=self.inputs.max_nodes.value,
                 mem_node=self.inputs.mem_node.value,
-                wallseconds=self.inputs.wall_seconds.value, # max 24 hours
+                wallseconds=self.inputs.wall_seconds.value,  # max 24 hours
             )
         self.report("Skipping: cell_opt = False")
         return
@@ -151,7 +158,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             min_kpoints=min_kpoints,
             max_nodes=self.inputs.max_nodes.value,
             mem_node=self.inputs.mem_node.value,
-            wallseconds=int(self.inputs.wall_seconds.value /6 ), #4 hours max
+            wallseconds=int(self.inputs.wall_seconds.value / 6),  # 4 hours max
         )
 
     def run_export_hartree(self):
@@ -237,7 +244,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             min_kpoints=min_kpoints,
             max_nodes=self.inputs.max_nodes.value,
             mem_node=self.inputs.mem_node.value,
-            wallseconds=int(self.inputs.wall_seconds.value /4), # max 6 hours
+            wallseconds=int(self.inputs.wall_seconds.value / 4),  # max 6 hours
         )
 
     def run_export_pdos(self):
@@ -325,7 +332,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             min_kpoints=min_kpoints,
             max_nodes=self.inputs.max_nodes.value,
             mem_node=self.inputs.mem_node.value,
-            wallseconds=int(self.inputs.wall_seconds.value /12 ), # max 2 hours
+            wallseconds=int(self.inputs.wall_seconds.value / 12),  # max 2 hours
         )
 
     def prepare_export_orbitals(self):
@@ -365,7 +372,9 @@ class NanoribbonWorkChain(engine.WorkChain):
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
             },
-            "max_wallclock_seconds": int(self.inputs.wall_seconds.value/24*nhours), #nhours * 60 * 60,
+            "max_wallclock_seconds": int(
+                self.inputs.wall_seconds.value / 24 * nhours
+            ),  # nhours * 60 * 60,
             # Add the post-processing python scripts.
             "withmpi": True,
             "parser_name": "nanotech_empa.pp",
@@ -505,7 +514,7 @@ class NanoribbonWorkChain(engine.WorkChain):
         min_kpoints,
         max_nodes,
         mem_node,
-        wallseconds, 
+        wallseconds,
         parent_folder=None,
     ):
         self.report("Running pw.x for " + label)
@@ -572,7 +581,8 @@ class NanoribbonWorkChain(engine.WorkChain):
         builder.metadata.options = {
             "resources": {
                 "num_machines": int(nnodes),
-                "num_mpiprocs_per_machine": self.ctx.nproc_mach,},
+                "num_mpiprocs_per_machine": self.ctx.nproc_mach,
+            },
             "withmpi": True,
             "max_wallclock_seconds": wallseconds,
         }
