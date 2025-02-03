@@ -27,7 +27,7 @@ dependencies = [
     "aiida-quantumespresso~=4.8",
     "aiida-pseudo~=1.7",
     "aiida-cp2k>=2.1.0b0,<3.0.0",
-    "ase~=3.24",
+    "ase~=3.21",
     "aiida-gaussian~=2.0",
     "aiida-shell",
     "pillow>=8.0.0",
