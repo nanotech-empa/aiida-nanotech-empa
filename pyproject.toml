@@ -23,7 +23,7 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "aiida-core>=2.5,<3.0.0",
+    "aiida-core>=2.6,<3.0.0",
     "aiida-quantumespresso~=4.8",
     "aiida-pseudo~=1.7",
     "aiida-cp2k>=2.1.0b0,<3.0.0",
