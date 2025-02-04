@@ -1,15 +1,10 @@
 import pathlib
 
 import click
-import numpy as np
-from aiida import engine, orm
-from aiida.plugins import WorkflowFactory
-from ase.build import molecule
+from aiida import engine, orm, plugins
 from ase.io import read
 
-import aiida_nanotech_empa.utils.gaussian_wcs_postprocess as pp
-
-GaussianNicsWorkChain = WorkflowFactory("nanotech_empa.gaussian.nics")
+GaussianNicsWorkChain = plugins.WorkflowFactory("nanotech_empa.gaussian.nics")
 DATA_DIR = pathlib.Path(__file__).parent.absolute()
 GEO_FILE = "naphthalene.xyz"
 

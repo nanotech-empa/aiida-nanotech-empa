@@ -1,13 +1,12 @@
 import os
 
-import ase.io
 import click
 import numpy as np
 from aiida import engine, orm, plugins
 
 Cp2kReftrajWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.reftraj")
-StructureData = DataFactory("core.structure")
-TrajectoryData = DataFactory("core.array.trajectory")
+StructureData = orm.DataFactory("core.structure")
+TrajectoryData = orm.DataFactory("core.array.trajectory")
 
 
 def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False):
@@ -122,7 +121,7 @@ def run_all(cp2k_code, n_nodes, n_cores_per_node):
         atol=1e-08,
         equal_nan=False,
     )
-    print(f"arrays  match")
+    print("arrays match")
 
 
 if __name__ == "__main__":

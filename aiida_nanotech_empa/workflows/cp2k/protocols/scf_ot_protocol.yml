@@ -4,7 +4,7 @@ standard:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: ENERGY
         WALLTIME: 600
-        ELPA_KERNEL: AVX2_BLOCK2
+        ELPA_KERNEL: AUTO
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
@@ -84,7 +84,7 @@ low_accuracy:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: ENERGY
         WALLTIME: 600
-        ELPA_KERNEL: AVX2_BLOCK2
+        ELPA_KERNEL: AUTO
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
@@ -164,7 +164,7 @@ debug:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: ENERGY
         WALLTIME: 600
-        ELPA_KERNEL: AVX2_BLOCK2
+        ELPA_KERNEL: AUTO
     FORCE_EVAL:
         METHOD: Quickstep
         SUBSYS:
