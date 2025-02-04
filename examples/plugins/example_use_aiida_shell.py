@@ -1,6 +1,4 @@
-import click
-from aiida import engine, orm
-from aiida.common.datastructures import StashMode
+from aiida import orm
 from aiida_shell import launch_shell_job
 
 

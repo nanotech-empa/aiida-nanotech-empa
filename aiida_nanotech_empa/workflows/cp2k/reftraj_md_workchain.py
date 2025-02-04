@@ -140,7 +140,7 @@ def create_batches(trajectory, num_batches, steps_completed):
         batches.append(remaining_elements[start_idx:end_idx])
         start_idx = end_idx
 
-    return {i: batch for i, batch in enumerate(batches)}
+    return dict(enumerate(batches))
 
 
 class Cp2kRefTrajWorkChain(engine.WorkChain):
@@ -258,14 +258,14 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
 
         future = self.submit(builder)
 
-        key = f"reftraj_batch_0"
+        key = "reftraj_batch_0"
         self.report(f"Submitted reftraj batch: {key} with pk: {future.pk}")
 
         self.to_context(**{key: future})
 
     def run_reftraj_batches(self):
         """Check if all calculations completed and merge trejectories."""
-        key0 = f"reftraj_batch_0"
+        key0 = "reftraj_batch_0"
         if not getattr(self.ctx, key0).is_finished_ok:
             self.report(f"Batch {key0} failed")
             return self.exit_codes.ERROR_TERMINATION
