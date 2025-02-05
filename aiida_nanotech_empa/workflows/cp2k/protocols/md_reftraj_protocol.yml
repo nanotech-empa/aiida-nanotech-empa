@@ -20,6 +20,9 @@ standard:
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
+            RESTART:
+                EACH:
+                    MD: '10'
             FORCES:
                 EACH:
                     MD: '1'
@@ -103,6 +106,9 @@ low_accuracy:
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
+            RESTART:
+                EACH:
+                    MD: '10'                
             FORCES:
                 EACH:
                     MD: '1'
@@ -186,6 +192,9 @@ debug:
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
+            RESTART:
+                EACH:
+                    MD: '1'
             FORCES:
                 EACH:
                     MD: '1'

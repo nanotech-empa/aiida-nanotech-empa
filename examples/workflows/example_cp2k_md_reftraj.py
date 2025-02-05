@@ -1,16 +1,17 @@
 import os
-
+import time
 import ase.io
 import click
 import numpy as np
 from aiida import engine, orm, plugins
-
+import subprocess
+#from aiida.manage.manager import get_manager
 Cp2kReftrajWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.reftraj")
 StructureData = DataFactory("core.structure")
 TrajectoryData = DataFactory("core.array.trajectory")
 
 
-def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False):
+def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False,to_be_killed=False):
     os.path.dirname(os.path.realpath(__file__))
 
     # Structure.
@@ -20,7 +21,7 @@ def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False):
     qb = orm.QueryBuilder()
     qb.append(TrajectoryData, filters={"label": "H2_trajectory"})
     if qb.count() == 0:
-        steps = 20
+        steps = 60
         positions = np.array(
             [
                 [
@@ -43,20 +44,32 @@ def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False):
         trajectory = qb.first()[0]
 
     builder = Cp2kReftrajWorkChain.get_builder()
-    # if restart_uuid is not None:
-    #    builder.restart_from = orm.Str(restart_uuid)
-
+    
     builder.metadata.label = "CP2K_RefTraj"
     builder.metadata.description = "test description"
     builder.code = cp2k_code
-    builder.options = {
-        "max_wallclock_seconds": 600,
-        "resources": {
-            "num_machines": 1,
-            "num_mpiprocs_per_machine": 1,
-            "num_cores_per_mpiproc": 1,
-        },
-    }
+    if to_be_killed:
+        builder.options = {
+            "max_wallclock_seconds": 300,
+            "mpirun_extra_params": [
+                "timeout",
+                "1",
+                ],  # Kill the calculation after 1 second to test the restart failure.
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+                "num_cores_per_mpiproc": 1,
+            },
+        }
+    else:
+        builder.options = {
+            "max_wallclock_seconds": 300,
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+                "num_cores_per_mpiproc": 1,
+            },
+        }
 
     # builder.structure = structure
     builder.trajectory = trajectory
@@ -79,9 +92,9 @@ def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False):
     builder.dft_params = orm.Dict(dft_params)
     builder.sys_params = orm.Dict(sys_params)
 
-    _, calc_node = engine.run_get_node(builder)
-
-    assert calc_node.is_finished_ok
+    #_, calc_node = engine.run_get_node(builder)
+    # we use submit to be able to kill the workchain
+    calc_node = engine.submit(builder)
     return calc_node.pk
 
 
@@ -95,27 +108,80 @@ def example_cp2k_reftraj(cp2k_code):
 @click.option("-n", "--n-nodes", default=1)
 @click.option("-c", "--n-cores-per-node", default=1)
 def run_all(cp2k_code, n_nodes, n_cores_per_node):
+    # running reftraj with 1 batch to have a reference trajectory
+    count = 0
+    maxcount = 8
     print("#### UKS one batch")
-    uuid1 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=1)
-    print("#### UKS two batches")
-    uuid2 = _example_cp2k_reftraj(
-        cp2k_code=orm.load_code(cp2k_code), num_batches=2, restart=False
+    pk1 = _example_cp2k_reftraj(cp2k_code=orm.load_code(cp2k_code), num_batches=1)
+    wait= True
+    while wait:
+        print("waiting for first workchain to finish")
+        wc = orm.load_node(pk1)
+        wait = not wc.is_finished
+        count+=1
+        if count > maxcount:
+            print("timeout")
+            break
+        time.sleep(10)
+        
+    # running from scratch reftraj with 4 batches the ccalcjob will not have enough time to complete and we will kill the workchain as son as the second calculation is finished
+    print("#### UKS four batches")
+    pk2 = _example_cp2k_reftraj(
+        cp2k_code=orm.load_code(cp2k_code), num_batches=4, restart=False,to_be_killed=True
     )
-    print("#### UKS two batches restart")
-    uuid3 = _example_cp2k_reftraj(
-        cp2k_code=orm.load_code(cp2k_code), num_batches=2, restart=True
+    can_stop = False
+    finished=0
+    count = 0
+    maxcount = 8
+    while not can_stop:
+        count+=1
+        if count > maxcount:
+            print("timeout")
+            break
+            
+        print("waiting for second workchain to finish")
+        wc = orm.load_node(pk2)
+        for calc in wc.called_descendants:
+            if calc.process_label ==  'Cp2kCalculation' and calc.is_finished:
+                finished+=1
+                if finished > 1:
+                    can_stop=True
+        if can_stop:
+            command = ['verdi', 'process', 'kill', str(pk2)]
+            # Execute the command using subprocess
+            try:
+                result = subprocess.run(command, check=True, capture_output=True, text=True)
+                print(f"Successfully killed workchain with PK {pk2}.")
+                print(result.stdout)
+            except subprocess.CalledProcessError as e:
+                print(f"Error while killing workchain with PK {pk2}:")
+                print(e.stderr)  
+            print(f"waiting for {pk2} to be killed ")
+            time.sleep(10)
+        else:
+            time.sleep(5) 
+                
+    # restart from the previuously killed workchain 
+    print("#### UKS three batches restart")
+    pk3 = _example_cp2k_reftraj(
+        cp2k_code=orm.load_code(cp2k_code), num_batches=3, restart=True
     )
-    traj1 = orm.load_node(uuid1).outputs.output_trajectory
-    traj2 = orm.load_node(uuid2).outputs.output_trajectory
-    traj3 = orm.load_node(uuid3).outputs.output_trajectory
+    wait= True
+    count = 0
+    maxcount = 8
+    while wait:
+        print("waiting for third workchain to finish")
+        wc = orm.load_node(pk3)
+        wait = not wc.is_finished
+        count+=1
+        if count > maxcount:
+            print("timeout")
+            break
+        time.sleep(10)
+    traj1 = orm.load_node(pk1).outputs.output_trajectory
+    traj3 = orm.load_node(pk3).outputs.output_trajectory
     print("#### DONE ####")
-    assert np.allclose(
-        traj1.get_array("cells"),
-        traj2.get_array("cells"),
-        rtol=1e-07,
-        atol=1e-08,
-        equal_nan=False,
-    ) and np.allclose(
+    assert  np.allclose(
         traj1.get_array("cells"),
         traj3.get_array("cells"),
         rtol=1e-07,
