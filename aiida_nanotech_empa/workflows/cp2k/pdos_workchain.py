@@ -170,13 +170,15 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             "options": {
                 "resources": {
                     "num_machines": n_machines,
-                    "num_mpiprocs_per_machine": min(36,self.inputs.cp2k_code.computer.get_default_mpiprocs_per_machine()),
+                    "num_mpiprocs_per_machine": min(
+                        36,
+                        self.inputs.cp2k_code.computer.get_default_mpiprocs_per_machine(),
+                    ),
                     "num_cores_per_mpiproc": 1,
-                    },
-                "max_wallclock_seconds": 86400,
                 },
-            }
- 
+                "max_wallclock_seconds": 86400,
+            },
+        }
 
         builder.settings = orm.Dict({"additional_retrieve_list": ["overlap.npz"]})
         future = self.submit(builder)

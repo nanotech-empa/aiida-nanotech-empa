@@ -101,9 +101,12 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
         inputs["metadata"]["options"] = {
             "resources": {
-            "num_machines": 1,
-            "num_mpiprocs_per_machine": min(36,self.inputs.cp2k_code.computer.get_default_mpiprocs_per_machine()),
-            "num_cores_per_mpiproc": 1,
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": min(
+                    36,
+                    self.inputs.cp2k_code.computer.get_default_mpiprocs_per_machine(),
+                ),
+                "num_cores_per_mpiproc": 1,
             },
             "max_wallclock_seconds": 7200,
         }
