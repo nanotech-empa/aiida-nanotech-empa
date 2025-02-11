@@ -108,7 +108,7 @@ low_accuracy:
                 _: 'OFF'
             RESTART:
                 EACH:
-                    MD: '10'                
+                    MD: '10'
             FORCES:
                 EACH:
                     MD: '1'

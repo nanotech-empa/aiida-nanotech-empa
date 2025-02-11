@@ -69,7 +69,8 @@ def retireve_previous_trajectories(reftraj_wc):
                 cp2k_calcs = [
                     calc
                     for calc in base_wc.called_descendants
-                    if calc.process_label == "Cp2kCalculation" #and calc.is_finished_ok
+                    if calc.process_label
+                    == "Cp2kCalculation"  # and calc.is_finished_ok
                 ]
                 for calc in cp2k_calcs:
                     trajectories.append(calc.outputs.output_trajectory)
@@ -115,7 +116,7 @@ def create_batches(trajectory, num_batches, steps_completed):
     """
     # Generate the initial list of indices
     input_list = [i + 1 for i in range(trajectory.get_shape("positions")[0])]
-    
+
     # Remove steps that have already been completed
     input_list = [i for i in input_list if i not in steps_completed]
 
@@ -123,7 +124,7 @@ def create_batches(trajectory, num_batches, steps_completed):
         return {}
 
     total_elements = len(input_list)
-    max_batch_size = int((total_elements) / num_batches.value) +1
+    max_batch_size = int((total_elements) / num_batches.value) + 1
 
     batches = []
     current_batch = [input_list[0]]
@@ -186,11 +187,14 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             cls.setup,  # create batches, if reordering of structures create indexing
             engine.if_(cls.still_batches_to_run)(
                 cls.first_structure,  # Run the first SCF to get the initial wavefunction
-                cls.check_submitted_batches),
-            engine.while_(cls.still_batches_to_run)( # Run the batches of the reftraj simulations
-                    cls.run_reftraj_batches,
-                    cls.check_submitted_batches,
-                ),
+                cls.check_submitted_batches,
+            ),
+            engine.while_(
+                cls.still_batches_to_run
+            )(  # Run the batches of the reftraj simulations
+                cls.run_reftraj_batches,
+                cls.check_submitted_batches,
+            ),
             cls.merge_batches_output,
         )
 
@@ -209,7 +213,9 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             last_wc = last_reftraj_wc(self.inputs.trajectory)
             self.report(f"Restrating from last workchain found: {last_wc}")
             previous_trajectories = retireve_previous_trajectories(last_wc)
-            self.report(f"Retrieved {len(previous_trajectories)} trajectories {[traj.pk for traj in previous_trajectories]}")
+            self.report(
+                f"Retrieved {len(previous_trajectories)} trajectories {[traj.pk for traj in previous_trajectories]}"
+            )
             self.ctx.previuos_trajectory = merge_trajectory_data_unique(
                 *previous_trajectories
             )
@@ -232,7 +238,7 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             self.inputs.options["max_wallclock_seconds"] - 600
             if self.inputs.options["max_wallclock_seconds"] > 600
             else self.inputs.options["max_wallclock_seconds"]
-            )
+        )
         # create batches avoiding steps already completed.
         self.ctx.batches_to_be_done = []
         self.ctx.batches = create_batches(
@@ -242,15 +248,13 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             self.report(f"Created {len(self.ctx.batches)} batches {self.ctx.batches}")
             self.ctx.n_batches = len(self.ctx.batches)
             self.ctx.batches_to_be_done = [i for i in range(self.ctx.n_batches)]
-            self.ctx.batches_to_check=[]
+            self.ctx.batches_to_check = []
         return engine.ExitCode(0)
 
-
-    
     def still_batches_to_run(self):
         """Check if there are still batches to run."""
         return len(self.ctx.batches_to_be_done) > 0
-    
+
     def first_structure(self):
         """Run scf on the initial geometry."""
         self.ctx.batches_to_be_done.remove(0)
@@ -268,7 +272,7 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
         # Switch on resubmit_unconverged_geometry disabled by default.
         builder.handler_overrides = orm.Dict(
             {"restart_incomplete_calculation": {"enabled": True}}
-            )
+        )
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
         builder.cp2k.trajectory = self.inputs.trajectory
         builder.cp2k.code = self.inputs.code
@@ -297,7 +301,7 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
                 return self.exit_codes.ERROR_TERMINATION
             self.ctx.batches_to_check.remove(batch)
         return engine.ExitCode(0)
-    
+
     def run_reftraj_batches(self):
         """Submit remaining batches up to the maximum number of concurrent calculations."""
         # Submit new batches if under the limit
@@ -309,9 +313,9 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             self.report(f"batches to be done {self.ctx.batches_to_be_done}")
             batch = self.ctx.batches_to_be_done[0]
             self.ctx.batches_to_be_done.remove(batch)
-            
-            count+=1
-            
+
+            count += 1
+
             self.ctx.batches_to_check.append(batch)
             first = self.ctx.batches[batch][0]
             last = self.ctx.batches[batch][-1]
@@ -336,7 +340,9 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             builder.cp2k.metadata.label = f"structures_{first}_to_{last}"
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
-            builder.cp2k.parent_calc_folder = getattr(self.ctx, 'reftraj_batch_0').outputs.remote_folder
+            builder.cp2k.parent_calc_folder = getattr(
+                self.ctx, "reftraj_batch_0"
+            ).outputs.remote_folder
 
             future = self.submit(builder)
             key = f"reftraj_batch_{batch}"
