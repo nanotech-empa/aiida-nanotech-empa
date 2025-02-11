@@ -111,7 +111,7 @@ def merge_trajectories(*trajectories):
 def create_batches(trajectory, num_batches, steps_completed):
     """Create balanced batches of consecutive or isolated indices.
     - The first batch contains only one element.
-    - Each batch has at most ceil(total_elements / num_batches) elements.
+    - Each batch has at most ceil(total_number_of_frames / num_batches) frames.
     - The constraint of num_batches is overridden if necessary due to consecutive constraints.
     """
     # Generate the initial list of indices
