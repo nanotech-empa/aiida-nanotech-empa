@@ -247,7 +247,7 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
         if len(self.ctx.batches) > 0:
             self.report(f"Created {len(self.ctx.batches)} batches {self.ctx.batches}")
             self.ctx.n_batches = len(self.ctx.batches)
-            self.ctx.batches_to_be_done = [i for i in range(self.ctx.n_batches)]
+            self.ctx.batches_to_be_done = list(range(self.ctx.n_batches))
             self.ctx.batches_to_check = []
         return engine.ExitCode(0)
 
@@ -340,9 +340,9 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             builder.cp2k.metadata.label = f"structures_{first}_to_{last}"
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
-            builder.cp2k.parent_calc_folder = getattr(
-                self.ctx, "reftraj_batch_0"
-            ).outputs.remote_folder
+            builder.cp2k.parent_calc_folder = (
+                self.ctx.reftraj_batch_0.outputs.remote_folder
+            )
 
             future = self.submit(builder)
             key = f"reftraj_batch_{batch}"

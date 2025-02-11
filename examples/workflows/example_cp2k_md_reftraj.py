@@ -2,7 +2,6 @@ import os
 import subprocess
 import time
 
-import ase.io
 import click
 import numpy as np
 from aiida import engine, orm, plugins
