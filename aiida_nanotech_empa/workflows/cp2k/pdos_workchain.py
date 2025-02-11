@@ -156,13 +156,31 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         builder.parent_slab_folder = self.ctx.slab_diag_scf.outputs.remote_folder
         builder.parent_mol_folder = self.ctx.mol_diag_scf.outputs.remote_folder
 
-        n_machines = 4 if self.ctx.n_slab_atoms < 2000 else 8
+        if self.ctx.n_slab_atoms < 500:
+            n_machines = 1
+            walltime = 7200
+        elif self.ctx.n_slab_atoms < 1000:
+            n_machines = 2
+            walltime = 14400
+        elif self.ctx.n_slab_atoms < 2000:
+            n_machines = 4
+            walltime = 36000
+        else:
+            n_machines = 8
+            walltime = 86400
 
         builder.metadata = {
             "label": "overlap",
             "options": {
-                "resources": {"num_machines": n_machines},
-                "max_wallclock_seconds": 86400,
+                "resources": {
+                    "num_machines": n_machines,
+                    "num_mpiprocs_per_machine": min(
+                        36,
+                        self.inputs.cp2k_code.computer.get_default_mpiprocs_per_machine(),
+                    ),
+                    "num_cores_per_mpiproc": 1,
+                },
+                "max_wallclock_seconds": walltime,
             },
         }
 

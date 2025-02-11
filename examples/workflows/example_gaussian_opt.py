@@ -2,13 +2,9 @@ import os
 
 import ase.io
 import numpy as np
-from aiida.engine import run_get_node
-from aiida.orm import Bool, Int, Str, StructureData, load_code
-from aiida.plugins import WorkflowFactory
+from aiida import engine, orm, plugins
 
-import aiida_nanotech_empa.utils.gaussian_wcs_postprocess as pp
-
-GaussianRelaxWorkChain = WorkflowFactory("nanotech_empa.gaussian.relax")
+GaussianRelaxWorkChain = plugins.WorkflowFactory("nanotech_empa.gaussian.relax")
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,14 +18,14 @@ def _example_gaussian_spin(gaussian_code):  # , formchk_code, cubegen_code):
     builder.gaussian_code = gaussian_code
     # builder.formchk_code = formchk_code
     # builder.cubegen_code = cubegen_code
-    builder.structure = StructureData(ase=ase_geom)
-    builder.functional = Str("B3LYP")
-    builder.empirical_dispersion = Str("GD3")
-    builder.basis_set = Str("6-311+G(d,p)")
-    # builder.basis_set_scf = Str("STO-3G")
-    builder.multiplicity = Int(0)
-    builder.tight = Bool(True)
-    builder.options = Dict(
+    builder.structure = orm.StructureData(ase=ase_geom)
+    builder.functional = orm.Str("B3LYP")
+    builder.empirical_dispersion = orm.Str("GD3")
+    builder.basis_set = orm.Str("6-311+G(d,p)")
+    # builder.basis_set_scf = orm.Str("STO-3G")
+    builder.multiplicity = orm.Int(0)
+    builder.tight = orm.Bool(True)
+    builder.options = orm.Dict(
         {
             "resources": {
                 "tot_num_mpiprocs": 4,
@@ -40,7 +36,7 @@ def _example_gaussian_spin(gaussian_code):  # , formchk_code, cubegen_code):
         }
     )
 
-    _, wc_node = run_get_node(builder)
+    _, wc_node = engine.run_get_node(builder)
 
     assert wc_node.is_finished_ok
 
@@ -49,7 +45,7 @@ def _example_gaussian_spin(gaussian_code):  # , formchk_code, cubegen_code):
 
 if __name__ == "__main__":
     _example_gaussian_spin(
-        load_code("gaussian@tigu"),
-        # load_code("formchk@localhost"),
-        # load_code("cubegen@localhost"),
+        orm.load_code("gaussian@tigu"),
+        # orm.load_code("formchk@localhost"),
+        # orm.load_code("cubegen@localhost"),
     )

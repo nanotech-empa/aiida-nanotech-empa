@@ -148,7 +148,7 @@ def create_batches(trajectory, num_batches, steps_completed):
     if len(batches[0]) > 1:
         batches = [[batches[0][0]]] + [batches[0][1:]] + batches[1:]
 
-    return {i: batch for i, batch in enumerate(batches)}
+    return dict(enumerate(batches))
 
 
 class Cp2kRefTrajWorkChain(engine.WorkChain):
@@ -283,7 +283,7 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
 
         future = self.submit(builder)
 
-        key = f"reftraj_batch_0"
+        key = "reftraj_batch_0"
         self.report(f"Submitted reftraj batch: {key} with pk: {future.pk}")
 
         self.to_context(**{key: future})

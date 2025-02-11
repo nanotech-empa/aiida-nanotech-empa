@@ -100,8 +100,15 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         inputs["parameters"] = self.inputs.spm_params
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
         inputs["metadata"]["options"] = {
-            "resources": {"num_machines": 1},
-            "max_wallclock_seconds": 3600,
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": min(
+                    36,
+                    self.inputs.cp2k_code.computer.get_default_mpiprocs_per_machine(),
+                ),
+                "num_cores_per_mpiproc": 1,
+            },
+            "max_wallclock_seconds": 7200,
         }
 
         # Need to make an explicit instance for the node to be stored to aiida.
