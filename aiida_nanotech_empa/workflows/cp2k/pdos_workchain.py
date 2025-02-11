@@ -158,12 +158,16 @@ class Cp2kPdosWorkChain(engine.WorkChain):
 
         if self.ctx.n_slab_atoms < 500:
             n_machines = 1
+            walltime = 7200
         elif self.ctx.n_slab_atoms < 1000:
             n_machines = 2
+            walltime = 14400
         elif self.ctx.n_slab_atoms < 2000:
             n_machines = 4
+            walltime = 36000
         else:
             n_machines = 8
+            walltime = 86400
 
         builder.metadata = {
             "label": "overlap",
@@ -176,7 +180,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
                     ),
                     "num_cores_per_mpiproc": 1,
                 },
-                "max_wallclock_seconds": 86400,
+                "max_wallclock_seconds": walltime,
             },
         }
 
