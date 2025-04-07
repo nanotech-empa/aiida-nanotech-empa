@@ -34,7 +34,7 @@ class NanoribbonWorkChain(engine.WorkChain):
         spec.input(
             "wall_seconds",
             valid_type=orm.Int,
-            default=lambda: orm.Int(600),
+            default=lambda: orm.Int(3600),
             required=False,
         )
         spec.input("pw_code", valid_type=orm.Code)
@@ -220,7 +220,7 @@ class NanoribbonWorkChain(engine.WorkChain):
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
             },
-            "max_wallclock_seconds": 1200,  # 30 minutes
+            "max_wallclock_seconds": 1800,  # 30 minutes
             "withmpi": True,
         }
         builder.settings = orm.Dict({"cmdline": ["-npools", str(npools)]})
@@ -293,7 +293,7 @@ class NanoribbonWorkChain(engine.WorkChain):
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": nproc_mach,
             },
-            "max_wallclock_seconds": self.inputs.wall_seconds.value,  # hours
+            "max_wallclock_seconds": self.inputs.wall_seconds.value,  # default 1 hour, max 24 hours
             "withmpi": True,
         }
 
