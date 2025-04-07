@@ -293,7 +293,7 @@ class NanoribbonWorkChain(engine.WorkChain):
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": nproc_mach,
             },
-            "max_wallclock_seconds": self.inputs.wall_seconds.value,  # max 24 hours
+            "max_wallclock_seconds": self.inputs.wall_seconds.value,  # default 1 hour, max 24 hours
             "withmpi": True,
         }
 
