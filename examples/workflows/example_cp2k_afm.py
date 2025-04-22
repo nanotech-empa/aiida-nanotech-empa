@@ -14,7 +14,6 @@ GEO_FILE = "c2h2_on_au111.xyz"
 def _example_cp2k_afm(
     cp2k_code,
     afm_code1,
-    afm_code2,
     sc_diag,
     force_multiplicity,
     uks,
@@ -77,7 +76,7 @@ def _example_cp2k_afm(
         )
 
     builder.afm_pp_code = afm_code1
-    builder.afm_2pp_code = afm_code2
+    #builder.afm_2pp_code = afm_code2
 
     cell = ase_geom.cell
     top_z = np.max(ase_geom.positions[:, 2])
@@ -106,65 +105,65 @@ def _example_cp2k_afm(
             "f0Cantilever": f0,
         }
     )
-    paramdata2 = orm.Dict(
-        {
-            "Catom": 6,
-            "Oatom": 8,
-            "ChargeCuUp": -0.0669933,
-            "ChargeCuDown": -0.0627402,
-            "Ccharge": 0.212718,
-            "Ocharge": -0.11767,
-            "sigma": 0.7,
-            "Cklat": 0.24600212465950813,
-            "Oklat": 0.15085476515590224,
-            "Ckrad": 20,
-            "Okrad": 20,
-            "rC0": [0.0, 0.0, 1.82806112489999961213],
-            "rO0": [0.0, 0.0, 1.14881347770000097341],
-            "PBC": "False",
-            "gridA": list(cell[0]),
-            "gridB": list(cell[1]),
-            "gridC": list(cell[2]),
-            "scanMin": [0.0, 0.0, np.round(top_z, 1) + scanminz],
-            "scanMax": [cell[0, 0], cell[1, 1], np.round(top_z, 1) + scanmaxz],
-            "scanStep": [dx, dx, dx],
-            "Amplitude": amp,
-            "f0Cantilever": f0,
-            "tip": "None",
-            "Omultipole": "s",
-        }
-    )
+    # paramdata2 = orm.Dict(
+    #     {
+    #         "Catom": 6,
+    #         "Oatom": 8,
+    #         "ChargeCuUp": -0.0669933,
+    #         "ChargeCuDown": -0.0627402,
+    #         "Ccharge": 0.212718,
+    #         "Ocharge": -0.11767,
+    #         "sigma": 0.7,
+    #         "Cklat": 0.24600212465950813,
+    #         "Oklat": 0.15085476515590224,
+    #         "Ckrad": 20,
+    #         "Okrad": 20,
+    #         "rC0": [0.0, 0.0, 1.82806112489999961213],
+    #         "rO0": [0.0, 0.0, 1.14881347770000097341],
+    #         "PBC": "False",
+    #         "gridA": list(cell[0]),
+    #         "gridB": list(cell[1]),
+    #         "gridC": list(cell[2]),
+    #         "scanMin": [0.0, 0.0, np.round(top_z, 1) + scanminz],
+    #         "scanMax": [cell[0, 0], cell[1, 1], np.round(top_z, 1) + scanmaxz],
+    #         "scanStep": [dx, dx, dx],
+    #         "Amplitude": amp,
+    #         "f0Cantilever": f0,
+    #         "tip": "None",
+    #         "Omultipole": "s",
+    #     }
+    # )
     builder.afm_pp_params = paramdata1
-    builder.afm_2pp_params = paramdata2
+    #builder.afm_2pp_params = paramdata2
 
     _, calc_node = engine.run_get_node(builder)
 
     assert calc_node.is_finished_ok
 
 
-def example_cp2k_afm_no_sc_diag(cp2k_code, afm_code1, afm_code2):
-    _example_cp2k_afm(cp2k_code, afm_code1, afm_code2, False, True, False)
+def example_cp2k_afm_no_sc_diag(cp2k_code, afm_code1):
+    _example_cp2k_afm(cp2k_code, afm_code1, False, True, False)
 
 
-def example_cp2k_afm_sc_diag(cp2k_code, afm_code1, afm_code2):
-    _example_cp2k_afm(cp2k_code, afm_code1, afm_code2, True, True, True)
+def example_cp2k_afm_sc_diag(cp2k_code, afm_code1):
+    _example_cp2k_afm(cp2k_code, afm_code1, True, True, True)
 
 
 @click.command("cli")
 @click.argument("cp2k_code", default="cp2k@localhost")
 @click.argument("ppafm_code", default="ppafm@localhost")
-@click.argument("ppafm2_code", default="2ppafm@localhost")
+#@click.argument("ppafm2_code", default="2ppafm@localhost")
 @click.option("-n", "--n-nodes", default=1)
 @click.option("-c", "--n-cores-per-node", default=1)
-def run_all(cp2k_code, ppafm_code, ppafm2_code, n_nodes, n_cores_per_node):
+def run_all(cp2k_code, ppafm_code, n_nodes, n_cores_per_node):
     print("#### no sc_diag UKS no force")
     _example_cp2k_afm(
         cp2k_code=orm.load_code(cp2k_code),
         afm_code1=orm.load_code(ppafm_code),
-        afm_code2=orm.load_code(ppafm2_code),
+        #afm_code2=orm.load_code(ppafm2_code),
         sc_diag=False,
         force_multiplicity=False,
-        uks=True,
+        uks=False,
         n_nodes=n_nodes,
         n_cores_per_node=n_cores_per_node,
     )

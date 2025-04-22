@@ -35,8 +35,8 @@ class Cp2kAfmWorkChain(engine.WorkChain):
 
         spec.input("afm_pp_code", valid_type=orm.Code)
         spec.input("afm_pp_params", valid_type=orm.Dict)
-        spec.input("afm_2pp_code", valid_type=orm.Code)
-        spec.input("afm_2pp_params", valid_type=orm.Dict)
+        spec.input("afm_2pp_code", valid_type=orm.Code, required=False)
+        spec.input("afm_2pp_params", valid_type=orm.Dict, required=False)
 
         spec.outline(
             cls.setup,
@@ -63,25 +63,39 @@ class Cp2kAfmWorkChain(engine.WorkChain):
         if "smear_t" in self.ctx.dft_params:
             added_mos = np.max([100, int(1.2 * n_atoms * 2 / 5.0)])
             self.ctx.dft_params["added_mos"] = added_mos
-        self.ctx.files = {
-            "geo_no_labels": cp2k_utils.make_geom_file(ase_geom, "geom.xyz"),
-            "pp": orm.SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "atomtypes_pp.ini",
-                )
-            ),
-            "2pp": orm.SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "atomtypes_2pp.ini",
-                )
-            ),
-        }
+        self.ctx.afm_2pp = "afm_2pp_code" in self.inputs
+        if self.ctx.afm_2pp:
+            self.ctx.files = {
+                "geo_no_labels": cp2k_utils.make_geom_file(ase_geom, "geom.xyz"),
+                "pp": orm.SinglefileData(
+                    file=os.path.join(
+                        os.path.dirname(os.path.realpath(__file__)),
+                        ".",
+                        "data",
+                        "atomtypes_pp.ini",
+                    )
+                ),
+                "2pp": orm.SinglefileData(
+                    file=os.path.join(
+                        os.path.dirname(os.path.realpath(__file__)),
+                        ".",
+                        "data",
+                        "atomtypes_2pp.ini",
+                    )
+                ),
+            }
+        else:
+            self.ctx.files = {
+                "geo_no_labels": cp2k_utils.make_geom_file(ase_geom, "geom.xyz"),
+                "pp": orm.SinglefileData(
+                    file=os.path.join(
+                        os.path.dirname(os.path.realpath(__file__)),
+                        ".",
+                        "data",
+                        "atomtypes_pp.ini",
+                    )
+                ),
+            }
 
     def run_diag_scf(self):
         self.report("Running CP2K diagonalization SCF")
@@ -124,37 +138,42 @@ class Cp2kAfmWorkChain(engine.WorkChain):
         afm_pp_future = self.submit(AfmCalculation, **afm_pp_inputs)
         self.to_context(afm_pp=afm_pp_future)
 
-        self.report("Running 2PP")
+        if not self.ctx.afm_2pp:
+            self.report("No 2PP calculation requested")
+        else:
+            self.report("Running 2PP")
 
-        afm_2pp_inputs = {}
-        afm_2pp_inputs["geo_no_labels"] = self.ctx.files["geo_no_labels"]
-        afm_2pp_inputs["metadata"] = {}
-        afm_2pp_inputs["metadata"]["label"] = "afm_2pp"
-        afm_2pp_inputs["code"] = self.inputs.afm_2pp_code
-        afm_2pp_inputs["parameters"] = self.inputs.afm_2pp_params
-        afm_2pp_inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
-        afm_2pp_inputs["atomtypes"] = self.ctx.files["2pp"]
-        afm_2pp_inputs["metadata"]["options"] = {
-            "max_wallclock_seconds": 86000,
-            "resources": {
-                "num_machines": 1,
-                "num_mpiprocs_per_machine": 1,
-                "num_cores_per_mpiproc": 1,
-            },
-        }
-        self.report("Afm 2pp inputs: " + str(afm_2pp_inputs))
-        afm_2pp_future = self.submit(AfmCalculation, **afm_2pp_inputs)
-        self.to_context(afm_2pp=afm_2pp_future)
+            afm_2pp_inputs = {}
+            afm_2pp_inputs["geo_no_labels"] = self.ctx.files["geo_no_labels"]
+            afm_2pp_inputs["metadata"] = {}
+            afm_2pp_inputs["metadata"]["label"] = "afm_2pp"
+            afm_2pp_inputs["code"] = self.inputs.afm_2pp_code
+            afm_2pp_inputs["parameters"] = self.inputs.afm_2pp_params
+            afm_2pp_inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
+            afm_2pp_inputs["atomtypes"] = self.ctx.files["2pp"]
+            afm_2pp_inputs["metadata"]["options"] = {
+                "max_wallclock_seconds": 86000,
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
+                    "num_cores_per_mpiproc": 1,
+                },
+            }
+            self.report("Afm 2pp inputs: " + str(afm_2pp_inputs))
+            afm_2pp_future = self.submit(AfmCalculation, **afm_2pp_inputs)
+            self.to_context(afm_2pp=afm_2pp_future)
 
     def finalize(self):
+        pp2_worked = True
         retrieved_list = [
             obj.name for obj in self.ctx.afm_pp.outputs.retrieved.list_objects()
         ]
         pp_worked = "df.npy" in retrieved_list and "df_vec.npy" in retrieved_list
-        retrieved_list = [
-            obj.name for obj in self.ctx.afm_2pp.outputs.retrieved.list_objects()
-        ]
-        pp2_worked = "df.npy" in retrieved_list and "df_vec.npy" in retrieved_list
+        if self.ctx.afm_2pp:
+            retrieved_list = [
+                obj.name for obj in self.ctx.afm_2pp.outputs.retrieved.list_objects()
+            ]
+            pp2_worked = "df.npy" in retrieved_list and "df_vec.npy" in retrieved_list
         if not pp_worked or not pp2_worked:
             self.report("AFM calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
