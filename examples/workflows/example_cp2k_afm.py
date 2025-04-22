@@ -76,7 +76,7 @@ def _example_cp2k_afm(
         )
 
     builder.afm_pp_code = afm_code1
-    #builder.afm_2pp_code = afm_code2
+    # builder.afm_2pp_code = afm_code2
 
     cell = ase_geom.cell
     top_z = np.max(ase_geom.positions[:, 2])
@@ -134,7 +134,7 @@ def _example_cp2k_afm(
     #     }
     # )
     builder.afm_pp_params = paramdata1
-    #builder.afm_2pp_params = paramdata2
+    # builder.afm_2pp_params = paramdata2
 
     _, calc_node = engine.run_get_node(builder)
 
@@ -152,7 +152,7 @@ def example_cp2k_afm_sc_diag(cp2k_code, afm_code1):
 @click.command("cli")
 @click.argument("cp2k_code", default="cp2k@localhost")
 @click.argument("ppafm_code", default="ppafm@localhost")
-#@click.argument("ppafm2_code", default="2ppafm@localhost")
+# @click.argument("ppafm2_code", default="2ppafm@localhost")
 @click.option("-n", "--n-nodes", default=1)
 @click.option("-c", "--n-cores-per-node", default=1)
 def run_all(cp2k_code, ppafm_code, n_nodes, n_cores_per_node):
@@ -160,7 +160,7 @@ def run_all(cp2k_code, ppafm_code, n_nodes, n_cores_per_node):
     _example_cp2k_afm(
         cp2k_code=orm.load_code(cp2k_code),
         afm_code1=orm.load_code(ppafm_code),
-        #afm_code2=orm.load_code(ppafm2_code),
+        # afm_code2=orm.load_code(ppafm2_code),
         sc_diag=False,
         force_multiplicity=False,
         uks=False,

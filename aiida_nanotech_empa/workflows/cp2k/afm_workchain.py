@@ -149,7 +149,9 @@ class Cp2kAfmWorkChain(engine.WorkChain):
             afm_2pp_inputs["metadata"]["label"] = "afm_2pp"
             afm_2pp_inputs["code"] = self.inputs.afm_2pp_code
             afm_2pp_inputs["parameters"] = self.inputs.afm_2pp_params
-            afm_2pp_inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
+            afm_2pp_inputs["parent_calc_folder"] = (
+                self.ctx.diag_scf.outputs.remote_folder
+            )
             afm_2pp_inputs["atomtypes"] = self.ctx.files["2pp"]
             afm_2pp_inputs["metadata"]["options"] = {
                 "max_wallclock_seconds": 86000,
