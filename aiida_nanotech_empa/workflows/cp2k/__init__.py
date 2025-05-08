@@ -10,6 +10,7 @@ from .neb_workchain import Cp2kNebWorkChain
 from .orbitals_workchain import Cp2kOrbitalsWorkChain
 from .pdos_workchain import Cp2kPdosWorkChain
 from .phonons_workchain import Cp2kPhononsWorkChain
+from .reftraj_md_workchain import Cp2kRefTrajWorkChain
 from .replica_workchain import Cp2kReplicaWorkChain
 from .stm_workchain import Cp2kStmWorkChain
 from .cp2k_benchmark_workchain import Cp2kBenchmarkWorkChain
@@ -30,4 +31,5 @@ __all__ = (
     "Cp2kNebWorkChain",
     "Cp2kPhononsWorkChain",
     "Cp2kBenchmarkWorkChain",
+    "Cp2kRefTrajWorkChain",
 )

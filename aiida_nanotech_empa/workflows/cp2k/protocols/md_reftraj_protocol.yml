@@ -1,0 +1,258 @@
+standard:
+    GLOBAL:
+        EXTENDED_FFT_LENGTHS: ''
+        PRINT_LEVEL: MEDIUM
+        RUN_TYPE: MD
+        WALLTIME: '600'
+        ELPA_KERNEL: AUTO
+    MOTION:
+        MD:
+            STEPS: '1'
+            ENSEMBLE: 'REFTRAJ'
+            REFTRAJ:
+                FIRST_SNAPSHOT: '1'
+                LAST_SNAPSHOT: '1'
+                STRIDE: '1'
+                EVAL_FORCES: '.TRUE.'
+                TRAJ_FILE_NAME: 'aiida-reftraj.xyz'
+                VARIABLE_VOLUME: .TRUE.
+                CELL_FILE_NAME: 'aiida-reftraj.cell'
+        PRINT:
+            RESTART_HISTORY:
+                _: 'OFF'
+            RESTART:
+                EACH:
+                    MD: '10'
+            FORCES:
+                EACH:
+                    MD: '1'
+                FORMAT: 'XYZ'
+            CELL:
+                EACH:
+                    MD: '1'
+    FORCE_EVAL:
+        METHOD: Quickstep
+        SUBSYS:
+            CELL:
+                PERIODIC: XYZ
+                SYMMETRY: ORTHORHOMBIC
+        DFT:
+            UKS: .FALSE.
+            MULTIPLICITY: '0'
+            CHARGE: '0'
+            BASIS_SET_FILE_NAME: BASIS_MOLOPT
+            POTENTIAL_FILE_NAME: POTENTIAL
+            RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+            MGRID:
+                CUTOFF: '600'
+                NGRIDS: '5'
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
+            QS:
+                EPS_DEFAULT: '1.0E-14'
+                EXTRAPOLATION: ASPC
+                EXTRAPOLATION_ORDER: '3'
+                METHOD: GPW
+            SCF:
+                SCF_GUESS: RESTART
+                EPS_SCF: '1.0E-7'
+                MAX_SCF: '40'
+                OT:
+                    MINIMIZER: CG
+                    PRECONDITIONER: FULL_SINGLE_INVERSE
+                OUTER_SCF:
+                    EPS_SCF: '1.0E-7'
+                    MAX_SCF: '50'
+                PRINT:
+                    RESTART:
+                        ADD_LAST: NUMERIC
+                        EACH:
+                            MD: '1'
+                        FILENAME: RESTART
+                    RESTART_HISTORY:
+                        _: 'OFF'
+                        BACKUP_COPIES: '0'
+            XC:
+                VDW_POTENTIAL:
+                    DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
+                    PAIR_POTENTIAL:
+                        CALCULATE_C9_TERM: .TRUE.
+                        PARAMETER_FILE_NAME: dftd3.dat
+                        REFERENCE_FUNCTIONAL: PBE
+                        R_CUTOFF: '15'
+                        TYPE: DFTD3
+                XC_FUNCTIONAL:
+                        _: PBE
+low_accuracy:
+    GLOBAL:
+        EXTENDED_FFT_LENGTHS: ''
+        PRINT_LEVEL: MEDIUM
+        RUN_TYPE: MD
+        WALLTIME: '600'
+        ELPA_KERNEL: AUTO
+    MOTION:
+        MD:
+            STEPS: '1'
+            ENSEMBLE: 'REFTRAJ'
+            REFTRAJ:
+                FIRST_SNAPSHOT: '1'
+                LAST_SNAPSHOT: '1'
+                STRIDE: '1'
+                EVAL_FORCES: '.TRUE.'
+                TRAJ_FILE_NAME: 'aiida-refttraj.xyz'
+                VARIABLE_VOLUME: .TRUE.
+                CELL_FILE_NAME: 'aiida-reftraj.cell'
+        PRINT:
+            RESTART_HISTORY:
+                _: 'OFF'
+            RESTART:
+                EACH:
+                    MD: '10'
+            FORCES:
+                EACH:
+                    MD: '1'
+                FORMAT: 'XYZ'
+            CELL:
+                EACH:
+                    MD: '1'
+    FORCE_EVAL:
+        METHOD: Quickstep
+        SUBSYS:
+            CELL:
+                PERIODIC: XYZ
+                SYMMETRY: ORTHORHOMBIC
+        DFT:
+            UKS: .FALSE.
+            MULTIPLICITY: '0'
+            CHARGE: '0'
+            BASIS_SET_FILE_NAME: BASIS_MOLOPT
+            POTENTIAL_FILE_NAME: POTENTIAL
+            RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+            MGRID:
+                CUTOFF: '600'
+                NGRIDS: '5'
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
+            QS:
+                EPS_DEFAULT: '1.0E-14'
+                EXTRAPOLATION: ASPC
+                EXTRAPOLATION_ORDER: '3'
+                METHOD: GPW
+            SCF:
+                SCF_GUESS: RESTART
+                EPS_SCF: '1.0E-7'
+                MAX_SCF: '40'
+                OT:
+                    MINIMIZER: CG
+                    PRECONDITIONER: FULL_SINGLE_INVERSE
+                OUTER_SCF:
+                    EPS_SCF: '1.0E-7'
+                    MAX_SCF: '50'
+                PRINT:
+                    RESTART:
+                        ADD_LAST: NUMERIC
+                        EACH:
+                            MD: '1'
+                        FILENAME: RESTART
+                    RESTART_HISTORY:
+                        _: 'OFF'
+                        BACKUP_COPIES: '0'
+            XC:
+                VDW_POTENTIAL:
+                    DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
+                    PAIR_POTENTIAL:
+                        CALCULATE_C9_TERM: .TRUE.
+                        PARAMETER_FILE_NAME: dftd3.dat
+                        REFERENCE_FUNCTIONAL: PBE
+                        R_CUTOFF: '15'
+                        TYPE: DFTD3
+                XC_FUNCTIONAL:
+                        _: PBE
+debug:
+    GLOBAL:
+        EXTENDED_FFT_LENGTHS: ''
+        PRINT_LEVEL: MEDIUM
+        RUN_TYPE: MD
+        WALLTIME: '600'
+        ELPA_KERNEL: AUTO
+    MOTION:
+        MD:
+            STEPS: '1'
+            ENSEMBLE: 'REFTRAJ'
+            REFTRAJ:
+                FIRST_SNAPSHOT: '1'
+                LAST_SNAPSHOT: '1'
+                STRIDE: '1'
+                EVAL_FORCES: '.TRUE.'
+                TRAJ_FILE_NAME: 'aiida-reftraj.xyz'
+                VARIABLE_VOLUME: .TRUE.
+                CELL_FILE_NAME: 'aiida-reftraj.cell'
+        PRINT:
+            RESTART_HISTORY:
+                _: 'OFF'
+            RESTART:
+                EACH:
+                    MD: '1'
+            FORCES:
+                EACH:
+                    MD: '1'
+                FORMAT: 'XYZ'
+            CELL:
+                EACH:
+                    MD: '1'
+    FORCE_EVAL:
+        METHOD: Quickstep
+        SUBSYS:
+            CELL:
+                PERIODIC: XYZ
+                SYMMETRY: ORTHORHOMBIC
+        DFT:
+            UKS: .FALSE.
+            MULTIPLICITY: '0'
+            CHARGE: '0'
+            BASIS_SET_FILE_NAME: BASIS_MOLOPT
+            POTENTIAL_FILE_NAME: POTENTIAL
+            RESTART_FILE_NAME: ./parent_calc/aiida-RESTART.wfn
+            MGRID:
+                CUTOFF: '600'
+                NGRIDS: '5'
+            POISSON:
+                PERIODIC: XYZ
+                POISSON_SOLVER: PERIODIC
+            QS:
+                EPS_DEFAULT: '1.0E-12'
+                EXTRAPOLATION: ASPC
+                EXTRAPOLATION_ORDER: '3'
+                METHOD: GPW
+            SCF:
+                SCF_GUESS: RESTART
+                EPS_SCF: '1.0E-1'
+                MAX_SCF: '40'
+                OT:
+                    MINIMIZER: CG
+                    PRECONDITIONER: FULL_SINGLE_INVERSE
+                OUTER_SCF:
+                    EPS_SCF: '1.0E-1'
+                    MAX_SCF: '50'
+                PRINT:
+                    RESTART:
+                        ADD_LAST: NUMERIC
+                        EACH:
+                            MD: '1'
+                        FILENAME: RESTART
+                    RESTART_HISTORY:
+                        _: 'OFF'
+                        BACKUP_COPIES: '0'
+            XC:
+                VDW_POTENTIAL:
+                    DISPERSION_FUNCTIONAL: PAIR_POTENTIAL
+                    PAIR_POTENTIAL:
+                        CALCULATE_C9_TERM: .TRUE.
+                        PARAMETER_FILE_NAME: dftd3.dat
+                        REFERENCE_FUNCTIONAL: PBE
+                        R_CUTOFF: '15'
+                        TYPE: DFTD3
+                XC_FUNCTIONAL:
+                        _: PBE
