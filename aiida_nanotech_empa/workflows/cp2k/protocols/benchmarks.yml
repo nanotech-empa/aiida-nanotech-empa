@@ -50,4 +50,4 @@ scf_ot_no_wfn:
                         TYPE: DFTD3
                 XC_FUNCTIONAL:
                     _: PBE
-            
+
