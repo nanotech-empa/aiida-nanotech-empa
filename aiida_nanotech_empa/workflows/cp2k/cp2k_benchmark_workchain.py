@@ -266,9 +266,6 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
             "pseudo": orm.SinglefileData(
                 file=pathlib.Path(__file__).parent / "data" / "POTENTIAL"
             ),
-            #"mpswrapper": orm.SinglefileData(
-            #    file=pathlib.Path(__file__).parent / "data" / "mps-wrapper.sh"
-            #),
         }
         self.ctx.input_dict = cp2k_utils.load_protocol(
                 "benchmarks.yml", self.inputs.protocol.value)
