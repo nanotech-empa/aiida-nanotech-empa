@@ -121,7 +121,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
         retrieved_list = [
             obj.name for obj in self.ctx.ppafm.outputs.retrieved.list_objects()
         ]
-        pp_worked = "df.npy" in retrieved_list and "df_vec.npy" in retrieved_list
+        pp_worked = "df.npz" in retrieved_list
         if not pp_worked:
             self.report("AFM calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
