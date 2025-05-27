@@ -40,9 +40,9 @@ def _example_gaussian_spin(gaussian_code):  # , formchk_code, cubegen_code):
     _, wc_node = engine.run_get_node(builder)
 
     assert wc_node.is_finished_ok
-    
+
     print("Charged case")
-    ase_geom.symbols[0]="N"
+    ase_geom.symbols[0] = "N"
     builder = GaussianRelaxWorkChain.get_builder()
     builder.gaussian_code = gaussian_code
     # builder.formchk_code = formchk_code

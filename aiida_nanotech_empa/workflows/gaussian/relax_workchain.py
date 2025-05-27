@@ -217,7 +217,7 @@ class GaussianRelaxWorkChain(engine.WorkChain):
         num_cores, memory_mb = common.get_gaussian_cores_and_memory(
             self.ctx.metadata_options, self.ctx.comp
         )
-        
+
         self.report(f"the charge is {self.ctx.charge}")
         self.ctx.link0 = {
             "%chk": "aiida.chk",

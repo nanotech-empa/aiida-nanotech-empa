@@ -36,7 +36,7 @@ class GaussianScfWorkChain(engine.WorkChain):
             required=False,
             default=lambda: orm.Int(0),
             help="Charge of the system",
-        )        
+        )
         spec.input(
             "wfn_stable_opt",
             valid_type=orm.Bool,
