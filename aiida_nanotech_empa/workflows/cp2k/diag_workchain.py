@@ -155,6 +155,11 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             600, self.ctx.options["max_wallclock_seconds"] - 600
         )
 
+        # Switch on restart_incomplete_calculation handler disabled by default.
+        builder.handler_overrides = orm.Dict(
+            {"restart_incomplete_calculation": {"enabled": True}}
+        )
+
         builder.cp2k.metadata.options = self.ctx.options
 
         # Parser.
@@ -251,6 +256,11 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             builder.cp2k.settings = self.inputs.settings
 
         builder.cp2k.parent_calc_folder = self.ctx.ot_scf.outputs.remote_folder
+
+        # Switch on restart_incomplete_calculation handler disabled by default.
+        builder.handler_overrides = orm.Dict(
+            {"restart_incomplete_calculation": {"enabled": True}}
+        )
 
         builder.cp2k.metadata.options = self.ctx.options
 
