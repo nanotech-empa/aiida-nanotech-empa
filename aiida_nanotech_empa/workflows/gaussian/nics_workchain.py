@@ -67,6 +67,13 @@ class GaussianNicsWorkChain(engine.WorkChain):
             help="spin multiplicity; 0 means RKS",
         )
         spec.input(
+            "charge",
+            valid_type=orm.Int,
+            required=False,
+            default=lambda: orm.Int(0),
+            help="Charge of the system",
+        )
+        spec.input(
             "wfn_stable_opt",
             valid_type=orm.Bool,
             required=False,
@@ -107,6 +114,7 @@ class GaussianNicsWorkChain(engine.WorkChain):
         self.report("Setting up...")
         self.ctx.nmr_structure = self.inputs.structure
         self.ctx_should_opt = getattr(self.inputs, "opt", True)
+        self.ctx.charge = self.inputs.charge.value
 
     def should_submit_opt(self):
         return self.ctx_should_opt
@@ -121,6 +129,7 @@ class GaussianNicsWorkChain(engine.WorkChain):
         builder.empirical_dispersion = self.inputs.empirical_dispersion
         builder.basis_set = self.inputs.basis_set
         builder.multiplicity = self.inputs.multiplicity
+        builder.charge = self.ctx.charge
         builder.tight = orm.Bool(True)
         builder.int = orm.Str("superfine")
         builder.cdiis = orm.Bool(True)
@@ -154,6 +163,7 @@ class GaussianNicsWorkChain(engine.WorkChain):
         builder.functional = self.inputs.functional
         builder.basis_set = self.inputs.basis_set
         builder.multiplicity = self.inputs.multiplicity
+        builder.charge = self.ctx.charge
         builder.int = orm.Str("superfine")
         builder.cdiis = orm.Bool(True)
         builder.nmr = orm.Bool(True)

@@ -11,6 +11,7 @@ OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def _example_gaussian_spin(gaussian_code):  # , formchk_code, cubegen_code):
+    print("Neutral case")
     ase_geom = ase.io.read(os.path.join(DATA_DIR, "benzene.xyz"))
     ase_geom.cell = np.diag([10.0, 10.0, 10.0])
 
@@ -24,6 +25,35 @@ def _example_gaussian_spin(gaussian_code):  # , formchk_code, cubegen_code):
     builder.basis_set = orm.Str("6-311+G(d,p)")
     # builder.basis_set_scf = orm.Str("STO-3G")
     builder.multiplicity = orm.Int(0)
+    builder.tight = orm.Bool(True)
+    builder.options = orm.Dict(
+        {
+            "resources": {
+                "tot_num_mpiprocs": 4,
+                "num_machines": 1,
+            },
+            "max_wallclock_seconds": 1 * 60 * 60,
+            "max_memory_kb": 4 * 1024 * 1024,
+        }
+    )
+
+    _, wc_node = engine.run_get_node(builder)
+
+    assert wc_node.is_finished_ok
+
+    print("Charged case")
+    ase_geom.symbols[0] = "N"
+    builder = GaussianRelaxWorkChain.get_builder()
+    builder.gaussian_code = gaussian_code
+    # builder.formchk_code = formchk_code
+    # builder.cubegen_code = cubegen_code
+    builder.structure = orm.StructureData(ase=ase_geom)
+    builder.functional = orm.Str("B3LYP")
+    builder.empirical_dispersion = orm.Str("GD3")
+    builder.basis_set = orm.Str("6-311+G(d,p)")
+    # builder.basis_set_scf = orm.Str("STO-3G")
+    builder.multiplicity = orm.Int(1)
+    builder.charge = orm.Int(1)
     builder.tight = orm.Bool(True)
     builder.options = orm.Dict(
         {
