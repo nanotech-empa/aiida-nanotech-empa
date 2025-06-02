@@ -100,7 +100,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
             "metadata": {
                 "label": "ppafm",
                 "options": {
-                    "max_wallclock_seconds": 86000,
+                    "max_wallclock_seconds": 3600,
                     "resources": {
                         "num_machines": 1,
                         "num_mpiprocs_per_machine": 1,
