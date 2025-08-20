@@ -14,7 +14,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        
+
         # Do overlap.
         spec.input("do_overlap", valid_type=orm.Bool, default=lambda: orm.Bool(False))
 
@@ -81,7 +81,9 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         )
 
         self.ctx.n_slab_atoms = len(self.inputs.structure.sites)
-        self.ctx.do_overlap = self.inputs.do_overlap.value and self.inputs.overlap_code is not None
+        self.ctx.do_overlap = (
+            self.inputs.do_overlap.value and self.inputs.overlap_code is not None
+        )
         emax = float(self.inputs.overlap_params.get_dict()["--emax1"])
         nlumo = int(self.inputs.overlap_params.get_dict()["--nlumo2"])
 
