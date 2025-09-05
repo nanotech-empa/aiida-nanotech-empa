@@ -1,6 +1,7 @@
 import pathlib
 
 from aiida import engine, orm, plugins
+from aiida_shell import launch_shell_job
 
 from ...utils import analyze_structure, common_utils, split_structure
 from . import cp2k_utils
@@ -18,7 +19,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
     def define(cls, spec):
         super().define(spec)
         spec.input("code", valid_type=orm.Code)
-
+        spec.input("cubehandler_code", valid_type=orm.Code, required=False)
         # Specify the input structure and its fragments.
         spec.input(
             "structure", valid_type=StructureData, help="A molecule on a substrate."
@@ -78,7 +79,10 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
 
         # Outline.
-        spec.outline(cls.setup, cls.run_scfs, cls.run_geo_opts, cls.finalize)
+        spec.outline(cls.setup, cls.run_scfs, cls.run_geo_opts, engine.if_(cls.should_run_cubehandler)(
+                         cls.run_cubehandler,
+                         ),
+                     cls.finalize)
 
         # Dynamic outputs.
         spec.outputs.dynamic = True
@@ -89,7 +93,10 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
-
+    
+    def should_run_cubehandler(self):
+        return "cubehandler_code" in self.inputs
+    
     def setup(self):
         """Setup the work chain."""
 
@@ -164,7 +171,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             # Always compute charge density with STRIDE 2 2 2 for the SCF part of the work chain.
             input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"][
                 "STRIDE"
-            ] = "2 2 2"
+            ] = "1 1 1"
 
             # If charge is set, add it to the corresponding section of the input.
             if (
@@ -249,6 +256,76 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             submitted_node = self.submit(builder)
             self.to_context(**{f"opt.{fragment}": submitted_node})
+            
+    def run_cubehandler(self):
+        """Run cubehandler to build a charge-difference cube via linear combination."""
+        self.report("Running CubeHandler (sum)")
+
+        # Ensure geometry/SCF steps succeeded for each fragment we expect
+        # Prefer order: 'all' first (if present), then the rest in declared order
+        frags = list(self.inputs.fragments.keys())
+        if "all" in frags:
+            frags = ["all"] + [f for f in frags if f != "all"]
+
+        # Collect remote folders and construct file paths
+        nodes_map = {}       # label -> remote_folder node
+        files_map = {}     # extra files to symlink into the workdir of the cubehandler job
+        cube_paths = []      # "<label>/charge.cube" for each fragment
+
+        for fragment in frags:
+            scf_node = self.ctx.scf[fragment]
+            if  scf_node is None or not common_utils.check_if_calc_ok(self, scf_node):
+                return self.exit_codes.ERROR_TERMINATION
+
+            # Symlink each remote folder into the working dir under a stable name
+            label = fragment  # keep it simple; symlink directory name == fragment
+            label_path = scf_node.outputs.remote_folder.get_remote_path()
+
+            # Path to the cube inside that remote directory
+            # NOTE: this assumes CP2K printed the density to "aiida-ELECTRON_DENSITY-1_1.cube".
+            # If your filename differs, change just the basename here.
+            cube_paths.append(f"{label_path}/aiida-ELECTRON_DENSITY-1_0.cube")
+
+        # Choose weights: default is 1.0 for the first (usually 'all') and -1.0 for the rest
+        weights = [1.0] + [-1.0] * (len(cube_paths) - 1)
+
+        # Build --sum spec: file1,...,fileN,w1,...,wN
+        sum_spec = ",".join(cube_paths + [str(w) for w in weights])
+
+        # Launch the shell job that runs: cubehandler sum --sum "<spec>" charge_diff.cube
+        arguments = ["sum", "--no-low-precision", "--files-and-weights", sum_spec, "ChargeDiff.cube"]
+
+        _, node_high = launch_shell_job(
+            self.inputs.cubehandler_code,
+            arguments=arguments,
+            metadata={
+                "options": {
+                    "use_symlinks": True,  # required so <fragment>/ points to the remote folders
+                },
+                "label": "ChargeDiff-highres",
+            },
+            # Expose all fragment remotes; they will appear in the workdir as directories named like the keys of nodes_map
+            #nodes=nodes_map,
+            #filenames=files_map,
+            #outputs=["out_cubes"],  # retrieve this file
+        )
+        arguments=["shrink", ".", "out_cubes"]
+        _, node_low = launch_shell_job(
+            self.inputs.cubehandler_code,
+            arguments=arguments,
+            metadata={
+                "options": {
+                    "use_symlinks": True,  # required so <fragment>/ points to the remote folders
+                },
+                "label": "ChargeDiff-lowres",
+            },
+            # Expose all fragment remotes; they will appear in the workdir as directories named like the keys of nodes_map
+            nodes={"remote_previous_job": node_high.outputs.remote_folder},
+            #filenames=files_map,
+            outputs=["out_cubes"],  # retrieve this file
+        )
+        self.ctx.cubehandler_uuid = node_low.uuid
+
 
     def finalize(self):
         energies = {}
@@ -278,3 +355,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
         # Add the workchain pk to the input structure extras
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
+        if "cubehandler_code" in self.inputs:
+            common_utils.add_extras(
+                self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid
+                )
