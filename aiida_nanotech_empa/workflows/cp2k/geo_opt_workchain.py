@@ -35,12 +35,14 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         )
 
         # Workchain outline.
-        spec.outline(cls.setup, 
-                     cls.submit_calc, 
-                     engine.if_(cls.should_run_cubehandler)(
-                         cls.run_cubehandler,
-                         ),
-                     cls.finalize)
+        spec.outline(
+            cls.setup,
+            cls.submit_calc,
+            engine.if_(cls.should_run_cubehandler)(
+                cls.run_cubehandler,
+            ),
+            cls.finalize,
+        )
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -48,9 +50,10 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+
     def should_run_cubehandler(self):
         return "cubehandler_code" in self.inputs
-    
+
     def setup(self):
         self.report("Inspecting input and setting up things")
 
@@ -206,10 +209,10 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             arguments=["shrink", ".", "out_cubes", "--exclude", "*WFN*.cube"],
             metadata={
                 "options": {
-                    #"prepend_text": "conda activate cubehandler",
+                    # "prepend_text": "conda activate cubehandler",
                     "use_symlinks": True,
                 },
-                #"computer": orm.load_computer("daint-gpu"),
+                # "computer": orm.load_computer("daint-gpu"),
                 "label": "charge-lowres",
             },
             nodes={"remote_previous_job": self.ctx.geo_opt.outputs.remote_folder},
@@ -232,6 +235,6 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         if "cubehandler_code" in self.inputs:
             common_utils.add_extras(
                 self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid
-                )
+            )
 
         return engine.ExitCode(0)

@@ -79,10 +79,15 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
 
         # Outline.
-        spec.outline(cls.setup, cls.run_scfs, cls.run_geo_opts, engine.if_(cls.should_run_cubehandler)(
-                         cls.run_cubehandler,
-                         ),
-                     cls.finalize)
+        spec.outline(
+            cls.setup,
+            cls.run_scfs,
+            cls.run_geo_opts,
+            engine.if_(cls.should_run_cubehandler)(
+                cls.run_cubehandler,
+            ),
+            cls.finalize,
+        )
 
         # Dynamic outputs.
         spec.outputs.dynamic = True
@@ -93,10 +98,10 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
-    
+
     def should_run_cubehandler(self):
         return "cubehandler_code" in self.inputs
-    
+
     def setup(self):
         """Setup the work chain."""
 
@@ -256,7 +261,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             submitted_node = self.submit(builder)
             self.to_context(**{f"opt.{fragment}": submitted_node})
-            
+
     def run_cubehandler(self):
         """Run cubehandler to build a charge-difference cube via linear combination."""
         self.report("Running CubeHandler (sum)")
@@ -268,13 +273,13 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             frags = ["all"] + [f for f in frags if f != "all"]
 
         # Collect remote folders and construct file paths
-        nodes_map = {}       # label -> remote_folder node
-        files_map = {}     # extra files to symlink into the workdir of the cubehandler job
-        cube_paths = []      # "<label>/charge.cube" for each fragment
+        nodes_map = {}  # label -> remote_folder node
+        files_map = {}  # extra files to symlink into the workdir of the cubehandler job
+        cube_paths = []  # "<label>/charge.cube" for each fragment
 
         for fragment in frags:
             scf_node = self.ctx.scf[fragment]
-            if  scf_node is None or not common_utils.check_if_calc_ok(self, scf_node):
+            if scf_node is None or not common_utils.check_if_calc_ok(self, scf_node):
                 return self.exit_codes.ERROR_TERMINATION
 
             # Symlink each remote folder into the working dir under a stable name
@@ -293,7 +298,13 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         sum_spec = ",".join(cube_paths + [str(w) for w in weights])
 
         # Launch the shell job that runs: cubehandler sum --sum "<spec>" charge_diff.cube
-        arguments = ["sum", "--no-low-precision", "--files-and-weights", sum_spec, "ChargeDiff.cube"]
+        arguments = [
+            "sum",
+            "--no-low-precision",
+            "--files-and-weights",
+            sum_spec,
+            "ChargeDiff.cube",
+        ]
 
         _, node_high = launch_shell_job(
             self.inputs.cubehandler_code,
@@ -305,11 +316,11 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
                 "label": "ChargeDiff-highres",
             },
             # Expose all fragment remotes; they will appear in the workdir as directories named like the keys of nodes_map
-            #nodes=nodes_map,
-            #filenames=files_map,
-            #outputs=["out_cubes"],  # retrieve this file
+            # nodes=nodes_map,
+            # filenames=files_map,
+            # outputs=["out_cubes"],  # retrieve this file
         )
-        arguments=["shrink", ".", "out_cubes"]
+        arguments = ["shrink", ".", "out_cubes"]
         _, node_low = launch_shell_job(
             self.inputs.cubehandler_code,
             arguments=arguments,
@@ -321,11 +332,10 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             },
             # Expose all fragment remotes; they will appear in the workdir as directories named like the keys of nodes_map
             nodes={"remote_previous_job": node_high.outputs.remote_folder},
-            #filenames=files_map,
+            # filenames=files_map,
             outputs=["out_cubes"],  # retrieve this file
         )
         self.ctx.cubehandler_uuid = node_low.uuid
-
 
     def finalize(self):
         energies = {}
@@ -358,4 +368,4 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         if "cubehandler_code" in self.inputs:
             common_utils.add_extras(
                 self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid
-                )
+            )
