@@ -203,7 +203,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         _, node = launch_shell_job(
             self.inputs.cubehandler_code,
-            arguments=["shrink", ".", "out_cubes"],
+            arguments=["shrink", ".", "out_cubes", "--exclude", "*WFN*.cube"],
             metadata={
                 "options": {
                     #"prepend_text": "conda activate cubehandler",
