@@ -55,7 +55,9 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         spec.outline(
             cls.setup,
             cls.run_diags,
-            cls.run_overlap,
+            engine.if_(cls.should_run_overlap)(
+                cls.run_overlap,
+            ),
             cls.finalize,
         )
 
@@ -152,12 +154,10 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             builder.options = orm.Dict(self.inputs.options["molecule"])
             self.to_context(mol_diag_scf=self.submit(builder))
 
+    def should_run_overlap(self):
+        return self.ctx.do_overlap
+
     def run_overlap(self):
-        if not self.ctx.do_overlap:
-            if not common_utils.check_if_calc_ok(self, self.ctx.slab_diag_scf):
-                return self.exit_codes.ERROR_TERMINATION
-            self.report("Skipping overlap")
-            return
         for calculation in [self.ctx.slab_diag_scf, self.ctx.mol_diag_scf]:
             if not common_utils.check_if_calc_ok(self, calculation):
                 return self.exit_codes.ERROR_TERMINATION
