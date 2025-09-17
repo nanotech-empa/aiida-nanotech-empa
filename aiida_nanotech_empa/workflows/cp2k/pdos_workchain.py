@@ -123,8 +123,8 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         ]
 
     def run_diags(self):
-        # Slab part.
-        self.report("Running Diag Workchain for full system")
+        # Full system part.
+        self.report("Running Diag Workchain for the full system.")
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.ctx.structure
@@ -143,9 +143,9 @@ class Cp2kPdosWorkChain(engine.WorkChain):
 
         self.to_context(slab_diag_scf=self.submit(builder))
 
-        # Molecule part.
+        # Fragment part.
         if self.ctx.do_overlap:
-            self.report("Running Diag Workchain for molecule")
+            self.report("Running Diag Workchain for the fragment.")
             builder = Cp2kDiagWorkChain.get_builder()
             builder.cp2k_code = self.inputs.cp2k_code
             builder.structure = self.ctx.molecule_structure
