@@ -15,9 +15,12 @@ class Cp2kPdosWorkChain(engine.WorkChain):
     def define(cls, spec):
         super().define(spec)
 
+        # Do overlap.
+        spec.input("do_overlap", valid_type=orm.Bool, default=lambda: orm.Bool(False))
+
         # Codes.
         spec.input("cp2k_code", valid_type=orm.Code)
-        spec.input("overlap_code", valid_type=orm.Code)
+        spec.input("overlap_code", valid_type=orm.Code, required=False, default=None)
 
         # Structures.
         spec.input(
@@ -52,7 +55,9 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         spec.outline(
             cls.setup,
             cls.run_diags,
-            cls.run_overlap,
+            engine.if_(cls.should_run_overlap)(
+                cls.run_overlap,
+            ),
             cls.finalize,
         )
 
@@ -78,6 +83,9 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         )
 
         self.ctx.n_slab_atoms = len(self.inputs.structure.sites)
+        self.ctx.do_overlap = (
+            self.inputs.do_overlap.value and self.inputs.overlap_code is not None
+        )
         emax = float(self.inputs.overlap_params.get_dict()["--emax1"])
         nlumo = int(self.inputs.overlap_params.get_dict()["--nlumo2"])
 
@@ -115,8 +123,8 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         ]
 
     def run_diags(self):
-        # Slab part.
-        self.report("Running Diag Workchain for slab")
+        # Full system part.
+        self.report("Running Diag Workchain for the full system.")
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
         builder.structure = self.ctx.structure
@@ -135,15 +143,19 @@ class Cp2kPdosWorkChain(engine.WorkChain):
 
         self.to_context(slab_diag_scf=self.submit(builder))
 
-        # Molecule part.
-        self.report("Running Diag Workchain for molecule")
-        builder = Cp2kDiagWorkChain.get_builder()
-        builder.cp2k_code = self.inputs.cp2k_code
-        builder.structure = self.ctx.molecule_structure
-        builder.protocol = self.inputs.protocol
-        builder.dft_params = orm.Dict(self.ctx.mol_dft_parameters)
-        builder.options = orm.Dict(self.inputs.options["molecule"])
-        self.to_context(mol_diag_scf=self.submit(builder))
+        # Fragment part.
+        if self.ctx.do_overlap:
+            self.report("Running Diag Workchain for the fragment.")
+            builder = Cp2kDiagWorkChain.get_builder()
+            builder.cp2k_code = self.inputs.cp2k_code
+            builder.structure = self.ctx.molecule_structure
+            builder.protocol = self.inputs.protocol
+            builder.dft_params = orm.Dict(self.ctx.mol_dft_parameters)
+            builder.options = orm.Dict(self.inputs.options["molecule"])
+            self.to_context(mol_diag_scf=self.submit(builder))
+
+    def should_run_overlap(self):
+        return self.ctx.do_overlap
 
     def run_overlap(self):
         for calculation in [self.ctx.slab_diag_scf, self.ctx.mol_diag_scf]:
@@ -189,11 +201,13 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         return engine.ToContext(overlap=future)
 
     def finalize(self):
-        if "overlap.npz" not in [
-            obj.name for obj in self.ctx.overlap.outputs.retrieved.list_objects()
-        ]:
-            self.report("Overlap calculation did not finish correctly")
-            return self.exit_codes.ERROR_TERMINATION
+        self.report("Finalizing workchain")
+        if self.ctx.do_overlap:
+            if "overlap.npz" not in [
+                obj.name for obj in self.ctx.overlap.outputs.retrieved.list_objects()
+            ]:
+                self.report("Overlap calculation did not finish correctly")
+                return self.exit_codes.ERROR_TERMINATION
         self.out("slab_retrieved", self.ctx.slab_diag_scf.outputs.retrieved)
 
         # Add the workchain uuid to the input structure extras.
