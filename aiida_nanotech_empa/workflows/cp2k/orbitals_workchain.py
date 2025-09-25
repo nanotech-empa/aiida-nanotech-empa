@@ -1,4 +1,5 @@
 import numpy as np
+import yaml
 from aiida import engine, orm, plugins
 from aiida_shell import launch_shell_job
 
@@ -124,19 +125,24 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
     def run_cubehandler(self):
         self.report("Running CubeHandler")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-            return self.exit_codes.ERROR_TERMINATIONx
+            return self.exit_codes.ERROR_TERMINATION
+
+        def cubehandler_parser(dirpath):
+            # Parse the output of the CubeHandler job
+            output = orm.Dict(yaml.safe_load((dirpath / "stdout").read_text()))
+            return {"results": output}
 
         _, node = launch_shell_job(
             self.inputs.cubehandler_code,
-            arguments=["shrink", ".", "out_cubes"],
+            arguments=["shrink", "-vv", ".", "out_cubes"],
             metadata={
                 "options": {
                     "prepend_text": "conda activate cubehandler",
                     "use_symlinks": True,
                 },
-                "computer": orm.load_computer("daint-gpu"),
                 "label": "cube-shrink",
             },
+            parser=cubehandler_parser,
             nodes={"remote_previous_job": self.ctx.diag_scf.outputs.remote_folder},
             outputs=["out_cubes"],
         )
