@@ -266,15 +266,13 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         """Run cubehandler to build a charge-difference cube via linear combination."""
         self.report("Running CubeHandler (sum)")
 
-        # Ensure geometry/SCF steps succeeded for each fragment we expect
-        # Prefer order: 'all' first (if present), then the rest in declared order
+        # Ensure geometry/SCF steps succeeded for each fragment we expect.
+        # Prefer order: 'all' first (if present), then the rest in declared order.
         frags = list(self.inputs.fragments.keys())
         if "all" in frags:
             frags = ["all"] + [f for f in frags if f != "all"]
 
         # Collect remote folders and construct file paths
-        nodes_map = {}  # label -> remote_folder node
-        files_map = {}  # extra files to symlink into the workdir of the cubehandler job
         cube_paths = []  # "<label>/charge.cube" for each fragment
 
         for fragment in frags:
@@ -283,7 +281,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
                 return self.exit_codes.ERROR_TERMINATION
 
             # Symlink each remote folder into the working dir under a stable name
-            label = fragment  # keep it simple; symlink directory name == fragment
             label_path = scf_node.outputs.remote_folder.get_remote_path()
 
             # Path to the cube inside that remote directory
@@ -294,45 +291,41 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         # Choose weights: default is 1.0 for the first (usually 'all') and -1.0 for the rest
         weights = [1.0] + [-1.0] * (len(cube_paths) - 1)
 
-        # Build --sum spec: file1,...,fileN,w1,...,wN
-        sum_spec = ",".join(cube_paths + [str(w) for w in weights])
+        pairs = [str(x) for pair in zip(cube_paths, weights) for x in pair]
 
         # Launch the shell job that runs: cubehandler sum --sum "<spec>" charge_diff.cube
-        arguments = [
+        arguments_sum = [
             "sum",
-            "--no-low-precision",
-            "--files-and-weights",
-            sum_spec,
+            "--output",
             "ChargeDiff.cube",
+            "--",
         ]
 
-        _, node_high = launch_shell_job(
+        arguments_sum.extend(pairs)
+
+        _, node_high_resolution = launch_shell_job(
             self.inputs.cubehandler_code,
-            arguments=arguments,
+            arguments=arguments_sum,
             metadata={
                 "options": {
                     "use_symlinks": True,  # required so <fragment>/ points to the remote folders
                 },
                 "label": "ChargeDiff-highres",
             },
-            # Expose all fragment remotes; they will appear in the workdir as directories named like the keys of nodes_map
-            # nodes=nodes_map,
-            # filenames=files_map,
-            # outputs=["out_cubes"],  # retrieve this file
         )
-        arguments = ["shrink", ".", "out_cubes"]
+
         _, node_low = launch_shell_job(
             self.inputs.cubehandler_code,
-            arguments=arguments,
+            arguments=["shrink", "$@", "-d", "out_cubes"],
             metadata={
                 "options": {
                     "use_symlinks": True,  # required so <fragment>/ points to the remote folders
+                    "prepend_text": "set -- *.cube\n",
                 },
                 "label": "ChargeDiff-lowres",
             },
             # Expose all fragment remotes; they will appear in the workdir as directories named like the keys of nodes_map
-            nodes={"remote_previous_job": node_high.outputs.remote_folder},
-            # filenames=files_map,
+            nodes={"remote_previous_job": node_high_resolution.outputs.remote_folder},
             outputs=["out_cubes"],  # retrieve this file
         )
         self.ctx.cubehandler_uuid = node_low.uuid

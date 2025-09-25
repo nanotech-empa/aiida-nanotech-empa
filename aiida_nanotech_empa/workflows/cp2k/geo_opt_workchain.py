@@ -206,13 +206,13 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         _, node = launch_shell_job(
             self.inputs.cubehandler_code,
-            arguments=["shrink", ".", "out_cubes", "--exclude", "*WFN*.cube"],
+            arguments=["shrink", "$@", "-d", "out_cubes"],
             metadata={
                 "options": {
                     # "prepend_text": "conda activate cubehandler",
                     "use_symlinks": True,
+                    "prepend_text": "set -- *ELECTRON*.cube *HART*.cube\n",
                 },
-                # "computer": orm.load_computer("daint-gpu"),
                 "label": "charge-lowres",
             },
             nodes={"remote_previous_job": self.ctx.geo_opt.outputs.remote_folder},
