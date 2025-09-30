@@ -1,13 +1,13 @@
 import pathlib
 
 from aiida import engine, orm, plugins
-from aiida_shell import launch_shell_job
 
 from ...utils import analyze_structure, common_utils, split_structure
 from . import cp2k_utils
 
 StructureData = plugins.DataFactory("core.structure")
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
+CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
 
 DATA_DIR = pathlib.Path(__file__).parent.absolute() / "data"
 
@@ -266,69 +266,64 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         """Run cubehandler to build a charge-difference cube via linear combination."""
         self.report("Running CubeHandler (sum)")
 
+        builder = CubeHandlerCalculation.get_builder()
+        builder.code = self.inputs.cubehandler_code
+
         # Ensure geometry/SCF steps succeeded for each fragment we expect.
         # Prefer order: 'all' first (if present), then the rest in declared order.
-        frags = list(self.inputs.fragments.keys())
-        if "all" in frags:
-            frags = ["all"] + [f for f in frags if f != "all"]
+        frags = ["all"] + [f for f in self.inputs.fragments.keys() if f != "all"]
 
         # Collect remote folders and construct file paths
         cube_paths = []  # "<label>/charge.cube" for each fragment
 
+        fragment_dict = {}
         for fragment in frags:
             scf_node = self.ctx.scf[fragment]
             if scf_node is None or not common_utils.check_if_calc_ok(self, scf_node):
                 return self.exit_codes.ERROR_TERMINATION
+            cube_paths.append(f"{fragment}/aiida-ELECTRON_DENSITY-1_0.cube")
+            fragment_dict[fragment] = scf_node.outputs.remote_folder
 
-            # Symlink each remote folder into the working dir under a stable name
-            label_path = scf_node.outputs.remote_folder.get_remote_path()
-
-            # Path to the cube inside that remote directory
-            # NOTE: this assumes CP2K printed the density to "aiida-ELECTRON_DENSITY-1_1.cube".
-            # If your filename differs, change just the basename here.
-            cube_paths.append(f"{label_path}/aiida-ELECTRON_DENSITY-1_0.cube")
+        builder.parent_folders = fragment_dict
 
         # Choose weights: default is 1.0 for the first (usually 'all') and -1.0 for the rest
         weights = [1.0] + [-1.0] * (len(cube_paths) - 1)
-
-        pairs = [str(x) for pair in zip(cube_paths, weights) for x in pair]
-
-        # Launch the shell job that runs: cubehandler sum --sum "<spec>" charge_diff.cube
-        arguments_sum = [
-            "sum",
-            "--output",
-            "ChargeDiff.cube",
-            "--",
-        ]
-
-        arguments_sum.extend(pairs)
-
-        _, node_high_resolution = launch_shell_job(
-            self.inputs.cubehandler_code,
-            arguments=arguments_sum,
-            metadata={
-                "options": {
-                    "use_symlinks": True,  # required so <fragment>/ points to the remote folders
-                },
-                "label": "ChargeDiff-highres",
-            },
+        builder.parameters = orm.Dict(
+            dict={
+                "steps": [
+                    {
+                        "command": "sum",
+                        "args": [
+                            str(x) for pair in zip(cube_paths, weights) for x in pair
+                        ],
+                        "options": {
+                            "output": "ChargeDiff.cube",
+                        },
+                    },
+                    {
+                        "command": "shrink",
+                        "args": ["ChargeDiff.cube"],
+                        "options": {
+                            "output_dir": "out_cubes",
+                            "low_precision": True,
+                        },
+                    },
+                ]
+            }
         )
-
-        _, node_low = launch_shell_job(
-            self.inputs.cubehandler_code,
-            arguments=["shrink", "$@", "-d", "out_cubes"],
-            metadata={
-                "options": {
-                    "use_symlinks": True,  # required so <fragment>/ points to the remote folders
-                    "prepend_text": "set -- *.cube\n",
+        builder.metadata = {
+            "label": "charge-lowres",
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
                 },
-                "label": "ChargeDiff-lowres",
+                "max_wallclock_seconds": 600,
             },
-            # Expose all fragment remotes; they will appear in the workdir as directories named like the keys of nodes_map
-            nodes={"remote_previous_job": node_high_resolution.outputs.remote_folder},
-            outputs=["out_cubes"],  # retrieve this file
-        )
-        self.ctx.cubehandler_uuid = node_low.uuid
+        }
+
+        future = self.submit(builder)
+        return engine.ToContext(cubehandler=future)
 
     def finalize(self):
         energies = {}
@@ -360,5 +355,5 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         if "cubehandler_code" in self.inputs:
             common_utils.add_extras(
-                self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid
+                self.inputs.structure, "surfaces", self.ctx.cubehandler.uuid
             )
