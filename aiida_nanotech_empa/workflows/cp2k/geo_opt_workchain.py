@@ -224,6 +224,16 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             }
         )
         builder.parent_folders = {"folder1": self.ctx.geo_opt.outputs.remote_folder}
+        builder.metadata = {
+            "label": "charge-lowres",
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
+                },
+                "max_wallclock_seconds": 600,
+            },
+        }
         future = self.submit(builder)
         self.to_context(cubehandler=future)
 

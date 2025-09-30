@@ -44,7 +44,7 @@ class CubeHandlerCalculation(engine.CalcJob):
         calcinfo.remote_symlink_list = []
         calcinfo.local_copy_list = []
         calcinfo.remote_copy_list = []
-        calcinfo.retrieve_list = ["*.cube"]
+        calcinfo.retrieve_list = ["out_cubes"]
 
         # Symlinks.
         for folder_name, folder_node in self.inputs.parent_folders.items():
