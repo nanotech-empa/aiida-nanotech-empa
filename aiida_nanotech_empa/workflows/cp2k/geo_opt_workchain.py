@@ -2,12 +2,12 @@ import pathlib
 
 import numpy as np
 from aiida import engine, orm, plugins
-from aiida_shell import launch_shell_job
 
 from ...utils import common_utils
 from . import cp2k_utils
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
+CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
 
 
 class Cp2kGeoOptWorkChain(engine.WorkChain):
@@ -204,21 +204,28 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         if not common_utils.check_if_calc_ok(self, self.ctx.geo_opt):
             return self.exit_codes.ERROR_TERMINATION
 
-        _, node = launch_shell_job(
-            self.inputs.cubehandler_code,
-            arguments=["shrink", "$@", "-d", "out_cubes"],
-            metadata={
-                "options": {
-                    # "prepend_text": "conda activate cubehandler",
-                    "use_symlinks": True,
-                    "prepend_text": "set -- *ELECTRON*.cube *HART*.cube\n",
-                },
-                "label": "charge-lowres",
-            },
-            nodes={"remote_previous_job": self.ctx.geo_opt.outputs.remote_folder},
-            outputs=["out_cubes"],
+        builder = CubeHandlerCalculation.get_builder()
+        builder.code = self.inputs.cubehandler_code
+        builder.parameters = orm.Dict(
+            dict={
+                "steps": [
+                    {
+                        "command": "shrink",
+                        "args": [
+                            "folder1/*ELECTRON*.cube",
+                            "folder1/*HART*cube",
+                        ],
+                        "options": {
+                            "output_dir": "out_cubes",
+                            "low_precision": True,
+                        },
+                    }
+                ]
+            }
         )
-        self.ctx.cubehandler_uuid = node.uuid
+        builder.parent_folders = {"folder1": self.ctx.geo_opt.outputs.remote_folder}
+        future = self.submit(builder)
+        self.to_context(cubehandler=future)
 
     def finalize(self):
         self.report("Finalizing.")
@@ -234,7 +241,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         common_utils.add_extras(struc, "surfaces", self.node.uuid)
         if "cubehandler_code" in self.inputs:
             common_utils.add_extras(
-                self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid
+                self.inputs.structure, "surfaces", self.ctx.cubehandler.uuid
             )
 
         return engine.ExitCode(0)
