@@ -7,6 +7,7 @@ Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 StmCalculation = plugins.CalculationFactory("nanotech_empa.stm")
 CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
 
+
 class Cp2kOrbitalsWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
