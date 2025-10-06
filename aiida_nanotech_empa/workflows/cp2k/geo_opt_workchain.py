@@ -197,7 +197,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         builder.cp2k.parameters = orm.Dict(self.ctx.input_dict)
 
         future = self.submit(builder)
-        self.to_context(geo_opt=future)
+        return engine.ToContext(geo_opt=future)
 
     def run_cubehandler(self):
         self.report("Running CubeHandler")
@@ -235,7 +235,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             },
         }
         future = self.submit(builder)
-        self.to_context(cubehandler=future)
+        return engine.ToContext(cubehandler=future)
 
     def finalize(self):
         self.report("Finalizing.")

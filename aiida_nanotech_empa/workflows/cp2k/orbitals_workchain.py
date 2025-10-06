@@ -86,7 +86,7 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         builder.options = orm.Dict(self.inputs.options)
 
         future = self.submit(builder)
-        self.to_context(diag_scf=future)
+        return engine.ToContext(diag_scf=future)
 
     def run_stm(self):
         self.report("STM calculation")
