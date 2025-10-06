@@ -7,6 +7,7 @@ from ...utils import common_utils
 from . import cp2k_utils
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
+CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
 
 
 class Cp2kGeoOptWorkChain(engine.WorkChain):
@@ -14,6 +15,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
     def define(cls, spec):
         super().define(spec)
         spec.input("code", valid_type=orm.Code)
+        spec.input("cubehandler_code", valid_type=orm.Code, required=False)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
         spec.input(
@@ -33,7 +35,14 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         )
 
         # Workchain outline.
-        spec.outline(cls.setup, cls.submit_calc, cls.finalize)
+        spec.outline(
+            cls.setup,
+            cls.submit_calc,
+            engine.if_(cls.should_run_cubehandler)(
+                cls.run_cubehandler,
+            ),
+            cls.finalize,
+        )
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -41,6 +50,9 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+
+    def should_run_cubehandler(self):
+        return "cubehandler_code" in self.inputs
 
     def setup(self):
         self.report("Inspecting input and setting up things")
@@ -185,7 +197,46 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         builder.cp2k.parameters = orm.Dict(self.ctx.input_dict)
 
         future = self.submit(builder)
-        self.to_context(geo_opt=future)
+        return engine.ToContext(geo_opt=future)
+
+    def run_cubehandler(self):
+        self.report("Running CubeHandler")
+        if not common_utils.check_if_calc_ok(self, self.ctx.geo_opt):
+            return self.exit_codes.ERROR_TERMINATION
+
+        builder = CubeHandlerCalculation.get_builder()
+        builder.code = self.inputs.cubehandler_code
+        builder.parameters = orm.Dict(
+            dict={
+                "steps": [
+                    {
+                        "command": "shrink",
+                        "args": [
+                            "folder1/*ELECTRON*.cube",
+                            "folder1/*HART*cube",
+                            "folder1/*SPIN*.cube",
+                        ],
+                        "options": {
+                            "output_dir": "out_cubes",
+                            "low_precision": True,
+                        },
+                    }
+                ]
+            }
+        )
+        builder.parent_folders = {"folder1": self.ctx.geo_opt.outputs.remote_folder}
+        builder.metadata = {
+            "label": "charge-lowres",
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
+                },
+                "max_wallclock_seconds": 600,
+            },
+        }
+        future = self.submit(builder)
+        return engine.ToContext(cubehandler=future)
 
     def finalize(self):
         self.report("Finalizing.")
@@ -199,5 +250,9 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         # Add extras.
         struc = self.inputs.structure
         common_utils.add_extras(struc, "surfaces", self.node.uuid)
+        if "cubehandler_code" in self.inputs:
+            common_utils.add_extras(
+                self.inputs.structure, "surfaces", self.ctx.cubehandler.uuid
+            )
 
         return engine.ExitCode(0)
