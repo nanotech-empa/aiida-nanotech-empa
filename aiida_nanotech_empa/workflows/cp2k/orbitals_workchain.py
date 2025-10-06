@@ -159,7 +159,7 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
             },
         }
         future = self.submit(builder)
-        self.to_context(cubehandler=future)
+        return engine.ToContext(cubehandler=future)
 
     def finalize(self):
         if "orb.npz" not in [
