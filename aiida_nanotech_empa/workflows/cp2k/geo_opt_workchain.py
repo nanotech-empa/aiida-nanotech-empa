@@ -214,6 +214,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
                         "args": [
                             "folder1/*ELECTRON*.cube",
                             "folder1/*HART*cube",
+                            "folder1/*SPIN*.cube",
                         ],
                         "options": {
                             "output_dir": "out_cubes",
