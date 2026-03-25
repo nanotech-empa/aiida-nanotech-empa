@@ -95,7 +95,7 @@ class NanoribbonWorkChain(engine.WorkChain):
         self.ctx.nproc_mach = (
             self.inputs.pw_code.computer.get_default_mpiprocs_per_machine()
         )
-        if "alps" in self.inputs.pw_code.computer.hostname:
+        if "daint.alps" in self.inputs.pw_code.computer.hostname:
             self.ctx.nproc_mach = 4
         self.report(f"nproc_mach: {self.ctx.nproc_mach}")
 
