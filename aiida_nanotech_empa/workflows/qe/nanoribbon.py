@@ -95,7 +95,7 @@ class NanoribbonWorkChain(engine.WorkChain):
         self.ctx.nproc_mach = (
             self.inputs.pw_code.computer.get_default_mpiprocs_per_machine()
         )
-        if "alps" in self.inputs.pw_code.computer.hostname:
+        if "daint.alps" in self.inputs.pw_code.computer.hostname:
             self.ctx.nproc_mach = 4
         self.report(f"nproc_mach: {self.ctx.nproc_mach}")
 
@@ -219,6 +219,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
+                "num_cores_per_mpiproc":1,
             },
             "max_wallclock_seconds": 1800,  # 30 minutes
             "withmpi": True,
@@ -292,6 +293,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": nproc_mach,
+                "num_cores_per_mpiproc":1,
             },
             "max_wallclock_seconds": self.inputs.wall_seconds.value,  # default 1 hour, max 24 hours
             "withmpi": True,
@@ -371,6 +373,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
+                "num_cores_per_mpiproc":1,
             },
             "max_wallclock_seconds": int(
                 self.inputs.wall_seconds.value / 24 * nhours
@@ -475,6 +478,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
+                "num_cores_per_mpiproc":1,
             },
             "max_wallclock_seconds": 30 * 60,  # 30 minutes
             "withmpi": True,
@@ -558,6 +562,7 @@ class NanoribbonWorkChain(engine.WorkChain):
 
         natoms = len(structure.sites)
         max_npools = spinpools * min(1 + int(nkpoints / 4), int(6))
+        max_npools = min(self.ctx.nproc_mach, max_npools) #added for daint.alps
         nnodes_base = min(max_nodes, (1 + int(natoms / mem_node)))
 
         guess_nnodes = max_npools * nnodes_base
@@ -582,6 +587,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
+                "num_cores_per_mpiproc":1,
             },
             "withmpi": True,
             "max_wallclock_seconds": wallseconds,
