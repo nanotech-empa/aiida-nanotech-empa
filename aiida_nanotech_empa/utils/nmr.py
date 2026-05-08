@@ -2,21 +2,13 @@ import ase
 import ase.io
 import ase.neighborlist
 import ase.visualize
-import cclib
 import numpy as np
-import scipy as sp
-import scipy.linalg
 
 from . import cycle_tools
 
-### -----------------------------------------------------------------
-### SETUP
-
 
 def find_ref_points(ase_atoms_no_h, cycles, h=0.0):
-    """
-    positive h means projection to z axis is positive and vice-versa
-    """
+    """Positive h means projection to z axis is positive and vice-versa."""
 
     centers, normals = cycle_tools.find_cycle_centers_and_normals(
         ase_atoms_no_h, cycles, h
@@ -76,10 +68,6 @@ def build_path(ref_pts, dx=0.1):
     return ase_arr
 
 
-### -----------------------------------------------------------------
-### PROCESS
-
-
 def load_nics_gaussian(nics_path):
 
     sigma = []
@@ -108,9 +96,10 @@ def load_nics_gaussian(nics_path):
 def is_number(x):
     try:
         float(x)
-        return True
     except ValueError:
         return False
+    else:
+        return True
 
 
 def parse_nmr_cmo_matrix(log_file_str, property_dict):

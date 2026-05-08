@@ -4,7 +4,7 @@ standard:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: MD
         WALLTIME: '600'
-        ELPA_KERNEL: AVX2_BLOCK2
+        ELPA_KERNEL: AUTO
     MOTION:
         MD:
             STEPS: '1'
@@ -20,6 +20,9 @@ standard:
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
+            RESTART:
+                EACH:
+                    MD: '10'
             FORCES:
                 EACH:
                     MD: '1'
@@ -87,7 +90,7 @@ low_accuracy:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: MD
         WALLTIME: '600'
-        ELPA_KERNEL: AVX2_BLOCK2
+        ELPA_KERNEL: AUTO
     MOTION:
         MD:
             STEPS: '1'
@@ -103,6 +106,9 @@ low_accuracy:
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
+            RESTART:
+                EACH:
+                    MD: '10'
             FORCES:
                 EACH:
                     MD: '1'
@@ -170,7 +176,7 @@ debug:
         PRINT_LEVEL: MEDIUM
         RUN_TYPE: MD
         WALLTIME: '600'
-        ELPA_KERNEL: AVX2_BLOCK2
+        ELPA_KERNEL: AUTO
     MOTION:
         MD:
             STEPS: '1'
@@ -186,6 +192,9 @@ debug:
         PRINT:
             RESTART_HISTORY:
                 _: 'OFF'
+            RESTART:
+                EACH:
+                    MD: '1'
             FORCES:
                 EACH:
                     MD: '1'

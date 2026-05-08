@@ -3,8 +3,6 @@ import ase.io
 import ase.neighborlist
 import ase.visualize
 import numpy as np
-import scipy as sp
-import scipy.linalg
 
 
 def convert_neighbor_list(nl):

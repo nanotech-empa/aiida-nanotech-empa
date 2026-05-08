@@ -10,6 +10,13 @@ from aiida.orm import Code, Computer, QueryBuilder
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 
 
+class ExecutableNotFoundError(Exception):
+    """Raised when an executable is not found."""
+
+    def __init__(self, executable):
+        super().__init__(f"The executable '{executable}' was not found in the $PATH.")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_sssp_pseudos(aiida_profile):
     """Create an SSSP pseudo potential family from scratch."""
@@ -69,9 +76,7 @@ def local_code_factory(fixture_localhost):
 
         executable_path = shutil.which(executable)
         if not executable_path:
-            raise ValueError(
-                f'The executable "{executable}" was not found in the $PATH.'
-            )
+            raise ExecutableNotFoundError(executable_path)
 
         code = Code(
             input_plugin_name=entry_point,

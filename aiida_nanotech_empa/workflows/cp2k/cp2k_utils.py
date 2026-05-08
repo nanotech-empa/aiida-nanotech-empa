@@ -618,7 +618,7 @@ def get_points(details):
     for i, point in enumerate(points):
         ids = allids[i]
         if details[point + 1].lower() == "fix_point":
-            allpoints.append({"TYPE": "FIX_POINT", "XYZ": ids})
+            allpoints.append({"TYPE": "FIX_POINT", "XYZ": f"[angstrom] {ids}"})
         else:
             allpoints.append({"TYPE": "GEO_CENTER", "ATOMS": ids})
     return {"POINT": allpoints}
@@ -629,7 +629,9 @@ def get_points_coords(points, atoms):
     coords = []
     for point in points:
         if point["TYPE"] == "FIX_POINT":
-            coords.append([float(i) for i in point["XYZ"].split()])
+            coords.append(
+                [float(i) for i in point["XYZ"].replace("[angstrom]", "").split()]
+            )
         else:
             ids, all_ok = string_range_to_list(point["ATOMS"], shift=-1)
             coords.append(

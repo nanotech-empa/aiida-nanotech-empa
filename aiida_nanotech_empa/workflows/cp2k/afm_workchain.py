@@ -16,6 +16,8 @@ class Cp2kAfmWorkChain(engine.WorkChain):
         super().define(spec)
 
         spec.input("cp2k_code", valid_type=orm.Code)
+        spec.input("ppafm_code", valid_type=orm.Code)
+
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
         spec.input(
@@ -32,16 +34,12 @@ class Cp2kAfmWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
-
-        spec.input("afm_pp_code", valid_type=orm.Code)
-        spec.input("afm_pp_params", valid_type=orm.Dict)
-        spec.input("afm_2pp_code", valid_type=orm.Code)
-        spec.input("afm_2pp_params", valid_type=orm.Dict)
+        spec.input("ppafm_params", valid_type=orm.Dict)
 
         spec.outline(
             cls.setup,
             cls.run_diag_scf,
-            cls.run_afms,
+            cls.run_afm,
             cls.finalize,
         )
 
@@ -63,6 +61,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
         if "smear_t" in self.ctx.dft_params:
             added_mos = np.max([100, int(1.2 * n_atoms * 2 / 5.0)])
             self.ctx.dft_params["added_mos"] = added_mos
+
         self.ctx.files = {
             "geo_no_labels": cp2k_utils.make_geom_file(ase_geom, "geom.xyz"),
             "pp": orm.SinglefileData(
@@ -71,14 +70,6 @@ class Cp2kAfmWorkChain(engine.WorkChain):
                     ".",
                     "data",
                     "atomtypes_pp.ini",
-                )
-            ),
-            "2pp": orm.SinglefileData(
-                file=os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    ".",
-                    "data",
-                    "atomtypes_2pp.ini",
                 )
             ),
         }
@@ -99,63 +90,39 @@ class Cp2kAfmWorkChain(engine.WorkChain):
         future = self.submit(builder)
         self.to_context(diag_scf=future)
 
-    def run_afms(self):
-        self.report("Running PP")
+    def run_afm(self):
+        self.report("Running ppafm calculation.")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
             return self.exit_codes.ERROR_TERMINATION
-        afm_pp_inputs = {}
 
-        afm_pp_inputs["geo_no_labels"] = self.ctx.files["geo_no_labels"]
-        afm_pp_inputs["metadata"] = {}
-        afm_pp_inputs["metadata"]["label"] = "afm_pp"
-        afm_pp_inputs["code"] = self.inputs.afm_pp_code
-        afm_pp_inputs["parameters"] = self.inputs.afm_pp_params
-        afm_pp_inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
-        afm_pp_inputs["atomtypes"] = self.ctx.files["pp"]
-        afm_pp_inputs["metadata"]["options"] = {
-            "max_wallclock_seconds": 86000,
-            "resources": {
-                "num_machines": 1,
-                "num_mpiprocs_per_machine": 1,
-                "num_cores_per_mpiproc": 1,
+        afm_inputs = {
+            "geo_no_labels": self.ctx.files["geo_no_labels"],
+            "metadata": {
+                "label": "ppafm",
+                "options": {
+                    "max_wallclock_seconds": 3600,
+                    "resources": {
+                        "num_machines": 1,
+                        "num_mpiprocs_per_machine": 1,
+                        "num_cores_per_mpiproc": 1,
+                    },
+                },
             },
+            "code": self.inputs.ppafm_code,
+            "parameters": self.inputs.ppafm_params,
+            "parent_calc_folder": self.ctx.diag_scf.outputs.remote_folder,
+            "atomtypes": self.ctx.files["pp"],
         }
-        self.report("Afm pp inputs: " + str(afm_pp_inputs))
-        afm_pp_future = self.submit(AfmCalculation, **afm_pp_inputs)
-        self.to_context(afm_pp=afm_pp_future)
-
-        self.report("Running 2PP")
-
-        afm_2pp_inputs = {}
-        afm_2pp_inputs["geo_no_labels"] = self.ctx.files["geo_no_labels"]
-        afm_2pp_inputs["metadata"] = {}
-        afm_2pp_inputs["metadata"]["label"] = "afm_2pp"
-        afm_2pp_inputs["code"] = self.inputs.afm_2pp_code
-        afm_2pp_inputs["parameters"] = self.inputs.afm_2pp_params
-        afm_2pp_inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
-        afm_2pp_inputs["atomtypes"] = self.ctx.files["2pp"]
-        afm_2pp_inputs["metadata"]["options"] = {
-            "max_wallclock_seconds": 86000,
-            "resources": {
-                "num_machines": 1,
-                "num_mpiprocs_per_machine": 1,
-                "num_cores_per_mpiproc": 1,
-            },
-        }
-        self.report("Afm 2pp inputs: " + str(afm_2pp_inputs))
-        afm_2pp_future = self.submit(AfmCalculation, **afm_2pp_inputs)
-        self.to_context(afm_2pp=afm_2pp_future)
+        self.report("ppafm inputs: " + str(afm_inputs))
+        ppafm_future = self.submit(AfmCalculation, **afm_inputs)
+        self.to_context(ppafm=ppafm_future)
 
     def finalize(self):
         retrieved_list = [
-            obj.name for obj in self.ctx.afm_pp.outputs.retrieved.list_objects()
+            obj.name for obj in self.ctx.ppafm.outputs.retrieved.list_objects()
         ]
-        pp_worked = "df.npy" in retrieved_list and "df_vec.npy" in retrieved_list
-        retrieved_list = [
-            obj.name for obj in self.ctx.afm_2pp.outputs.retrieved.list_objects()
-        ]
-        pp2_worked = "df.npy" in retrieved_list and "df_vec.npy" in retrieved_list
-        if not pp_worked or not pp2_worked:
+        pp_worked = "df.npz" in retrieved_list
+        if not pp_worked:
             self.report("AFM calculation did not finish correctly")
             return self.exit_codes.ERROR_TERMINATION
 

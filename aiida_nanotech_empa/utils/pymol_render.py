@@ -17,6 +17,11 @@ pymol.finish_launching(["pymol", "-qc"])
 sys.stdout, sys.stderr = _stdouterr
 
 
+class PymolRenderException(Exception):
+    def __init__(self, filename):
+        super().__init__(f"PyMOL render did not create {filename}")
+
+
 def _crop_image_bbox(filename):
     image = Image.open(filename)
 
@@ -46,7 +51,7 @@ def _save_and_crop(fname, max_w, view):
             break
 
     if not os.path.isfile(fname):
-        raise FileNotFoundError(f"Pymol render did not create {fname}")
+        raise PymolRenderException(fname)
 
     pymol.cmd.set_view(view)  # reset the view
     # Sleep a bit more to make sure the image is finished

@@ -83,18 +83,23 @@ class Cp2kStmWorkChain(engine.WorkChain):
         inputs["parameters"] = self.inputs.spm_params
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
 
-        n_machines = 6
-        if self.ctx.n_atoms > 1000:
-            n_machines = 12
-        if self.ctx.n_atoms > 2000:
-            n_machines = 18
+        n_machines = 1
+        if self.ctx.n_atoms > 500:
+            n_machines = 2
+        if self.ctx.n_atoms > 1500:
+            n_machines = 4
         if self.ctx.n_atoms > 3000:
-            n_machines = 24
-        if self.ctx.n_atoms > 4000:
-            n_machines = 30
+            n_machines = 8
 
         inputs["metadata"]["options"] = {
-            "resources": {"num_machines": n_machines},
+            "resources": {
+                "num_machines": n_machines,
+                "num_mpiprocs_per_machine": min(
+                    36,
+                    self.inputs.cp2k_code.computer.get_default_mpiprocs_per_machine(),
+                ),
+                "num_cores_per_mpiproc": 1,
+            },
             "max_wallclock_seconds": 36000,
         }
         if self.inputs.protocol.value == "debug":

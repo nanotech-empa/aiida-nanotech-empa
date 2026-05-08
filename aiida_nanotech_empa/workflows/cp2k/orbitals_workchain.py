@@ -5,6 +5,7 @@ from ...utils import common_utils
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 StmCalculation = plugins.CalculationFactory("nanotech_empa.stm")
+CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
 
 
 class Cp2kOrbitalsWorkChain(engine.WorkChain):
@@ -12,7 +13,12 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
     def define(cls, spec):
         super().define(spec)
 
+        # Codes.
         spec.input("cp2k_code", valid_type=orm.Code)
+        spec.input("spm_code", valid_type=orm.Code)
+        spec.input("cubehandler_code", valid_type=orm.Code, required=False)
+
+        # Inputs.
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
         spec.input(
@@ -23,7 +29,6 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
             help="Protocol supported by the Cp2kDiagWorkChain.",
         )
         spec.input("dft_params", valid_type=orm.Dict)
-        spec.input("spm_code", valid_type=orm.Code)
         spec.input("spm_params", valid_type=orm.Dict)
         spec.input(
             "options",
@@ -36,6 +41,9 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
             cls.setup,
             cls.run_diag_scf,
             cls.run_stm,
+            engine.if_(cls.should_run_cubehandler)(
+                cls.run_cubehandler,
+            ),
             cls.finalize,
         )
 
@@ -78,7 +86,7 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         builder.options = orm.Dict(self.inputs.options)
 
         future = self.submit(builder)
-        self.to_context(diag_scf=future)
+        return engine.ToContext(diag_scf=future)
 
     def run_stm(self):
         self.report("STM calculation")
@@ -92,8 +100,15 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         inputs["parameters"] = self.inputs.spm_params
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
         inputs["metadata"]["options"] = {
-            "resources": {"num_machines": 1},
-            "max_wallclock_seconds": 3600,
+            "resources": {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": min(
+                    36,
+                    self.inputs.cp2k_code.computer.get_default_mpiprocs_per_machine(),
+                ),
+                "num_cores_per_mpiproc": 1,
+            },
+            "max_wallclock_seconds": 7200,
         }
 
         # Need to make an explicit instance for the node to be stored to aiida.
@@ -103,6 +118,49 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         future = self.submit(StmCalculation, **inputs)
         return engine.ToContext(stm=future)
 
+    def should_run_cubehandler(self):
+        return "cubehandler_code" in self.inputs
+
+    def run_cubehandler(self):
+        self.report("Running CubeHandler")
+        if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
+            return self.exit_codes.ERROR_TERMINATION
+
+        builder = CubeHandlerCalculation.get_builder()
+        builder.code = self.inputs.cubehandler_code
+        builder.parameters = orm.Dict(
+            dict={
+                "steps": [
+                    {
+                        "command": "shrink",
+                        "args": [
+                            "folder1/*ELECTRON*.cube",
+                            "folder1/*HART*cube",
+                            "folder1/*SPIN*.cube",
+                            "folder1/*WFN*.cube",
+                        ],
+                        "options": {
+                            "output_dir": "out_cubes",
+                            "low_precision": True,
+                        },
+                    }
+                ]
+            }
+        )
+        builder.parent_folders = {"folder1": self.ctx.diag_scf.outputs.remote_folder}
+        builder.metadata = {
+            "label": "charge-lowres",
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
+                },
+                "max_wallclock_seconds": 600,
+            },
+        }
+        future = self.submit(builder)
+        return engine.ToContext(cubehandler=future)
+
     def finalize(self):
         if "orb.npz" not in [
             obj.name for obj in self.ctx.stm.outputs.retrieved.list_objects()
@@ -111,6 +169,9 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
             return self.exit_codes.ERROR_TERMINATION
         self.out("dft_output_parameters", self.ctx.diag_scf.outputs.output_parameters)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
-        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
-        self.report("Work chain is finished")
+        if "cubehandler_code" in self.inputs:
+            common_utils.add_extras(
+                self.inputs.structure, "surfaces", self.ctx.cubehandler.uuid
+            )
+        self.report("The workchain is finished")
