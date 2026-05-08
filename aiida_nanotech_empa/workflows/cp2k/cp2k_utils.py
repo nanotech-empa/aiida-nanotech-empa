@@ -541,18 +541,33 @@ def angle_between(v1, v2):
 
 def string_range_to_list(strng, shift=-1):
     """Converts a string like '1 3..5' into a list like [0, 2, 3, 4].
-    Shift used when e.g. for a user interface numbering starts from 1 not from 0"""
-    singles = [int(s) + shift for s in strng.split() if s.isdigit()]
-    ranges = [r for r in strng.split() if ".." in r]
-    if len(singles) + len(ranges) != len(strng.split()):
+    Shift used when e.g. for a user interface numbering starts from 1 not from 0.
+
+    Accepts commas, semicolons, and whitespace around range separators, e.g.
+    ``"1,2 4; 7 .. 10"``.
+    """
+    if strng is None:
         return [], False
-    for rng in ranges:
-        try:
-            start, end = rng.split("..")
-            singles += [i + shift for i in range(int(start), int(end) + 1)]
-        except ValueError:
+
+    normalized = re.sub(r"\s*\.\.\s*", "..", str(strng).strip())
+    normalized = re.sub(r"[,;]+", " ", normalized)
+    if not normalized:
+        return [], True
+
+    indexes = []
+    for item in normalized.split():
+        if not re.fullmatch(r"[+-]?\d+(?:\.\.[+-]?\d+)?", item):
             return [], False
-    return singles, True
+
+        if ".." in item:
+            start, end = [int(value) for value in item.split("..")]
+            if start > end:
+                return [], False
+            indexes.extend(i + shift for i in range(start, end + 1))
+        else:
+            indexes.append(int(item) + shift)
+
+    return indexes, True
 
 
 def is_number(s):
