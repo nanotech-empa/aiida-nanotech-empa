@@ -570,6 +570,61 @@ def string_range_to_list(strng, shift=-1):
     return indexes, True
 
 
+def _atom_indexes_to_cp2k_list(strng):
+    """Normalize user atom-index text for CP2K LIST/ATOMS fields."""
+    indexes, all_ok = string_range_to_list(strng, shift=0)
+    if not all_ok:
+        return str(strng).strip()
+    return " ".join(str(index) for index in indexes)
+
+
+def _is_atom_index_token(token):
+    token = str(token).strip()
+    if token == "..":
+        return True
+    if not token:
+        return False
+    _, all_ok = string_range_to_list(token, shift=0)
+    return all_ok
+
+
+def _collect_atom_index_tokens(details, pos):
+    ids = []
+    while pos < len(details) and _is_atom_index_token(details[pos]):
+        ids.append(details[pos])
+        pos += 1
+    return " ".join(ids), pos
+
+
+def _split_input_sections(strng, section_keywords):
+    """Split comma-separated sections without splitting atom-index commas."""
+    if not strng:
+        return []
+    section_start = "|".join(re.escape(keyword) for keyword in section_keywords)
+    return [
+        section.strip()
+        for section in re.split(
+            rf"\s*,\s*(?=(?:{section_start})\b|$)",
+            strng.strip(),
+            flags=re.IGNORECASE,
+        )
+        if section.strip()
+    ]
+
+
+def _fixed_constraint_dict(const):
+    """Parse one fixed-atoms constraint preserving comma-separated atom indexes."""
+    indexes = re.sub(r"^\s*fixed\b", "", const, flags=re.IGNORECASE).strip()
+    xyz = "XYZ"
+
+    match = re.match(r"^(?P<components>[xyz]+)\b(?P<indexes>.*)$", indexes, re.I)
+    if match:
+        xyz = match.group("components").upper()
+        indexes = match.group("indexes").strip()
+
+    return fixed_dict(xyz, _atom_indexes_to_cp2k_list(indexes))
+
+
 def is_number(s):
     """Returns True if string is a number or a range."""
     num = s.split("..")
@@ -596,12 +651,8 @@ def collective_dict(details):
 
 def get_atoms(details):
     """Gets atom elements in a stirng deifnition of a CP2K CV."""
-    try:
-        last_id = 1 + min(i for i, j in enumerate(details[2:]) if not is_number(j))
-    except ValueError:
-        last_id = len(details) - 1
-    ids = " ".join(i for i in details[2 : last_id + 1])
-    return {"ATOMS": ids}
+    ids, _ = _collect_atom_index_tokens(details, 2)
+    return {"ATOMS": _atom_indexes_to_cp2k_list(ids)}
 
 
 def get_ids(details, label=None):
@@ -612,16 +663,20 @@ def get_ids(details, label=None):
         for lab in labels:
             ids0 = ""
             pos = lab + 2
-            while is_number(details[pos]):
-                ids0 += details[pos] + " "
-                pos += 1
+            if details[lab + 1].lower() == "atoms":
+                ids0, pos = _collect_atom_index_tokens(details, pos)
+                ids0 = _atom_indexes_to_cp2k_list(ids0)
+            else:
+                while pos < len(details) and is_number(details[pos]):
+                    ids0 += details[pos] + " "
+                    pos += 1
             ids.append(ids0)
     else:
         labels = []
         ids = []
         pos = 1
-        while is_number(details[pos]):
-            ids.append(details[pos])
+        while pos < len(details) and _is_atom_index_token(details[pos]):
+            ids.append(_atom_indexes_to_cp2k_list(details[pos]))
             pos += 1
     return labels, ids
 
@@ -910,7 +965,10 @@ def eval_cv_bond_rotation(details, atoms):
 def get_colvars_section(colvars):
     """Creates the COLVAR CP2K input dictionary."""
     allcvs = []
-    colvars = colvars.split(",")
+    colvars = _split_input_sections(
+        colvars,
+        ["distance", "angle", "angle_plane_plane", "bond_rotation", "torsion"],
+    )
     for cv in colvars:
         details = cv.split()
         details.append("end")
@@ -931,22 +989,14 @@ def get_colvars_section(colvars):
 def get_constraints_section(constraints):
     """Creates the CONSTRAINTS CP2K input dictionary."""
     constraints_dict = {}
-    constraints = constraints.split(",")
+    constraints = _split_input_sections(constraints, ["fixed", "collective"])
     fixed = []
     colvar = []
     for const in constraints:
         details = const.split()
         details.append("end")
         if "fixed" in details[0].lower():
-            # 'fixed xy 1..2 7 9' --> '1..2 7 9'
-            indexes = const.lower().replace("fixed", "")
-            indexes = indexes.replace("x", "")
-            indexes = indexes.replace("y", "")
-            indexes = indexes.replace("z", "")
-            xyz = "XYZ"
-            if any(c in details[1].upper() for c in ["X", "Y", "Z"]):
-                xyz = details[1].upper()
-            fixed.append(fixed_dict(xyz, indexes.strip()))
+            fixed.append(_fixed_constraint_dict(const))
         if "collective" in details[0].lower():
             colvar.append(collective_dict(details[1:]))
         if fixed:
