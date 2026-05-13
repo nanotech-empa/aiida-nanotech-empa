@@ -574,7 +574,7 @@ def _atom_indexes_to_cp2k_list(strng):
     """Normalize user atom-index text for CP2K LIST/ATOMS fields."""
     indexes, all_ok = string_range_to_list(strng, shift=0)
     if not all_ok:
-        return str(strng).strip()
+        raise ValueError(f"Invalid atom index range: {strng!r}")
     return " ".join(str(index) for index in indexes)
 
 
@@ -594,6 +594,12 @@ def _collect_atom_index_tokens(details, pos):
         ids.append(details[pos])
         pos += 1
     return " ".join(ids), pos
+
+
+def _require_atom_index_end(details, pos, terminators):
+    token = details[pos].lower() if pos < len(details) else "end"
+    if token not in terminators:
+        raise ValueError(f"Invalid atom index token: {details[pos]!r}")
 
 
 def _split_input_sections(strng, section_keywords):
@@ -651,7 +657,8 @@ def collective_dict(details):
 
 def get_atoms(details):
     """Gets atom elements in a stirng deifnition of a CP2K CV."""
-    ids, _ = _collect_atom_index_tokens(details, 2)
+    ids, pos = _collect_atom_index_tokens(details, 2)
+    _require_atom_index_end(details, pos, {"axis", "end"})
     return {"ATOMS": _atom_indexes_to_cp2k_list(ids)}
 
 
@@ -665,6 +672,9 @@ def get_ids(details, label=None):
             pos = lab + 2
             if details[lab + 1].lower() == "atoms":
                 ids0, pos = _collect_atom_index_tokens(details, pos)
+                _require_atom_index_end(
+                    details, pos, {"point", "plane", "axis", "end"}
+                )
                 ids0 = _atom_indexes_to_cp2k_list(ids0)
             else:
                 while pos < len(details) and is_number(details[pos]):
@@ -678,6 +688,7 @@ def get_ids(details, label=None):
         while pos < len(details) and _is_atom_index_token(details[pos]):
             ids.append(_atom_indexes_to_cp2k_list(details[pos]))
             pos += 1
+        _require_atom_index_end(details, pos, {"end"})
     return labels, ids
 
 
