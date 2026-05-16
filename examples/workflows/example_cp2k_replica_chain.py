@@ -14,7 +14,7 @@ GEO_FILE = "c2h4.xyz"
 
 
 def _example_cp2k_replicachain(
-    cp2k_code, targets, restart_uuid, n_nodes, n_cores_per_node
+    cp2k_code, targets, restart_uuid=None, n_nodes=1, n_cores_per_node=1
 ):
     # check if test geometry is already in database
     qb = orm.QueryBuilder()
@@ -75,8 +75,8 @@ def _example_cp2k_replicachain(
 
 
 def example_cp2k_replicachain_rks(cp2k_code):
-    pk1 = _example_cp2k_replicachain(cp2k_code, None)
-    _example_cp2k_replicachain(cp2k_code, pk1)
+    pk1 = _example_cp2k_replicachain(cp2k_code, [1.40, 1.21, 1.87])
+    _example_cp2k_replicachain(cp2k_code, [1.47, 1.27, 1.87], pk1)
 
 
 @click.command("cli")

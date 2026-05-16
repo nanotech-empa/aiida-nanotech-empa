@@ -20,6 +20,7 @@ def _example_cp2k_mol_opt_gw(cp2k_code, geo_opt):
 
     builder.protocol = Str("gpw_std")
     builder.multiplicity = Int(1)
+    builder.debug = Bool(True)
 
     builder.geo_opt = Bool(False)
     if geo_opt:

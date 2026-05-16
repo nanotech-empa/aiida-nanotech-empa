@@ -13,7 +13,7 @@ DATA_DIR = script_dir(__file__)
 GEOS = ["h2_on_hbn.xyz", "si_bulk.xyz", "c2h2.xyz"]
 
 
-def _example_cp2k_geo_opt(cp2k_code, sys_type, uks, n_nodes, n_cores_per_node):
+def _example_cp2k_geo_opt(cp2k_code, sys_type, uks, n_nodes=1, n_cores_per_node=1):
     # Check test geometries are already in database.
     qb = orm.QueryBuilder()
     qb.append(
