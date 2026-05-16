@@ -12,9 +12,6 @@ pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 collect_ignore = [
     "examples/workflows/example_cp2k_afm.py",
     "examples/workflows/example_cp2k_hrstm.py",
-    "examples/workflows/example_cp2k_orb.py",
-    "examples/workflows/example_cp2k_pdos.py",
-    "examples/workflows/example_cp2k_stm.py",
     "examples/workflows/example_gaussian_casscf.py",
     "examples/workflows/example_gaussian_nics.py",
     "examples/workflows/example_gaussian_opt.py",
@@ -128,3 +125,17 @@ def qe_projwfc_code(local_code_factory):
 def cp2k_code(local_code_factory):
     prepend_text = "export OMP_NUM_THREADS=2"
     return local_code_factory("cp2k", "cp2k.ssmp", prepend_text=prepend_text)
+
+
+@pytest.fixture(scope="function")
+def spm_code(local_code_factory):
+    return local_code_factory(
+        "nanotech_empa.stm", "cp2k-stm-sts-wfn", label="stm"
+    )
+
+
+@pytest.fixture(scope="function")
+def overlap_code(local_code_factory):
+    return local_code_factory(
+        "nanotech_empa.overlap", "cp2k-overlap-from-wfns", label="overlap"
+    )

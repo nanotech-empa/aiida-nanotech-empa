@@ -40,6 +40,10 @@ jobs:
       run: |
         bash .github/install_qe.sh
 
+    - name: Install CP2K SPM tools
+      run: |
+        bash .github/install_spm_tools.sh
+
     - name: Run pytest
       run: |
         pytest --cov-report=xml --cov=aiida_nanotech_empa
