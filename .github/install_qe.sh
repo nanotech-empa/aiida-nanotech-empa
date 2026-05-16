@@ -1,18 +1,9 @@
 #!/bin/bash
+set -e
 
-sudo apt install build-essential -y
-sudo apt-get install gfortran -y
+sudo apt-get update
+sudo apt-get install -y quantum-espresso
 
-wget https://github.com/QEF/q-e/releases/download/qe-6.7.0/qe-6.7-ReleasePack.tgz
-
-tar xvf qe-6.7-ReleasePack.tgz
-
-rm qe-6.7-ReleasePack.tgz
-
-mv qe-6.7 qe
-
-cd qe
-
-./configure --disable-parallel
-
-make pw pp
+which pw.x
+which pp.x
+which projwfc.x
