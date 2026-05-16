@@ -1,12 +1,15 @@
-import pathlib
-
 import ase.io
 import click
 from aiida import engine, orm, plugins
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 Cp2kReplicaWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.replica")
 
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
 GEO_FILE = "c2h4.xyz"
 
 

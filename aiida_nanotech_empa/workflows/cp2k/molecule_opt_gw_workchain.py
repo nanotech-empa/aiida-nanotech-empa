@@ -27,6 +27,26 @@ def analyze_structure(structure, mag_per_site):
     }
 
 
+def geo_opt_dft_params(multiplicity, magnetization_per_site, structure):
+    dft_params = {
+        "charge": 0,
+        "periodic": "NONE",
+        "vdw": True,
+    }
+    if multiplicity.value > 0:
+        mag_list = list(magnetization_per_site)
+        if not mag_list:
+            mag_list = [0 for _ in range(len(structure.sites))]
+        dft_params.update(
+            {
+                "uks": True,
+                "multiplicity": multiplicity.value,
+                "magnetization_per_site": mag_list,
+            }
+        )
+    return dft_params
+
+
 class Cp2kMoleculeOptGwWorkChain(engine.WorkChain):
     """WorkChain to  optimize molecule and run GW:
 
@@ -139,10 +159,15 @@ class Cp2kMoleculeOptGwWorkChain(engine.WorkChain):
         builder = Cp2kGeoOptWorkChain.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.mol_struct
-        builder.multiplicity = self.inputs.multiplicity
-        builder.magnetization_per_site = self.ctx.mol_mag_per_site
-        builder.vdw = orm.Bool(True)
-        builder.protocol = orm.Str("standard")
+        builder.dft_params = orm.Dict(
+            geo_opt_dft_params(
+                self.inputs.multiplicity,
+                self.ctx.mol_mag_per_site,
+                self.ctx.mol_struct,
+            )
+        )
+        builder.sys_params = orm.Dict({})
+        builder.protocol = orm.Str("debug" if self.inputs.debug.value else "standard")
         builder.options = self.inputs.options.geo_opt
         builder.metadata.description = "Submitted by Cp2kMoleculeOptGwWorkChain."
         builder.metadata.label = "Cp2kGeoOptWorkChain"

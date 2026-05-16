@@ -1,12 +1,15 @@
-import pathlib
-
 import ase.io
 import click
 from aiida import engine, orm, plugins
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 Cp2kGeoOptWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.geo_opt")
 
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
 GEOS = ["h2_on_hbn.xyz", "si_bulk.xyz", "c2h2.xyz"]
 
 

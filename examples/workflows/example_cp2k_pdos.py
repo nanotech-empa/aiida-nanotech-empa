@@ -1,17 +1,26 @@
-import pathlib
-
 import ase.io
 import click
 from aiida import engine, orm, plugins
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 Cp2kPdosWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.pdos")
 
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
 GEO_FILE = "c2h2_on_au111.xyz"
 
 
 def _example_cp2k_pdos(
-    cp2k_code, overlap_code, sc_diag, force_multiplicity, uks, n_nodes, n_cores_per_node
+    cp2k_code,
+    overlap_code,
+    sc_diag,
+    force_multiplicity,
+    uks,
+    n_nodes=1,
+    n_cores_per_node=1,
 ):
     # Check test geometry is already in database.
     qb = orm.QueryBuilder()
@@ -34,22 +43,26 @@ def _example_cp2k_pdos(
     builder.metadata.description = "test description"
     builder.cp2k_code = cp2k_code
     ase_geom_slab = ase.io.read(DATA_DIR / GEO_FILE)
-    ase_geom_mol = ase_geom_slab[0:4]
-    builder.slabsys_structure = orm.StructureData(ase=ase_geom_slab)
-    builder.mol_structure = orm.StructureData(ase=ase_geom_mol)
+    builder.structure = orm.StructureData(ase=ase_geom_slab)
+    builder.molecule_indices = orm.List(list(range(4)))
     builder.pdos_lists = orm.List([("1..4", "molecule"), ("1", "cat")])
     builder.protocol = orm.Str("debug")
     if uks:
+        magnetization_per_site = [0 for _ in range(len(ase_geom_slab))]
+        magnetization_per_site[0] = 1
+        magnetization_per_site[1] = -1
         dft_params = {
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
             "elpa_switch": False,
             "periodic": "XYZ",
             "uks": uks,
+            "charge": 0,
+            "charges": {"all": 0, "molecule": 0},
+            "multiplicities": {"all": 1, "molecule": 1},
             "multiplicity": 1,
+            "magnetization_per_site": magnetization_per_site,
             "smear_t": 150,
-            "spin_up_guess": [0],
-            "spin_dw_guess": [1],
         }
     else:
         dft_params = {
@@ -58,6 +71,8 @@ def _example_cp2k_pdos(
             "elpa_switch": False,
             "periodic": "XYZ",
             "uks": uks,
+            "charge": 0,
+            "charges": {"all": 0, "molecule": 0},
             "smear_t": 150,
         }
     builder.dft_params = orm.Dict(dft_params)
@@ -109,11 +124,11 @@ def _example_cp2k_pdos(
 
 
 def example_cp2k_pdos_no_sc_diag(cp2k_code, overlap_code):
-    _example_cp2k_pdos(cp2k_code, overlap_code, False, True)
+    _example_cp2k_pdos(cp2k_code, overlap_code, False, True, False)
 
 
 def example_cp2k_pdos_sc_diag(cp2k_code, overlap_code):
-    _example_cp2k_pdos(cp2k_code, overlap_code, True, True)
+    _example_cp2k_pdos(cp2k_code, overlap_code, True, True, True)
 
 
 @click.command("cli")

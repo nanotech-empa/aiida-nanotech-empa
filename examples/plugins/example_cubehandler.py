@@ -1,4 +1,3 @@
-import typer
 from aiida import engine, orm
 
 
@@ -37,4 +36,6 @@ def cli(cubehandler_code: str):
 
 
 if __name__ == "__main__":
+    import typer
+
     typer.run(cli)
