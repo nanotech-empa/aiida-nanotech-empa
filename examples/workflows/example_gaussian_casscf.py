@@ -6,10 +6,15 @@ from aiida.engine import run_get_node
 from aiida.orm import Bool, Dict, List, Str, StructureData, load_code
 from aiida.plugins import WorkflowFactory
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 GaussianCasscfSeriesWorkChain = WorkflowFactory("nanotech_empa.gaussian.casscf_series")
 
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = str(script_dir(__file__))
+OUTPUT_DIR = DATA_DIR
 
 
 def _example_gaussian_casscf(gaussian_code, formchk_code, cubegen_code):

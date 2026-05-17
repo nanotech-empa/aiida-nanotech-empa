@@ -1,16 +1,19 @@
-import pathlib
-
 import ase.io
 import click
 from aiida import engine, orm, plugins
 
 from aiida_nanotech_empa.utils.cube_utils import cube_from_qe_pp_arraydata
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 # AiiDA classes.
 NanoribbonWorkChain = plugins.WorkflowFactory("nanotech_empa.nanoribbon")
 
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
-OUTPUT_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
+OUTPUT_DIR = DATA_DIR
 
 
 def _example_nanoribbon(

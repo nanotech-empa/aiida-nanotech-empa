@@ -39,7 +39,10 @@ jobs:
     - name: Install QE
       run: |
         bash .github/install_qe.sh
-        echo "$PWD/qe/bin" >> $GITHUB_PATH
+
+    - name: Install CP2K SPM tools
+      run: |
+        bash .github/install_spm_tools.sh
 
     - name: Run pytest
       run: |

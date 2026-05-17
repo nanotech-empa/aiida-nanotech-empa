@@ -1,17 +1,20 @@
-import pathlib
-
 import ase.io
 import click
 from aiida import engine, orm, plugins
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
 GEO_FILE = "c2h2.xyz"
 
 
 def _example_cp2k_diag(
-    cp2k_code, sc_diag, force_multiplicity, uks, n_nodes, n_cores_per_node
+    cp2k_code, sc_diag, force_multiplicity, uks, n_nodes=1, n_cores_per_node=1
 ):
     builder = Cp2kDiagWorkChain.get_builder()
 
@@ -44,6 +47,9 @@ def _example_cp2k_diag(
         }
     )
     if uks:
+        magnetization_per_site = [0 for _ in range(len(ase_geom))]
+        magnetization_per_site[0] = 1
+        magnetization_per_site[1] = -1
         builder.dft_params = orm.Dict(
             {
                 "sc_diag": sc_diag,
@@ -54,9 +60,8 @@ def _example_cp2k_diag(
                 "charge": 0,
                 "periodic": "NONE",
                 "multiplicity": 1,
+                "magnetization_per_site": magnetization_per_site,
                 "smear_t": 150,
-                "spin_up_guess": [0],
-                "spin_dw_guess": [1],
             }
         )
     builder.options = orm.Dict(
