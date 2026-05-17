@@ -570,12 +570,45 @@ def string_range_to_list(strng, shift=-1):
     return indexes, True
 
 
-def _atom_indexes_to_cp2k_list(strng):
-    """Normalize user atom-index text for CP2K LIST/ATOMS fields."""
+def _atom_indexes_to_cp2k_list(strng, compact_ranges=False):
+    """Normalize user atom-index text for CP2K LIST/ATOMS fields.
+
+    When ``compact_ranges`` is True, consecutive runs of 3+ atoms are rendered
+    as ``start..end`` ranges to keep long fixed-atom lists compact.
+    """
     indexes, all_ok = string_range_to_list(strng, shift=0)
     if not all_ok:
         raise ValueError(f"Invalid atom index range: {strng!r}")
-    return " ".join(str(index) for index in indexes)
+
+    if not compact_ranges:
+        return " ".join(str(index) for index in indexes)
+
+    # Keep CP2K input compact by collapsing consecutive runs into ranges.
+    if not indexes:
+        return ""
+
+    compressed = []
+    start = indexes[0]
+    previous = indexes[0]
+
+    for index in indexes[1:]:
+        if index == previous + 1:
+            previous = index
+            continue
+
+        if previous - start >= 2:
+            compressed.append(f"{start}..{previous}")
+        else:
+            compressed.extend(str(i) for i in range(start, previous + 1))
+        start = index
+        previous = index
+
+    if previous - start >= 2:
+        compressed.append(f"{start}..{previous}")
+    else:
+        compressed.extend(str(i) for i in range(start, previous + 1))
+
+    return " ".join(compressed)
 
 
 def _is_atom_index_token(token):
@@ -628,7 +661,7 @@ def _fixed_constraint_dict(const):
         xyz = match.group("components").upper()
         indexes = match.group("indexes").strip()
 
-    return fixed_dict(xyz, _atom_indexes_to_cp2k_list(indexes))
+    return fixed_dict(xyz, _atom_indexes_to_cp2k_list(indexes, compact_ranges=True))
 
 
 def is_number(s):
