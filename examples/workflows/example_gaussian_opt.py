@@ -4,10 +4,15 @@ import ase.io
 import numpy as np
 from aiida import engine, orm, plugins
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 GaussianRelaxWorkChain = plugins.WorkflowFactory("nanotech_empa.gaussian.relax")
 
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = str(script_dir(__file__))
+OUTPUT_DIR = DATA_DIR
 
 
 def _example_gaussian_spin(gaussian_code):  # , formchk_code, cubegen_code):

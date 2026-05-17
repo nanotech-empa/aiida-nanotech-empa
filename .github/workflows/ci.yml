@@ -13,7 +13,7 @@ jobs:
         ports:
           - 5432:5432
       rabbitmq:
-        image: rabbitmq:latest
+        image: rabbitmq:3.13
         ports:
           - 5672:5672
     strategy:
@@ -39,7 +39,10 @@ jobs:
     - name: Install QE
       run: |
         bash .github/install_qe.sh
-        echo "$PWD/qe/bin" >> $GITHUB_PATH
+
+    - name: Install CP2K SPM tools
+      run: |
+        bash .github/install_spm_tools.sh
 
     - name: Run pytest
       run: |

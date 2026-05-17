@@ -1,11 +1,14 @@
-import pathlib
-
 import click
 from aiida import engine, orm, plugins
 from ase.io import read
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 GaussianNicsWorkChain = plugins.WorkflowFactory("nanotech_empa.gaussian.nics")
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
 GEO_FILE1 = "naphthalene.xyz"
 GEO_FILE2 = "C9H7N.xyz"
 

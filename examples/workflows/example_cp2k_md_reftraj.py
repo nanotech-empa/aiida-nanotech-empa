@@ -8,8 +8,8 @@ from aiida import engine, orm, plugins
 
 # from aiida.manage.manager import get_manager
 Cp2kReftrajWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.reftraj")
-StructureData = orm.DataFactory("core.structure")
-TrajectoryData = orm.DataFactory("core.array.trajectory")
+StructureData = plugins.DataFactory("core.structure")
+TrajectoryData = plugins.DataFactory("core.array.trajectory")
 
 
 def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False, to_be_killed=False):

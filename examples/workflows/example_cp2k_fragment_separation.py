@@ -1,8 +1,11 @@
-import pathlib
-
 import ase.io
 import click
 from aiida import engine, orm, plugins
+
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
 
 StructureData = plugins.DataFactory("core.structure")
 Cp2kFragmentSeparationWorkChain = plugins.WorkflowFactory(
@@ -10,11 +13,11 @@ Cp2kFragmentSeparationWorkChain = plugins.WorkflowFactory(
 )
 
 
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
 GEO_FILE = "h2_on_hbn.xyz"
 
 
-def _example_cp2k_ads_ene(cp2k_code, mult, n_nodes, n_cores_per_node):
+def _example_cp2k_ads_ene(cp2k_code, mult, n_nodes=1, n_cores_per_node=1):
     """Example of running a workflow to compute the adsorption energy of a molecule on substrate."""
     # Check test geometry is already in database.
     qb = orm.QueryBuilder()
