@@ -5,6 +5,7 @@ from aiida import engine, orm, plugins
 
 from ...utils import common_utils, split_structure
 from . import cp2k_utils
+from .geo_opt_workchain import validate_on_unhandled_failure
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 OverlapCalculation = plugins.CalculationFactory("nanotech_empa.overlap")
@@ -51,6 +52,35 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        spec.input(
+            "max_iterations",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(5),
+            required=False,
+            help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
+        )
+        spec.input(
+            "clean_workdir",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Clean called CP2K calculation work directories after termination.",
+        )
+        spec.input(
+            "on_unhandled_failure",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("pause"),
+            required=False,
+            validator=validate_on_unhandled_failure,
+            help="Action for unhandled cp2k.base failures: abort, pause, restart_once, or restart_and_pause.",
+        )
+        spec.input(
+            "pause_on_max_iterations",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
+            required=False,
+            help="Pause cp2k.base for inspection when restart max_iterations is reached.",
+        )
 
         spec.outline(
             cls.setup,
@@ -68,6 +98,12 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+
+    def set_restart_policy(self, builder):
+        builder.max_iterations = self.inputs.max_iterations
+        builder.clean_workdir = self.inputs.clean_workdir
+        builder.on_unhandled_failure = self.inputs.on_unhandled_failure
+        builder.pause_on_max_iterations = self.inputs.pause_on_max_iterations
 
     def setup(self):
         self.report("Setting up workchain")
@@ -127,6 +163,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         self.report("Running Diag Workchain for the full system.")
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
+        self.set_restart_policy(builder)
         builder.structure = self.ctx.structure
         builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.dft_parameters)
@@ -148,6 +185,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             self.report("Running Diag Workchain for the fragment.")
             builder = Cp2kDiagWorkChain.get_builder()
             builder.cp2k_code = self.inputs.cp2k_code
+            self.set_restart_policy(builder)
             builder.structure = self.ctx.molecule_structure
             builder.protocol = self.inputs.protocol
             builder.dft_params = orm.Dict(self.ctx.mol_dft_parameters)
