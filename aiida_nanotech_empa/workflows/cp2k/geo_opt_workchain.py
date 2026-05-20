@@ -9,6 +9,21 @@ from . import cp2k_utils
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
 
+ON_UNHANDLED_FAILURE_ACTIONS = ("abort", "pause", "restart_once", "restart_and_pause")
+
+
+def validate_on_unhandled_failure(value, _):
+    if value is None:
+        return None
+
+    if value.value not in ON_UNHANDLED_FAILURE_ACTIONS:
+        return (
+            f"on_unhandled_failure: {value.value!r}. Must be one of: "
+            f"{', '.join(ON_UNHANDLED_FAILURE_ACTIONS)}"
+        )
+
+    return None
+
 
 class Cp2kGeoOptWorkChain(engine.WorkChain):
     @classmethod
@@ -32,6 +47,35 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             valid_type=dict,
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
+        )
+        spec.input(
+            "max_iterations",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(5),
+            required=False,
+            help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
+        )
+        spec.input(
+            "clean_workdir",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Clean called CP2K calculation work directories after termination.",
+        )
+        spec.input(
+            "on_unhandled_failure",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("pause"),
+            required=False,
+            validator=validate_on_unhandled_failure,
+            help="Action for unhandled cp2k.base failures: abort, pause, restart_once, or restart_and_pause.",
+        )
+        spec.input(
+            "pause_on_max_iterations",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
+            required=False,
+            help="Pause cp2k.base for inspection when restart max_iterations is reached.",
         )
 
         # Workchain outline.
@@ -186,8 +230,16 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         # Parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
+        # Restart policy.
+        builder.max_iterations = self.inputs.max_iterations
+        builder.clean_workdir = self.inputs.clean_workdir
+        builder.on_unhandled_failure = self.inputs.on_unhandled_failure
+        builder.pause_on_max_iterations = self.inputs.pause_on_max_iterations
+
         # Handlers.
-        builder.handler_overrides = orm.Dict({"restart_incomplete_calculation": True})
+        builder.handler_overrides = orm.Dict(
+            {"restart_incomplete_calculation": {"enabled": True}}
+        )
 
         # Restart wfn.
         if "parent_calc_folder" in self.inputs:
