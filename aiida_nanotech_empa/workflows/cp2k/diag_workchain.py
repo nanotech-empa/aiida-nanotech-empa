@@ -6,6 +6,7 @@ from aiida import engine, orm, plugins
 
 from ...utils import common_utils
 from . import cp2k_utils
+from .geo_opt_workchain import validate_on_unhandled_failure
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
@@ -44,6 +45,35 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             required=False,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        spec.input(
+            "max_iterations",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(5),
+            required=False,
+            help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
+        )
+        spec.input(
+            "clean_workdir",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Clean called CP2K calculation work directories after termination.",
+        )
+        spec.input(
+            "on_unhandled_failure",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("pause"),
+            required=False,
+            validator=validate_on_unhandled_failure,
+            help="Action for unhandled cp2k.base failures: abort, pause, restart_once, or restart_and_pause.",
+        )
+        spec.input(
+            "pause_on_max_iterations",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
+            required=False,
+            help="Pause cp2k.base for inspection when restart max_iterations is reached.",
+        )
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -58,6 +88,12 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+
+    def set_restart_policy(self, builder):
+        builder.max_iterations = self.inputs.max_iterations
+        builder.clean_workdir = self.inputs.clean_workdir
+        builder.on_unhandled_failure = self.inputs.on_unhandled_failure
+        builder.pause_on_max_iterations = self.inputs.pause_on_max_iterations
 
     def setup(self):
         self.report("Setting up workchain")
@@ -121,6 +157,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         # Set workflow inputs.
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
+        self.set_restart_policy(builder)
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
@@ -249,6 +286,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
+        self.set_restart_policy(builder)
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
