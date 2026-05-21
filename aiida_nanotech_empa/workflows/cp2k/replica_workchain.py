@@ -5,6 +5,7 @@ from aiida import engine, orm, plugins
 
 from ...utils import common_utils
 from . import cp2k_utils
+from .geo_opt_workchain import validate_on_unhandled_failure
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 Cp2kCalculation = plugins.CalculationFactory("cp2k")
@@ -38,6 +39,35 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        spec.input(
+            "max_iterations",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(5),
+            required=False,
+            help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
+        )
+        spec.input(
+            "clean_workdir",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Clean called CP2K calculation work directories after termination.",
+        )
+        spec.input(
+            "on_unhandled_failure",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("pause"),
+            required=False,
+            validator=validate_on_unhandled_failure,
+            help="Action for unhandled cp2k.base failures: abort, pause, restart_once, or restart_and_pause.",
+        )
+        spec.input(
+            "pause_on_max_iterations",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
+            required=False,
+            help="Pause cp2k.base for inspection when restart max_iterations is reached.",
+        )
 
         spec.outline(
             cls.setup,
@@ -61,6 +91,12 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         spec.output_namespace("structures", valid_type=orm.StructureData)
         spec.output_namespace("details", valid_type=orm.Dict)
         spec.exit_code(390, "ERROR_TERMINATION", message="One geo opt failed")
+
+    def set_restart_policy(self, builder):
+        builder.max_iterations = self.inputs.max_iterations
+        builder.clean_workdir = self.inputs.clean_workdir
+        builder.on_unhandled_failure = self.inputs.on_unhandled_failure
+        builder.pause_on_max_iterations = self.inputs.pause_on_max_iterations
 
     def setup(self):
         """Initialize the workchain process."""
@@ -234,13 +270,14 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                 structure = self.ctx.lowest_energy_structure
 
                 files, input_dict, structure_with_tags = cp2k_utils.get_dft_inputs(
-                    self.inputs.dft_params,
+                    self.inputs.dft_params.get_dict(),
                     structure,
                     "geo_opt_protocol.yml",
                     self.inputs.protocol.value,
                 )
 
                 builder = Cp2kBaseWorkChain.get_builder()
+                self.set_restart_policy(builder)
                 builder.cp2k.code = self.inputs.code
                 builder.cp2k.structure = orm.StructureData(ase=structure_with_tags)
                 builder.cp2k.file = files
