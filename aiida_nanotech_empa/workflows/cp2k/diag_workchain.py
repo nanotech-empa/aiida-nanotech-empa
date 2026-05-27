@@ -212,12 +212,17 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         # Parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
+        self.update_ot_input_dict(input_dict)
+
         # CP2K input dictionary.
         builder.cp2k.parameters = orm.Dict(input_dict)
         self.ctx.input_dict = copy.deepcopy(input_dict)
 
         future = self.submit(builder)
         self.to_context(ot_scf=future)
+
+    def update_ot_input_dict(self, input_dict):
+        pass
 
     def run_diag_scf(self):
         self.report("Running CP2K diagonalization SCF")
