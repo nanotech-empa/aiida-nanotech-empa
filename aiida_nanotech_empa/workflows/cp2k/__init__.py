@@ -12,6 +12,7 @@ from .pdos_workchain import Cp2kPdosWorkChain
 from .phonons_workchain import Cp2kPhononsWorkChain
 from .reftraj_md_workchain import Cp2kRefTrajWorkChain
 from .replica_workchain import Cp2kReplicaWorkChain
+from .scf_workchain import Cp2kScfWorkChain
 from .stm_workchain import Cp2kStmWorkChain
 
 __all__ = (
@@ -26,6 +27,7 @@ __all__ = (
     "Cp2kAfmWorkChain",
     "Cp2kHrstmWorkChain",
     "Cp2kDiagWorkChain",
+    "Cp2kScfWorkChain",
     "Cp2kReplicaWorkChain",
     "Cp2kNebWorkChain",
     "Cp2kPhononsWorkChain",
