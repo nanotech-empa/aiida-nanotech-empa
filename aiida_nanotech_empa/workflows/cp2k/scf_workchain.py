@@ -5,6 +5,7 @@ from .diag_workchain import Cp2kDiagWorkChain
 
 BaderCalculation = plugins.CalculationFactory("nanotech_empa.bader")
 SparseOverlapCalculation = plugins.CalculationFactory("nanotech_empa.sparse_overlap")
+Cp2kUnfoldingCalculation = plugins.CalculationFactory("nanotech_empa.cp2k_unfolding")
 
 
 class Cp2kScfWorkChain(Cp2kDiagWorkChain):
@@ -69,6 +70,39 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             required=False,
             help="Plane-wave cutoff used for the OT charge-density cube for Bader analysis.",
         )
+        spec.input(
+            "compute_unfolding",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Post-process WFN and sparse AO overlap into unfolded band weights.",
+        )
+        spec.input(
+            "unfolding_code",
+            valid_type=orm.Code,
+            required=False,
+            help="Python code configured for the nanotech_empa.cp2k_unfolding plugin.",
+        )
+        spec.input(
+            "unfolding_primitive_vectors",
+            valid_type=orm.Str,
+            required=False,
+            help="Approximate primitive vectors as rows, separated by semicolons or newlines.",
+        )
+        spec.input(
+            "unfolding_path",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("G-K-M-G"),
+            required=False,
+            help="High-symmetry path labels, e.g. G-K-M-G.",
+        )
+        spec.input(
+            "unfolding_lattice_type",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("auto"),
+            required=False,
+            help="1d, square, rectangular, hexagonal, oblique, or auto.",
+        )
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -76,6 +110,9 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 cls.run_diag_scf,
                 engine.if_(cls.should_run_sparse_overlap)(
                     cls.run_sparse_overlap,
+                ),
+                engine.if_(cls.should_run_unfolding)(
+                    cls.run_unfolding,
                 ),
             ),
             engine.if_(cls.should_run_bader)(
@@ -102,6 +139,15 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             and "bader_code" not in value
         ):
             return "'bader_code' is required when 'compute_bader_charges' is True."
+        compute_unfolding = value.get("compute_unfolding")
+        if compute_unfolding is not None and compute_unfolding.value:
+            if "unfolding_code" not in value:
+                return "'unfolding_code' is required when 'compute_unfolding' is True."
+            if "unfolding_primitive_vectors" not in value:
+                return (
+                    "'unfolding_primitive_vectors' is required when "
+                    "'compute_unfolding' is True."
+                )
 
     def should_run_diag_scf(self):
         if self.should_run_bader():
@@ -111,6 +157,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         return (
             self.inputs.write_overlap_matrix.value
             or self.inputs.retrieve_sparse_overlap.value
+            or self.inputs.compute_unfolding.value
             or dft_params.get("added_mos", 0) > 0
         )
 
@@ -119,6 +166,9 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
 
     def should_run_sparse_overlap(self):
         return self.inputs.retrieve_sparse_overlap.value
+
+    def should_run_unfolding(self):
+        return self.inputs.compute_unfolding.value
 
     def update_ot_input_dict(self, input_dict):
         if not self.should_run_bader():
@@ -137,6 +187,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         if not (
             self.inputs.write_overlap_matrix.value
             or self.inputs.retrieve_sparse_overlap.value
+            or self.inputs.compute_unfolding.value
         ):
             return
 
@@ -171,6 +222,31 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             },
         }
         return engine.ToContext(sparse_overlap=self.submit(builder))
+
+    def run_unfolding(self):
+        self.report("Running CP2K band unfolding post-processing")
+        builder = Cp2kUnfoldingCalculation.get_builder()
+        builder.code = self.inputs.unfolding_code
+        builder.parent_calc_folder = self.ctx.diag_scf.outputs.remote_folder
+        builder.primitive_vectors = self.inputs.unfolding_primitive_vectors
+        builder.path = self.inputs.unfolding_path
+        builder.lattice_type = self.inputs.unfolding_lattice_type
+        builder.overlap_threshold = self.inputs.overlap_threshold
+        builder.metadata = {
+            "label": "cp2k_unfolding",
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
+                    "num_cores_per_mpiproc": 1,
+                },
+                "max_wallclock_seconds": min(
+                    7200, self.ctx.options["max_wallclock_seconds"]
+                ),
+                "withmpi": False,
+            },
+        }
+        return engine.ToContext(unfolding=self.submit(builder))
 
     def run_bader(self):
         if not common_utils.check_if_calc_ok(self, self.ctx.ot_scf):
@@ -232,6 +308,12 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             self.out(
                 "sparse_overlap_retrieved", self.ctx.sparse_overlap.outputs.retrieved
             )
+
+        if run_diag and self.should_run_unfolding():
+            if not common_utils.check_if_calc_ok(self, self.ctx.unfolding):
+                self.report("CP2K band unfolding post-processing failed")
+                return self.exit_codes.ERROR_TERMINATION
+            self.out("unfolding_retrieved", self.ctx.unfolding.outputs.retrieved)
 
         self.out("output_parameters", final_calc.outputs.output_parameters)
         self.out("remote_folder", final_calc.outputs.remote_folder)
