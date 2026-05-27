@@ -11,10 +11,12 @@ Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
 
 class Cp2kDiagWorkChain(engine.WorkChain):
+
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
+        # Define the inputs of the work chain.
         spec.input("cp2k_code", valid_type=orm.Code)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
@@ -45,6 +47,8 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
         cp2k_utils.add_restart_policy_inputs(spec)
+
+        # Define the outline of the work chain.
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -52,6 +56,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             cls.finalize,
         )
 
+        # Define the outputs of the work chain.
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -75,6 +80,10 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.ctx.n_atoms = len(structure.sites)
 
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.dft_params.setdefault("periodic", "XYZ")
+        self.ctx.dft_params.setdefault("uks", False)
+        self.ctx.dft_params.setdefault("elpa_switch", False)
+        self.ctx.dft_params.setdefault("sc_diag", False)
 
         # Resources.
         self.ctx.options = self.inputs.options.get_dict()
@@ -244,6 +253,8 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             )
             input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["STRIDE"] = "2 2 2"
 
+        self.update_diag_input_dict(input_dict)
+
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
@@ -284,3 +295,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         self.report("Work chain is finished")
+
+    def update_diag_input_dict(self, input_dict):
+        """Hook for derived workchains to add diagonalization-only CP2K input."""
