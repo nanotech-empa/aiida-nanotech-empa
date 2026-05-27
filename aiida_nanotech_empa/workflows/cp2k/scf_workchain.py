@@ -6,6 +6,7 @@ from .diag_workchain import Cp2kDiagWorkChain
 
 BaderCalculation = plugins.CalculationFactory("nanotech_empa.bader")
 SparseOverlapCalculation = plugins.CalculationFactory("nanotech_empa.sparse_overlap")
+Cp2kUnfoldingCalculation = plugins.CalculationFactory("nanotech_empa.cp2k_unfolding")
 
 OVERLAP_MATRIX_OPTIONS = ("none", "remote_only", "remote_and_sparse_retrieved")
 
@@ -93,13 +94,57 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             help="Minimum plane-wave cutoff (Ry) of the OT SCF when Bader analysis "
             "runs. A higher cutoff from 'dft_params' or the structure is kept.",
         )
+        spec.input(
+            "compute_unfolding",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Post-process WFN and sparse AO overlap into unfolded band weights.",
+        )
+        spec.input(
+            "unfolding_code",
+            valid_type=orm.Code,
+            required=False,
+            help="Python code configured for the nanotech_empa.cp2k_unfolding plugin.",
+        )
+        spec.input(
+            "unfolding_primitive_vectors",
+            valid_type=orm.Str,
+            required=False,
+            help="Approximate primitive vectors as rows, separated by semicolons or newlines.",
+        )
+        spec.input(
+            "unfolding_path",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("G-K-M-G"),
+            required=False,
+            help="High-symmetry path labels, e.g. G-K-M-G.",
+        )
+        spec.input(
+            "unfolding_lattice_type",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("auto"),
+            required=False,
+            help="1d, square, rectangular, hexagonal, oblique, or auto.",
+        )
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
             engine.if_(cls.should_run_diag_scf)(cls.run_diag_scf),
             engine.if_(cls.should_run_sparse_overlap)(cls.run_sparse_overlap),
+            engine.if_(cls.should_run_unfolding)(cls.run_unfolding),
             engine.if_(cls.should_run_bader)(cls.run_bader),
             cls.finalize,
+        )
+        spec.exit_code(
+            393,
+            "ERROR_MISSING_UNFOLDING_CODE",
+            message="An unfolding code is required to compute band unfolding.",
+        )
+        spec.exit_code(
+            394,
+            "ERROR_MISSING_UNFOLDING_PRIMITIVE_VECTORS",
+            message="Primitive vectors are required to compute band unfolding.",
         )
         spec.inputs.validator = cls._validate_inputs
 
@@ -117,6 +162,13 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             return (
                 "'sparse_overlap_code' is required when "
                 "'overlap_matrix' is 'remote_and_sparse_retrieved'."
+            )
+        if value.get("compute_unfolding", orm.Bool(False)).value and (
+            not value["run_diag_scf"].value or overlap_matrix == "none"
+        ):
+            return (
+                "'compute_unfolding' uses the diagonalization SCF wavefunction and "
+                "AO overlap matrix: set 'run_diag_scf' and 'overlap_matrix'."
             )
 
         if "bader_code" in value and value["run_diag_scf"].value:
@@ -144,6 +196,9 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
 
     def should_run_sparse_overlap(self):
         return self.inputs.overlap_matrix.value == "remote_and_sparse_retrieved"
+
+    def should_run_unfolding(self):
+        return self.inputs.compute_unfolding.value
 
     def update_ot_input_dict(self, input_dict):
         # Bader reads the final OT density, printed on the full grid.
@@ -203,6 +258,38 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.metadata = self._serial_postprocessing_metadata("sparse_overlap")
         return engine.ToContext(sparse_overlap=self.submit(builder))
 
+    def run_unfolding(self):
+        if "unfolding_code" not in self.inputs:
+            return self.exit_codes.ERROR_MISSING_UNFOLDING_CODE
+        if "unfolding_primitive_vectors" not in self.inputs:
+            return self.exit_codes.ERROR_MISSING_UNFOLDING_PRIMITIVE_VECTORS
+        if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
+            return self.exit_codes.ERROR_TERMINATION
+
+        self.report("Running CP2K band unfolding post-processing")
+        builder = Cp2kUnfoldingCalculation.get_builder()
+        builder.code = self.inputs.unfolding_code
+        builder.parent_calc_folder = self.ctx.diag_scf.outputs.remote_folder
+        builder.primitive_vectors = self.inputs.unfolding_primitive_vectors
+        builder.path = self.inputs.unfolding_path
+        builder.lattice_type = self.inputs.unfolding_lattice_type
+        builder.overlap_threshold = self.inputs.overlap_threshold
+        builder.metadata = {
+            "label": "cp2k_unfolding",
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
+                    "num_cores_per_mpiproc": 1,
+                },
+                "max_wallclock_seconds": min(
+                    7200, self.ctx.options["max_wallclock_seconds"]
+                ),
+                "withmpi": False,
+            },
+        }
+        return engine.ToContext(unfolding=self.submit(builder))
+
     def run_bader(self):
         if not common_utils.check_if_calc_ok(self, self.ctx.ot_scf):
             self.report("OT SCF failed")
@@ -237,6 +324,12 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 self.report("Bader charge analysis failed")
                 return self.exit_codes.ERROR_TERMINATION
             self.out("bader_retrieved", self.ctx.bader.outputs.retrieved)
+
+        if self.should_run_unfolding():
+            if not common_utils.check_if_calc_ok(self, self.ctx.unfolding):
+                self.report("CP2K band unfolding post-processing failed")
+                return self.exit_codes.ERROR_TERMINATION
+            self.out("unfolding_retrieved", self.ctx.unfolding.outputs.retrieved)
 
         self.out("output_parameters", final_calc.outputs.output_parameters)
         self.out("remote_folder", final_calc.outputs.remote_folder)
