@@ -204,7 +204,9 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             self.out("output_parameters", self.ctx.ot_scf.outputs.output_parameters)
             self.out("remote_folder", self.ctx.ot_scf.outputs.remote_folder)
             self.out("retrieved", self.ctx.ot_scf.outputs.retrieved)
+            self.out("ot_retrieved", self.ctx.ot_scf.outputs.retrieved)
             self.out("bader_retrieved", self.ctx.bader.outputs.retrieved)
+            common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
             self.report("Work chain is finished")
             return None
 
@@ -225,6 +227,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             self.out("output_parameters", self.ctx.diag_scf.outputs.output_parameters)
             self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
             self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
+            self.out("ot_retrieved", self.ctx.ot_scf.outputs.retrieved)
+            common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
             self.report("Work chain is finished")
             return None
 
@@ -235,5 +239,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         self.out("output_parameters", self.ctx.ot_scf.outputs.output_parameters)
         self.out("remote_folder", self.ctx.ot_scf.outputs.remote_folder)
         self.out("retrieved", self.ctx.ot_scf.outputs.retrieved)
+        self.out("ot_retrieved", self.ctx.ot_scf.outputs.retrieved)
+        common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         self.report("Work chain is finished")
         return None
