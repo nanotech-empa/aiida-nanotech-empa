@@ -241,4 +241,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         self.out("output_parameters", final_calc.outputs.output_parameters)
         self.out("remote_folder", final_calc.outputs.remote_folder)
         self.out("retrieved", final_calc.outputs.retrieved)
+        self.out("ot_retrieved", self.ctx.ot_scf.outputs.retrieved)
+        common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         self.report("Work chain is finished")
