@@ -13,9 +13,7 @@ Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
 class Cp2kDiagWorkChain(engine.WorkChain):
     @classmethod
-    def define(cls, spec):
-        super().define(spec)
-
+    def define_common_inputs(cls, spec):
         spec.input("cp2k_code", valid_type=orm.Code)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
@@ -74,13 +72,9 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             required=False,
             help="Pause cp2k.base for inspection when restart max_iterations is reached.",
         )
-        spec.outline(
-            cls.setup,
-            cls.run_ot_scf,
-            cls.run_diag_scf,
-            cls.finalize,
-        )
 
+    @classmethod
+    def define_common_outputs(cls, spec):
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -88,6 +82,18 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+
+    @classmethod
+    def define(cls, spec):
+        super().define(spec)
+        cls.define_common_inputs(spec)
+        spec.outline(
+            cls.setup,
+            cls.run_ot_scf,
+            cls.run_diag_scf,
+            cls.finalize,
+        )
+        cls.define_common_outputs(spec)
 
     def set_restart_policy(self, builder):
         builder.max_iterations = self.inputs.max_iterations
@@ -110,6 +116,10 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.ctx.n_atoms = len(structure.sites)
 
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.dft_params.setdefault("periodic", "XYZ")
+        self.ctx.dft_params.setdefault("uks", False)
+        self.ctx.dft_params.setdefault("elpa_switch", False)
+        self.ctx.dft_params.setdefault("sc_diag", False)
 
         # Resources.
         self.ctx.options = self.inputs.options.get_dict()
@@ -279,6 +289,8 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             )
             input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["STRIDE"] = "2 2 2"
 
+        self.update_diag_input_dict(input_dict)
+
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
@@ -319,3 +331,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         self.report("Work chain is finished")
+
+    def update_diag_input_dict(self, input_dict):
+        """Hook for derived workchains to add diagonalization-only CP2K input."""
