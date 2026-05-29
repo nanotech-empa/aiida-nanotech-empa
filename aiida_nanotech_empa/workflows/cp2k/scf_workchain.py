@@ -136,6 +136,11 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             "ERROR_MISSING_UNFOLDING_PRIMITIVE_VECTORS",
             message="Primitive vectors are required to compute band unfolding.",
         )
+        spec.exit_code(
+            395,
+            "ERROR_MISSING_UNFOLDING_OUTPUT",
+            message="CP2K band unfolding finished without retrieving unfolding_bands.npz.",
+        )
 
     def should_run_diag_scf(self):
         if self.should_run_bader():
@@ -311,6 +316,13 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 if not common_utils.check_if_calc_ok(self, self.ctx.unfolding):
                     self.report("CP2K band unfolding post-processing failed")
                     return self.exit_codes.ERROR_TERMINATION
+                output_filename = self.ctx.unfolding.inputs.output_filename.value
+                retrieved_names = (
+                    self.ctx.unfolding.outputs.retrieved.base.repository.list_object_names()
+                )
+                if output_filename not in retrieved_names:
+                    self.report(f"CP2K band unfolding did not retrieve {output_filename}")
+                    return self.exit_codes.ERROR_MISSING_UNFOLDING_OUTPUT
                 self.out("unfolding_retrieved", self.ctx.unfolding.outputs.retrieved)
 
             self.out("output_parameters", self.ctx.diag_scf.outputs.output_parameters)
