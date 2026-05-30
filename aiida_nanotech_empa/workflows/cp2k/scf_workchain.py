@@ -142,6 +142,13 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             required=False,
             help="Upper bound (eV) of the unfolded energy window, see 'unfolding_emin'.",
         )
+        spec.input(
+            "unfolding_pdos_threshold",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(1.0e-4),
+            required=False,
+            help="Projection threshold for compact atom-resolved PDOS data attached to unfolding.",
+        )
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -251,6 +258,17 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         if self.inputs.overlap_matrix.value != "none":
             _print_overlap_matrix(input_dict, self.inputs.overlap_ndigits.value)
 
+        if self.should_run_unfolding():
+            added_mos = int(self.ctx.dft_params.get("added_mos", 0))
+            print_section = input_dict["FORCE_EVAL"]["DFT"].setdefault("PRINT", {})
+            print_section["PDOS"] = {
+                "LDOS": [
+                    {"COMPONENTS": "", "LIST": atom_index}
+                    for atom_index in range(1, self.ctx.n_atoms + 1)
+                ],
+                "NLUMO": added_mos,
+            }
+
     def _serial_postprocessing_metadata(self, label):
         """Single-core job, capped at one hour or the SCF wall time."""
         return {
@@ -298,6 +316,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         if "unfolding_emin" in self.inputs:
             builder.emin = self.inputs.unfolding_emin
             builder.emax = self.inputs.unfolding_emax
+        builder.parse_pdos_projections = orm.Bool(True)
+        builder.pdos_threshold = self.inputs.unfolding_pdos_threshold
         builder.metadata = self._serial_postprocessing_metadata("cp2k_unfolding")
         return engine.ToContext(unfolding=self.submit(builder))
 

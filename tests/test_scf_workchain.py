@@ -151,6 +151,7 @@ def test_overlap_matrix_printed_in_last_scf_step(
             overlap_ndigits=orm.Int(10),
         ),
         should_run_bader=lambda: False,
+        should_run_unfolding=lambda: False,
     )
     input_dict = {"FORCE_EVAL": {"DFT": {}}}
 
@@ -229,6 +230,7 @@ def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path
             unfolding_primitive_vectors=orm.Str("1 0 0; 0 1 0"),
             unfolding_lattice_type=orm.Str("auto"),
             overlap_threshold=orm.Float(1e-10),
+            unfolding_pdos_threshold=orm.Float(1e-4),
         )
     )
     if path is not None:
@@ -262,3 +264,19 @@ def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path
         assert submitted[0].path is None
     else:
         assert submitted[0].path.value == path
+
+
+def test_unfolding_prints_atom_resolved_pdos():
+    workchain = SimpleNamespace(
+        inputs=SimpleNamespace(overlap_matrix=orm.Str("none")),
+        ctx=SimpleNamespace(dft_params={"added_mos": 12}, n_atoms=3),
+        should_run_unfolding=lambda: True,
+    )
+    input_dict = {"FORCE_EVAL": {"DFT": {}}}
+
+    Cp2kScfWorkChain.update_diag_input_dict(workchain, input_dict)
+
+    assert input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["PDOS"] == {
+        "LDOS": [{"COMPONENTS": "", "LIST": atom} for atom in (1, 2, 3)],
+        "NLUMO": 12,
+    }
