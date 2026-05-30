@@ -99,6 +99,13 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             required=False,
             help="1d, square, rectangular, hexagonal, oblique, or auto.",
         )
+        spec.input(
+            "unfolding_pdos_threshold",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(1.0e-4),
+            required=False,
+            help="Projection threshold for compact atom-resolved PDOS data attached to unfolding.",
+        )
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -192,6 +199,16 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             "NDIGITS": self.inputs.overlap_ndigits.value,
         }
 
+        if self.inputs.compute_unfolding.value:
+            added_mos = int(self.ctx.dft_params.get("added_mos", 0))
+            print_section["PDOS"] = {
+                "LDOS": [
+                    {"COMPONENTS": "", "LIST": atom_index}
+                    for atom_index in range(1, self.ctx.n_atoms + 1)
+                ],
+                "NLUMO": added_mos,
+            }
+
     def run_sparse_overlap(self):
         if "sparse_overlap_code" not in self.inputs:
             return self.exit_codes.ERROR_MISSING_SPARSE_OVERLAP_CODE
@@ -233,6 +250,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.path = self.inputs.unfolding_path
         builder.lattice_type = self.inputs.unfolding_lattice_type
         builder.overlap_threshold = self.inputs.overlap_threshold
+        builder.parse_pdos_projections = orm.Bool(True)
+        builder.pdos_threshold = self.inputs.unfolding_pdos_threshold
         builder.metadata = {
             "label": "cp2k_unfolding",
             "options": {
@@ -323,6 +342,16 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 if output_filename not in retrieved_names:
                     self.report(f"CP2K band unfolding did not retrieve {output_filename}")
                     return self.exit_codes.ERROR_MISSING_UNFOLDING_OUTPUT
+                if self.ctx.unfolding.inputs.parse_pdos_projections.value:
+                    projection_filename = (
+                        self.ctx.unfolding.inputs.pdos_projection_filename.value
+                    )
+                    if projection_filename not in retrieved_names:
+                        self.report(
+                            "CP2K band unfolding did not retrieve "
+                            f"{projection_filename}"
+                        )
+                        return self.exit_codes.ERROR_MISSING_UNFOLDING_OUTPUT
                 self.out("unfolding_retrieved", self.ctx.unfolding.outputs.retrieved)
 
             self.out("output_parameters", self.ctx.diag_scf.outputs.output_parameters)
