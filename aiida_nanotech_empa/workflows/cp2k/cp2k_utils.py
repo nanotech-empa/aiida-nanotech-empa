@@ -1,7 +1,6 @@
 import collections
 import io
 import numbers
-import os
 import pathlib
 import re
 import shutil
@@ -11,6 +10,8 @@ import ase
 import numpy as np
 import yaml
 from aiida import common, orm
+
+DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 
 class SizeDifferentThanNumberOfAtomsError(ValueError):
@@ -22,9 +23,67 @@ class SizeDifferentThanNumberOfAtomsError(ValueError):
         )
 
 
-def get_kinds_section(kinds_dict, protocol="gapw_std"):
-    """Write the &KIND sections in gw calculations given the structure and the settings_dict"""
+def _as_list(value):
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return list(value)
 
+
+def get_dft_file_names(dft_params=None):
+    """Return CP2K file names, keeping the historical PBE defaults."""
+
+    dft_params = dft_params or {}
+    basis_files = dft_params.get(
+        "basis_set_file_names",
+        dft_params.get("basis_set_file_name", "BASIS_MOLOPT"),
+    )
+    potential_file = dft_params.get("potential_file_name", "POTENTIAL")
+
+    return {
+        "basis_set_file_names": _as_list(basis_files),
+        "potential_file_name": potential_file,
+    }
+
+
+def get_dft_file_inputs(dft_params=None):
+    """Build SinglefileData inputs for CP2K data files packaged with the plugin."""
+
+    file_names = get_dft_file_names(dft_params)
+    files = {}
+    for index, file_name in enumerate(file_names["basis_set_file_names"]):
+        key = "basis" if index == 0 else f"basis_{index + 1}"
+        files[key] = orm.SinglefileData(file=DATA_DIR / file_name)
+    files["pseudo"] = orm.SinglefileData(
+        file=DATA_DIR / file_names["potential_file_name"]
+    )
+    return files
+
+
+def apply_dft_file_names(input_dict, dft_params=None):
+    """Apply CP2K BASIS_SET_FILE_NAME and POTENTIAL_FILE_NAME from dft_params."""
+
+    file_names = get_dft_file_names(dft_params)
+    dft_section = input_dict["FORCE_EVAL"]["DFT"]
+    basis_files = file_names["basis_set_file_names"]
+    dft_section["BASIS_SET_FILE_NAME"] = (
+        basis_files[0] if len(basis_files) == 1 else basis_files
+    )
+    dft_section["POTENTIAL_FILE_NAME"] = file_names["potential_file_name"]
+
+
+def _get_kind_value(atom_data, key, element, overrides=None):
+    overrides = overrides or {}
+    if element in overrides:
+        return overrides[element]
+    return atom_data[key][element]
+
+
+def get_kinds_section(kinds_dict, protocol="gapw_std", dft_params=None):
+    """Write the &KIND sections given the structure and DFT settings."""
+
+    dft_params = dft_params or {}
     bset = "gapw_std_gw_basis_set"
     bsetaux = "gapw_std_gw_basis_set_aux"
     potential = "all"
@@ -40,10 +99,15 @@ def get_kinds_section(kinds_dict, protocol="gapw_std"):
         bset = "basis_set"
         bsetaux = ""
         potential = "pseudopotential"
+
+    bset = dft_params.get("basis_set_key", bset)
+    bsetaux = dft_params.get("aux_basis_set_key", bsetaux)
+    potential = dft_params.get("potential_key", potential)
+    basis_overrides = dft_params.get("basis_set_overrides", {})
+    aux_basis_overrides = dft_params.get("aux_basis_set_overrides", {})
+    potential_overrides = dft_params.get("potential_overrides", {})
     kinds = []
-    with open(
-        pathlib.Path(__file__).parent / "./data/atomic_kinds.yml", encoding="utf-8"
-    ) as fhandle:
+    with open(DATA_DIR / "atomic_kinds.yml", encoding="utf-8") as fhandle:
         atom_data = yaml.safe_load(fhandle)
 
     for kind_name in kinds_dict:
@@ -52,12 +116,16 @@ def get_kinds_section(kinds_dict, protocol="gapw_std"):
         is_ghost = kinds_dict[kind_name]["ghost"]
         new_section = {
             "_": kind_name,
-            "BASIS_SET": atom_data[bset][element],
-            "POTENTIAL": atom_data[potential][element],
+            "BASIS_SET": _get_kind_value(atom_data, bset, element, basis_overrides),
+            "POTENTIAL": _get_kind_value(
+                atom_data, potential, element, potential_overrides
+            ),
             "ELEMENT": element,
         }
         if bsetaux:
-            new_section["BASIS_SET RI_AUX"] = atom_data[bsetaux][element]
+            new_section["BASIS_SET RI_AUX"] = _get_kind_value(
+                atom_data, bsetaux, element, aux_basis_overrides
+            )
         if is_ghost:
             new_section["GHOST"] = "TRUE"
         if magnetization != 0.0:
@@ -165,9 +233,7 @@ def dict_merge(dct, merge_dct):
 def get_cutoff(structure=None):
     if structure is None:
         return int(600)
-    with open(
-        pathlib.Path(__file__).parent / "./data/atomic_kinds.yml", encoding="utf-8"
-    ) as fhandle:
+    with open(DATA_DIR / "atomic_kinds.yml", encoding="utf-8") as fhandle:
         atom_data = yaml.safe_load(fhandle)
     elements = structure.get_symbols_set()
     return max([atom_data["cutoff"][element] for element in elements])
@@ -182,25 +248,60 @@ def load_protocol(fname, protocol=None):
         return protocols[protocol] if protocol else protocols
 
 
-def get_dft_inputs(dft_params, structure, template, protocol):
-    files = {
-        "basis": orm.SinglefileData(
-            file=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                ".",
-                "data",
-                "BASIS_MOLOPT",
-            )
+def apply_xc_settings(input_dict, dft_params=None):
+    """Apply additive XC settings while preserving the legacy PBE input by default."""
+
+    dft_params = dft_params or {}
+    xc_section = input_dict["FORCE_EVAL"]["DFT"]["XC"]
+    functional = dft_params.get("xc_functional", dft_params.get("functional", "PBE"))
+    functional = str(functional).upper()
+
+    if functional in ("PBE", "PBE-D3", "PBE_D3"):
+        return
+
+    if functional != "PBE0":
+        raise ValueError(f"Unsupported CP2K XC functional: {functional}")
+
+    hfx_fraction = dft_params.get("hfx_fraction", 0.25)
+    hfx_cutoff_radius = dft_params.get("hfx_cutoff_radius", 10.0)
+    input_dict["FORCE_EVAL"]["DFT"]["AUXILIARY_DENSITY_MATRIX_METHOD"] = {
+        "ADMM_PURIFICATION_METHOD": dft_params.get(
+            "admm_purification_method", "MO_DIAG"
         ),
-        "pseudo": orm.SinglefileData(
-            file=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                ".",
-                "data",
-                "POTENTIAL",
-            )
-        ),
+        "METHOD": dft_params.get("admm_method", "BASIS_PROJECTION"),
     }
+    xc_section["DENSITY_CUTOFF"] = dft_params.get("xc_density_cutoff", 1e-10)
+    xc_section["GRADIENT_CUTOFF"] = dft_params.get("xc_gradient_cutoff", 1e-10)
+    xc_section["TAU_CUTOFF"] = dft_params.get("xc_tau_cutoff", 1e-10)
+    xc_section["XC_FUNCTIONAL"] = {
+        "_": "NO_SHORTCUT",
+        "PBE": {"_": "T", "SCALE_X": 1.0 - hfx_fraction, "SCALE_C": 1.0},
+        "PBE_HOLE_T_C_LR": {
+            "_": "T",
+            "SCALE_X": hfx_fraction,
+            "CUTOFF_RADIUS": hfx_cutoff_radius,
+        },
+    }
+    xc_section["HF"] = {
+        "FRACTION": hfx_fraction,
+        "SCREENING": {
+            "EPS_SCHWARZ": dft_params.get("eps_schwarz", 1e-8),
+            "SCREEN_ON_INITIAL_P": dft_params.get("screen_on_initial_p", "F"),
+        },
+        "INTERACTION_POTENTIAL": {
+            "POTENTIAL_TYPE": dft_params.get("hfx_potential_type", "TRUNCATED"),
+            "CUTOFF_RADIUS": hfx_cutoff_radius,
+            "T_C_G_DATA": dft_params.get("tcg_data_file_name", "t_c_g.dat"),
+        },
+        "MEMORY": {
+            "EPS_STORAGE_SCALING": dft_params.get("hfx_eps_storage_scaling", 0.1),
+            "MAX_MEMORY": dft_params.get("hfx_max_memory", 80000),
+        },
+    }
+
+
+def get_dft_inputs(dft_params, structure, template, protocol):
+    files = get_dft_file_inputs(dft_params)
 
     # number of atoms
     if isinstance(structure, orm.TrajectoryData):
@@ -216,6 +317,7 @@ def get_dft_inputs(dft_params, structure, template, protocol):
 
     # Load input template.
     input_dict = load_protocol(template, protocol)
+    apply_dft_file_names(input_dict, dft_params)
 
     # vdW section
     if "vdw" in dft_params:
@@ -223,6 +325,8 @@ def get_dft_inputs(dft_params, structure, template, protocol):
             input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
     else:
         input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
+
+    apply_xc_settings(input_dict, dft_params)
 
     # charge
     if "charge" in dft_params:
@@ -260,7 +364,7 @@ def get_dft_inputs(dft_params, structure, template, protocol):
 
     # must be after if 'periodic'
     structure_with_tags = ase_atoms
-    kinds_section = get_kinds_section(kinds_dict, protocol="gpw")
+    kinds_section = get_kinds_section(kinds_dict, protocol="gpw", dft_params=dft_params)
     dict_merge(input_dict, kinds_section)
 
     # get cutoff.
