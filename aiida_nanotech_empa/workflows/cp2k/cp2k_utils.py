@@ -76,19 +76,37 @@ def _as_list(value):
     return list(value)
 
 
+def _xc_functional(dft_params=None):
+    dft_params = dft_params or {}
+    return str(
+        dft_params.get("xc_functional", dft_params.get("functional", "PBE"))
+    ).upper()
+
+
 def get_dft_file_names(dft_params=None):
     """Return CP2K file names, keeping the historical PBE defaults."""
 
     dft_params = dft_params or {}
+    if _xc_functional(dft_params) == "PBE0":
+        default_basis = ["BASIS_MOLOPT_UZH", "BASIS_ADMM_UZH"]
+        default_potential = "POTENTIAL_UZH"
+        default_extra = ["t_c_g.dat"]
+    else:
+        default_basis = "BASIS_MOLOPT"
+        default_potential = "POTENTIAL"
+        default_extra = []
+
     basis_files = dft_params.get(
         "basis_set_file_names",
-        dft_params.get("basis_set_file_name", "BASIS_MOLOPT"),
+        dft_params.get("basis_set_file_name", default_basis),
     )
-    potential_file = dft_params.get("potential_file_name", "POTENTIAL")
+    potential_file = dft_params.get("potential_file_name", default_potential)
+    extra_files = dft_params.get("extra_file_names", default_extra)
 
     return {
         "basis_set_file_names": _as_list(basis_files),
         "potential_file_name": potential_file,
+        "extra_file_names": _as_list(extra_files),
     }
 
 
@@ -103,6 +121,8 @@ def get_dft_file_inputs(dft_params=None):
     files["pseudo"] = orm.SinglefileData(
         file=DATA_DIR / file_names["potential_file_name"]
     )
+    for index, file_name in enumerate(file_names["extra_file_names"]):
+        files[f"extra_{index + 1}"] = orm.SinglefileData(file=DATA_DIR / file_name)
     return files
 
 
@@ -131,6 +151,7 @@ def get_kinds_section(kinds_dict, protocol="gapw_std", dft_params=None):
     dft_params = dft_params or {}
     bset = "gapw_std_gw_basis_set"
     bsetaux = "gapw_std_gw_basis_set_aux"
+    bsetaux_label = "RI_AUX"
     potential = "all"
     if protocol == "gapw_hq":
         bset = "gapw_hq_gw_basis_set"
@@ -145,8 +166,15 @@ def get_kinds_section(kinds_dict, protocol="gapw_std", dft_params=None):
         bsetaux = ""
         potential = "pseudopotential"
 
+    if _xc_functional(dft_params) == "PBE0" and protocol == "gpw":
+        bset = "pbe0_basis_set"
+        bsetaux = "pbe0_aux_basis_set"
+        bsetaux_label = "AUX_FIT"
+        potential = "pbe0_pseudopotential"
+
     bset = dft_params.get("basis_set_key", bset)
     bsetaux = dft_params.get("aux_basis_set_key", bsetaux)
+    bsetaux_label = dft_params.get("aux_basis_set_label", bsetaux_label)
     potential = dft_params.get("potential_key", potential)
     basis_overrides = dft_params.get("basis_set_overrides", {})
     aux_basis_overrides = dft_params.get("aux_basis_set_overrides", {})
@@ -168,7 +196,7 @@ def get_kinds_section(kinds_dict, protocol="gapw_std", dft_params=None):
             "ELEMENT": element,
         }
         if bsetaux:
-            new_section["BASIS_SET RI_AUX"] = _get_kind_value(
+            new_section[f"BASIS_SET {bsetaux_label}"] = _get_kind_value(
                 atom_data, bsetaux, element, aux_basis_overrides
             )
         if is_ghost:
@@ -298,8 +326,7 @@ def apply_xc_settings(input_dict, dft_params=None):
 
     dft_params = dft_params or {}
     xc_section = input_dict["FORCE_EVAL"]["DFT"]["XC"]
-    functional = dft_params.get("xc_functional", dft_params.get("functional", "PBE"))
-    functional = str(functional).upper()
+    functional = _xc_functional(dft_params)
 
     if functional in ("PBE", "PBE-D3", "PBE_D3"):
         return
