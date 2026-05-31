@@ -321,7 +321,7 @@ def load_protocol(fname, protocol=None):
         return protocols[protocol] if protocol else protocols
 
 
-def apply_xc_settings(input_dict, dft_params=None):
+def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
     """Apply additive XC settings while preserving the legacy PBE input by default."""
 
     dft_params = dft_params or {}
@@ -336,9 +336,10 @@ def apply_xc_settings(input_dict, dft_params=None):
 
     hfx_fraction = dft_params.get("hfx_fraction", 0.25)
     hfx_cutoff_radius = dft_params.get("hfx_cutoff_radius", 10.0)
+    default_purification = "NONE" if scf_method == "diag" else "MO_DIAG"
     input_dict["FORCE_EVAL"]["DFT"]["AUXILIARY_DENSITY_MATRIX_METHOD"] = {
         "ADMM_PURIFICATION_METHOD": dft_params.get(
-            "admm_purification_method", "MO_DIAG"
+            "admm_purification_method", default_purification
         ),
         "METHOD": dft_params.get("admm_method", "BASIS_PROJECTION"),
     }

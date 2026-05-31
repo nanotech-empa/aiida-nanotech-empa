@@ -194,6 +194,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             input_dict["GLOBAL"]["DBCSR"] = {"USE_MPI_ALLOCATOR": ".FALSE."}
         input_dict["FORCE_EVAL"]["DFT"].pop("SCF")
         input_dict["FORCE_EVAL"]["DFT"]["SCF"] = scf_dict
+        cp2k_utils.apply_xc_settings(input_dict, self.ctx.dft_params, scf_method="diag")
         if "added_mos" in self.ctx.dft_params:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["ADDED_MOS"] = self.ctx.dft_params[
                 "added_mos"
