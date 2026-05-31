@@ -1,6 +1,4 @@
 import copy
-import pathlib
-
 import numpy as np
 from aiida import engine, orm, plugins
 
@@ -63,19 +61,12 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
     def setup(self):
         self.report("Setting up workchain")
-        self.ctx.files = {
-            "basis": orm.SinglefileData(
-                file=pathlib.Path(__file__).parent / "data" / "BASIS_MOLOPT",
-            ),
-            "pseudo": orm.SinglefileData(
-                file=pathlib.Path(__file__).parent / "data" / "POTENTIAL",
-            ),
-        }
+        self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.files = cp2k_utils.get_dft_file_inputs(self.ctx.dft_params)
 
         structure = self.inputs.structure
         self.ctx.n_atoms = len(structure.sites)
 
-        self.ctx.dft_params = self.inputs.dft_params.get_dict()
         self.ctx.dft_params.setdefault("periodic", "XYZ")
         self.ctx.dft_params.setdefault("uks", False)
         self.ctx.dft_params.setdefault("elpa_switch", False)
@@ -103,7 +94,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self._handle_periodicity(self.ctx.structure_with_tags)
 
         self.ctx.kinds_section = cp2k_utils.get_kinds_section(
-            kinds_dict, protocol="gpw"
+            kinds_dict, protocol="gpw", dft_params=self.ctx.dft_params
         )
 
     def _handle_periodicity(self, structure):
@@ -123,6 +114,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         input_dict = cp2k_utils.load_protocol(
             "scf_ot_protocol.yml", self.inputs.protocol.value
         )
+        cp2k_utils.apply_dft_file_names(input_dict, self.ctx.dft_params)
 
         # Set workflow inputs.
         builder = Cp2kBaseWorkChain.get_builder()
@@ -138,6 +130,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         if "charge" in self.ctx.dft_params:
             input_dict["FORCE_EVAL"]["DFT"]["CHARGE"] = self.ctx.dft_params["charge"]
         input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
+        cp2k_utils.apply_xc_settings(input_dict, self.ctx.dft_params)
 
         # POISSON_SOLVER
         if self.ctx.dft_params["periodic"] == "NONE":
