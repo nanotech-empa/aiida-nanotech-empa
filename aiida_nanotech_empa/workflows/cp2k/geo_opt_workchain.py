@@ -1,5 +1,3 @@
-import pathlib
-
 import numpy as np
 from aiida import engine, orm, plugins
 
@@ -58,20 +56,13 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
     def setup(self):
         self.report("Inspecting input and setting up things")
 
-        self.ctx.files = {
-            "basis": orm.SinglefileData(
-                file=pathlib.Path(__file__).parent / "data" / "BASIS_MOLOPT"
-            ),
-            "pseudo": orm.SinglefileData(
-                file=pathlib.Path(__file__).parent / "data" / "POTENTIAL"
-            ),
-        }
-
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.files = cp2k_utils.get_dft_file_inputs(self.ctx.dft_params)
         self.ctx.input_dict = cp2k_utils.load_protocol(
             "geo_opt_protocol.yml", self.inputs.protocol.value
         )
+        cp2k_utils.apply_dft_file_names(self.ctx.input_dict, self.ctx.dft_params)
 
         # vdW section.
         if "vdw" in self.ctx.dft_params:
@@ -79,6 +70,8 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
                 self.ctx.input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
         else:
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
+
+        cp2k_utils.apply_xc_settings(self.ctx.input_dict, self.ctx.dft_params)
 
         # Charge.
         if "charge" in self.ctx.dft_params:
@@ -123,7 +116,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         self.ctx.structure_with_tags = ase_atoms
         self.ctx.kinds_section = cp2k_utils.get_kinds_section(
-            kinds_dict, protocol="gpw"
+            kinds_dict, protocol="gpw", dft_params=self.ctx.dft_params
         )
         cp2k_utils.dict_merge(self.ctx.input_dict, self.ctx.kinds_section)
 
