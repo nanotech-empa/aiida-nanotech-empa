@@ -1,4 +1,6 @@
 import copy
+import tempfile
+from pathlib import Path
 
 import numpy as np
 from aiida import engine, orm, plugins
@@ -9,6 +11,29 @@ from .geo_opt_workchain import validate_on_unhandled_failure
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 OverlapCalculation = plugins.CalculationFactory("nanotech_empa.overlap")
+
+
+def _cp2k_input_without_aux_basis(remote_folder):
+    """Return a CP2K input SinglefileData suitable for cp2k_spm_tools overlap.
+
+    cp2k_spm_tools currently treats every BASIS_SET line in a KIND section as the
+    orbital basis.  ADMM inputs also contain BASIS_SET AUX_FIT/RI_AUX lines, which
+    would overwrite the orbital basis name during parsing.  The overlap tool only
+    needs the orbital basis, so remove auxiliary basis lines from this copy.
+    """
+    text = remote_folder.creator.base.repository.get_object_content("aiida.inp")
+    cleaned_lines = []
+    for line in text.splitlines(keepends=True):
+        parts = line.split()
+        if len(parts) >= 3 and parts[0].upper() == "BASIS_SET":
+            if parts[1].upper() in {"AUX_FIT", "RI_AUX"}:
+                continue
+        cleaned_lines.append(line)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_path = Path(tmpdir) / "aiida_overlap.inp"
+        input_path.write_text("".join(cleaned_lines))
+        return orm.SinglefileData(file=input_path)
 
 
 class Cp2kPdosWorkChain(engine.WorkChain):
@@ -211,6 +236,12 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         builder.parameters = orm.Dict(overlap_params)
         builder.parent_slab_folder = self.ctx.slab_diag_scf.outputs.remote_folder
         builder.parent_mol_folder = self.ctx.mol_diag_scf.outputs.remote_folder
+        builder.slab_cp2k_input = _cp2k_input_without_aux_basis(
+            self.ctx.slab_diag_scf.outputs.remote_folder
+        )
+        builder.mol_cp2k_input = _cp2k_input_without_aux_basis(
+            self.ctx.mol_diag_scf.outputs.remote_folder
+        )
 
         if self.ctx.n_slab_atoms < 500:
             n_machines = 1

@@ -12,6 +12,18 @@ class OverlapCalculation(engine.CalcJob):
         spec.input(
             "parent_mol_folder", valid_type=orm.RemoteData, help="molecule scf folder"
         )
+        spec.input(
+            "slab_cp2k_input",
+            valid_type=orm.SinglefileData,
+            required=False,
+            help="Optional CP2K input file to pass to the overlap tool for the slab.",
+        )
+        spec.input(
+            "mol_cp2k_input",
+            valid_type=orm.SinglefileData,
+            required=False,
+            help="Optional CP2K input file to pass to the overlap tool for the molecule.",
+        )
         spec.input("settings", valid_type=orm.Dict, help="special settings")
 
         # Use mpi by default.
@@ -32,6 +44,38 @@ class OverlapCalculation(engine.CalcJob):
 
         param_dict = self.inputs.parameters.get_dict()
 
+        # Create calc info.
+        calcinfo = common.CalcInfo()
+        calcinfo.uuid = self.uuid
+        calcinfo.codes_info = [codeinfo]
+
+        # File lists.
+        calcinfo.remote_symlink_list = []
+        calcinfo.local_copy_list = []
+        calcinfo.remote_copy_list = []
+
+        calcinfo.retrieve_list = settings.pop("additional_retrieve_list", [])
+
+        if "slab_cp2k_input" in self.inputs:
+            calcinfo.local_copy_list.append(
+                (
+                    self.inputs.slab_cp2k_input.uuid,
+                    self.inputs.slab_cp2k_input.filename,
+                    "aiida_slab_overlap.inp",
+                )
+            )
+            param_dict["--cp2k_input_file1"] = "aiida_slab_overlap.inp"
+
+        if "mol_cp2k_input" in self.inputs:
+            calcinfo.local_copy_list.append(
+                (
+                    self.inputs.mol_cp2k_input.uuid,
+                    self.inputs.mol_cp2k_input.filename,
+                    "aiida_mol_overlap.inp",
+                )
+            )
+            param_dict["--cp2k_input_file2"] = "aiida_mol_overlap.inp"
+
         cmdline = []
         for key in param_dict:
             cmdline += [key]
@@ -42,19 +86,7 @@ class OverlapCalculation(engine.CalcJob):
                     cmdline += [param_dict[key]]
 
         codeinfo.cmdline_params = cmdline
-
-        # Create calc info.
-        calcinfo = common.CalcInfo()
-        calcinfo.uuid = self.uuid
         calcinfo.cmdline_params = codeinfo.cmdline_params
-        calcinfo.codes_info = [codeinfo]
-
-        # File lists.
-        calcinfo.remote_symlink_list = []
-        calcinfo.local_copy_list = []
-        calcinfo.remote_copy_list = []
-
-        calcinfo.retrieve_list = settings.pop("additional_retrieve_list", [])
 
         # Symlinks.
         if "parent_slab_folder" in self.inputs:
