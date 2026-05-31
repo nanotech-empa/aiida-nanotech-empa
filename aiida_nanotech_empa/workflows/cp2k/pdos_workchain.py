@@ -167,7 +167,13 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         self.report("Running overlap")
         builder = OverlapCalculation.get_builder()
         builder.code = self.inputs.overlap_code
-        builder.parameters = self.inputs.overlap_params
+        overlap_params = self.inputs.overlap_params.get_dict()
+        basis_file = cp2k_utils.get_dft_file_names(self.ctx.dft_parameters)[
+            "basis_set_file_names"
+        ][0]
+        overlap_params["--basis_set_file1"] = f"parent_slab_folder/{basis_file}"
+        overlap_params["--basis_set_file2"] = f"parent_mol_folder/{basis_file}"
+        builder.parameters = orm.Dict(overlap_params)
         builder.parent_slab_folder = self.ctx.slab_diag_scf.outputs.remote_folder
         builder.parent_mol_folder = self.ctx.mol_diag_scf.outputs.remote_folder
 
