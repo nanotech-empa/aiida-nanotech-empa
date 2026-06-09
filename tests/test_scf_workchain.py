@@ -116,6 +116,7 @@ def test_validator_unfolding(
         "run_diag_scf": orm.Bool(run_diag_scf),
         "overlap_matrix": orm.Str(overlap_matrix),
         "unfolding_code": object(),  # the validator only checks presence
+        "unfolding_primitive_basis_atoms": orm.Str("1 2"),
         "dft_params": orm.Dict(dft_params),
     }
     if primitive_vectors is not None:
@@ -128,6 +129,21 @@ def test_validator_unfolding(
         assert message is None
     else:
         assert rejected in message
+
+
+def test_validator_unfolding_requires_primitive_basis_atoms():
+    message = Cp2kScfWorkChain._validate_inputs(
+        {
+            "run_diag_scf": orm.Bool(True),
+            "overlap_matrix": orm.Str("remote_only"),
+            "unfolding_code": object(),
+            "unfolding_primitive_vectors": orm.Str("1 0 0; 0 1 0"),
+            "dft_params": orm.Dict({"added_mos": 10}),
+        },
+        None,
+    )
+
+    assert "unfolding_primitive_basis_atoms" in message
 
 
 @pytest.mark.parametrize(
@@ -227,7 +243,10 @@ def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path
         dict(
             unfolding_code=code,
             unfolding_primitive_vectors=orm.Str("1 0 0; 0 1 0"),
+            unfolding_primitive_basis_atoms=orm.Str("1 2"),
             unfolding_lattice_type=orm.Str("auto"),
+            unfolding_basis_cluster_tol=orm.Float(5.0e-2),
+            unfolding_options=orm.Dict(),
             overlap_threshold=orm.Float(1e-10),
         )
     )
