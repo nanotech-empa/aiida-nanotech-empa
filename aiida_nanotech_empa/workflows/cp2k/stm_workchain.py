@@ -83,7 +83,10 @@ class Cp2kStmWorkChain(engine.WorkChain):
         inputs["metadata"] = {}
         inputs["metadata"]["label"] = "stm"
         inputs["code"] = self.inputs.spm_code
-        inputs["parameters"] = self.inputs.spm_params
+        spm_params = cp2k_utils.update_legacy_basis_parameter(
+            self.inputs.spm_params.get_dict(), self.ctx.dft_params
+        )
+        inputs["parameters"] = orm.Dict(spm_params)
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
 
         n_machines = 1
