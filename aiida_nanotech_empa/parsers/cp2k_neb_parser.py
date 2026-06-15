@@ -35,12 +35,12 @@ class Cp2kNebParser(parsers.Parser):
         fname = self.node.process_class._DEFAULT_OUTPUT_FILE
 
         if fname not in self.retrieved.list_object_names():
-            return self.exit_codes.ERROR_OUTPUT_STDOUT_MISSING
+            return self.exit_codes.ERROR_OUTPUT_MISSING
 
         try:
             output_string = self.retrieved.get_object_content(fname)
         except OSError:
-            return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
+            return self.exit_codes.ERROR_OUTPUT_READ
 
         """Parse CP2K output into a dictionary."""
         lines = output_string.splitlines()
@@ -99,7 +99,7 @@ class Cp2kNebParser(parsers.Parser):
         try:
             output_string = self.retrieved.get_object_content(fname)
         except OSError:
-            return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
+            return self.exit_codes.ERROR_OUTPUT_READ
 
         m = re.search(r"\n\s*&CELL\n(.*?)\n\s*&END CELL\n", output_string, re.DOTALL)
         cell_lines = [line.strip().split() for line in m.group(1).split("\n")]
