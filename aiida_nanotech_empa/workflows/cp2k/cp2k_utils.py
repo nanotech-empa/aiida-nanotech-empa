@@ -1,7 +1,6 @@
 import collections
 import io
 import numbers
-import os
 import pathlib
 import re
 import shutil
@@ -11,6 +10,8 @@ import ase
 import numpy as np
 import yaml
 from aiida import common, orm
+
+DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 
 class SizeDifferentThanNumberOfAtomsError(ValueError):
@@ -22,11 +23,117 @@ class SizeDifferentThanNumberOfAtomsError(ValueError):
         )
 
 
-def get_kinds_section(kinds_dict, protocol="gapw_std"):
-    """Write the &KIND sections in gw calculations given the structure and the settings_dict"""
+def _as_list(value):
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return list(value)
 
+
+def _xc_functional(dft_params=None):
+    dft_params = dft_params or {}
+    return str(
+        dft_params.get("xc_functional", dft_params.get("functional", "PBE"))
+    ).upper()
+
+
+def get_dft_file_names(dft_params=None):
+    """Return CP2K file names, keeping the historical PBE defaults."""
+
+    dft_params = dft_params or {}
+    if _xc_functional(dft_params) == "PBE0":
+        default_basis = ["BASIS_MOLOPT_UZH", "BASIS_ADMM_UZH"]
+        default_potential = "POTENTIAL_UZH"
+        default_extra = ["t_c_g.dat"]
+    else:
+        default_basis = "BASIS_MOLOPT"
+        default_potential = "POTENTIAL"
+        default_extra = []
+
+    basis_files = dft_params.get(
+        "basis_set_file_names",
+        dft_params.get("basis_set_file_name", default_basis),
+    )
+    potential_file = dft_params.get("potential_file_name", default_potential)
+    extra_files = dft_params.get("extra_file_names", default_extra)
+
+    return {
+        "basis_set_file_names": _as_list(basis_files),
+        "potential_file_name": potential_file,
+        "extra_file_names": _as_list(extra_files),
+    }
+
+
+def get_primary_basis_file_name(dft_params=None):
+    """Return the main orbital basis file name used by CP2K."""
+
+    return get_dft_file_names(dft_params)["basis_set_file_names"][0]
+
+
+def update_legacy_basis_parameter(
+    parameters, dft_params=None, key="--basis_set_file", parent_dir="parent_calc_folder"
+):
+    """Replace only the historical BASIS_MOLOPT default with the DFT basis file.
+
+    Explicit user-provided basis file paths are preserved. This only corrects the
+    old generated default when PBE0 or custom DFT settings use another primary
+    orbital basis file.
+    """
+
+    params = dict(parameters)
+    current_value = params.get(key)
+    primary_basis = get_primary_basis_file_name(dft_params)
+    legacy_default = f"{parent_dir}/BASIS_MOLOPT"
+    if current_value is None:
+        params[key] = f"{parent_dir}/{primary_basis}"
+    elif current_value == legacy_default and primary_basis != "BASIS_MOLOPT":
+        params[key] = f"{parent_dir}/{primary_basis}"
+    return params
+
+
+def get_dft_file_inputs(dft_params=None):
+    """Build SinglefileData inputs for CP2K data files packaged with the plugin."""
+
+    file_names = get_dft_file_names(dft_params)
+    files = {}
+    for index, file_name in enumerate(file_names["basis_set_file_names"]):
+        key = "basis" if index == 0 else f"basis_{index + 1}"
+        files[key] = orm.SinglefileData(file=DATA_DIR / file_name)
+    files["pseudo"] = orm.SinglefileData(
+        file=DATA_DIR / file_names["potential_file_name"]
+    )
+    for index, file_name in enumerate(file_names["extra_file_names"]):
+        files[f"extra_{index + 1}"] = orm.SinglefileData(file=DATA_DIR / file_name)
+    return files
+
+
+def apply_dft_file_names(input_dict, dft_params=None):
+    """Apply CP2K BASIS_SET_FILE_NAME and POTENTIAL_FILE_NAME from dft_params."""
+
+    file_names = get_dft_file_names(dft_params)
+    dft_section = input_dict["FORCE_EVAL"]["DFT"]
+    basis_files = file_names["basis_set_file_names"]
+    dft_section["BASIS_SET_FILE_NAME"] = (
+        basis_files[0] if len(basis_files) == 1 else basis_files
+    )
+    dft_section["POTENTIAL_FILE_NAME"] = file_names["potential_file_name"]
+
+
+def _get_kind_value(atom_data, key, element, overrides=None):
+    overrides = overrides or {}
+    if element in overrides:
+        return overrides[element]
+    return atom_data[key][element]
+
+
+def get_kinds_section(kinds_dict, protocol="gapw_std", dft_params=None):
+    """Write the &KIND sections given the structure and DFT settings."""
+
+    dft_params = dft_params or {}
     bset = "gapw_std_gw_basis_set"
     bsetaux = "gapw_std_gw_basis_set_aux"
+    bsetaux_label = "RI_AUX"
     potential = "all"
     if protocol == "gapw_hq":
         bset = "gapw_hq_gw_basis_set"
@@ -40,10 +147,22 @@ def get_kinds_section(kinds_dict, protocol="gapw_std"):
         bset = "basis_set"
         bsetaux = ""
         potential = "pseudopotential"
+
+    if _xc_functional(dft_params) == "PBE0" and protocol == "gpw":
+        bset = "pbe0_basis_set"
+        bsetaux = "pbe0_aux_basis_set"
+        bsetaux_label = "AUX_FIT"
+        potential = "pbe0_pseudopotential"
+
+    bset = dft_params.get("basis_set_key", bset)
+    bsetaux = dft_params.get("aux_basis_set_key", bsetaux)
+    bsetaux_label = dft_params.get("aux_basis_set_label", bsetaux_label)
+    potential = dft_params.get("potential_key", potential)
+    basis_overrides = dft_params.get("basis_set_overrides", {})
+    aux_basis_overrides = dft_params.get("aux_basis_set_overrides", {})
+    potential_overrides = dft_params.get("potential_overrides", {})
     kinds = []
-    with open(
-        pathlib.Path(__file__).parent / "./data/atomic_kinds.yml", encoding="utf-8"
-    ) as fhandle:
+    with open(DATA_DIR / "atomic_kinds.yml", encoding="utf-8") as fhandle:
         atom_data = yaml.safe_load(fhandle)
 
     for kind_name in kinds_dict:
@@ -52,12 +171,16 @@ def get_kinds_section(kinds_dict, protocol="gapw_std"):
         is_ghost = kinds_dict[kind_name]["ghost"]
         new_section = {
             "_": kind_name,
-            "BASIS_SET": atom_data[bset][element],
-            "POTENTIAL": atom_data[potential][element],
+            "BASIS_SET": _get_kind_value(atom_data, bset, element, basis_overrides),
+            "POTENTIAL": _get_kind_value(
+                atom_data, potential, element, potential_overrides
+            ),
             "ELEMENT": element,
         }
         if bsetaux:
-            new_section["BASIS_SET RI_AUX"] = atom_data[bsetaux][element]
+            new_section[f"BASIS_SET {bsetaux_label}"] = _get_kind_value(
+                atom_data, bsetaux, element, aux_basis_overrides
+            )
         if is_ghost:
             new_section["GHOST"] = "TRUE"
         if magnetization != 0.0:
@@ -165,9 +288,7 @@ def dict_merge(dct, merge_dct):
 def get_cutoff(structure=None):
     if structure is None:
         return int(600)
-    with open(
-        pathlib.Path(__file__).parent / "./data/atomic_kinds.yml", encoding="utf-8"
-    ) as fhandle:
+    with open(DATA_DIR / "atomic_kinds.yml", encoding="utf-8") as fhandle:
         atom_data = yaml.safe_load(fhandle)
     elements = structure.get_symbols_set()
     return max([atom_data["cutoff"][element] for element in elements])
@@ -182,25 +303,157 @@ def load_protocol(fname, protocol=None):
         return protocols[protocol] if protocol else protocols
 
 
-def get_dft_inputs(dft_params, structure, template, protocol):
-    files = {
-        "basis": orm.SinglefileData(
-            file=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                ".",
-                "data",
-                "BASIS_MOLOPT",
-            )
-        ),
-        "pseudo": orm.SinglefileData(
-            file=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                ".",
-                "data",
-                "POTENTIAL",
-            )
+def _quote_cp2k_file_name(value):
+    """Return a CP2K string literal for file names that need explicit quotes."""
+
+    text = str(value)
+    if (text.startswith('"') and text.endswith('"')) or (
+        text.startswith("'") and text.endswith("'")
+    ):
+        return text
+    return f'"{text}"'
+
+
+def _apply_ot_minimizer(input_dict, dft_params):
+    """Apply the optional OT minimizer override without changing legacy defaults."""
+
+    try:
+        ot_section = input_dict["FORCE_EVAL"]["DFT"]["SCF"]["OT"]
+    except KeyError:
+        return
+    if not isinstance(ot_section, dict):
+        return
+
+    if dft_params.get("ot_diis", False):
+        minimizer = "DIIS"
+    else:
+        minimizer = dft_params.get("ot_minimizer")
+    if minimizer:
+        ot_section["MINIMIZER"] = str(minimizer).upper()
+
+
+def _pbe0_scf_section(dft_params, old_scf):
+    """Build the PBE0 OT SCF section, preserving protocol precision and PRINT."""
+
+    old_scf = old_scf if isinstance(old_scf, dict) else {}
+    old_outer_scf = old_scf.get("OUTER_SCF", {})
+    if not isinstance(old_outer_scf, dict):
+        old_outer_scf = {}
+    protocol_eps_scf = old_scf.get("EPS_SCF", 1e-7)
+    protocol_outer_eps_scf = old_outer_scf.get("EPS_SCF", protocol_eps_scf)
+
+    scf_section = {
+        "MAX_ITER_LUMO": dft_params.get("max_iter_lumo", 5000),
+        "EPS_LUMO": dft_params.get("eps_lumo", protocol_eps_scf),
+        "MAX_SCF": dft_params.get("max_scf", 20),
+        "EPS_SCF": dft_params.get("eps_scf", protocol_eps_scf),
+        "SCF_GUESS": dft_params.get("scf_guess", "RESTART"),
+        "OT": {
+            "_": "T",
+            "MINIMIZER": str(dft_params.get("ot_minimizer", "CG")).upper(),
+            "PRECONDITIONER": dft_params.get("ot_preconditioner", "FULL_KINETIC"),
+        },
+        "OUTER_SCF": {
+            "_": "T",
+            "EPS_SCF": dft_params.get("outer_scf_eps_scf", protocol_outer_eps_scf),
+            "MAX_SCF": dft_params.get("outer_scf_max_scf", 100),
+        },
+    }
+    if dft_params.get("ot_diis", False):
+        scf_section["OT"]["MINIMIZER"] = "DIIS"
+    if isinstance(old_scf, dict) and "PRINT" in old_scf:
+        scf_section["PRINT"] = old_scf["PRINT"]
+    return scf_section
+
+
+def apply_default_charge_analysis(input_dict):
+    """Request default CP2K charge analyses for standard SCF/geopt workflows."""
+
+    print_section = input_dict["FORCE_EVAL"]["DFT"].setdefault("PRINT", {})
+    print_section["LOWDIN"] = {"PRINT_GOP": "T"}
+
+
+def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
+    """Apply XC/SCF settings while preserving legacy PBE inputs by default."""
+
+    dft_params = dft_params or {}
+    dft_section = input_dict["FORCE_EVAL"]["DFT"]
+    _apply_ot_minimizer(input_dict, dft_params)
+    functional = _xc_functional(dft_params)
+
+    if functional in ("PBE", "PBE-D3", "PBE_D3"):
+        return
+
+    if functional != "PBE0":
+        raise ValueError(f"Unsupported CP2K XC functional: {functional}")
+
+    hfx_fraction = dft_params.get("hfx_fraction", 0.25)
+    hfx_cutoff_radius = dft_params.get("hfx_cutoff_radius", 10.0)
+
+    qs_section = dft_section.setdefault("QS", {})
+    for old_key in ("EPS_DEFAULT", "EXTRAPOLATION", "EXTRAPOLATION_ORDER"):
+        qs_section.pop(old_key, None)
+    qs_section["METHOD"] = dft_params.get("qs_method", qs_section.get("METHOD", "GPW"))
+    qs_section["EPS_PGF_ORB"] = dft_params.get("eps_pgf_orb", 1e-32)
+
+    if scf_method == "ot":
+        dft_section["SCF"] = _pbe0_scf_section(
+            dft_params, dft_section.get("SCF", {})
+        )
+
+    dft_section["AUXILIARY_DENSITY_MATRIX_METHOD"] = {
+        "ADMM_PURIFICATION_METHOD": str(
+            dft_params.get("admm_purification_method", "NONE")
+        ).upper(),
+        "METHOD": dft_params.get("admm_method", "BASIS_PROJECTION"),
+        "EXCH_CORRECTION_FUNC": dft_params.get(
+            "admm_exch_correction_func", "PBEX"
         ),
     }
+
+    xc_section = dft_section.setdefault("XC", {})
+    if dft_params.get("vdw", False):
+        pair_potential = xc_section.get("VDW_POTENTIAL", {}).get("PAIR_POTENTIAL")
+        if isinstance(pair_potential, dict):
+            pair_potential["REFERENCE_FUNCTIONAL"] = dft_params.get(
+                "pbe0_vdw_reference_functional", "PBE0"
+            )
+    else:
+        xc_section.pop("VDW_POTENTIAL", None)
+    xc_section["DENSITY_CUTOFF"] = dft_params.get("xc_density_cutoff", 1e-10)
+    xc_section["GRADIENT_CUTOFF"] = dft_params.get("xc_gradient_cutoff", 1e-10)
+    xc_section["TAU_CUTOFF"] = dft_params.get("xc_tau_cutoff", 1e-10)
+    xc_section["XC_FUNCTIONAL"] = {
+        "_": "NO_SHORTCUT",
+        "PBE": {"_": "T", "SCALE_X": 1.0 - hfx_fraction, "SCALE_C": 1.0},
+        "PBE_HOLE_T_C_LR": {
+            "_": "T",
+            "SCALE_X": hfx_fraction,
+            "CUTOFF_RADIUS": hfx_cutoff_radius,
+        },
+    }
+    xc_section["HF"] = {
+        "FRACTION": hfx_fraction,
+        "SCREENING": {
+            "EPS_SCHWARZ": dft_params.get("eps_schwarz", 1e-8),
+            "SCREEN_ON_INITIAL_P": dft_params.get("screen_on_initial_p", "F"),
+        },
+        "INTERACTION_POTENTIAL": {
+            "POTENTIAL_TYPE": dft_params.get("hfx_potential_type", "TRUNCATED"),
+            "CUTOFF_RADIUS": hfx_cutoff_radius,
+            "T_C_G_DATA": _quote_cp2k_file_name(
+                dft_params.get("tcg_data_file_name", "t_c_g.dat")
+            ),
+        },
+        "MEMORY": {
+            "EPS_STORAGE_SCALING": dft_params.get("hfx_eps_storage_scaling", 0.1),
+            "MAX_MEMORY": dft_params.get("hfx_max_memory", 80000),
+        },
+    }
+
+
+def get_dft_inputs(dft_params, structure, template, protocol):
+    files = get_dft_file_inputs(dft_params)
 
     # number of atoms
     if isinstance(structure, orm.TrajectoryData):
@@ -216,6 +469,7 @@ def get_dft_inputs(dft_params, structure, template, protocol):
 
     # Load input template.
     input_dict = load_protocol(template, protocol)
+    apply_dft_file_names(input_dict, dft_params)
 
     # vdW section
     if "vdw" in dft_params:
@@ -223,6 +477,8 @@ def get_dft_inputs(dft_params, structure, template, protocol):
             input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
     else:
         input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
+
+    apply_xc_settings(input_dict, dft_params)
 
     # charge
     if "charge" in dft_params:
@@ -260,7 +516,7 @@ def get_dft_inputs(dft_params, structure, template, protocol):
 
     # must be after if 'periodic'
     structure_with_tags = ase_atoms
-    kinds_section = get_kinds_section(kinds_dict, protocol="gpw")
+    kinds_section = get_kinds_section(kinds_dict, protocol="gpw", dft_params=dft_params)
     dict_merge(input_dict, kinds_section)
 
     # get cutoff.

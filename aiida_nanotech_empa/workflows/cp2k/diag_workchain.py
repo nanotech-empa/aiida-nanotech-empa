@@ -1,20 +1,17 @@
 import copy
-import pathlib
-
 import numpy as np
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
 from . import cp2k_utils
+from .geo_opt_workchain import validate_on_unhandled_failure
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
 
 class Cp2kDiagWorkChain(engine.WorkChain):
     @classmethod
-    def define(cls, spec):
-        super().define(spec)
-
+    def define_common_inputs(cls, spec):
         spec.input("cp2k_code", valid_type=orm.Code)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
@@ -44,13 +41,38 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             required=False,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
-        spec.outline(
-            cls.setup,
-            cls.run_ot_scf,
-            cls.run_diag_scf,
-            cls.finalize,
+        spec.input(
+            "max_iterations",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(5),
+            required=False,
+            help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
+        )
+        spec.input(
+            "clean_workdir",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Clean called CP2K calculation work directories after termination.",
+        )
+        spec.input(
+            "on_unhandled_failure",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("pause"),
+            required=False,
+            validator=validate_on_unhandled_failure,
+            help="Action for unhandled cp2k.base failures: abort, pause, restart_once, or restart_and_pause.",
+        )
+        spec.input(
+            "pause_on_max_iterations",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
+            required=False,
+            help="Pause cp2k.base for inspection when restart max_iterations is reached.",
         )
 
+    @classmethod
+    def define_common_outputs(cls, spec):
         spec.outputs.dynamic = True
 
         spec.exit_code(
@@ -59,21 +81,36 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             message="One or more steps of the work chain failed.",
         )
 
+    @classmethod
+    def define(cls, spec):
+        super().define(spec)
+        cls.define_common_inputs(spec)
+        spec.outline(
+            cls.setup,
+            cls.run_ot_scf,
+            cls.run_diag_scf,
+            cls.finalize,
+        )
+        cls.define_common_outputs(spec)
+
+    def set_restart_policy(self, builder):
+        builder.max_iterations = self.inputs.max_iterations
+        builder.clean_workdir = self.inputs.clean_workdir
+        builder.on_unhandled_failure = self.inputs.on_unhandled_failure
+        builder.pause_on_max_iterations = self.inputs.pause_on_max_iterations
+
     def setup(self):
         self.report("Setting up workchain")
-        self.ctx.files = {
-            "basis": orm.SinglefileData(
-                file=pathlib.Path(__file__).parent / "data" / "BASIS_MOLOPT",
-            ),
-            "pseudo": orm.SinglefileData(
-                file=pathlib.Path(__file__).parent / "data" / "POTENTIAL",
-            ),
-        }
+        self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.files = cp2k_utils.get_dft_file_inputs(self.ctx.dft_params)
 
         structure = self.inputs.structure
         self.ctx.n_atoms = len(structure.sites)
 
-        self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.dft_params.setdefault("periodic", "XYZ")
+        self.ctx.dft_params.setdefault("uks", False)
+        self.ctx.dft_params.setdefault("elpa_switch", False)
+        self.ctx.dft_params.setdefault("sc_diag", False)
 
         # Resources.
         self.ctx.options = self.inputs.options.get_dict()
@@ -97,7 +134,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self._handle_periodicity(self.ctx.structure_with_tags)
 
         self.ctx.kinds_section = cp2k_utils.get_kinds_section(
-            kinds_dict, protocol="gpw"
+            kinds_dict, protocol="gpw", dft_params=self.ctx.dft_params
         )
 
     def _handle_periodicity(self, structure):
@@ -117,10 +154,12 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         input_dict = cp2k_utils.load_protocol(
             "scf_ot_protocol.yml", self.inputs.protocol.value
         )
+        cp2k_utils.apply_dft_file_names(input_dict, self.ctx.dft_params)
 
         # Set workflow inputs.
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
+        self.set_restart_policy(builder)
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
@@ -130,7 +169,9 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         if "charge" in self.ctx.dft_params:
             input_dict["FORCE_EVAL"]["DFT"]["CHARGE"] = self.ctx.dft_params["charge"]
-        input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
+        if not self.ctx.dft_params.get("vdw", False):
+            input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL", None)
+        cp2k_utils.apply_xc_settings(input_dict, self.ctx.dft_params)
 
         # POISSON_SOLVER
         if self.ctx.dft_params["periodic"] == "NONE":
@@ -165,12 +206,17 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         # Parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
+        self.update_ot_input_dict(input_dict)
+
         # CP2K input dictionary.
         builder.cp2k.parameters = orm.Dict(input_dict)
         self.ctx.input_dict = copy.deepcopy(input_dict)
 
         future = self.submit(builder)
         self.to_context(ot_scf=future)
+
+    def update_ot_input_dict(self, input_dict):
+        pass
 
     def run_diag_scf(self):
         self.report("Running CP2K diagonalization SCF")
@@ -189,6 +235,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             input_dict["GLOBAL"]["DBCSR"] = {"USE_MPI_ALLOCATOR": ".FALSE."}
         input_dict["FORCE_EVAL"]["DFT"].pop("SCF")
         input_dict["FORCE_EVAL"]["DFT"]["SCF"] = scf_dict
+        cp2k_utils.apply_xc_settings(input_dict, self.ctx.dft_params, scf_method="diag")
         if "added_mos" in self.ctx.dft_params:
             input_dict["FORCE_EVAL"]["DFT"]["SCF"]["ADDED_MOS"] = self.ctx.dft_params[
                 "added_mos"
@@ -242,6 +289,8 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             )
             input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["STRIDE"] = "2 2 2"
 
+        self.update_diag_input_dict(input_dict)
+
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
@@ -249,6 +298,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
+        self.set_restart_policy(builder)
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
@@ -281,3 +331,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         self.report("Work chain is finished")
+
+    def update_diag_input_dict(self, input_dict):
+        """Hook for derived workchains to add diagonalization-only CP2K input."""

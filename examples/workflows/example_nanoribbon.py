@@ -39,8 +39,8 @@ def _example_nanoribbon(
     builder.structure = orm.StructureData(ase=ase.io.read(geo_file))
     # builder.pseudo_family = orm.Str("SSSP_modified")
     builder.pseudo_family = orm.Str(
-        "SSSP/1.2/PBE/efficiency"
-    )  # It requires aiida-pseudo install sssp!
+        "SSSP/1.3/PBE/precision"
+    )  # It requires: aiida-pseudo install sssp --functional PBE --version 1.3 -p precision
 
     # Metadata
     builder.metadata = {

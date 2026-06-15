@@ -2,6 +2,8 @@ import numpy as np
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
+from . import cp2k_utils
+from .geo_opt_workchain import validate_on_unhandled_failure
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 StmCalculation = plugins.CalculationFactory("nanotech_empa.stm")
@@ -31,6 +33,35 @@ class Cp2kStmWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        spec.input(
+            "max_iterations",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(5),
+            required=False,
+            help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
+        )
+        spec.input(
+            "clean_workdir",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Clean called CP2K calculation work directories after termination.",
+        )
+        spec.input(
+            "on_unhandled_failure",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("pause"),
+            required=False,
+            validator=validate_on_unhandled_failure,
+            help="Action for unhandled cp2k.base failures: abort, pause, restart_once, or restart_and_pause.",
+        )
+        spec.input(
+            "pause_on_max_iterations",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
+            required=False,
+            help="Pause cp2k.base for inspection when restart max_iterations is reached.",
+        )
 
         spec.outline(
             cls.setup,
@@ -46,6 +77,12 @@ class Cp2kStmWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+
+    def set_restart_policy(self, builder):
+        builder.max_iterations = self.inputs.max_iterations
+        builder.clean_workdir = self.inputs.clean_workdir
+        builder.on_unhandled_failure = self.inputs.on_unhandled_failure
+        builder.pause_on_max_iterations = self.inputs.pause_on_max_iterations
 
     def setup(self):
         self.report("Setting up workchain")
@@ -64,6 +101,7 @@ class Cp2kStmWorkChain(engine.WorkChain):
         builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.dft_params)
         builder.options = orm.Dict(self.inputs.options)
+        self.set_restart_policy(builder)
 
         # Restart wfn, if requested.
         if "parent_calc_folder" in self.inputs:
@@ -80,7 +118,10 @@ class Cp2kStmWorkChain(engine.WorkChain):
         inputs["metadata"] = {}
         inputs["metadata"]["label"] = "stm"
         inputs["code"] = self.inputs.spm_code
-        inputs["parameters"] = self.inputs.spm_params
+        spm_params = cp2k_utils.update_legacy_basis_parameter(
+            self.inputs.spm_params.get_dict(), self.ctx.dft_params
+        )
+        inputs["parameters"] = orm.Dict(spm_params)
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
 
         n_machines = 1

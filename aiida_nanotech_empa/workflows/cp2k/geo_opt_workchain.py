@@ -1,5 +1,3 @@
-import pathlib
-
 import numpy as np
 from aiida import engine, orm, plugins
 
@@ -8,6 +6,21 @@ from . import cp2k_utils
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
+
+ON_UNHANDLED_FAILURE_ACTIONS = ("abort", "pause", "restart_once", "restart_and_pause")
+
+
+def validate_on_unhandled_failure(value, _):
+    if value is None:
+        return None
+
+    if value.value not in ON_UNHANDLED_FAILURE_ACTIONS:
+        return (
+            f"on_unhandled_failure: {value.value!r}. Must be one of: "
+            f"{', '.join(ON_UNHANDLED_FAILURE_ACTIONS)}"
+        )
+
+    return None
 
 
 class Cp2kGeoOptWorkChain(engine.WorkChain):
@@ -33,6 +46,35 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        spec.input(
+            "max_iterations",
+            valid_type=orm.Int,
+            default=lambda: orm.Int(5),
+            required=False,
+            help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
+        )
+        spec.input(
+            "clean_workdir",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Clean called CP2K calculation work directories after termination.",
+        )
+        spec.input(
+            "on_unhandled_failure",
+            valid_type=orm.Str,
+            default=lambda: orm.Str("pause"),
+            required=False,
+            validator=validate_on_unhandled_failure,
+            help="Action for unhandled cp2k.base failures: abort, pause, restart_once, or restart_and_pause.",
+        )
+        spec.input(
+            "pause_on_max_iterations",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
+            required=False,
+            help="Pause cp2k.base for inspection when restart max_iterations is reached.",
+        )
 
         # Workchain outline.
         spec.outline(
@@ -57,20 +99,13 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
     def setup(self):
         self.report("Inspecting input and setting up things")
 
-        self.ctx.files = {
-            "basis": orm.SinglefileData(
-                file=pathlib.Path(__file__).parent / "data" / "BASIS_MOLOPT"
-            ),
-            "pseudo": orm.SinglefileData(
-                file=pathlib.Path(__file__).parent / "data" / "POTENTIAL"
-            ),
-        }
-
         self.ctx.sys_params = self.inputs.sys_params.get_dict()
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.files = cp2k_utils.get_dft_file_inputs(self.ctx.dft_params)
         self.ctx.input_dict = cp2k_utils.load_protocol(
             "geo_opt_protocol.yml", self.inputs.protocol.value
         )
+        cp2k_utils.apply_dft_file_names(self.ctx.input_dict, self.ctx.dft_params)
 
         # vdW section.
         if "vdw" in self.ctx.dft_params:
@@ -78,6 +113,9 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
                 self.ctx.input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
         else:
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
+
+        cp2k_utils.apply_xc_settings(self.ctx.input_dict, self.ctx.dft_params)
+        cp2k_utils.apply_default_charge_analysis(self.ctx.input_dict)
 
         # Charge.
         if "charge" in self.ctx.dft_params:
@@ -122,7 +160,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         self.ctx.structure_with_tags = ase_atoms
         self.ctx.kinds_section = cp2k_utils.get_kinds_section(
-            kinds_dict, protocol="gpw"
+            kinds_dict, protocol="gpw", dft_params=self.ctx.dft_params
         )
         cp2k_utils.dict_merge(self.ctx.input_dict, self.ctx.kinds_section)
 
@@ -186,8 +224,16 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         # Parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
+        # Restart policy.
+        builder.max_iterations = self.inputs.max_iterations
+        builder.clean_workdir = self.inputs.clean_workdir
+        builder.on_unhandled_failure = self.inputs.on_unhandled_failure
+        builder.pause_on_max_iterations = self.inputs.pause_on_max_iterations
+
         # Handlers.
-        builder.handler_overrides = orm.Dict({"restart_incomplete_calculation": True})
+        builder.handler_overrides = orm.Dict(
+            {"restart_incomplete_calculation": {"enabled": True}}
+        )
 
         # Restart wfn.
         if "parent_calc_folder" in self.inputs:
