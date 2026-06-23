@@ -411,6 +411,13 @@ def _pbe0_scf_section(dft_params, old_scf):
     return scf_section
 
 
+def apply_default_charge_analysis(input_dict):
+    """Request default CP2K charge analyses for standard SCF/geopt workflows."""
+
+    print_section = input_dict["FORCE_EVAL"]["DFT"].setdefault("PRINT", {})
+    print_section["LOWDIN"] = {"PRINT_GOP": "T"}
+
+
 def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
     """Apply XC/SCF settings while preserving legacy PBE inputs by default."""
 

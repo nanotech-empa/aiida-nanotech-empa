@@ -72,6 +72,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
 
         cp2k_utils.apply_xc_settings(self.ctx.input_dict, self.ctx.dft_params)
+        cp2k_utils.apply_default_charge_analysis(self.ctx.input_dict)
 
         # Charge.
         if "charge" in self.ctx.dft_params:
