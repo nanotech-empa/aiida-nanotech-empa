@@ -115,7 +115,7 @@ def test_overlap_matrix_printed_in_last_scf_step(
         assert ao_matrices["OVERLAP"] == "T"
         assert ao_matrices["NDIGITS"] == 10
     else:
-        assert "PRINT" not in input_dict["FORCE_EVAL"]["DFT"]
+        assert "AO_MATRICES" not in input_dict["FORCE_EVAL"]["DFT"].get("PRINT", {})
 
 
 @pytest.mark.parametrize("run_diag_scf", [False, True])

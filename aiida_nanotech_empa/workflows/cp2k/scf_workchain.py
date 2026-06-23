@@ -2,6 +2,7 @@ from aiida import engine, orm, plugins
 
 from ...plugins import sparse_overlap
 from ...utils import common_utils
+from . import cp2k_utils
 from .diag_workchain import Cp2kDiagWorkChain
 
 BaderCalculation = plugins.CalculationFactory("nanotech_empa.bader")
@@ -238,6 +239,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         return self.inputs.compute_unfolding.value
 
     def update_ot_input_dict(self, input_dict):
+        cp2k_utils.apply_default_charge_analysis(input_dict)
         # Bader reads the final OT density, printed on the full grid.
         if self.should_run_bader():
             mgrid = input_dict["FORCE_EVAL"]["DFT"]["MGRID"]
