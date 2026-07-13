@@ -235,7 +235,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                 structure = self.ctx.lowest_energy_structure
 
                 files, input_dict, structure_with_tags = cp2k_utils.get_dft_inputs(
-                    self.inputs.dft_params,
+                    self.inputs.dft_params.get_dict(),
                     structure,
                     "geo_opt_protocol.yml",
                     self.inputs.protocol.value,
