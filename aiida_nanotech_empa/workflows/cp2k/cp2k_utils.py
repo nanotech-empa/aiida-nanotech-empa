@@ -11,6 +11,51 @@ import ase
 import numpy as np
 import yaml
 from aiida import common, orm
+from aiida.engine.processes.workchains.restart import validate_on_unhandled_failure
+
+
+def add_restart_policy_inputs(spec):
+    """Expose the BaseRestartWorkChain restart policy as workchain inputs."""
+    spec.input(
+        "max_iterations",
+        valid_type=orm.Int,
+        default=lambda: orm.Int(5),
+        required=False,
+        help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
+    )
+    spec.input(
+        "clean_workdir",
+        valid_type=orm.Bool,
+        default=lambda: orm.Bool(False),
+        required=False,
+        help="Clean called CP2K calculation work directories after termination.",
+    )
+    spec.input(
+        "on_unhandled_failure",
+        valid_type=orm.Str,
+        default=lambda: orm.Str("pause"),
+        required=False,
+        validator=validate_on_unhandled_failure,
+        help=(
+            "Action for unhandled cp2k.base failures: abort, pause, "
+            "restart_once, or restart_and_pause."
+        ),
+    )
+    spec.input(
+        "pause_on_max_iterations",
+        valid_type=orm.Bool,
+        default=lambda: orm.Bool(True),
+        required=False,
+        help="Pause cp2k.base for inspection when restart max_iterations is reached.",
+    )
+
+
+def set_restart_policy(inputs, builder):
+    """Propagate restart-policy inputs onto a cp2k.base-derived builder."""
+    builder.max_iterations = inputs.max_iterations
+    builder.clean_workdir = inputs.clean_workdir
+    builder.on_unhandled_failure = inputs.on_unhandled_failure
+    builder.pause_on_max_iterations = inputs.pause_on_max_iterations
 
 
 class SizeDifferentThanNumberOfAtomsError(ValueError):
@@ -560,7 +605,7 @@ def string_range_to_list(strng, shift=-1):
             return [], False
 
         if ".." in item:
-            start, end = [int(value) for value in item.split("..")]
+            start, end = (int(value) for value in item.split(".."))
             if start > end:
                 return [], False
             indexes.extend(i + shift for i in range(start, end + 1))
@@ -705,9 +750,7 @@ def get_ids(details, label=None):
             pos = lab + 2
             if details[lab + 1].lower() == "atoms":
                 ids0, pos = _collect_atom_index_tokens(details, pos)
-                _require_atom_index_end(
-                    details, pos, {"point", "plane", "axis", "end"}
-                )
+                _require_atom_index_end(details, pos, {"point", "plane", "axis", "end"})
                 ids0 = _atom_indexes_to_cp2k_list(ids0)
             else:
                 while pos < len(details) and is_number(details[pos]):

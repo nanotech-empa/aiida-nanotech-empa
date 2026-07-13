@@ -2,6 +2,7 @@ import numpy as np
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
+from . import cp2k_utils
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 StmCalculation = plugins.CalculationFactory("nanotech_empa.stm")
@@ -31,6 +32,7 @@ class Cp2kStmWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         spec.outline(
             cls.setup,
@@ -64,6 +66,7 @@ class Cp2kStmWorkChain(engine.WorkChain):
         builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.dft_params)
         builder.options = orm.Dict(self.inputs.options)
+        cp2k_utils.set_restart_policy(self.inputs, builder)
 
         # Restart wfn, if requested.
         if "parent_calc_folder" in self.inputs:

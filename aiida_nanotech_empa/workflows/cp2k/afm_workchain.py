@@ -35,6 +35,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
         spec.input("ppafm_params", valid_type=orm.Dict)
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         spec.outline(
             cls.setup,
@@ -82,6 +83,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
         builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.dft_params)
         builder.options = orm.Dict(self.inputs.options)
+        cp2k_utils.set_restart_policy(self.inputs, builder)
 
         # Restart wfn.
         if "parent_calc_folder" in self.inputs:
