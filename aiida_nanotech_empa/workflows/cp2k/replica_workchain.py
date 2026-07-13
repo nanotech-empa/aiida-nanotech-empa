@@ -38,6 +38,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         spec.outline(
             cls.setup,
@@ -242,6 +243,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
 
                 builder = Cp2kBaseWorkChain.get_builder()
                 builder.cp2k.code = self.inputs.code
+                cp2k_utils.set_restart_policy(self.inputs, builder)
                 builder.cp2k.structure = orm.StructureData(ase=structure_with_tags)
                 builder.cp2k.file = files
                 builder.cp2k.metadata.options = self.inputs.options

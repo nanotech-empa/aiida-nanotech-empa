@@ -12,9 +12,7 @@ Cp2kNebWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.neb")
 DATA_DIR = script_dir(__file__)
 
 
-def _example_cp2k_neb(
-    cp2k_code, uks, restart_uuid, n_nodes=1, n_cores_per_node=1
-):
+def _example_cp2k_neb(cp2k_code, uks, restart_uuid, n_nodes=1, n_cores_per_node=1):
     builder = Cp2kNebWorkChain.get_builder()
 
     builder.metadata.label = "CP2K_NEB"

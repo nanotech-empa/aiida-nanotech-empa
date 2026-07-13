@@ -74,6 +74,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             required=False,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         # in case wfn for the whole system is available and matches uks/rks parameters
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
@@ -158,6 +159,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             # Generic inputs that are always the same.
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.code = self.inputs.code
+            cp2k_utils.set_restart_policy(self.inputs, builder)
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
             # restart wfn in case of fragment 'all'
@@ -241,6 +243,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             # Generic inputs that are always the same.
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.code = self.inputs.code
+            cp2k_utils.set_restart_policy(self.inputs, builder)
             builder.cp2k.metadata.options = self.inputs.options[fragment]
             builder.cp2k.file = self.ctx.file
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"

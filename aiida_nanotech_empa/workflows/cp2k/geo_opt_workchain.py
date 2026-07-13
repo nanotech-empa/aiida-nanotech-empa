@@ -33,6 +33,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         # Workchain outline.
         spec.outline(
@@ -186,8 +187,13 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
         # Parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
+        # Restart policy.
+        cp2k_utils.set_restart_policy(self.inputs, builder)
+
         # Handlers.
-        builder.handler_overrides = orm.Dict({"restart_incomplete_calculation": True})
+        builder.handler_overrides = orm.Dict(
+            {"restart_incomplete_calculation": {"enabled": True}}
+        )
 
         # Restart wfn.
         if "parent_calc_folder" in self.inputs:

@@ -51,6 +51,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         spec.outline(
             cls.setup,
@@ -127,6 +128,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         self.report("Running Diag Workchain for the full system.")
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
+        cp2k_utils.set_restart_policy(self.inputs, builder)
         builder.structure = self.ctx.structure
         builder.protocol = self.inputs.protocol
         builder.dft_params = orm.Dict(self.ctx.dft_parameters)
@@ -148,6 +150,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             self.report("Running Diag Workchain for the fragment.")
             builder = Cp2kDiagWorkChain.get_builder()
             builder.cp2k_code = self.inputs.cp2k_code
+            cp2k_utils.set_restart_policy(self.inputs, builder)
             builder.structure = self.ctx.molecule_structure
             builder.protocol = self.inputs.protocol
             builder.dft_params = orm.Dict(self.ctx.mol_dft_parameters)

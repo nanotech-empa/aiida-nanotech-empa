@@ -44,6 +44,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             required=False,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -121,6 +122,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         # Set workflow inputs.
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
+        cp2k_utils.set_restart_policy(self.inputs, builder)
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
@@ -249,6 +251,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
+        cp2k_utils.set_restart_policy(self.inputs, builder)
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
