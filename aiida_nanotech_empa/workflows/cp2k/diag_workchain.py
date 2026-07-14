@@ -15,7 +15,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
     def define(cls, spec):
         super().define(spec)
 
-        # Define the inputs of the work chain.
         spec.input("cp2k_code", valid_type=orm.Code)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
@@ -47,7 +46,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         )
         cp2k_utils.add_restart_policy_inputs(spec)
 
-        # Define the outline of the work chain.
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -55,7 +53,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             cls.finalize,
         )
 
-        # Define the outputs of the work chain.
         spec.outputs.dynamic = True
 
         spec.exit_code(
