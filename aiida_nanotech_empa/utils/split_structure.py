@@ -9,7 +9,7 @@ def split_structure(structure, fixed_atoms, magnetization_per_site, fragments):
 
     allfixed = [0 for i in ase_geo]
     mps = []
-    fixed = ""
+    fixed = []
     if "all" not in fragments:
         yield {
             "label": "all",
@@ -50,6 +50,8 @@ def split_structure(structure, fixed_atoms, magnetization_per_site, fragments):
         yield {
             "label": fragment_label,
             "structure": StructureData(ase=ase_geo[fragment]),
-            "fixed_atoms": orm.List(list=np.nonzero(fixed)[0].tolist()),
+            "fixed_atoms": orm.List(
+                list=[index for index, is_fixed in enumerate(fixed) if is_fixed]
+            ),
             "magnetization_per_site": orm.List(list=mps),
         }
