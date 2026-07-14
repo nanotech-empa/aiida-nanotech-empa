@@ -100,8 +100,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.code = self.inputs.sparse_overlap_code
         builder.parent_calc_folder = self.ctx.diag_scf.outputs.remote_folder
         builder.threshold = self.inputs.overlap_threshold
-        builder.matrix_filename = orm.Str("aiida-overlap_matrix.out-1_0.Log")
-        builder.output_filename = orm.Str("sparse_overlap.npz")
         builder.metadata = {
             "label": "sparse_overlap",
             "options": {
