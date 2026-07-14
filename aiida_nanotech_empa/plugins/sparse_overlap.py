@@ -60,7 +60,9 @@ class SparseOverlapCalculation(engine.CalcJob):
         calcinfo.remote_symlink_list = []
         calcinfo.remote_copy_list = []
         calcinfo.local_copy_list = []
-        calcinfo.retrieve_list = settings.pop("additional_retrieve_list", [output_filename])
+        calcinfo.retrieve_list = settings.pop(
+            "additional_retrieve_list", [output_filename]
+        )
 
         comp_uuid = self.inputs.parent_calc_folder.computer.uuid
         remote_path = self.inputs.parent_calc_folder.get_remote_path()
