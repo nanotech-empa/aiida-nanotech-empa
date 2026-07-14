@@ -7,6 +7,10 @@ SparseOverlapCalculation = plugins.CalculationFactory("nanotech_empa.sparse_over
 
 
 class Cp2kScfWorkChain(Cp2kDiagWorkChain):
+    """Extends `Cp2kDiagWorkChain`, making the diagonalization step optional
+    and adding the option to print/retrieve the AO overlap matrix.
+    """
+
     @classmethod
     def define(cls, spec):
         super().define(spec)
@@ -90,6 +94,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         print_section["AO_MATRICES"] = {
             "_": "ON",
             "OVERLAP": "T",
+            # CP2K/aiida-cp2k retrieve this as "aiida-overlap_matrix.out-1_0.Log",
+            # matching SparseOverlapCalculation's default matrix_filename.
             "FILENAME": "overlap_matrix.out",
             "NDIGITS": self.inputs.overlap_ndigits.value,
         }
