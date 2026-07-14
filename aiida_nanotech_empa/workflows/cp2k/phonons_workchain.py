@@ -72,9 +72,9 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
         # Removal of rotations.
         if "periodic" in dft_params and dft_params["periodic"] == "NONE":
             self.ctx.input_dict["VIBRATIONAL_ANALYSIS"]["FULLY_PERIODIC"] = ".FALSE."
-            self.ctx.input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MOMENTS"][
-                "PERIODIC"
-            ] = ".FALSE."
+            self.ctx.input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MOMENTS"]["PERIODIC"] = (
+                ".FALSE."
+            )
 
         # Constraints.
         if "constraints" in self.ctx.sys_params:

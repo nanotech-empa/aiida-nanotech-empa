@@ -149,8 +149,8 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             )
 
             self.report(
-                f"""Running SCF for the fragment '{inputs['label']}' consisting of {len(inputs['structure'].sites)} atoms, """
-                f"""where {string_utils.list_to_string_range(inputs['fixed_atoms']) or 'None'} atoms are fixed."""
+                f"""Running SCF for the fragment '{inputs["label"]}' consisting of {len(inputs["structure"].sites)} atoms, """
+                f"""where {string_utils.list_to_string_range(inputs["fixed_atoms"]) or "None"} atoms are fixed."""
             )
 
             # Fragment's label.
@@ -176,9 +176,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = self.ctx.cutoff
 
             # Always compute charge density with STRIDE 2 2 2 for the SCF part of the work chain.
-            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"][
-                "STRIDE"
-            ] = "1 1 1"
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]["STRIDE"] = (
+                "1 1 1"
+            )
 
             # If charge is set, add it to the corresponding section of the input.
             if (
@@ -254,9 +254,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             input_dict["GLOBAL"]["RUN_TYPE"] = "GEO_OPT"
 
             # For the geometry optimisation, we reset STRIDE back to 4 4 4.
-            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"][
-                "STRIDE"
-            ] = "4 4 4"
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]["STRIDE"] = (
+                "4 4 4"
+            )
 
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
             builder.cp2k.parent_calc_folder = previous_calc.outputs.remote_folder

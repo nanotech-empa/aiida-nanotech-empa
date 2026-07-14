@@ -143,7 +143,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             self.report("Updated output for the initial_scf step")
         else:
             self.out(
-                f"details.step_{self.ctx.propagation_step - 1 :04}",
+                f"details.step_{self.ctx.propagation_step - 1:04}",
                 orm.Dict(
                     dict={
                         "output_parameters": dict(
@@ -156,10 +156,10 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                 ).store(),
             )
             self.out(
-                f"structures.step_{self.ctx.propagation_step - 1 :04}",
+                f"structures.step_{self.ctx.propagation_step - 1:04}",
                 self.ctx.lowest_energy_structure,
             )
-            self.report(f"Updated output for step {self.ctx.propagation_step - 1 :04}")
+            self.report(f"Updated output for step {self.ctx.propagation_step - 1:04}")
         return engine.ExitCode(0)
 
     def first_scf(self):
@@ -297,7 +297,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                 )
                 self.to_context(
                     **{
-                        f"run_{self.ctx.propagation_step :04}": engine.append_(
+                        f"run_{self.ctx.propagation_step:04}": engine.append_(
                             submitted_calculation
                         )
                     }
@@ -308,7 +308,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         geometry optimizations."""
         results = []
         for index, calculation in enumerate(
-            getattr(self.ctx, f"run_{self.ctx.propagation_step :04}")
+            getattr(self.ctx, f"run_{self.ctx.propagation_step:04}")
         ):
             # check if the calculation is finished
             if not common_utils.check_if_calc_ok(self, calculation):
@@ -318,7 +318,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         results.sort(key=lambda x: x[0])
         self.ctx.lowest_energy_calc = results[0][1]
         lowest_energy_base_workchain = getattr(
-            self.ctx, f"run_{self.ctx.propagation_step :04}"
+            self.ctx, f"run_{self.ctx.propagation_step:04}"
         )[self.ctx.lowest_energy_calc]
         ase_previous = self.ctx.lowest_energy_structure.get_ase()
         self.ctx.lowest_energy_structure = (
@@ -331,12 +331,12 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         )
         self.ctx.lowest_energy = results[0][0]
         self.report(
-            f"The lowest energy at step {self.ctx.propagation_step :04} is: {self.ctx.lowest_energy}"
+            f"The lowest energy at step {self.ctx.propagation_step:04} is: {self.ctx.lowest_energy}"
         )
         self.report(f"geometry: {self.ctx.lowest_energy_structure.pk}")
         self.report(f"target CVs {self.ctx.CVs_cases[self.ctx.lowest_energy_calc]}")
         self.ctx.restart_folder = getattr(
-            self.ctx, f"run_{self.ctx.propagation_step :04}"
+            self.ctx, f"run_{self.ctx.propagation_step:04}"
         )[self.ctx.lowest_energy_calc].outputs.remote_folder
         self.ctx.propagation_step += 1
         return engine.ExitCode(0)

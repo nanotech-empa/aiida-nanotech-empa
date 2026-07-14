@@ -211,9 +211,9 @@ class Cp2kMoleculeGwWorkChain(engine.WorkChain):
     def _check_and_set_uks(self, input_dict):
         if self.inputs.multiplicity.value > 0:
             input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
-            input_dict["FORCE_EVAL"]["DFT"][
-                "MULTIPLICITY"
-            ] = self.inputs.multiplicity.value
+            input_dict["FORCE_EVAL"]["DFT"]["MULTIPLICITY"] = (
+                self.inputs.multiplicity.value
+            )
 
     def _set_debug(self, input_dict):
         input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["STRIDE"] = "6 6 6"
@@ -263,9 +263,9 @@ class Cp2kMoleculeGwWorkChain(engine.WorkChain):
 
         if hasattr(self.ctx, "scf") and self.ctx.scf_restart_from_last:
             builder.parent_calc_folder = self.ctx.scf.outputs.remote_folder
-            input_dict["FORCE_EVAL"]["DFT"][
-                "RESTART_FILE_NAME"
-            ] = "./parent_calc/aiida-RESTART.wfn"
+            input_dict["FORCE_EVAL"]["DFT"]["RESTART_FILE_NAME"] = (
+                "./parent_calc/aiida-RESTART.wfn"
+            )
 
         # Options.
         builder.metadata.options = self.inputs.options.scf

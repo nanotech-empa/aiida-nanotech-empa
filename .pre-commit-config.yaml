@@ -1,57 +1,36 @@
----
 ci:
-    autoupdate_schedule: quarterly
-
+  autoupdate_schedule: quarterly
 repos:
-    - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v6.0.0
-      hooks:
-          - id: end-of-file-fixer
-            exclude: ^.*data/
-          - id: trailing-whitespace
-            exclude: ^.*.upf
-          - id: check-yaml
-          - id: check-added-large-files
-    - repo: https://github.com/pycqa/isort
-      rev: 7.0.0
-      hooks:
-          - id: isort
-            args: [--profile, black, --filter-files]
-    - repo: https://github.com/PyCQA/autoflake
-      rev: v2.3.1
-      hooks:
-          - id: autoflake
-    - repo: https://github.com/asottile/pyupgrade
-      rev: v3.21.2
-      hooks:
-          - id: pyupgrade
-            args: [--py39-plus]
-    - repo: https://github.com/psf/black-pre-commit-mirror
-      rev: 25.12.0
-      hooks:
-          - id: black
-            language_version: python3
-    - repo: https://github.com/PyCQA/flake8
-      rev: 7.3.0
-      hooks:
-          - id: flake8
-            args: [--count, --show-source, --statistics]
-            additional_dependencies:
-                - flake8-bugbear
-                - flake8-builtins
-                - flake8-comprehensions
-                - flake8-debugger
-                - flake8-logging-format
-                - pep8-naming
-                - pyflakes
-                - tryceratops
-    - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v1.19.1
-      hooks:
-          - id: mypy
-            additional_dependencies:
-                - types-click-spinner
-                - types-requests
-                - types-tabulate
-                - types-toml
-                - types-pyyaml
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+        exclude: ^.*data/
+      - id: trailing-whitespace
+        exclude: ^.*.upf
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.21
+    hooks:
+      - id: ruff-format
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix, --show-fixes]
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.21.0
+    hooks:
+      - id: yamlfmt
+  - repo: https://github.com/sirosen/check-jsonschema
+    rev: 0.37.4
+    hooks:
+      - id: check-github-workflows
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: mypy
+        args: [--pretty, --config-file=pyproject.toml, aiida_nanotech_empa/]
+        language: system
+        types: [python]
+        require_serial: true
+        pass_filenames: false
