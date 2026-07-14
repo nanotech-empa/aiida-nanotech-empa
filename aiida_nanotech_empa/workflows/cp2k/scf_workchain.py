@@ -119,32 +119,23 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         return engine.ToContext(sparse_overlap=self.submit(builder))
 
     def finalize(self):
-        if self.should_run_diag_scf():
-            if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-                self.report("diagonalization scf failed")
-                return self.exit_codes.ERROR_TERMINATION
+        run_diag = self.should_run_diag_scf()
+        final_calc = self.ctx.diag_scf if run_diag else self.ctx.ot_scf
+        calc_label = "diagonalization scf" if run_diag else "OT SCF"
 
-            if self.should_run_sparse_overlap():
-                if not common_utils.check_if_calc_ok(self, self.ctx.sparse_overlap):
-                    self.report("sparse overlap post-processing failed")
-                    return self.exit_codes.ERROR_TERMINATION
-                self.out(
-                    "sparse_overlap_retrieved",
-                    self.ctx.sparse_overlap.outputs.retrieved,
-                )
-
-            self.out("output_parameters", self.ctx.diag_scf.outputs.output_parameters)
-            self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
-            self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
-            self.report("Work chain is finished")
-            return None
-
-        if not common_utils.check_if_calc_ok(self, self.ctx.ot_scf):
-            self.report("OT SCF failed")
+        if not common_utils.check_if_calc_ok(self, final_calc):
+            self.report(f"{calc_label} failed")
             return self.exit_codes.ERROR_TERMINATION
 
-        self.out("output_parameters", self.ctx.ot_scf.outputs.output_parameters)
-        self.out("remote_folder", self.ctx.ot_scf.outputs.remote_folder)
-        self.out("retrieved", self.ctx.ot_scf.outputs.retrieved)
+        if run_diag and self.should_run_sparse_overlap():
+            if not common_utils.check_if_calc_ok(self, self.ctx.sparse_overlap):
+                self.report("sparse overlap post-processing failed")
+                return self.exit_codes.ERROR_TERMINATION
+            self.out(
+                "sparse_overlap_retrieved", self.ctx.sparse_overlap.outputs.retrieved
+            )
+
+        self.out("output_parameters", final_calc.outputs.output_parameters)
+        self.out("remote_folder", final_calc.outputs.remote_folder)
+        self.out("retrieved", final_calc.outputs.retrieved)
         self.report("Work chain is finished")
-        return None
