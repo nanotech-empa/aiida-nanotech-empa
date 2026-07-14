@@ -560,7 +560,7 @@ def string_range_to_list(strng, shift=-1):
             return [], False
 
         if ".." in item:
-            start, end = [int(value) for value in item.split("..")]
+            start, end = (int(value) for value in item.split(".."))
             if start > end:
                 return [], False
             indexes.extend(i + shift for i in range(start, end + 1))
@@ -705,9 +705,7 @@ def get_ids(details, label=None):
             pos = lab + 2
             if details[lab + 1].lower() == "atoms":
                 ids0, pos = _collect_atom_index_tokens(details, pos)
-                _require_atom_index_end(
-                    details, pos, {"point", "plane", "axis", "end"}
-                )
+                _require_atom_index_end(details, pos, {"point", "plane", "axis", "end"})
                 ids0 = _atom_indexes_to_cp2k_list(ids0)
             else:
                 while pos < len(details) and is_number(details[pos]):
