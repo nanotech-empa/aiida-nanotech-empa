@@ -55,11 +55,18 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             ),
             cls.finalize,
         )
-        spec.exit_code(
-            391,
-            "ERROR_MISSING_SPARSE_OVERLAP_CODE",
-            message="A sparse overlap code is required to retrieve sparse overlap entries.",
-        )
+        spec.inputs.validator = staticmethod(cls._validate_inputs)
+
+    @staticmethod
+    def _validate_inputs(value, port_namespace):
+        if (
+            value["retrieve_sparse_overlap"].value
+            and "sparse_overlap_code" not in value
+        ):
+            return (
+                "'sparse_overlap_code' is required when "
+                "'retrieve_sparse_overlap' is True."
+            )
 
     def should_run_diag_scf(self):
         dft_params = self.inputs.dft_params.get_dict()
@@ -88,9 +95,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         }
 
     def run_sparse_overlap(self):
-        if "sparse_overlap_code" not in self.inputs:
-            return self.exit_codes.ERROR_MISSING_SPARSE_OVERLAP_CODE
-
         self.report("Running sparse overlap post-processing")
         builder = SparseOverlapCalculation.get_builder()
         builder.code = self.inputs.sparse_overlap_code
