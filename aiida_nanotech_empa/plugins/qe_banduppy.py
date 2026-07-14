@@ -4,7 +4,6 @@ import textwrap
 import numpy as np
 from aiida import common, engine, orm
 
-
 DEFAULT_INPUT_NPZ = "banduppy_inputs.npz"
 DEFAULT_SETTINGS_JSON = "banduppy_settings.json"
 DEFAULT_RUN_SCRIPT = "run_banduppy_qe.py"
@@ -102,7 +101,7 @@ class QeBanduppyCalculation(engine.CalcJob):
 
 def _runner_script():
     return textwrap.dedent(
-        r'''
+        r"""
         import contextlib
         import json
         from pathlib import Path
@@ -213,5 +212,5 @@ def _runner_script():
             output_arrays["primitive_kline"] = primitive_kline
 
         np.savez(output_npz, **output_arrays)
-        '''
+        """
     ).lstrip()

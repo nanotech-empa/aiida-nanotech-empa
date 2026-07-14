@@ -5,7 +5,6 @@ import numpy as np
 from aiida import engine, orm, plugins
 from aiida.common import exceptions
 
-
 PwCalculation = plugins.CalculationFactory("quantumespresso.pw")
 QeBanduppyCalculation = plugins.CalculationFactory("nanotech_empa.qe_banduppy")
 
@@ -39,16 +38,32 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
             cls.inspect_banduppy,
             cls.results,
         )
-        spec.output("folded_qe_remote_folder", valid_type=orm.RemoteData, required=False)
+        spec.output(
+            "folded_qe_remote_folder", valid_type=orm.RemoteData, required=False
+        )
         spec.output("folded_kpoints", valid_type=orm.KpointsData, required=False)
         spec.output("mapping_arrays", valid_type=orm.ArrayData, required=False)
         spec.output("mapping_data", valid_type=orm.Dict, required=False)
         spec.output("banduppy_retrieved", valid_type=orm.FolderData, required=False)
         spec.outputs.dynamic = True
-        spec.exit_code(300, "ERROR_TEMPLATE_REMOTE_EMPTY", message="The template QE remote folder is missing or empty.")
-        spec.exit_code(310, "ERROR_FOLDED_QE_FAILED", message="The folded-kpoints QE calculation failed.")
-        spec.exit_code(320, "ERROR_FOLDED_QE_REMOTE_EMPTY", message="The folded QE remote folder is missing or empty.")
-        spec.exit_code(330, "ERROR_BANDUPPY_FAILED", message="The BandUPpy calculation failed.")
+        spec.exit_code(
+            300,
+            "ERROR_TEMPLATE_REMOTE_EMPTY",
+            message="The template QE remote folder is missing or empty.",
+        )
+        spec.exit_code(
+            310,
+            "ERROR_FOLDED_QE_FAILED",
+            message="The folded-kpoints QE calculation failed.",
+        )
+        spec.exit_code(
+            320,
+            "ERROR_FOLDED_QE_REMOTE_EMPTY",
+            message="The folded QE remote folder is missing or empty.",
+        )
+        spec.exit_code(
+            330, "ERROR_BANDUPPY_FAILED", message="The BandUPpy calculation failed."
+        )
 
     def setup(self):
         self.ctx.unfolding_parameters = self.inputs.unfolding_parameters.get_dict()
@@ -102,7 +117,9 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
 
         kpoints = orm.KpointsData()
         kpoints.set_cell_from_structure(self.inputs.structure)
-        kpoints.set_kpoints(kpoints_sbz[:, :3], cartesian=False, weights=np.ones(len(kpoints_sbz)))
+        kpoints.set_kpoints(
+            kpoints_sbz[:, :3], cartesian=False, weights=np.ones(len(kpoints_sbz))
+        )
         kpoints.label = "BandUPpy folded supercell k-points"
         kpoints.description = json.dumps(
             {
@@ -110,7 +127,9 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
                 "supercell_matrix": matrix.tolist(),
                 "primitive_path": path,
                 "labels": labels,
-                "npoints_per_segment": list(npoints) if isinstance(npoints, tuple) else npoints,
+                "npoints_per_segment": (
+                    list(npoints) if isinstance(npoints, tuple) else npoints
+                ),
                 "kpoint_spacing": params.get("kpoint_spacing"),
             }
         )
@@ -122,7 +141,9 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
         arrays.set_array("kpoints_sbz", np.asarray(kpoints_sbz))
         arrays.set_array(
             "primitive_kline",
-            _primitive_kline(self.inputs.structure, matrix, np.asarray(kpoints_pbz_full)[:, :3]),
+            _primitive_kline(
+                self.inputs.structure, matrix, np.asarray(kpoints_pbz_full)[:, :3]
+            ),
         )
         arrays.label = "BandUPpy QE unfolding k-point arrays"
         arrays.store()
@@ -130,7 +151,9 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
         self.ctx.folded_kpoints = kpoints
         self.ctx.mapping_arrays = arrays
         self.ctx.mapping_data = orm.Dict(dict=_jsonable_mapping(mapping))
-        self.ctx.special_labels = orm.Dict(dict=_jsonable_special_labels(special_labels))
+        self.ctx.special_labels = orm.Dict(
+            dict=_jsonable_special_labels(special_labels)
+        )
         self.out("folded_kpoints", kpoints)
         self.out("mapping_arrays", arrays)
         self.out("mapping_data", self.ctx.mapping_data)
@@ -141,7 +164,9 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
         builder.structure = self.inputs.structure
         builder.pseudos = dict(self.inputs.pseudos)
         builder.kpoints = self.ctx.folded_kpoints
-        builder.parameters = orm.Dict(dict=_folded_qe_parameters(self.inputs.parameters.get_dict()))
+        builder.parameters = orm.Dict(
+            dict=_folded_qe_parameters(self.inputs.parameters.get_dict())
+        )
         if "parent_folder" in self.inputs:
             builder.parent_folder = self.inputs.parent_folder
         if "settings" in self.inputs:
@@ -238,7 +263,9 @@ def _jsonable_special_labels(special_labels):
 
 def _primitive_kline(structure, supercell_matrix, fractional_kpoints):
     supercell_lattice = np.asarray(structure.cell, dtype=float)
-    primitive_lattice = np.linalg.solve(np.asarray(supercell_matrix, dtype=float), supercell_lattice)
+    primitive_lattice = np.linalg.solve(
+        np.asarray(supercell_matrix, dtype=float), supercell_lattice
+    )
     reciprocal_lattice = 2.0 * np.pi * np.linalg.inv(primitive_lattice).T
     cartesian_kpoints = np.asarray(fractional_kpoints, dtype=float) @ reciprocal_lattice
     if len(cartesian_kpoints) == 0:
