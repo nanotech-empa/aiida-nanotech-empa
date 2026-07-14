@@ -59,7 +59,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             ),
             cls.finalize,
         )
-        spec.inputs.validator = staticmethod(cls._validate_inputs)
+        spec.inputs.validator = cls._validate_inputs
 
     @staticmethod
     def _validate_inputs(value, port_namespace):
