@@ -11,7 +11,6 @@ Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
 
 class Cp2kDiagWorkChain(engine.WorkChain):
-
     @classmethod
     def define(cls, spec):
         super().define(spec)
