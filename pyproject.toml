@@ -45,6 +45,8 @@ dev = [
     "pre-commit>=2.19",
     "bumpver==2022.1119",
     "coverage",
+    "mypy",
+    "types-pyyaml",
 ]
 
 [project.entry-points."aiida.parsers"]
@@ -92,6 +94,9 @@ dev = [
 
 [project.entry-points."aiida.schedulers"]
 slurm_ethz_euler = "aiida_nanotech_empa.schedulers:ETHZEulerSlurmScheduler"
+
+[tool.mypy]
+ignore_missing_imports = true
 
 [tool.bumpver]
 current_version = "v1.0.0"

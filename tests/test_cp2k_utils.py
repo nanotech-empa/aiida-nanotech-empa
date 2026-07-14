@@ -3,8 +3,6 @@ import ase
 from aiida import orm, plugins
 from aiida_nanotech_empa.workflows.cp2k import cp2k_utils
 
-from aiida_nanotech_empa.workflows.cp2k.cp2k_utils import validate_on_unhandled_failure
-
 
 def test_validate_on_unhandled_failure_accepts_known_actions():
     for action in ("abort", "pause", "restart_once", "restart_and_pause"):

@@ -61,7 +61,7 @@ class GaussianConstrOptChainWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             required=False,
             default=lambda: orm.Str(""),
-            help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
+            help=('Include empirical dispersion corrections(e.g. "GD3", "GD3BJ")'),
         )
 
         spec.input(
@@ -111,7 +111,7 @@ class GaussianConstrOptChainWorkChain(engine.WorkChain):
         if self.ctx.i_constr == 0:
             structure = self.inputs.structure
         else:
-            prev_label = f"opt_{self.ctx.i_constr-1}"
+            prev_label = f"opt_{self.ctx.i_constr - 1}"
 
             for extra_mult in self.inputs.extra_scf_mults:
                 ext_label = prev_label + f"_m{extra_mult}"
@@ -152,7 +152,7 @@ class GaussianConstrOptChainWorkChain(engine.WorkChain):
         return engine.ToContext(**{label: submitted_node})
 
     def submit_extra_mults(self):
-        opt_label = f"opt_{self.ctx.i_constr-1}"
+        opt_label = f"opt_{self.ctx.i_constr - 1}"
 
         if not common_utils.check_if_calc_ok(self, self.ctx[opt_label]):
             return self.exit_codes.ERROR_TERMINATION
