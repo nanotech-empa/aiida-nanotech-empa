@@ -75,6 +75,10 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.ctx.n_atoms = len(structure.sites)
 
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.dft_params.setdefault("periodic", "XYZ")
+        self.ctx.dft_params.setdefault("uks", False)
+        self.ctx.dft_params.setdefault("elpa_switch", False)
+        self.ctx.dft_params.setdefault("sc_diag", False)
 
         # Resources.
         self.ctx.options = self.inputs.options.get_dict()
