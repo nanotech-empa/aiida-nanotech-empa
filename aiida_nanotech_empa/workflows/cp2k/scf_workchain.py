@@ -174,9 +174,9 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         if not self.should_run_bader():
             return
 
-        input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = (
-            self.inputs.bader_cutoff.value
-        )
+        input_dict["FORCE_EVAL"]["DFT"]["MGRID"][
+            "CUTOFF"
+        ] = self.inputs.bader_cutoff.value
         print_section = input_dict["FORCE_EVAL"]["DFT"].setdefault("PRINT", {})
         charge_density = print_section.setdefault("E_DENSITY_CUBE", {})
         charge_density["STRIDE"] = "1 1 1"
@@ -340,7 +340,9 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                     self.ctx.unfolding.outputs.retrieved.base.repository.list_object_names()
                 )
                 if output_filename not in retrieved_names:
-                    self.report(f"CP2K band unfolding did not retrieve {output_filename}")
+                    self.report(
+                        f"CP2K band unfolding did not retrieve {output_filename}"
+                    )
                     return self.exit_codes.ERROR_MISSING_UNFOLDING_OUTPUT
                 if self.ctx.unfolding.inputs.parse_pdos_projections.value:
                     projection_filename = (

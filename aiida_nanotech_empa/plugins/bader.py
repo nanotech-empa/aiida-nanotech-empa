@@ -1,6 +1,5 @@
 from aiida import common, engine, orm
 
-
 DEFAULT_CHARGE_DENSITY_FILENAME = "aiida-ELECTRON_DENSITY-1_0.cube"
 DEFAULT_RETRIEVE_LIST = ["ACF.dat", "AVF.dat", "BCF.dat"]
 
