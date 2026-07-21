@@ -53,7 +53,8 @@ def _geo_opt_cp2k_builder(cp2k_code):
     )
 
     data_dir = (
-        pathlib.Path(__file__).parents[2] / "aiida_nanotech_empa/workflows/cp2k/data"
+        pathlib.Path(__file__).parents[2]
+        / "aiida_nanotech_empa/workflows/cp2k/data"
     )
 
     builder = Cp2kCalculation.get_builder()
