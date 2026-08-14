@@ -386,7 +386,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 )
                 if projection_filename not in retrieved_names:
                     self.report(
-                        "CP2K band unfolding did not retrieve " f"{projection_filename}"
+                        f"CP2K band unfolding did not retrieve {projection_filename}"
                     )
                     return self.exit_codes.ERROR_MISSING_UNFOLDING_OUTPUT
             self.out("unfolding_retrieved", self.ctx.unfolding.outputs.retrieved)

@@ -34,6 +34,30 @@ def test_retrieve_sparse_overlap_requires_sparse_overlap_code():
     assert "sparse_overlap_code" in message
 
 
+def test_optional_postprocessing_inputs_are_validated():
+    base_inputs = {"retrieve_sparse_overlap": orm.Bool(False)}
+
+    message = Cp2kScfWorkChain._validate_inputs(
+        {**base_inputs, "compute_bader_charges": orm.Bool(True)}, None
+    )
+    assert "bader_code" in message
+
+    unfolding_inputs = {
+        **base_inputs,
+        "compute_unfolding": orm.Bool(True),
+    }
+    message = Cp2kScfWorkChain._validate_inputs(unfolding_inputs, None)
+    assert "unfolding_code" in message
+
+    unfolding_inputs["unfolding_code"] = object()
+    message = Cp2kScfWorkChain._validate_inputs(unfolding_inputs, None)
+    assert "unfolding_primitive_vectors" in message
+
+    unfolding_inputs["unfolding_primitive_vectors"] = orm.Str("1 0 0; 0 1 0")
+    message = Cp2kScfWorkChain._validate_inputs(unfolding_inputs, None)
+    assert "unfolding_primitive_basis_atoms" in message
+
+
 def test_cp2k_scf_workchain_retrieves_sparse_overlap(
     aiida_profile, cp2k_code, sparse_overlap_code
 ):
