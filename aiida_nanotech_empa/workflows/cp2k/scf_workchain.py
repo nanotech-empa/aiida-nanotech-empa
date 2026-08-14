@@ -154,6 +154,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             "ERROR_MISSING_UNFOLDING_OUTPUT",
             message="CP2K band unfolding finished without retrieving unfolding_bands.npz.",
         )
+
     @staticmethod
     def _validate_inputs(value, port_namespace):
         if (
