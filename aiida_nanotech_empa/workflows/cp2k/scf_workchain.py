@@ -294,11 +294,11 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             "max_wallclock_seconds",
             min(7200, self.ctx.options["max_wallclock_seconds"]),
         )
-        resources = unfolding_options.get("resources", {})
-        nproc = int(resources.get("num_machines", 1)) * int(
-            resources.get("num_mpiprocs_per_machine", 1)
-        )
-        unfolding_options.setdefault("withmpi", nproc > 1)
+        # Whether AiiDA launches the executable through MPI is a property of the
+        # configured code, not of the requested allocation. In particular, a
+        # serial unfolding code may still request multiple cores for threaded
+        # numerical libraries.
+        unfolding_options.setdefault("withmpi", self.inputs.unfolding_code.with_mpi)
         builder.metadata = {
             "label": "cp2k_unfolding",
             "options": unfolding_options,
