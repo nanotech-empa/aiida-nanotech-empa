@@ -1,6 +1,5 @@
 from aiida import common, engine, orm
 
-
 DEFAULT_CHARGE_DENSITY_FILENAME = "aiida-ELECTRON_DENSITY-1_0.cube"
 BADER_OUTPUT_FILES = ["ACF.dat", "AVF.dat", "BCF.dat"]
 # Bader 1.05 defaults, pinned so results do not depend on the installed version.
