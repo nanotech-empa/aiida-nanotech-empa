@@ -2,6 +2,7 @@ import numpy as np
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
+from . import cp2k_utils
 from .geo_opt_workchain import validate_on_unhandled_failure
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
@@ -110,11 +111,14 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         # Restart wfn.
         if "parent_calc_folder" in self.inputs:
             builder.parent_calc_folder = self.inputs.parent_calc_folder
+        basis_files = cp2k_utils.get_dft_file_names(self.ctx.dft_params)[
+            "basis_set_file_names"
+        ]
         builder.settings = orm.Dict(
             {
                 "additional_retrieve_list": [
                     "aiida.inp",
-                    "BASIS_MOLOPT",
+                    *basis_files,
                     "aiida.coords.xyz",
                     "aiida-RESTART.wfn",
                 ]
@@ -134,7 +138,10 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         inputs["metadata"] = {}
         inputs["metadata"]["label"] = "orb"
         inputs["code"] = self.inputs.spm_code
-        inputs["parameters"] = self.inputs.spm_params
+        spm_params = cp2k_utils.update_legacy_basis_parameter(
+            self.inputs.spm_params.get_dict(), self.ctx.dft_params
+        )
+        inputs["parameters"] = orm.Dict(spm_params)
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
         inputs["metadata"]["options"] = {
             "resources": {

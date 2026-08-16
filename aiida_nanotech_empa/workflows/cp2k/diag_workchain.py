@@ -1,4 +1,5 @@
 import copy
+
 import numpy as np
 from aiida import engine, orm, plugins
 
@@ -169,7 +170,8 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         if "charge" in self.ctx.dft_params:
             input_dict["FORCE_EVAL"]["DFT"]["CHARGE"] = self.ctx.dft_params["charge"]
-        input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL")
+        if not self.ctx.dft_params.get("vdw", False):
+            input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL", None)
         cp2k_utils.apply_xc_settings(input_dict, self.ctx.dft_params)
 
         # POISSON_SOLVER

@@ -2,6 +2,7 @@ import numpy as np
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
+from . import cp2k_utils
 from .geo_opt_workchain import validate_on_unhandled_failure
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
@@ -117,7 +118,10 @@ class Cp2kStmWorkChain(engine.WorkChain):
         inputs["metadata"] = {}
         inputs["metadata"]["label"] = "stm"
         inputs["code"] = self.inputs.spm_code
-        inputs["parameters"] = self.inputs.spm_params
+        spm_params = cp2k_utils.update_legacy_basis_parameter(
+            self.inputs.spm_params.get_dict(), self.ctx.dft_params
+        )
+        inputs["parameters"] = orm.Dict(spm_params)
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
 
         n_machines = 1
