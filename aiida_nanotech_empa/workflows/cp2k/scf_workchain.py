@@ -327,11 +327,12 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         metadata = self._serial_postprocessing_metadata("cp2k_unfolding")
         options = metadata["options"]
         options.update(self.inputs.unfolding_options.get_dict())
-        resources = options["resources"]
-        nproc = int(resources.get("num_machines", 1)) * int(
-            resources.get("num_mpiprocs_per_machine", 1)
-        )
-        options.setdefault("withmpi", nproc > 1)
+        # Whether AiiDA launches the executable through MPI is a property of the
+        # configured code, not of the requested allocation. In particular, a
+        # serial unfolding code may still request multiple cores for threaded
+        # numerical libraries.
+        if self.inputs.unfolding_code.with_mpi is not None:
+            options.setdefault("withmpi", self.inputs.unfolding_code.with_mpi)
         builder.metadata = metadata
         return engine.ToContext(unfolding=self.submit(builder))
 
