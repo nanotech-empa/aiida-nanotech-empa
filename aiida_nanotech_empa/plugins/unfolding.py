@@ -1,6 +1,5 @@
 from aiida import common, engine, orm
 
-
 DEFAULT_WFN_FILENAME = "aiida-RESTART.wfn"
 DEFAULT_XYZ_FILENAME = "aiida.coords.xyz"
 DEFAULT_CP2K_INPUT_FILENAME = "aiida.inp"
