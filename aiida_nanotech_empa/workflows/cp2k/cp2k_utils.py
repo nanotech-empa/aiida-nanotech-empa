@@ -436,18 +436,14 @@ def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
     qs_section["EPS_PGF_ORB"] = dft_params.get("eps_pgf_orb", 1e-32)
 
     if scf_method == "ot":
-        dft_section["SCF"] = _pbe0_scf_section(
-            dft_params, dft_section.get("SCF", {})
-        )
+        dft_section["SCF"] = _pbe0_scf_section(dft_params, dft_section.get("SCF", {}))
 
     dft_section["AUXILIARY_DENSITY_MATRIX_METHOD"] = {
         "ADMM_PURIFICATION_METHOD": str(
             dft_params.get("admm_purification_method", "NONE")
         ).upper(),
         "METHOD": dft_params.get("admm_method", "BASIS_PROJECTION"),
-        "EXCH_CORRECTION_FUNC": dft_params.get(
-            "admm_exch_correction_func", "PBEX"
-        ),
+        "EXCH_CORRECTION_FUNC": dft_params.get("admm_exch_correction_func", "PBEX"),
     }
 
     xc_section = dft_section.setdefault("XC", {})
