@@ -1,0 +1,81 @@
+from aiida import common, engine, orm
+
+
+DEFAULT_MATRIX_FILENAME = "aiida-overlap_matrix.out-1_0.Log"
+DEFAULT_OUTPUT_FILENAME = "sparse_overlap.npz"
+
+
+class SparseOverlapCalculation(engine.CalcJob):
+    @classmethod
+    def define(cls, spec):
+        super().define(spec)
+        spec.input(
+            "parent_calc_folder",
+            valid_type=orm.RemoteData,
+            help="CP2K folder with the AO overlap matrix log file.",
+        )
+        spec.input(
+            "threshold",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(1.0e-10),
+            required=False,
+            help="Store matrix elements whose absolute value is larger than this threshold.",
+        )
+        spec.input(
+            "matrix_filename",
+            valid_type=orm.Str,
+            default=lambda: orm.Str(DEFAULT_MATRIX_FILENAME),
+            required=False,
+        )
+        spec.input(
+            "output_filename",
+            valid_type=orm.Str,
+            default=lambda: orm.Str(DEFAULT_OUTPUT_FILENAME),
+            required=False,
+        )
+        spec.input(
+            "settings",
+            valid_type=orm.Dict,
+            default=lambda: orm.Dict(dict={}),
+            required=False,
+        )
+        spec.input("metadata.options.withmpi", valid_type=bool, default=False)
+
+    def prepare_for_submission(self, folder):
+        settings = self.inputs.settings.get_dict() if "settings" in self.inputs else {}
+
+        output_filename = self.inputs.output_filename.value
+        codeinfo = common.CodeInfo()
+        codeinfo.code_uuid = self.inputs.code.uuid
+        codeinfo.cmdline_params = [
+            "parent_calc_folder/" + self.inputs.matrix_filename.value,
+            output_filename,
+            "--threshold",
+            str(self.inputs.threshold.value),
+        ]
+
+        calcinfo = common.CalcInfo()
+        calcinfo.uuid = self.uuid
+        calcinfo.codes_info = [codeinfo]
+        calcinfo.remote_symlink_list = []
+        calcinfo.remote_copy_list = []
+        calcinfo.local_copy_list = []
+        calcinfo.retrieve_list = settings.pop(
+            "additional_retrieve_list", [output_filename]
+        )
+
+        comp_uuid = self.inputs.parent_calc_folder.computer.uuid
+        remote_path = self.inputs.parent_calc_folder.get_remote_path()
+        copy_info = (comp_uuid, remote_path, "parent_calc_folder/")
+        if self.inputs.code.computer.uuid == comp_uuid:
+            calcinfo.remote_symlink_list.append(copy_info)
+        else:
+            calcinfo.remote_copy_list.append(copy_info)
+
+        if settings:
+            raise common.InputValidationError(
+                "The following keys have been found in settings but were not understood: "
+                + ",".join(settings.keys())
+            )
+
+        return calcinfo

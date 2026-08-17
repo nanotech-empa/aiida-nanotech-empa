@@ -45,6 +45,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
         cp2k_utils.add_restart_policy_inputs(spec)
+
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -248,6 +249,8 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             )
             input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["STRIDE"] = "2 2 2"
 
+        self.update_diag_input_dict(input_dict)
+
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
@@ -288,3 +291,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         self.report("Work chain is finished")
+
+    def update_diag_input_dict(self, input_dict):
+        """Hook for derived workchains to add diagonalization-only CP2K input."""
