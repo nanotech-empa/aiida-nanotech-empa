@@ -279,10 +279,10 @@ class NanoribbonWorkChain(engine.WorkChain):
         # use the same number of pools as in bands calculation
         builder.parameters = orm.Dict(
             {
-                "projwfc": {
+                "PROJWFC": {
                     "ngauss": 1,
                     "degauss": 0.007,
-                    "DeltaE": 0.01,
+                    "deltae": 0.01,
                     "filproj": "projection.out",
                 },
             }
@@ -297,16 +297,16 @@ class NanoribbonWorkChain(engine.WorkChain):
             },
             "max_wallclock_seconds": self.inputs.wall_seconds.value,  # default 1 hour, max 24 hours
             "withmpi": True,
+            "additional_retrieve_list": [
+                "./out/aiida.save/*.xml",
+                "*_up",
+                "*_down",
+                "*_tot",
+            ],
         }
 
         builder.settings = orm.Dict(
             {
-                "additional_retrieve_list": [
-                    "./out/aiida.save/*.xml",
-                    "*_up",
-                    "*_down",
-                    "*_tot",
-                ],
                 "cmdline": ["-npools", str(npools)],
             }
         )

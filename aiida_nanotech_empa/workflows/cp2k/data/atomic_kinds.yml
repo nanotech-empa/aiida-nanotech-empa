@@ -446,7 +446,6 @@ cutoff:
   Po: 600
   At: 600
   Rn: 600
-
 # -------------------------------------------------------------
 # Default PBE0/ADMM settings
 # -------------------------------------------------------------
@@ -537,7 +536,6 @@ pbe0_basis_set:
   Po: TZVP-MOLOPT-PBE0-GTH-q6
   At: TZVP-MOLOPT-PBE0-GTH-q7
   Rn: TZVP-MOLOPT-PBE0-GTH-q8
-
 pbe0_aux_basis_set:
   H: admm-tzp-q1
   He: admm-tzp-q2
@@ -625,7 +623,6 @@ pbe0_aux_basis_set:
   Po: admm-tzp-q6
   At: admm-tzp-q7
   Rn: admm-tzp-q8
-
 pbe0_pseudopotential:
   H: GTH-PBE0-q1
   He: GTH-PBE0-q2
