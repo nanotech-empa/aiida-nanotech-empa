@@ -3,7 +3,6 @@ from aiida import common, engine, orm
 
 
 class CubeHandlerCalculation(engine.CalcJob):
-
     _DEFAULT_INPUT_FILE = "aiida.inp"
 
     @classmethod

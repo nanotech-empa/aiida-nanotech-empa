@@ -354,17 +354,8 @@ def _runner_script():
             band_unfold = banduppy.Unfolding(
                 supercell=data["supercell_matrix"], print_log=None
             )
-            bands = banduppy.BandStructure(
-                code="espresso",
-                spinor=params.get("spinor"),
-                spin_channel=channel,
-                prefix=str(_prefix_path(params)),
-                kplist=batch_indices,
-                IBstart=bandstructure_ib_start,
-                IBend=bandstructure_ib_end,
-            )
+            prefix_path = _prefix_path(params)
             unfolded, _ = band_unfold.Unfold(
-                bands,
                 PBZ_kpts_list_full=local_pbz,
                 SBZ_kpts_list=data["kpoints_sbz"],
                 SBZ_PBZ_kpts_map=local_mapping,
@@ -373,6 +364,18 @@ def _runner_script():
                 ),
                 save_unfolded_kpts={"save2file": False},
                 save_unfolded_bandstr={"save2file": False},
+                ab_initio_code="qe",
+                only_unfold_for_kpts_idxs=batch_indices,
+                only_unfold_band_idx=(
+                    bandstructure_ib_start,
+                    bandstructure_ib_end,
+                ),
+                fermi_energy=params.get("fermi_energy"),
+                qe_keywards={
+                    "output_file_dir": str(prefix_path.parent),
+                    "save_file_prefix": prefix_path.name,
+                    "unfold_spin_channel": channel,
+                },
             )
             unfolded = _restore_global_kline(
                 unfolded, local_to_global, data["primitive_kline"]

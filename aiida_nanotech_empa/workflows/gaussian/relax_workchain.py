@@ -92,7 +92,7 @@ class GaussianRelaxWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             required=False,
             default=lambda: orm.Str(""),
-            help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
+            help=('Include empirical dispersion corrections(e.g. "GD3", "GD3BJ")'),
         )
 
         spec.input(
@@ -298,9 +298,9 @@ class GaussianRelaxWorkChain(engine.WorkChain):
             parameters["route_parameters"]["freq"] = None
 
         if self.inputs.empirical_dispersion.value != "":
-            parameters["route_parameters"][
-                "empiricaldispersion"
-            ] = self.inputs.empirical_dispersion.value
+            parameters["route_parameters"]["empiricaldispersion"] = (
+                self.inputs.empirical_dispersion.value
+            )
 
         opt_dict = {}
 

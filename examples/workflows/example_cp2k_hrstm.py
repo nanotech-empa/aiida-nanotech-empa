@@ -1,5 +1,4 @@
 import os
-
 import ase.io
 import click
 import numpy as np

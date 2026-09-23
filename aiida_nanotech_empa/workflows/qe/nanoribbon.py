@@ -279,10 +279,10 @@ class NanoribbonWorkChain(engine.WorkChain):
         # use the same number of pools as in bands calculation
         builder.parameters = orm.Dict(
             {
-                "projwfc": {
+                "PROJWFC": {
                     "ngauss": 1,
                     "degauss": 0.007,
-                    "DeltaE": 0.01,
+                    "deltae": 0.01,
                     "filproj": "projection.out",
                 },
             }
@@ -297,16 +297,16 @@ class NanoribbonWorkChain(engine.WorkChain):
             },
             "max_wallclock_seconds": self.inputs.wall_seconds.value,  # default 1 hour, max 24 hours
             "withmpi": True,
+            "additional_retrieve_list": [
+                "./out/aiida.save/*.xml",
+                "*_up",
+                "*_down",
+                "*_tot",
+            ],
         }
 
         builder.settings = orm.Dict(
             {
-                "additional_retrieve_list": [
-                    "./out/aiida.save/*.xml",
-                    "*_up",
-                    "*_down",
-                    "*_tot",
-                ],
                 "cmdline": ["-npools", str(npools)],
             }
         )
@@ -409,7 +409,7 @@ class NanoribbonWorkChain(engine.WorkChain):
         if self.ctx.export_orbitals_band_number == self.ctx.first_band:
             to_check = "bands_lowres"
         else:
-            to_check = f"export_orbitals_{self.ctx.export_orbitals_band_number-1}"
+            to_check = f"export_orbitals_{self.ctx.export_orbitals_band_number - 1}"
         if not common_utils.check_if_calc_ok(self, getattr(self.ctx, to_check)):
             return self.exit_codes.CALC_FAILED
 
@@ -424,12 +424,12 @@ class NanoribbonWorkChain(engine.WorkChain):
         builder.settings = self.ctx.export_orbitals_settings
 
         # Modifying the band number.
-        self.ctx.export_orbitals_parameters["INPUTPP"][
-            "kband(1)"
-        ] = self.ctx.export_orbitals_band_number
-        self.ctx.export_orbitals_parameters["INPUTPP"][
-            "kband(2)"
-        ] = self.ctx.export_orbitals_band_number
+        self.ctx.export_orbitals_parameters["INPUTPP"]["kband(1)"] = (
+            self.ctx.export_orbitals_band_number
+        )
+        self.ctx.export_orbitals_parameters["INPUTPP"]["kband(2)"] = (
+            self.ctx.export_orbitals_band_number
+        )
         builder.parameters = orm.Dict(self.ctx.export_orbitals_parameters)
 
         # Running the calculation.

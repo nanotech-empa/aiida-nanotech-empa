@@ -5,7 +5,6 @@ from aiida import engine, orm, plugins
 
 from ...utils import common_utils
 from . import cp2k_utils
-from .geo_opt_workchain import validate_on_unhandled_failure
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 Cp2kCalculation = plugins.CalculationFactory("cp2k")
@@ -39,35 +38,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
-        spec.input(
-            "max_iterations",
-            valid_type=orm.Int,
-            default=lambda: orm.Int(5),
-            required=False,
-            help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
-        )
-        spec.input(
-            "clean_workdir",
-            valid_type=orm.Bool,
-            default=lambda: orm.Bool(False),
-            required=False,
-            help="Clean called CP2K calculation work directories after termination.",
-        )
-        spec.input(
-            "on_unhandled_failure",
-            valid_type=orm.Str,
-            default=lambda: orm.Str("pause"),
-            required=False,
-            validator=validate_on_unhandled_failure,
-            help="Action for unhandled cp2k.base failures: abort, pause, restart_once, or restart_and_pause.",
-        )
-        spec.input(
-            "pause_on_max_iterations",
-            valid_type=orm.Bool,
-            default=lambda: orm.Bool(True),
-            required=False,
-            help="Pause cp2k.base for inspection when restart max_iterations is reached.",
-        )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         spec.outline(
             cls.setup,
@@ -91,12 +62,6 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         spec.output_namespace("structures", valid_type=orm.StructureData)
         spec.output_namespace("details", valid_type=orm.Dict)
         spec.exit_code(390, "ERROR_TERMINATION", message="One geo opt failed")
-
-    def set_restart_policy(self, builder):
-        builder.max_iterations = self.inputs.max_iterations
-        builder.clean_workdir = self.inputs.clean_workdir
-        builder.on_unhandled_failure = self.inputs.on_unhandled_failure
-        builder.pause_on_max_iterations = self.inputs.pause_on_max_iterations
 
     def setup(self):
         """Initialize the workchain process."""
@@ -178,7 +143,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
             self.report("Updated output for the initial_scf step")
         else:
             self.out(
-                f"details.step_{self.ctx.propagation_step - 1 :04}",
+                f"details.step_{self.ctx.propagation_step - 1:04}",
                 orm.Dict(
                     dict={
                         "output_parameters": dict(
@@ -191,10 +156,10 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                 ).store(),
             )
             self.out(
-                f"structures.step_{self.ctx.propagation_step - 1 :04}",
+                f"structures.step_{self.ctx.propagation_step - 1:04}",
                 self.ctx.lowest_energy_structure,
             )
-            self.report(f"Updated output for step {self.ctx.propagation_step - 1 :04}")
+            self.report(f"Updated output for step {self.ctx.propagation_step - 1:04}")
         return engine.ExitCode(0)
 
     def first_scf(self):
@@ -277,8 +242,8 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                 )
 
                 builder = Cp2kBaseWorkChain.get_builder()
-                self.set_restart_policy(builder)
                 builder.cp2k.code = self.inputs.code
+                cp2k_utils.set_restart_policy(self.inputs, builder)
                 builder.cp2k.structure = orm.StructureData(ase=structure_with_tags)
                 builder.cp2k.file = files
                 builder.cp2k.metadata.options = self.inputs.options
@@ -332,7 +297,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
                 )
                 self.to_context(
                     **{
-                        f"run_{self.ctx.propagation_step :04}": engine.append_(
+                        f"run_{self.ctx.propagation_step:04}": engine.append_(
                             submitted_calculation
                         )
                     }
@@ -343,7 +308,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         geometry optimizations."""
         results = []
         for index, calculation in enumerate(
-            getattr(self.ctx, f"run_{self.ctx.propagation_step :04}")
+            getattr(self.ctx, f"run_{self.ctx.propagation_step:04}")
         ):
             # check if the calculation is finished
             if not common_utils.check_if_calc_ok(self, calculation):
@@ -353,7 +318,7 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         results.sort(key=lambda x: x[0])
         self.ctx.lowest_energy_calc = results[0][1]
         lowest_energy_base_workchain = getattr(
-            self.ctx, f"run_{self.ctx.propagation_step :04}"
+            self.ctx, f"run_{self.ctx.propagation_step:04}"
         )[self.ctx.lowest_energy_calc]
         ase_previous = self.ctx.lowest_energy_structure.get_ase()
         self.ctx.lowest_energy_structure = (
@@ -366,12 +331,12 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
         )
         self.ctx.lowest_energy = results[0][0]
         self.report(
-            f"The lowest energy at step {self.ctx.propagation_step :04} is: {self.ctx.lowest_energy}"
+            f"The lowest energy at step {self.ctx.propagation_step:04} is: {self.ctx.lowest_energy}"
         )
         self.report(f"geometry: {self.ctx.lowest_energy_structure.pk}")
         self.report(f"target CVs {self.ctx.CVs_cases[self.ctx.lowest_energy_calc]}")
         self.ctx.restart_folder = getattr(
-            self.ctx, f"run_{self.ctx.propagation_step :04}"
+            self.ctx, f"run_{self.ctx.propagation_step:04}"
         )[self.ctx.lowest_energy_calc].outputs.remote_folder
         self.ctx.propagation_step += 1
         return engine.ExitCode(0)

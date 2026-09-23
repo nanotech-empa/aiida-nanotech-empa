@@ -154,8 +154,7 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
             nk=npoints,
             labels=labels,
             kpts_weights=1.0,
-            save_all_kpts=False,
-            save_sc_kpts=False,
+            save_kpts=False,
             file_format="qe",
         )
 

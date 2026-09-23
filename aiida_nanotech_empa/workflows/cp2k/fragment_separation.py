@@ -4,7 +4,6 @@ from aiida import engine, orm, plugins
 
 from ...utils import common_utils, split_structure, string_utils
 from . import cp2k_utils
-from .geo_opt_workchain import validate_on_unhandled_failure
 
 StructureData = plugins.DataFactory("core.structure")
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
@@ -75,35 +74,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             required=False,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
-        spec.input(
-            "max_iterations",
-            valid_type=orm.Int,
-            default=lambda: orm.Int(5),
-            required=False,
-            help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
-        )
-        spec.input(
-            "clean_workdir",
-            valid_type=orm.Bool,
-            default=lambda: orm.Bool(False),
-            required=False,
-            help="Clean called CP2K calculation work directories after termination.",
-        )
-        spec.input(
-            "on_unhandled_failure",
-            valid_type=orm.Str,
-            default=lambda: orm.Str("pause"),
-            required=False,
-            validator=validate_on_unhandled_failure,
-            help="Action for unhandled cp2k.base failures: abort, pause, restart_once, or restart_and_pause.",
-        )
-        spec.input(
-            "pause_on_max_iterations",
-            valid_type=orm.Bool,
-            default=lambda: orm.Bool(True),
-            required=False,
-            help="Pause cp2k.base for inspection when restart max_iterations is reached.",
-        )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         # in case wfn for the whole system is available and matches uks/rks parameters
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
@@ -131,12 +102,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
     def should_run_cubehandler(self):
         return "cubehandler_code" in self.inputs
-
-    def set_restart_policy(self, builder):
-        builder.max_iterations = self.inputs.max_iterations
-        builder.clean_workdir = self.inputs.clean_workdir
-        builder.on_unhandled_failure = self.inputs.on_unhandled_failure
-        builder.pause_on_max_iterations = self.inputs.pause_on_max_iterations
 
     def setup(self):
         """Setup the work chain."""
@@ -184,8 +149,8 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             )
 
             self.report(
-                f"""Running SCF for the fragment '{inputs['label']}' consisting of {len(inputs['structure'].sites)} atoms, """
-                f"""where {string_utils.list_to_string_range(inputs['fixed_atoms']) or 'None'} atoms are fixed."""
+                f"""Running SCF for the fragment '{inputs["label"]}' consisting of {len(inputs["structure"].sites)} atoms, """
+                f"""where {string_utils.list_to_string_range(inputs["fixed_atoms"]) or "None"} atoms are fixed."""
             )
 
             # Fragment's label.
@@ -194,7 +159,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             # Generic inputs that are always the same.
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.code = self.inputs.code
-            self.set_restart_policy(builder)
+            cp2k_utils.set_restart_policy(self.inputs, builder)
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
             # restart wfn in case of fragment 'all'
@@ -211,9 +176,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = self.ctx.cutoff
 
             # Always compute charge density with STRIDE 2 2 2 for the SCF part of the work chain.
-            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"][
-                "STRIDE"
-            ] = "1 1 1"
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]["STRIDE"] = (
+                "1 1 1"
+            )
 
             # If charge is set, add it to the corresponding section of the input.
             if (
@@ -278,7 +243,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             # Generic inputs that are always the same.
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.code = self.inputs.code
-            self.set_restart_policy(builder)
+            cp2k_utils.set_restart_policy(self.inputs, builder)
             builder.cp2k.metadata.options = self.inputs.options[fragment]
             builder.cp2k.file = self.ctx.file
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
@@ -289,9 +254,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             input_dict["GLOBAL"]["RUN_TYPE"] = "GEO_OPT"
 
             # For the geometry optimisation, we reset STRIDE back to 4 4 4.
-            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"][
-                "STRIDE"
-            ] = "4 4 4"
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]["STRIDE"] = (
+                "4 4 4"
+            )
 
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
             builder.cp2k.parent_calc_folder = previous_calc.outputs.remote_folder

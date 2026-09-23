@@ -85,7 +85,7 @@ class GaussianNicsWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             required=False,
             default=lambda: orm.Str(""),
-            help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
+            help=('Include empirical dispersion corrections(e.g. "GD3", "GD3BJ")'),
         )
         spec.input(
             "options",

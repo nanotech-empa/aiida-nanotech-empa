@@ -184,8 +184,8 @@ gpw_std_ic_step:
               CORR_MOS_OCC: '10'
               CORR_MOS_VIRT: '10'
               IC:
-              - ''
-              - {}
+                - ''
+                - {}
       PRINT:
         MO_CUBES:
           NHOMO: '4'
@@ -324,8 +324,8 @@ gapw_std_ic_step:
               CORR_MOS_OCC: '10'
               CORR_MOS_VIRT: '10'
               IC:
-              - ''
-              - {}
+                - ''
+                - {}
       PRINT:
         MO_CUBES:
           NHOMO: '4'
@@ -426,7 +426,7 @@ gapw_hq_gw_step:
   GLOBAL:
     RUN_TYPE: ENERGY
     PRINT_LEVEL: MEDIUM
-    EXTENDED_FFT_LENGTHS:  ''
+    EXTENDED_FFT_LENGTHS: ''
 # -------------------------------------------------------------
 # GAPW high-quality IC STEP
 # -------------------------------------------------------------
@@ -464,8 +464,8 @@ gapw_hq_ic_step:
               CORR_MOS_OCC: '10'
               CORR_MOS_VIRT: '10'
               IC:
-              - ''
-              - {}
+                - ''
+                - {}
       PRINT:
         MO_CUBES:
           NHOMO: '4'

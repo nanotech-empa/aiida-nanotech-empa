@@ -58,7 +58,7 @@ class GaussianScfWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             required=False,
             default=lambda: orm.Str(""),
-            help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
+            help=('Include empirical dispersion corrections(e.g. "GD3", "GD3BJ")'),
         )
 
         spec.input(
@@ -306,9 +306,9 @@ class GaussianScfWorkChain(engine.WorkChain):
             parameters["route_parameters"]["guess"] = "mix"
 
         if self.inputs.empirical_dispersion.value != "":
-            parameters["route_parameters"][
-                "empiricaldispersion"
-            ] = self.inputs.empirical_dispersion.value
+            parameters["route_parameters"]["empiricaldispersion"] = (
+                self.inputs.empirical_dispersion.value
+            )
 
         if self.ctx.conver is not None:
             parameters["route_parameters"]["scf"]["conver"] = self.ctx.conver

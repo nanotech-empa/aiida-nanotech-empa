@@ -238,7 +238,7 @@ def make_report(wc_node, nb=False, save_image_loc=None):
     print()
     print(f"IP    (eV): {gs_ip:8.4f}")
     print(f"EA    (eV): {gs_ea:8.4f} (accurate only with a diffuse basis)")
-    print(f"IP-EA (eV): {gs_ip-gs_ea:8.4f}")
+    print(f"IP-EA (eV): {gs_ip - gs_ea:8.4f}")
     print()
     print(_get_out_params_str(gs_out_params))
 
@@ -307,8 +307,8 @@ def make_report(wc_node, nb=False, save_image_loc=None):
         vert_ex = vert_en - gs_energy
 
         print()
-        print(f"adia. exc (meV): {adia_ex*1000:8.1f}")
-        print(f"vert. exc (meV): {vert_ex*1000:8.1f}")
+        print(f"adia. exc (meV): {adia_ex * 1000:8.1f}")
+        print(f"vert. exc (meV): {vert_ex * 1000:8.1f}")
         print()
         print(_get_out_params_str(vert_out_params))
         print()
