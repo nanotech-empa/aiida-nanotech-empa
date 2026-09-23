@@ -50,9 +50,7 @@ def test_prepare_folded_kpoints(aiida_profile, fixture_localhost):
             pw_code=_code(fixture_localhost, "quantumespresso.pw"),
             banduppy_code=_code(fixture_localhost, "nanotech_empa.qe_banduppy"),
             structure=structure,
-            parameters=orm.Dict(
-                dict={"CONTROL": {}, "SYSTEM": {}, "ELECTRONS": {}}
-            ),
+            parameters=orm.Dict(dict={"CONTROL": {}, "SYSTEM": {}, "ELECTRONS": {}}),
             template_remote_folder=orm.RemoteData(
                 computer=fixture_localhost, remote_path="/tmp"
             ),
