@@ -1,5 +1,6 @@
 from aiida import engine, orm, plugins
 
+from ...plugins import sparse_overlap
 from ...utils import common_utils
 from .diag_workchain import Cp2kDiagWorkChain
 
@@ -113,9 +114,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         print_section["AO_MATRICES"] = {
             "_": "ON",
             "OVERLAP": "T",
-            # CP2K/aiida-cp2k retrieve this as "aiida-overlap_matrix.out-1_0.Log",
-            # matching SparseOverlapCalculation's default matrix_filename.
-            "FILENAME": "overlap_matrix.out",
+            "FILENAME": sparse_overlap.OVERLAP_FILENAME,
             "NDIGITS": self.inputs.overlap_ndigits.value,
         }
 
