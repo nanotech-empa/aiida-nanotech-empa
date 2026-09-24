@@ -1,9 +1,36 @@
 import io
 
 from aiida import orm, plugins
+from aiida.common.folders import SandboxFolder
 from aiida.common.links import LinkType
+from aiida.engine.utils import instantiate_process
+from aiida.manage import get_manager
 
+SparseOverlapCalculation = plugins.CalculationFactory("nanotech_empa.sparse_overlap")
 SparseOverlapParser = plugins.ParserFactory("nanotech_empa.sparse_overlap")
+
+
+def test_sparse_overlap_additional_retrieve_list_extends(aiida_localhost):
+    code = orm.InstalledCode(
+        computer=aiida_localhost,
+        filepath_executable="/bin/true",
+        default_calc_job_plugin="nanotech_empa.sparse_overlap",
+    ).store()
+    process = instantiate_process(
+        get_manager().get_runner(),
+        SparseOverlapCalculation,
+        code=code,
+        parent_calc_folder=orm.RemoteData(
+            computer=aiida_localhost, remote_path="/tmp/parent"
+        ),
+        settings=orm.Dict({"additional_retrieve_list": ["aiida.out"]}),
+        metadata={"options": {"resources": {"num_machines": 1}}},
+    )
+
+    with SandboxFolder() as folder:
+        calcinfo = process.prepare_for_submission(folder)
+
+    assert calcinfo.retrieve_list == ["sparse_overlap.npz", "aiida.out"]
 
 
 def _sparse_overlap_node(computer, retrieved_files):
