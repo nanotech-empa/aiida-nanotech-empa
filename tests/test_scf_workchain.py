@@ -14,6 +14,35 @@ def test_retrieve_sparse_overlap_requires_sparse_overlap_code():
     assert "sparse_overlap_code" in message
 
 
+@pytest.mark.parametrize(
+    ("dft_params", "with_settings", "rejected"),
+    [
+        # Diagonalization skipped: diag-only inputs are rejected.
+        ({"nhomo": 3}, True, ["nhomo", "settings"]),
+        # Diagonalization runs: diag-only inputs are accepted.
+        ({"nhomo": 3, "added_mos": 10}, True, None),
+        # Falsy diag-only params have no effect, so they are accepted.
+        ({"sc_diag": False, "elpa_switch": False}, False, None),
+    ],
+)
+def test_validator_diag_only_inputs(dft_params, with_settings, rejected):
+    inputs = {
+        "write_overlap_matrix": orm.Bool(False),
+        "retrieve_sparse_overlap": orm.Bool(False),
+        "dft_params": orm.Dict(dft_params),
+    }
+    if with_settings:
+        inputs["settings"] = orm.Dict()
+
+    message = Cp2kScfWorkChain._validate_inputs(inputs, None)
+
+    if rejected is None:
+        assert message is None
+    else:
+        for name in rejected:
+            assert name in message
+
+
 def _fake_workchain(write=False, retrieve=False, ndigits=14, dft_params=None):
     return SimpleNamespace(
         inputs=SimpleNamespace(

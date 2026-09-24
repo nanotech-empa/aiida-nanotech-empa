@@ -5,6 +5,10 @@ from .diag_workchain import Cp2kDiagWorkChain
 
 SparseOverlapCalculation = plugins.CalculationFactory("nanotech_empa.sparse_overlap")
 
+# dft_params keys and inputs that only the diagonalization SCF step reads.
+DIAG_ONLY_DFT_PARAMS = ("sc_diag", "smear_t", "nhomo", "nlumo", "elpa_switch")
+DIAG_ONLY_INPUTS = ("settings", "pdos_lists")
+
 
 class Cp2kScfWorkChain(Cp2kDiagWorkChain):
     """Extends `Cp2kDiagWorkChain`, making the diagonalization step optional
@@ -72,12 +76,27 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "'retrieve_sparse_overlap' is True."
             )
 
+        if (
+            value["write_overlap_matrix"].value
+            or value["retrieve_sparse_overlap"].value
+            or value["dft_params"].get("added_mos", 0) > 0
+        ):
+            return None
+
+        ignored = [key for key in DIAG_ONLY_DFT_PARAMS if value["dft_params"].get(key)]
+        ignored += [name for name in DIAG_ONLY_INPUTS if name in value]
+        if ignored:
+            return (
+                f"{', '.join(ignored)} only affect the diagonalization SCF step, "
+                "which is skipped. Set 'added_mos' > 0 or 'write_overlap_matrix' "
+                "to run it."
+            )
+
     def should_run_diag_scf(self):
-        dft_params = self.inputs.dft_params.get_dict()
         return (
             self.inputs.write_overlap_matrix.value
             or self.inputs.retrieve_sparse_overlap.value
-            or dft_params.get("added_mos", 0) > 0
+            or self.inputs.dft_params.get("added_mos", 0) > 0
         )
 
     def should_run_sparse_overlap(self):
