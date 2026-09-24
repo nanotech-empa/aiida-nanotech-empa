@@ -1,42 +1,44 @@
-import numpy as np
+import ase.io
 import click
-from ase import Atoms
+import numpy as np
 from aiida import engine, orm, plugins
+
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
 
 Cp2kScfWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.scf")
 
-
-def methane_structure():
-    center = np.array([4.0, 4.0, 4.0])
-    delta = 1.09 / np.sqrt(3.0)
-    offsets = np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [delta, delta, delta],
-            [delta, -delta, -delta],
-            [-delta, delta, -delta],
-            [-delta, -delta, delta],
-        ]
-    )
-    atoms = Atoms(
-        "CH4",
-        positions=center + offsets,
-        cell=[8.0, 8.0, 8.0],
-        pbc=True,
-    )
-    return orm.StructureData(ase=atoms)
+DATA_DIR = script_dir(__file__)
+GEO_FILE = "ch4.xyz"
 
 
-def run_example(cp2k_code, sparse_overlap_code, n_nodes=1, n_cores_per_node=1):
+def _check_sparse_overlap(retrieved):
+    assert "sparse_overlap.npz" in retrieved.base.repository.list_object_names()
+
+    with retrieved.base.repository.open("sparse_overlap.npz", "rb") as handle:
+        with np.load(handle) as sparse_overlap:
+            shape = tuple(sparse_overlap["shape"])
+            elements = set(sparse_overlap["element"].astype(str))
+            assert shape[0] == shape[1]
+            assert shape[0] == sparse_overlap["basis_index"].size
+            assert sparse_overlap["data"].size >= shape[0]
+            assert {"C", "H"} <= elements
+
+
+def _example_cp2k_scf(
+    cp2k_code, sparse_overlap_code=None, n_nodes=1, n_cores_per_node=1
+):
     builder = Cp2kScfWorkChain.get_builder()
-    builder.metadata.label = "Cp2kScfWorkChain CH4 sparse overlap example"
+
+    builder.metadata.label = "Cp2kScfWorkChain"
     builder.cp2k_code = cp2k_code
-    builder.sparse_overlap_code = sparse_overlap_code
-    builder.structure = methane_structure()
+    builder.structure = orm.StructureData(ase=ase.io.read(DATA_DIR / GEO_FILE))
     builder.protocol = orm.Str("debug")
-    builder.dft_params = orm.Dict(dict={"periodic": "XYZ", "cutoff": 150})
+    builder.dft_params = orm.Dict({"periodic": "XYZ", "cutoff": 150})
     builder.options = orm.Dict(
-        dict={
+        {
             "max_wallclock_seconds": 600,
             "resources": {
                 "num_machines": n_nodes,
@@ -45,38 +47,50 @@ def run_example(cp2k_code, sparse_overlap_code, n_nodes=1, n_cores_per_node=1):
             },
         }
     )
-    builder.retrieve_sparse_overlap = orm.Bool(True)
-    builder.overlap_threshold = orm.Float(1.0e-10)
+    if sparse_overlap_code is not None:
+        builder.sparse_overlap_code = sparse_overlap_code
+        builder.retrieve_sparse_overlap = orm.Bool(True)
+        builder.overlap_threshold = orm.Float(1.0e-10)
 
-    _, node = engine.run_get_node(builder)
+    _, calc_node = engine.run_get_node(builder)
 
-    print(f"WorkChain PK: {node.pk}")
-    print(f"Finished OK: {node.is_finished_ok}")
-    if not node.is_finished_ok:
-        print(f"Exit status: {node.exit_status}")
-        print(f"Exit message: {node.exit_message}")
-        return node
+    assert calc_node.is_finished_ok
+    if sparse_overlap_code is None:
+        # OT SCF only: no diagonalization, no sparse overlap post-processing.
+        assert len(calc_node.called) == 1
+        assert "sparse_overlap_retrieved" not in calc_node.outputs
+    else:
+        _check_sparse_overlap(calc_node.outputs.sparse_overlap_retrieved)
 
-    retrieved = node.outputs.sparse_overlap_retrieved
-    names = retrieved.base.repository.list_object_names()
-    print("Sparse overlap retrieved files:", names)
-    assert "sparse_overlap.npz" in names
-    return node
+
+def example_cp2k_scf_ot_only(cp2k_code):
+    _example_cp2k_scf(cp2k_code)
+
+
+def example_cp2k_scf_sparse_overlap(cp2k_code, sparse_overlap_code):
+    _example_cp2k_scf(cp2k_code, sparse_overlap_code)
 
 
 @click.command("cli")
 @click.argument("cp2k_code", default="cp2k@localhost")
 @click.argument("sparse_overlap_code", default="sparse_overlap@localhost")
-@click.option("-n", "--n-nodes", default=1, show_default=True)
-@click.option("-c", "--n-cores-per-node", default=1, show_default=True)
-def main(cp2k_code, sparse_overlap_code, n_nodes, n_cores_per_node):
-    run_example(
-        cp2k_code=orm.load_code(cp2k_code),
-        sparse_overlap_code=orm.load_code(sparse_overlap_code),
+@click.option("-n", "--n-nodes", default=1)
+@click.option("-c", "--n-cores-per-node", default=1)
+def run_all(cp2k_code, sparse_overlap_code, n_nodes, n_cores_per_node):
+    print("#### OT SCF only")
+    _example_cp2k_scf(
+        orm.load_code(cp2k_code),
+        n_nodes=n_nodes,
+        n_cores_per_node=n_cores_per_node,
+    )
+    print("#### sparse AO overlap")
+    _example_cp2k_scf(
+        orm.load_code(cp2k_code),
+        orm.load_code(sparse_overlap_code),
         n_nodes=n_nodes,
         n_cores_per_node=n_cores_per_node,
     )
 
 
 if __name__ == "__main__":
-    main()
+    run_all()
