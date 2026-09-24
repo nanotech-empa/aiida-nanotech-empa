@@ -40,6 +40,17 @@ class SparseOverlapCalculation(engine.CalcJob):
             required=False,
         )
         spec.input("metadata.options.withmpi", valid_type=bool, default=False)
+        spec.input(
+            "metadata.options.parser_name",
+            valid_type=str,
+            default="nanotech_empa.sparse_overlap",
+        )
+
+        spec.exit_code(
+            300,
+            "ERROR_OUTPUT_FILE_MISSING",
+            message="The sparse overlap output file was not retrieved.",
+        )
 
     def prepare_for_submission(self, folder):
         settings = self.inputs.settings.get_dict() if "settings" in self.inputs else {}

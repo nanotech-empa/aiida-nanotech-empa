@@ -55,6 +55,7 @@ dev = [
 "nanotech_empa.cp2k_neb_parser" = "aiida_nanotech_empa.parsers:Cp2kNebParser"
 "nanotech_empa.gaussian.cubegen_pymol" = "aiida_nanotech_empa.parsers.cubegen_pymol_parser:CubegenPymolParser"
 "nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.parsers:GaussianCasscfParser"
+"nanotech_empa.sparse_overlap" = "aiida_nanotech_empa.parsers:SparseOverlapParser"
 
 [project.entry-points."aiida.calculations"]
 "nanotech_empa.stm" = "aiida_nanotech_empa.plugins:StmCalculation"
