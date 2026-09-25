@@ -172,6 +172,22 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         if self.inputs.overlap_matrix.value != "none":
             _print_overlap_matrix(input_dict, self.inputs.overlap_ndigits.value)
 
+    def _serial_postprocessing_metadata(self, label):
+        """Single-core job, capped at one hour or the SCF wall time."""
+        return {
+            "label": label,
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
+                    "num_cores_per_mpiproc": 1,
+                },
+                "max_wallclock_seconds": min(
+                    3600, self.ctx.options["max_wallclock_seconds"]
+                ),
+            },
+        }
+
     def run_sparse_overlap(self):
         final_calc = (
             self.ctx.diag_scf if self.should_run_diag_scf() else self.ctx.ot_scf
@@ -184,19 +200,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.code = self.inputs.sparse_overlap_code
         builder.parent_calc_folder = final_calc.outputs.remote_folder
         builder.threshold = self.inputs.overlap_threshold
-        builder.metadata = {
-            "label": "sparse_overlap",
-            "options": {
-                "resources": {
-                    "num_machines": 1,
-                    "num_mpiprocs_per_machine": 1,
-                    "num_cores_per_mpiproc": 1,
-                },
-                "max_wallclock_seconds": min(
-                    3600, self.ctx.options["max_wallclock_seconds"]
-                ),
-            },
-        }
+        builder.metadata = self._serial_postprocessing_metadata("sparse_overlap")
         return engine.ToContext(sparse_overlap=self.submit(builder))
 
     def run_bader(self):
@@ -208,20 +212,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder = BaderCalculation.get_builder()
         builder.code = self.inputs.bader_code
         builder.parent_calc_folder = self.ctx.ot_scf.outputs.remote_folder
-        builder.metadata = {
-            "label": "bader",
-            "options": {
-                "resources": {
-                    "num_machines": 1,
-                    "num_mpiprocs_per_machine": 1,
-                    "num_cores_per_mpiproc": 1,
-                },
-                "max_wallclock_seconds": min(
-                    3600, self.ctx.options["max_wallclock_seconds"]
-                ),
-                "withmpi": False,
-            },
-        }
+        builder.metadata = self._serial_postprocessing_metadata("bader")
         return engine.ToContext(bader=self.submit(builder))
 
     def finalize(self):
