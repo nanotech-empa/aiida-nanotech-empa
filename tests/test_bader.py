@@ -12,6 +12,8 @@ from aiida.common.folders import SandboxFolder
 from aiida.common.links import LinkType
 from aiida.manage import get_manager
 
+from aiida_nanotech_empa.workflows.cp2k import cp2k_utils
+
 BaderCalculation = plugins.CalculationFactory("nanotech_empa.bader")
 BaderParser = plugins.ParserFactory("nanotech_empa.bader")
 Cp2kScfWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.scf")
@@ -99,6 +101,22 @@ def test_bader_keeps_ot_only_density_settings(scf_process, bader_code):
     assert "AO_MATRICES" in dft["PRINT"]
     assert process.should_run_bader()
     assert not process.should_run_diag_scf()
+
+
+@pytest.mark.parametrize("protocol", ["standard", "low_accuracy", "debug"])
+def test_bader_forces_full_grid_density_from_protocol(
+    scf_process, bader_code, protocol
+):
+    process = scf_process(bader_code=bader_code)
+    parameters = cp2k_utils.load_protocol("scf_ot_protocol.yml", protocol)
+    protocol_cube = copy.deepcopy(
+        parameters["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]
+    )
+
+    process.update_ot_input_dict(parameters)
+
+    cube = parameters["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]
+    assert cube == {**protocol_cube, "STRIDE": "1 1 1"}
 
 
 @pytest.mark.parametrize(
@@ -191,6 +209,30 @@ def test_bader_additional_retrieve_list_extends(fixture_localhost, bader_code):
         with SandboxFolder() as folder:
             calcinfo = process.prepare_for_submission(folder)
         assert calcinfo.retrieve_list == ["ACF.dat", "AVF.dat", "BCF.dat", "aiida.out"]
+    finally:
+        process.close()
+
+
+def test_bader_custom_charge_density_filename(fixture_localhost, bader_code):
+    process = (
+        get_manager()
+        .get_runner()
+        .instantiate_process(
+            BaderCalculation,
+            code=bader_code,
+            parent_calc_folder=orm.RemoteData(
+                computer=fixture_localhost, remote_path="/tmp/cp2k"
+            ).store(),
+            charge_density_filename=orm.Str("density.cube"),
+            metadata={"options": {"resources": {"num_machines": 1}}},
+        )
+    )
+    try:
+        with SandboxFolder() as folder:
+            calcinfo = process.prepare_for_submission(folder)
+        assert calcinfo.codes_info[0].cmdline_params == [
+            "parent_calc_folder/density.cube"
+        ]
     finally:
         process.close()
 
