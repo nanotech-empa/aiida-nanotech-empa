@@ -173,8 +173,9 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
         # CP2K input dictionary.
-        builder.cp2k.parameters = orm.Dict(input_dict)
         self.ctx.input_dict = copy.deepcopy(input_dict)
+        self.update_ot_input_dict(input_dict)
+        builder.cp2k.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)
         self.to_context(ot_scf=future)
@@ -291,6 +292,9 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         self.report("Work chain is finished")
+
+    def update_ot_input_dict(self, input_dict):
+        """Hook for derived workchains to add OT-only CP2K input."""
 
     def update_diag_input_dict(self, input_dict):
         """Hook for derived workchains to add diagonalization-only CP2K input."""

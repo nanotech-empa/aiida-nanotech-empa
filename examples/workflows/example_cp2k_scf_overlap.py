@@ -28,7 +28,7 @@ def _check_sparse_overlap(retrieved):
 
 
 def _example_cp2k_scf(
-    cp2k_code, sparse_overlap_code=None, n_nodes=1, n_cores_per_node=1
+    cp2k_code, sparse_overlap_code, run_diag_scf, n_nodes=1, n_cores_per_node=1
 ):
     builder = Cp2kScfWorkChain.get_builder()
 
@@ -47,28 +47,25 @@ def _example_cp2k_scf(
             },
         }
     )
-    if sparse_overlap_code is not None:
-        builder.sparse_overlap_code = sparse_overlap_code
-        builder.retrieve_sparse_overlap = orm.Bool(True)
-        builder.overlap_threshold = orm.Float(1.0e-10)
+    builder.run_diag_scf = orm.Bool(run_diag_scf)
+    builder.overlap_matrix = orm.Str("remote_and_sparse_retrieved")
+    builder.sparse_overlap_code = sparse_overlap_code
+    builder.overlap_threshold = orm.Float(1.0e-10)
 
     _, calc_node = engine.run_get_node(builder)
 
     assert calc_node.is_finished_ok
-    if sparse_overlap_code is None:
-        # OT SCF only: no diagonalization, no sparse overlap post-processing.
-        assert len(calc_node.called) == 1
-        assert "sparse_overlap_retrieved" not in calc_node.outputs
-    else:
-        _check_sparse_overlap(calc_node.outputs.sparse_overlap_retrieved)
+    # OT SCF, optional diagonalization SCF, sparse overlap post-processing.
+    assert len(calc_node.called) == (3 if run_diag_scf else 2)
+    _check_sparse_overlap(calc_node.outputs.sparse_overlap_retrieved)
 
 
-def example_cp2k_scf_ot_only(cp2k_code):
-    _example_cp2k_scf(cp2k_code)
+def example_cp2k_scf_ot_sparse_overlap(cp2k_code, sparse_overlap_code):
+    _example_cp2k_scf(cp2k_code, sparse_overlap_code, run_diag_scf=False)
 
 
-def example_cp2k_scf_sparse_overlap(cp2k_code, sparse_overlap_code):
-    _example_cp2k_scf(cp2k_code, sparse_overlap_code)
+def example_cp2k_scf_diag_sparse_overlap(cp2k_code, sparse_overlap_code):
+    _example_cp2k_scf(cp2k_code, sparse_overlap_code, run_diag_scf=True)
 
 
 @click.command("cli")
@@ -77,19 +74,15 @@ def example_cp2k_scf_sparse_overlap(cp2k_code, sparse_overlap_code):
 @click.option("-n", "--n-nodes", default=1)
 @click.option("-c", "--n-cores-per-node", default=1)
 def run_all(cp2k_code, sparse_overlap_code, n_nodes, n_cores_per_node):
-    print("#### OT SCF only")
-    _example_cp2k_scf(
-        orm.load_code(cp2k_code),
-        n_nodes=n_nodes,
-        n_cores_per_node=n_cores_per_node,
-    )
-    print("#### sparse AO overlap")
-    _example_cp2k_scf(
-        orm.load_code(cp2k_code),
-        orm.load_code(sparse_overlap_code),
-        n_nodes=n_nodes,
-        n_cores_per_node=n_cores_per_node,
-    )
+    for run_diag_scf in (False, True):
+        print(f"#### sparse AO overlap, run_diag_scf={run_diag_scf}")
+        _example_cp2k_scf(
+            orm.load_code(cp2k_code),
+            orm.load_code(sparse_overlap_code),
+            run_diag_scf=run_diag_scf,
+            n_nodes=n_nodes,
+            n_cores_per_node=n_cores_per_node,
+        )
 
 
 if __name__ == "__main__":
