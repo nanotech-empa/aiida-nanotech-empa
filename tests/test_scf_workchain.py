@@ -72,10 +72,10 @@ def test_overlap_matrix_printed_in_last_scf_step(
     workchain = SimpleNamespace(
         inputs=SimpleNamespace(
             run_diag_scf=orm.Bool(run_diag_scf),
-            compute_bader_charges=orm.Bool(False),
             overlap_matrix=orm.Str(overlap_matrix),
             overlap_ndigits=orm.Int(10),
-        )
+        ),
+        should_run_bader=lambda: False,
     )
     input_dict = {"FORCE_EVAL": {"DFT": {}}}
 

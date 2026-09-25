@@ -49,6 +49,15 @@ def scf_process(fixture_localhost):
         process.close()
 
 
+@pytest.fixture
+def bader_code(fixture_localhost):
+    return orm.InstalledCode(
+        computer=fixture_localhost,
+        filepath_executable="/bin/true",
+        default_calc_job_plugin="nanotech_empa.bader",
+    ).store()
+
+
 def test_bader_disabled_preserves_ot_input(scf_process):
     process = scf_process(
         run_diag_scf=orm.Bool(True), overlap_matrix=orm.Str("remote_only")
@@ -61,21 +70,21 @@ def test_bader_disabled_preserves_ot_input(scf_process):
     assert process.should_run_diag_scf()
 
 
-def test_bader_rejects_diag_scf():
+def test_bader_rejects_diag_scf(bader_code):
     message = Cp2kScfWorkChain._validate_inputs(
         {
             "overlap_matrix": orm.Str("none"),
             "run_diag_scf": orm.Bool(True),
-            "compute_bader_charges": orm.Bool(True),
+            "bader_code": bader_code,
         },
         None,
     )
-    assert "compute_bader_charges" in message
+    assert "bader_code" in message
 
 
-def test_bader_keeps_ot_only_density_settings(scf_process):
+def test_bader_keeps_ot_only_density_settings(scf_process, bader_code):
     process = scf_process(
-        compute_bader_charges=orm.Bool(True),
+        bader_code=bader_code,
         overlap_matrix=orm.Str("remote_only"),
     )
     parameters = {"FORCE_EVAL": {"DFT": {"MGRID": {"CUTOFF": 300}}}}
@@ -92,14 +101,9 @@ def test_bader_keeps_ot_only_density_settings(scf_process):
     assert not process.should_run_diag_scf()
 
 
-def test_bader_requires_code(scf_process):
-    process = scf_process(compute_bader_charges=orm.Bool(True))
-    assert process.run_bader() == process.exit_codes.ERROR_MISSING_BADER_CODE
-
-
 @pytest.mark.parametrize("failed_step", ["ot_scf", "bader"])
-def test_bader_finalize_propagates_failures(scf_process, failed_step):
-    process = scf_process(compute_bader_charges=orm.Bool(True))
+def test_bader_finalize_propagates_failures(scf_process, bader_code, failed_step):
+    process = scf_process(bader_code=bader_code)
     for label in ("ot_scf", "bader"):
         node = orm.CalcJobNode()
         node.set_process_state(engine.ProcessState.FINISHED)
@@ -112,23 +116,18 @@ def test_bader_finalize_propagates_failures(scf_process, failed_step):
 
 @pytest.mark.parametrize("same_computer", [True, False])
 def test_bader_submission_stages_density_and_retrieves_results(
-    fixture_localhost, aiida_computer_local, same_computer
+    fixture_localhost, aiida_computer_local, bader_code, same_computer
 ):
     parent_computer = (
         fixture_localhost if same_computer else aiida_computer_local(label="parent")
     )
-    code = orm.InstalledCode(
-        computer=fixture_localhost,
-        filepath_executable="/bin/true",
-        default_calc_job_plugin="nanotech_empa.bader",
-    ).store()
     parent = orm.RemoteData(computer=parent_computer, remote_path="/tmp/cp2k").store()
     process = (
         get_manager()
         .get_runner()
         .instantiate_process(
             BaderCalculation,
-            code=code,
+            code=bader_code,
             parent_calc_folder=parent,
             metadata={"options": {"resources": {"num_machines": 1}}},
         )
@@ -148,18 +147,13 @@ def test_bader_submission_stages_density_and_retrieves_results(
         process.close()
 
 
-def test_bader_unknown_settings_are_rejected(fixture_localhost):
-    code = orm.InstalledCode(
-        computer=fixture_localhost,
-        filepath_executable="/bin/true",
-        default_calc_job_plugin="nanotech_empa.bader",
-    ).store()
+def test_bader_unknown_settings_are_rejected(fixture_localhost, bader_code):
     process = (
         get_manager()
         .get_runner()
         .instantiate_process(
             BaderCalculation,
-            code=code,
+            code=bader_code,
             parent_calc_folder=orm.RemoteData(
                 computer=fixture_localhost, remote_path="/tmp/cp2k"
             ).store(),
@@ -212,7 +206,6 @@ def test_cp2k_scf_bader_retrieves_charges(cp2k_code, local_code_factory):
     builder = Cp2kScfWorkChain.get_builder()
     builder.cp2k_code = cp2k_code
     builder.bader_code = local_code_factory("nanotech_empa.bader", "bader")
-    builder.compute_bader_charges = orm.Bool(True)
     builder.structure = orm.StructureData(
         ase=ase.Atoms(
             "H2", positions=[[4, 4, 3.63], [4, 4, 4.37]], cell=[8, 8, 8], pbc=True

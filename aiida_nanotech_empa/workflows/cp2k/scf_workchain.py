@@ -77,17 +77,12 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             help="Absolute-value threshold for retrieved sparse overlap entries.",
         )
         spec.input(
-            "compute_bader_charges",
-            valid_type=orm.Bool,
-            default=lambda: orm.Bool(False),
-            required=False,
-            help="Run Bader charge analysis on the OT charge-density cube.",
-        )
-        spec.input(
             "bader_code",
             valid_type=orm.Code,
             required=False,
-            help="Bader executable configured for the nanotech_empa.bader plugin.",
+            help="Bader executable configured for the nanotech_empa.bader plugin. "
+            "If given, the OT SCF prints its charge-density cube at "
+            "'bader_cutoff' and Bader charge analysis runs on it.",
         )
         spec.input(
             "bader_cutoff",
@@ -103,11 +98,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             engine.if_(cls.should_run_sparse_overlap)(cls.run_sparse_overlap),
             engine.if_(cls.should_run_bader)(cls.run_bader),
             cls.finalize,
-        )
-        spec.exit_code(
-            392,
-            "ERROR_MISSING_BADER_CODE",
-            message="A Bader code is required to compute Bader charges.",
         )
         spec.inputs.validator = cls._validate_inputs
 
@@ -127,12 +117,13 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "'overlap_matrix' is 'remote_and_sparse_retrieved'."
             )
 
+        if "bader_code" in value and value["run_diag_scf"].value:
+            return (
+                "'bader_code' runs Bader on the OT SCF charge density and "
+                "cannot be combined with 'run_diag_scf'."
+            )
+
         if value["run_diag_scf"].value:
-            if value.get("compute_bader_charges", orm.Bool(False)).value:
-                return (
-                    "'compute_bader_charges' uses the OT SCF charge density and "
-                    "cannot be combined with 'run_diag_scf'."
-                )
             return None
 
         ignored = [key for key in DIAG_ONLY_DFT_PARAMS if value["dft_params"].get(key)]
@@ -147,14 +138,14 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         return self.inputs.run_diag_scf.value
 
     def should_run_bader(self):
-        return self.inputs.compute_bader_charges.value
+        return "bader_code" in self.inputs
 
     def should_run_sparse_overlap(self):
         return self.inputs.overlap_matrix.value == "remote_and_sparse_retrieved"
 
     # The overlap matrix is printed in the last SCF step only.
     def update_ot_input_dict(self, input_dict):
-        if self.inputs.compute_bader_charges.value:
+        if self.should_run_bader():
             input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = (
                 self.inputs.bader_cutoff.value
             )
@@ -202,9 +193,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         return engine.ToContext(sparse_overlap=self.submit(builder))
 
     def run_bader(self):
-        if "bader_code" not in self.inputs:
-            return self.exit_codes.ERROR_MISSING_BADER_CODE
-
         if not common_utils.check_if_calc_ok(self, self.ctx.ot_scf):
             self.report("OT SCF failed")
             return self.exit_codes.ERROR_TERMINATION
