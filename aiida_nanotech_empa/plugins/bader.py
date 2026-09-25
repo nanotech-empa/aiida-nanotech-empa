@@ -45,7 +45,7 @@ class BaderCalculation(engine.CalcJob):
         )
 
     def prepare_for_submission(self, folder):
-        settings = self.inputs.settings.get_dict() if "settings" in self.inputs else {}
+        settings = self.inputs.settings.get_dict()
 
         codeinfo = common.CodeInfo()
         codeinfo.code_uuid = self.inputs.code.uuid
