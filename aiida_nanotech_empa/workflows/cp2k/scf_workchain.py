@@ -152,7 +152,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "max_wallclock_seconds": min(
                     3600, self.ctx.options["max_wallclock_seconds"]
                 ),
-                "withmpi": False,
             },
         }
         return engine.ToContext(sparse_overlap=self.submit(builder))

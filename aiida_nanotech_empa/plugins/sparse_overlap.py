@@ -55,7 +55,7 @@ class SparseOverlapCalculation(engine.CalcJob):
         )
 
     def prepare_for_submission(self, folder):
-        settings = self.inputs.settings.get_dict() if "settings" in self.inputs else {}
+        settings = self.inputs.settings.get_dict()
 
         output_filename = self.inputs.output_filename.value
         codeinfo = common.CodeInfo()
