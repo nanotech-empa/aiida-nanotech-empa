@@ -147,6 +147,28 @@ def test_bader_submission_stages_density_and_retrieves_results(
         process.close()
 
 
+def test_bader_additional_retrieve_list_extends(fixture_localhost, bader_code):
+    process = (
+        get_manager()
+        .get_runner()
+        .instantiate_process(
+            BaderCalculation,
+            code=bader_code,
+            parent_calc_folder=orm.RemoteData(
+                computer=fixture_localhost, remote_path="/tmp/cp2k"
+            ).store(),
+            settings=orm.Dict(dict={"additional_retrieve_list": ["aiida.out"]}),
+            metadata={"options": {"resources": {"num_machines": 1}}},
+        )
+    )
+    try:
+        with SandboxFolder() as folder:
+            calcinfo = process.prepare_for_submission(folder)
+        assert calcinfo.retrieve_list == ["ACF.dat", "AVF.dat", "BCF.dat", "aiida.out"]
+    finally:
+        process.close()
+
+
 def test_bader_unknown_settings_are_rejected(fixture_localhost, bader_code):
     process = (
         get_manager()

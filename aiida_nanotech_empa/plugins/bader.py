@@ -54,8 +54,8 @@ class BaderCalculation(engine.CalcJob):
         calcinfo.remote_symlink_list = []
         calcinfo.remote_copy_list = []
         calcinfo.local_copy_list = []
-        calcinfo.retrieve_list = settings.pop(
-            "additional_retrieve_list", BADER_OUTPUT_FILES
+        calcinfo.retrieve_list = BADER_OUTPUT_FILES + settings.pop(
+            "additional_retrieve_list", []
         )
 
         comp_uuid = self.inputs.parent_calc_folder.computer.uuid
