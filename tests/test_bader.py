@@ -18,6 +18,8 @@ BaderCalculation = plugins.CalculationFactory("nanotech_empa.bader")
 BaderParser = plugins.ParserFactory("nanotech_empa.bader")
 Cp2kScfWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.scf")
 
+PINNED_BADER_OPTIONS = ["-i", "cube", "-b", "neargrid", "-m", "known", "-vac", "off"]
+
 
 @pytest.fixture
 def scf_process(fixture_localhost):
@@ -180,7 +182,7 @@ def test_bader_submission_stages_density_and_retrieves_results(
         with SandboxFolder() as folder:
             calcinfo = process.prepare_for_submission(folder)
         assert not process.inputs.metadata.options.withmpi
-        assert calcinfo.codes_info[0].cmdline_params == [
+        assert calcinfo.codes_info[0].cmdline_params == PINNED_BADER_OPTIONS + [
             "parent_calc_folder/aiida-ELECTRON_DENSITY-1_0.cube"
         ]
         assert calcinfo.retrieve_list == ["ACF.dat", "AVF.dat", "BCF.dat"]
@@ -230,7 +232,7 @@ def test_bader_custom_charge_density_filename(fixture_localhost, bader_code):
     try:
         with SandboxFolder() as folder:
             calcinfo = process.prepare_for_submission(folder)
-        assert calcinfo.codes_info[0].cmdline_params == [
+        assert calcinfo.codes_info[0].cmdline_params == PINNED_BADER_OPTIONS + [
             "parent_calc_folder/density.cube"
         ]
     finally:
