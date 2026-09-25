@@ -114,15 +114,28 @@ def test_bader_cutoff_is_a_lower_bound(
     assert parameters["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] == expected
 
 
+def _finished_calc(exit_status):
+    node = orm.CalcJobNode()
+    node.set_process_state(engine.ProcessState.FINISHED)
+    node.set_exit_status(exit_status)
+    node.set_exit_message("test failure" if exit_status else "")
+    return node.store()
+
+
+def test_bader_not_submitted_after_failed_ot_scf(scf_process, bader_code, monkeypatch):
+    process = scf_process(bader_code=bader_code)
+    process.ctx.ot_scf = _finished_calc(1)
+    monkeypatch.setattr(
+        process, "submit", lambda *_, **__: pytest.fail("Bader must not be submitted")
+    )
+    assert process.run_bader() == process.exit_codes.ERROR_TERMINATION
+
+
 @pytest.mark.parametrize("failed_step", ["ot_scf", "bader"])
 def test_bader_finalize_propagates_failures(scf_process, bader_code, failed_step):
     process = scf_process(bader_code=bader_code)
     for label in ("ot_scf", "bader"):
-        node = orm.CalcJobNode()
-        node.set_process_state(engine.ProcessState.FINISHED)
-        node.set_exit_status(1 if label == failed_step else 0)
-        node.set_exit_message("test failure" if label == failed_step else "")
-        process.ctx[label] = node.store()
+        process.ctx[label] = _finished_calc(1 if label == failed_step else 0)
     assert process.finalize() == process.exit_codes.ERROR_TERMINATION
     assert not process.outputs
 
