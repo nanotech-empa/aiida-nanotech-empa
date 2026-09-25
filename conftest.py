@@ -140,3 +140,12 @@ def overlap_code(local_code_factory):
     return local_code_factory(
         "nanotech_empa.overlap", "cp2k-overlap-from-wfns", label="overlap"
     )
+
+
+@pytest.fixture(scope="function")
+def sparse_overlap_code(local_code_factory):
+    return local_code_factory(
+        "nanotech_empa.sparse_overlap",
+        "cp2k-overlap-to-sparse-npz",
+        label="sparse_overlap",
+    )

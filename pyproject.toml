@@ -55,10 +55,12 @@ dev = [
 "nanotech_empa.cp2k_neb_parser" = "aiida_nanotech_empa.parsers:Cp2kNebParser"
 "nanotech_empa.gaussian.cubegen_pymol" = "aiida_nanotech_empa.parsers.cubegen_pymol_parser:CubegenPymolParser"
 "nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.parsers:GaussianCasscfParser"
+"nanotech_empa.sparse_overlap" = "aiida_nanotech_empa.parsers:SparseOverlapParser"
 
 [project.entry-points."aiida.calculations"]
 "nanotech_empa.stm" = "aiida_nanotech_empa.plugins:StmCalculation"
 "nanotech_empa.overlap" = "aiida_nanotech_empa.plugins:OverlapCalculation"
+"nanotech_empa.sparse_overlap" = "aiida_nanotech_empa.plugins:SparseOverlapCalculation"
 "nanotech_empa.afm" = "aiida_nanotech_empa.plugins:AfmCalculation"
 "nanotech_empa.hrstm" = "aiida_nanotech_empa.plugins:HrstmCalculation"
 "nanotech_empa.cubehandler" = "aiida_nanotech_empa.plugins:CubeHandlerCalculation"
@@ -86,6 +88,7 @@ dev = [
 "nanotech_empa.cp2k.afm" = "aiida_nanotech_empa.workflows.cp2k:Cp2kAfmWorkChain"
 "nanotech_empa.cp2k.hrstm" = "aiida_nanotech_empa.workflows.cp2k:Cp2kHrstmWorkChain"
 "nanotech_empa.cp2k.diag" = "aiida_nanotech_empa.workflows.cp2k:Cp2kDiagWorkChain"
+"nanotech_empa.cp2k.scf" = "aiida_nanotech_empa.workflows.cp2k:Cp2kScfWorkChain"
 "nanotech_empa.cp2k.replica" = "aiida_nanotech_empa.workflows.cp2k:Cp2kReplicaWorkChain"
 "nanotech_empa.cp2k.neb" = "aiida_nanotech_empa.workflows.cp2k:Cp2kNebWorkChain"
 "nanotech_empa.cp2k.phonons" = "aiida_nanotech_empa.workflows.cp2k:Cp2kPhononsWorkChain"
