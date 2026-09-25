@@ -206,7 +206,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder = BaderCalculation.get_builder()
         builder.code = self.inputs.bader_code
         builder.parent_calc_folder = self.ctx.ot_scf.outputs.remote_folder
-        builder.charge_density_filename = orm.Str("aiida-ELECTRON_DENSITY-1_0.cube")
         builder.metadata = {
             "label": "bader",
             "options": {
