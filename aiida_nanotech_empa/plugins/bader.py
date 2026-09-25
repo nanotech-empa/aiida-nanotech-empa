@@ -2,7 +2,7 @@ from aiida import common, engine, orm
 
 
 DEFAULT_CHARGE_DENSITY_FILENAME = "aiida-ELECTRON_DENSITY-1_0.cube"
-DEFAULT_RETRIEVE_LIST = ["ACF.dat", "AVF.dat", "BCF.dat"]
+BADER_OUTPUT_FILES = ["ACF.dat", "AVF.dat", "BCF.dat"]
 
 
 class BaderCalculation(engine.CalcJob):
@@ -27,6 +27,17 @@ class BaderCalculation(engine.CalcJob):
             required=False,
         )
         spec.input("metadata.options.withmpi", valid_type=bool, default=False)
+        spec.input(
+            "metadata.options.parser_name",
+            valid_type=str,
+            default="nanotech_empa.bader",
+        )
+
+        spec.exit_code(
+            300,
+            "ERROR_OUTPUT_FILES_MISSING",
+            message="One or more Bader output files were not retrieved.",
+        )
 
     def prepare_for_submission(self, folder):
         settings = self.inputs.settings.get_dict() if "settings" in self.inputs else {}
@@ -44,7 +55,7 @@ class BaderCalculation(engine.CalcJob):
         calcinfo.remote_copy_list = []
         calcinfo.local_copy_list = []
         calcinfo.retrieve_list = settings.pop(
-            "additional_retrieve_list", DEFAULT_RETRIEVE_LIST
+            "additional_retrieve_list", BADER_OUTPUT_FILES
         )
 
         comp_uuid = self.inputs.parent_calc_folder.computer.uuid

@@ -1,6 +1,7 @@
 """Regression tests for the optional OT-only Bader branch."""
 
 import copy
+import io
 import shutil
 
 import ase
@@ -8,9 +9,11 @@ import numpy as np
 import pytest
 from aiida import common, engine, orm, plugins
 from aiida.common.folders import SandboxFolder
+from aiida.common.links import LinkType
 from aiida.manage import get_manager
 
 BaderCalculation = plugins.CalculationFactory("nanotech_empa.bader")
+BaderParser = plugins.ParserFactory("nanotech_empa.bader")
 Cp2kScfWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.scf")
 
 
@@ -170,6 +173,37 @@ def test_bader_unknown_settings_are_rejected(fixture_localhost):
                 process.prepare_for_submission(folder)
     finally:
         process.close()
+
+
+def _bader_node(computer, retrieved_files):
+    node = orm.CalcJobNode(
+        computer=computer,
+        process_type="aiida.calculations:nanotech_empa.bader",
+    )
+    node.set_option("resources", {"num_machines": 1, "num_mpiprocs_per_machine": 1})
+    node.store()
+
+    retrieved = orm.FolderData()
+    for name in retrieved_files:
+        retrieved.base.repository.put_object_from_filelike(io.BytesIO(b""), name)
+    retrieved.base.links.add_incoming(node, LinkType.CREATE, "retrieved")
+    retrieved.store()
+    return node
+
+
+def test_bader_parser_outputs_present(fixture_localhost):
+    node = _bader_node(fixture_localhost, ["ACF.dat", "AVF.dat", "BCF.dat"])
+
+    assert BaderParser(node).parse() is None
+
+
+@pytest.mark.parametrize("missing", ["ACF.dat", "AVF.dat", "BCF.dat"])
+def test_bader_parser_output_missing(fixture_localhost, missing):
+    files = [name for name in ("ACF.dat", "AVF.dat", "BCF.dat") if name != missing]
+    node = _bader_node(fixture_localhost, files)
+
+    exit_code = BaderParser(node).parse()
+    assert exit_code.status == 300
 
 
 def test_cp2k_scf_bader_retrieves_charges(cp2k_code, local_code_factory):
