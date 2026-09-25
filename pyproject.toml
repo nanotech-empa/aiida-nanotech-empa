@@ -30,6 +30,7 @@ dependencies = [
     "ase~=3.21",
     "aiida-gaussian~=2.0",
     "aiida-shell",
+    "banduppy>=1,<2",
     "pillow>=8.0.0",
     "more-itertools",
 ]
@@ -59,12 +60,14 @@ dev = [
 [project.entry-points."aiida.calculations"]
 "nanotech_empa.stm" = "aiida_nanotech_empa.plugins:StmCalculation"
 "nanotech_empa.overlap" = "aiida_nanotech_empa.plugins:OverlapCalculation"
+"nanotech_empa.qe_banduppy" = "aiida_nanotech_empa.plugins:QeBanduppyCalculation"
 "nanotech_empa.afm" = "aiida_nanotech_empa.plugins:AfmCalculation"
 "nanotech_empa.hrstm" = "aiida_nanotech_empa.plugins:HrstmCalculation"
 "nanotech_empa.cubehandler" = "aiida_nanotech_empa.plugins:CubeHandlerCalculation"
 
 [project.entry-points."aiida.workflows"]
 "nanotech_empa.nanoribbon" = "aiida_nanotech_empa.workflows.qe:NanoribbonWorkChain"
+"nanotech_empa.qe.banduppy_unfolding" = "aiida_nanotech_empa.workflows.qe:QeBanduppyUnfoldingWorkChain"
 "nanotech_empa.gaussian.scf" = "aiida_nanotech_empa.workflows.gaussian:GaussianScfWorkChain"
 "nanotech_empa.gaussian.relax" = "aiida_nanotech_empa.workflows.gaussian:GaussianRelaxWorkChain"
 "nanotech_empa.gaussian.delta_scf" = "aiida_nanotech_empa.workflows.gaussian:GaussianDeltaScfWorkChain"
