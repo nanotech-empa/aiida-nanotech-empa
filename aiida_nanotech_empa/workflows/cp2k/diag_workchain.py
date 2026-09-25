@@ -45,7 +45,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
         cp2k_utils.add_restart_policy_inputs(spec)
-
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
