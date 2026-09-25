@@ -144,8 +144,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
     def should_run_sparse_overlap(self):
         return self.inputs.overlap_matrix.value == "remote_and_sparse_retrieved"
 
-    # The overlap matrix is printed in the last SCF step only.
     def update_ot_input_dict(self, input_dict):
+        # Bader reads the final OT density, printed on the full grid.
         if self.should_run_bader():
             mgrid = input_dict["FORCE_EVAL"]["DFT"]["MGRID"]
             if mgrid["CUTOFF"] < self.inputs.bader_cutoff.value:
@@ -160,6 +160,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             charge_density.setdefault("EACH", {"QS_SCF": "0", "GEO_OPT": "0"})
             charge_density.setdefault("ADD_LAST", "NUMERIC")
 
+        # The overlap matrix is printed in the last SCF step only.
         if (
             self.inputs.overlap_matrix.value != "none"
             and not self.inputs.run_diag_scf.value
