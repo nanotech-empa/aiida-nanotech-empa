@@ -81,15 +81,16 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             valid_type=orm.Code,
             required=False,
             help="Bader executable configured for the nanotech_empa.bader plugin. "
-            "If given, the OT SCF prints its charge-density cube at "
-            "'bader_cutoff' and Bader charge analysis runs on it.",
+            "If given, the OT SCF prints its charge-density cube at a cutoff of "
+            "at least 'bader_cutoff' and Bader charge analysis runs on it.",
         )
         spec.input(
             "bader_cutoff",
             valid_type=orm.Float,
             default=lambda: orm.Float(1200.0),
             required=False,
-            help="Plane-wave cutoff used for the OT charge-density cube for Bader analysis.",
+            help="Minimum plane-wave cutoff (Ry) of the OT SCF when Bader analysis "
+            "runs. A higher cutoff from 'dft_params' or the structure is kept.",
         )
         spec.outline(
             cls.setup,
@@ -146,9 +147,13 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
     # The overlap matrix is printed in the last SCF step only.
     def update_ot_input_dict(self, input_dict):
         if self.should_run_bader():
-            input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = (
-                self.inputs.bader_cutoff.value
-            )
+            mgrid = input_dict["FORCE_EVAL"]["DFT"]["MGRID"]
+            if mgrid["CUTOFF"] < self.inputs.bader_cutoff.value:
+                self.report(
+                    f"Raising the OT SCF cutoff from {mgrid['CUTOFF']} to "
+                    f"{self.inputs.bader_cutoff.value} Ry for Bader analysis"
+                )
+                mgrid["CUTOFF"] = self.inputs.bader_cutoff.value
             print_section = input_dict["FORCE_EVAL"]["DFT"].setdefault("PRINT", {})
             charge_density = print_section.setdefault("E_DENSITY_CUBE", {})
             charge_density["STRIDE"] = "1 1 1"

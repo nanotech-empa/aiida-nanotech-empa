@@ -101,6 +101,19 @@ def test_bader_keeps_ot_only_density_settings(scf_process, bader_code):
     assert not process.should_run_diag_scf()
 
 
+@pytest.mark.parametrize(
+    ("scf_cutoff", "bader_cutoff", "expected"),
+    [(300, 1200.0, 1200.0), (300, 900.0, 900.0), (1600, 1200.0, 1600)],
+)
+def test_bader_cutoff_is_a_lower_bound(
+    scf_process, bader_code, scf_cutoff, bader_cutoff, expected
+):
+    process = scf_process(bader_code=bader_code, bader_cutoff=orm.Float(bader_cutoff))
+    parameters = {"FORCE_EVAL": {"DFT": {"MGRID": {"CUTOFF": scf_cutoff}}}}
+    process.update_ot_input_dict(parameters)
+    assert parameters["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] == expected
+
+
 @pytest.mark.parametrize("failed_step", ["ot_scf", "bader"])
 def test_bader_finalize_propagates_failures(scf_process, bader_code, failed_step):
     process = scf_process(bader_code=bader_code)
