@@ -131,6 +131,11 @@ def cp2k_code(local_code_factory):
 
 
 @pytest.fixture(scope="function")
+def bader_code(local_code_factory):
+    return local_code_factory("nanotech_empa.bader", "bader")
+
+
+@pytest.fixture(scope="function")
 def spm_code(local_code_factory):
     return local_code_factory("nanotech_empa.stm", "cp2k-stm-sts-wfn", label="stm")
 

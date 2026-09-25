@@ -2,10 +2,8 @@
 
 import copy
 import io
-import shutil
 
 import ase
-import numpy as np
 import pytest
 from aiida import common, engine, orm, plugins
 from aiida.common.folders import SandboxFolder
@@ -290,40 +288,3 @@ def test_bader_parser_output_missing(fixture_localhost, missing):
 
     exit_code = BaderParser(node).parse()
     assert exit_code.status == 300
-
-
-def test_cp2k_scf_bader_retrieves_charges(cp2k_code, local_code_factory):
-    if not shutil.which("bader"):
-        pytest.skip("Bader executable not available")
-    builder = Cp2kScfWorkChain.get_builder()
-    builder.cp2k_code = cp2k_code
-    builder.bader_code = local_code_factory("nanotech_empa.bader", "bader")
-    builder.structure = orm.StructureData(
-        ase=ase.Atoms(
-            "H2", positions=[[4, 4, 3.63], [4, 4, 4.37]], cell=[8, 8, 8], pbc=True
-        )
-    )
-    builder.protocol = orm.Str("debug")
-    builder.dft_params = orm.Dict(dict={"periodic": "XYZ", "cutoff": 150})
-    builder.options = orm.Dict(
-        dict={
-            "max_wallclock_seconds": 600,
-            "resources": {"num_machines": 1, "num_mpiprocs_per_machine": 1},
-        }
-    )
-    _, node = engine.run_get_node(builder)
-    assert node.is_finished_ok
-    assert len(node.called) == 2  # OT SCF and Bader, without diagonalization.
-    retrieved = node.outputs.bader_retrieved
-    assert {"ACF.dat", "AVF.dat", "BCF.dat"} <= set(
-        retrieved.base.repository.list_object_names()
-    )
-    with retrieved.base.repository.open("ACF.dat") as handle:
-        charges = np.loadtxt(handle, skiprows=2, max_rows=2)
-    assert np.isfinite(charges).all()
-    np.testing.assert_allclose(charges[:, 4].sum(), 2.0, atol=0.02)
-    bader = next(
-        child for child in node.called if child.process_label == "BaderCalculation"
-    )
-    assert bader.inputs.parent_calc_folder.uuid == node.outputs.remote_folder.uuid
-    assert bader.outputs.retrieved.uuid == retrieved.uuid
