@@ -33,7 +33,8 @@ def _print_overlap_matrix(input_dict, ndigits):
 
 class Cp2kScfWorkChain(Cp2kDiagWorkChain):
     """Extends `Cp2kDiagWorkChain`, making the diagonalization step optional
-    and adding the option to print/retrieve the AO overlap matrix.
+    and adding the option to print/retrieve the AO overlap matrix and to run
+    Bader charge analysis on the OT SCF charge density.
     """
 
     @classmethod

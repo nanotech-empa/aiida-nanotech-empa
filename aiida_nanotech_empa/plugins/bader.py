@@ -6,6 +6,8 @@ BADER_OUTPUT_FILES = ["ACF.dat", "AVF.dat", "BCF.dat"]
 
 
 class BaderCalculation(engine.CalcJob):
+    """Run Bader charge analysis on a charge-density cube from a CP2K calculation."""
+
     @classmethod
     def define(cls, spec):
         super().define(spec)
@@ -19,12 +21,15 @@ class BaderCalculation(engine.CalcJob):
             valid_type=orm.Str,
             default=lambda: orm.Str(DEFAULT_CHARGE_DENSITY_FILENAME),
             required=False,
+            help="Name of the charge-density cube inside 'parent_calc_folder'.",
         )
         spec.input(
             "settings",
             valid_type=orm.Dict,
             default=lambda: orm.Dict(dict={}),
             required=False,
+            help="Only 'additional_retrieve_list' is accepted: extra files to "
+            "retrieve on top of ACF.dat, AVF.dat and BCF.dat.",
         )
         spec.input("metadata.options.withmpi", valid_type=bool, default=False)
         spec.input(
