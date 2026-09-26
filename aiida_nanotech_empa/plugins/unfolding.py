@@ -6,6 +6,7 @@ DEFAULT_XYZ_FILENAME = "aiida.coords.xyz"
 DEFAULT_CP2K_INPUT_FILENAME = "aiida.inp"
 DEFAULT_MATRIX_FILENAME = "aiida-overlap_matrix.out-1_0.Log"
 DEFAULT_OUTPUT_FILENAME = "unfolding_bands.npz"
+DEFAULT_PDOS_PROJECTION_FILENAME = "unfolding_projections.npz"
 
 
 class Cp2kUnfoldingCalculation(engine.CalcJob):
@@ -69,6 +70,24 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             required=False,
         )
         spec.input(
+            "parse_pdos_projections",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+        )
+        spec.input(
+            "pdos_projection_filename",
+            valid_type=orm.Str,
+            default=lambda: orm.Str(DEFAULT_PDOS_PROJECTION_FILENAME),
+            required=False,
+        )
+        spec.input(
+            "pdos_threshold",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(1.0e-4),
+            required=False,
+        )
+        spec.input(
             "settings",
             valid_type=orm.Dict,
             default=lambda: orm.Dict(dict={}),
@@ -105,6 +124,17 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             codeinfo.cmdline_params.extend(["--emin", str(self.inputs.emin.value)])
         if "emax" in self.inputs:
             codeinfo.cmdline_params.extend(["--emax", str(self.inputs.emax.value)])
+        if self.inputs.parse_pdos_projections.value:
+            codeinfo.cmdline_params.extend(
+                [
+                    "--pdos-glob",
+                    "parent_calc_folder/aiida-*list*-1.pdos",
+                    "--pdos-output",
+                    self.inputs.pdos_projection_filename.value,
+                    "--pdos-threshold",
+                    str(self.inputs.pdos_threshold.value),
+                ]
+            )
 
         calcinfo = common.CalcInfo()
         calcinfo.uuid = self.uuid
@@ -112,8 +142,11 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
         calcinfo.remote_symlink_list = []
         calcinfo.remote_copy_list = []
         calcinfo.local_copy_list = []
+        default_retrieve_list = [output_filename]
+        if self.inputs.parse_pdos_projections.value:
+            default_retrieve_list.append(self.inputs.pdos_projection_filename.value)
         calcinfo.retrieve_list = settings.pop(
-            "additional_retrieve_list", [output_filename]
+            "additional_retrieve_list", default_retrieve_list
         )
 
         comp_uuid = self.inputs.parent_calc_folder.computer.uuid
