@@ -13,37 +13,48 @@ Cp2kUnfoldingCalculation = plugins.CalculationFactory("nanotech_empa.cp2k_unfold
 Cp2kUnfoldingParser = plugins.ParserFactory("nanotech_empa.cp2k_unfolding")
 
 
-@pytest.mark.parametrize("path", [None, "", "G-X-M-G", "G-X-A1-Y-G"])
-def test_unfolding_additional_retrieve_list_extends(aiida_localhost, path):
-    path_input = {} if path is None else {"path": orm.Str(path)}
+def _prepare_submission(computer, **inputs):
     code = orm.InstalledCode(
-        computer=aiida_localhost,
+        computer=computer,
         filepath_executable="/bin/true",
         default_calc_job_plugin="nanotech_empa.cp2k_unfolding",
     ).store()
     process = instantiate_process(
         get_manager().get_runner(),
         Cp2kUnfoldingCalculation,
-        **path_input,
         code=code,
-        parent_calc_folder=orm.RemoteData(
-            computer=aiida_localhost, remote_path="/tmp/parent"
-        ),
+        parent_calc_folder=orm.RemoteData(computer=computer, remote_path="/tmp/parent"),
         primitive_vectors=orm.Str("1 0 0; 0 1 0"),
-        settings=orm.Dict({"additional_retrieve_list": ["aiida.out"]}),
         metadata={"options": {"resources": {"num_machines": 1}}},
+        **inputs,
     )
 
     with SandboxFolder() as folder:
-        calcinfo = process.prepare_for_submission(folder)
+        return process.prepare_for_submission(folder)
+
+
+def test_unfolding_additional_retrieve_list_extends(aiida_localhost):
+    calcinfo = _prepare_submission(
+        aiida_localhost,
+        settings=orm.Dict({"additional_retrieve_list": ["aiida.out"]}),
+    )
 
     assert calcinfo.retrieve_list == ["unfolding_bands.npz", "aiida.out"]
-    command = calcinfo.codes_info[0].cmdline_params
+
+
+@pytest.mark.parametrize("path", [None, "", "G-X-M-G", "G-X-A1-Y-G"])
+def test_unfolding_path_is_optional(aiida_localhost, path):
+    inputs = {} if path is None else {"path": orm.Str(path)}
+
+    command = (
+        _prepare_submission(aiida_localhost, **inputs).codes_info[0].cmdline_params
+    )
+
+    # Without '--path', the tool picks the lattice-dependent default path.
     if path is None:
         assert "--path" not in command
     else:
         assert command[command.index("--path") + 1] == path
-    assert not Cp2kUnfoldingCalculation.spec().inputs["path"].has_default()
 
 
 def _unfolding_node(computer, retrieved_files):

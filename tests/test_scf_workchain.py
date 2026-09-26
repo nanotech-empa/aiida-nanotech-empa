@@ -257,7 +257,8 @@ def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path
     Cp2kScfWorkChain.run_unfolding(chain)
     assert len(submitted) == 1
     if path is None:
+        # A default would reach the builder through the spec, not these inputs.
+        assert not Cp2kScfWorkChain.spec().inputs["unfolding_path"].has_default()
         assert submitted[0].path is None
     else:
         assert submitted[0].path.value == path
-    assert not Cp2kScfWorkChain.spec().inputs["unfolding_path"].has_default()
