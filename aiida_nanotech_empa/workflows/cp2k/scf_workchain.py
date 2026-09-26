@@ -257,20 +257,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.path = self.inputs.unfolding_path
         builder.lattice_type = self.inputs.unfolding_lattice_type
         builder.overlap_threshold = self.inputs.overlap_threshold
-        builder.metadata = {
-            "label": "cp2k_unfolding",
-            "options": {
-                "resources": {
-                    "num_machines": 1,
-                    "num_mpiprocs_per_machine": 1,
-                    "num_cores_per_mpiproc": 1,
-                },
-                "max_wallclock_seconds": min(
-                    7200, self.ctx.options["max_wallclock_seconds"]
-                ),
-                "withmpi": False,
-            },
-        }
+        builder.metadata = self._serial_postprocessing_metadata("cp2k_unfolding")
         return engine.ToContext(unfolding=self.submit(builder))
 
     def run_bader(self):
