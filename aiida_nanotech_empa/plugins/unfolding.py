@@ -73,6 +73,8 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             valid_type=orm.Dict,
             default=lambda: orm.Dict(dict={}),
             required=False,
+            help="Only 'additional_retrieve_list' is accepted: extra files to "
+            "retrieve on top of 'output_filename'.",
         )
         spec.input("metadata.options.withmpi", valid_type=bool, default=False)
 
@@ -112,8 +114,8 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
         calcinfo.remote_symlink_list = []
         calcinfo.remote_copy_list = []
         calcinfo.local_copy_list = []
-        calcinfo.retrieve_list = settings.pop(
-            "additional_retrieve_list", [output_filename]
+        calcinfo.retrieve_list = [output_filename] + settings.pop(
+            "additional_retrieve_list", []
         )
 
         comp_uuid = self.inputs.parent_calc_folder.computer.uuid
