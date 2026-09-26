@@ -210,3 +210,54 @@ def test_finalize_surfaces_outputs(run_diag_scf, already_tagged):
         *previous_workflows,
         workchain.node.uuid,
     ]
+
+
+@pytest.mark.parametrize("path", [None, "", "G-X-M-G", "G-X-A1-Y-G"])
+def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path):
+    from aiida.common import AttributeDict
+
+    from aiida_nanotech_empa.workflows.cp2k import scf_workchain
+
+    code = orm.InstalledCode(
+        computer=aiida_localhost,
+        filepath_executable="/bin/true",
+        default_calc_job_plugin="nanotech_empa.cp2k_unfolding",
+    ).store()
+    inputs = AttributeDict(
+        dict(
+            unfolding_code=code,
+            unfolding_primitive_vectors=orm.Str("1 0 0; 0 1 0"),
+            unfolding_lattice_type=orm.Str("auto"),
+            overlap_threshold=orm.Float(1e-10),
+        )
+    )
+    if path is not None:
+        inputs.unfolding_path = orm.Str(path)
+    submitted = []
+    chain = SimpleNamespace(
+        inputs=inputs,
+        ctx=SimpleNamespace(
+            diag_scf=SimpleNamespace(
+                outputs=SimpleNamespace(
+                    remote_folder=orm.RemoteData(
+                        computer=aiida_localhost, remote_path="/tmp/parent"
+                    )
+                )
+            )
+        ),
+        report=lambda message: None,
+        submit=lambda builder: submitted.append(builder),
+        _serial_postprocessing_metadata=lambda label: {
+            "options": {"resources": {"num_machines": 1}}
+        },
+    )
+    monkeypatch.setattr(
+        scf_workchain.common_utils, "check_if_calc_ok", lambda *args: True
+    )
+    Cp2kScfWorkChain.run_unfolding(chain)
+    assert len(submitted) == 1
+    if path is None:
+        assert submitted[0].path is None
+    else:
+        assert submitted[0].path.value == path
+    assert not Cp2kScfWorkChain.spec().inputs["unfolding_path"].has_default()

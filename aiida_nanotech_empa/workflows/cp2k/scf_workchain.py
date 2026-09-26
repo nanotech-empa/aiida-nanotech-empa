@@ -116,9 +116,9 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         spec.input(
             "unfolding_path",
             valid_type=orm.Str,
-            default=lambda: orm.Str(unfolding.DEFAULT_PATH),
             required=False,
-            help="High-symmetry path labels, e.g. G-K-M-G.",
+            help="Path labels, e.g. G-K-M-G; omit to use the unfolding tool's "
+            "lattice-dependent default.",
         )
         spec.input(
             "unfolding_lattice_type",
@@ -291,7 +291,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.code = self.inputs.unfolding_code
         builder.parent_calc_folder = self.ctx.diag_scf.outputs.remote_folder
         builder.primitive_vectors = self.inputs.unfolding_primitive_vectors
-        builder.path = self.inputs.unfolding_path
+        if "unfolding_path" in self.inputs:
+            builder.path = self.inputs.unfolding_path
         builder.lattice_type = self.inputs.unfolding_lattice_type
         builder.overlap_threshold = self.inputs.overlap_threshold
         if "unfolding_emin" in self.inputs:

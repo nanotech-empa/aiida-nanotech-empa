@@ -13,7 +13,9 @@ Cp2kUnfoldingCalculation = plugins.CalculationFactory("nanotech_empa.cp2k_unfold
 Cp2kUnfoldingParser = plugins.ParserFactory("nanotech_empa.cp2k_unfolding")
 
 
-def test_unfolding_additional_retrieve_list_extends(aiida_localhost):
+@pytest.mark.parametrize("path", [None, "", "G-X-M-G", "G-X-A1-Y-G"])
+def test_unfolding_additional_retrieve_list_extends(aiida_localhost, path):
+    path_input = {} if path is None else {"path": orm.Str(path)}
     code = orm.InstalledCode(
         computer=aiida_localhost,
         filepath_executable="/bin/true",
@@ -22,6 +24,7 @@ def test_unfolding_additional_retrieve_list_extends(aiida_localhost):
     process = instantiate_process(
         get_manager().get_runner(),
         Cp2kUnfoldingCalculation,
+        **path_input,
         code=code,
         parent_calc_folder=orm.RemoteData(
             computer=aiida_localhost, remote_path="/tmp/parent"
@@ -35,6 +38,12 @@ def test_unfolding_additional_retrieve_list_extends(aiida_localhost):
         calcinfo = process.prepare_for_submission(folder)
 
     assert calcinfo.retrieve_list == ["unfolding_bands.npz", "aiida.out"]
+    command = calcinfo.codes_info[0].cmdline_params
+    if path is None:
+        assert "--path" not in command
+    else:
+        assert command[command.index("--path") + 1] == path
+    assert not Cp2kUnfoldingCalculation.spec().inputs["path"].has_default()
 
 
 def _unfolding_node(computer, retrieved_files):
@@ -66,7 +75,8 @@ def test_unfolding_parser_requires_output_file(aiida_localhost):
 
 
 @pytest.mark.parametrize(
-    ("lattice_type", "valid"), [("hexagonal", True), ("hexagnal", False)]
+    ("lattice_type", "valid"),
+    [(family, True) for family in unfolding.LATTICE_TYPES] + [("hexagnal", False)],
 )
 def test_validate_lattice_type(lattice_type, valid):
     message = unfolding.validate_lattice_type(orm.Str(lattice_type), None)

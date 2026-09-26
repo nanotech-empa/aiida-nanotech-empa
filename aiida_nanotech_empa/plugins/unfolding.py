@@ -6,9 +6,16 @@ DEFAULT_WFN_FILENAME = "aiida-RESTART.wfn"
 DEFAULT_XYZ_FILENAME = "aiida.coords.xyz"
 DEFAULT_CP2K_INPUT_FILENAME = "aiida.inp"
 DEFAULT_OUTPUT_FILENAME = "unfolding_bands.npz"
-DEFAULT_PATH = "G-K-M-G"
 DEFAULT_LATTICE_TYPE = "auto"
-LATTICE_TYPES = ("auto", "1d", "square", "rectangular", "hexagonal", "oblique")
+LATTICE_TYPES = (
+    "auto",
+    "1d",
+    "square",
+    "rectangular",
+    "centered_rectangular",
+    "hexagonal",
+    "oblique",
+)
 
 
 def validate_lattice_type(value, _):
@@ -36,7 +43,7 @@ def validate_energy_window(inputs, emin_key, emax_key):
     if (emin_key in inputs) != (emax_key in inputs):
         return (
             f"'{emin_key}' and '{emax_key}' must be set together: "
-            "cp2k-spm-tools ignores a one-sided energy window."
+            "cp2k-spm-tools requires a two-sided energy window."
         )
     if emin_key in inputs and inputs[emin_key].value >= inputs[emax_key].value:
         return f"'{emin_key}' must be lower than '{emax_key}'."
@@ -59,8 +66,8 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
         spec.input(
             "path",
             valid_type=orm.Str,
-            default=lambda: orm.Str(DEFAULT_PATH),
             required=False,
+            help="Path labels; omit to use the unfolding tool's lattice-dependent default.",
         )
         spec.input(
             "lattice_type",
@@ -158,8 +165,6 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             "parent_calc_folder/" + self.inputs.cp2k_input_filename.value,
             "--primitive-vectors",
             self.inputs.primitive_vectors.value,
-            "--path",
-            self.inputs.path.value,
             "--lattice-type",
             self.inputs.lattice_type.value,
             "--overlap-format",
@@ -167,6 +172,8 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             "--overlap-threshold",
             str(self.inputs.overlap_threshold.value),
         ]
+        if "path" in self.inputs:
+            codeinfo.cmdline_params.extend(["--path", self.inputs.path.value])
         if "emin" in self.inputs:
             codeinfo.cmdline_params.extend(["--emin", str(self.inputs.emin.value)])
         if "emax" in self.inputs:
