@@ -1,6 +1,5 @@
 from aiida import common, engine, orm
 
-
 DEFAULT_WFN_FILENAME = "aiida-RESTART.wfn"
 DEFAULT_XYZ_FILENAME = "aiida.coords.xyz"
 DEFAULT_CP2K_INPUT_FILENAME = "aiida.inp"
@@ -64,6 +63,13 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             required=False,
         )
         spec.input(
+            "basis_cluster_tol",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(5.0e-2),
+            required=False,
+        )
+        spec.input("primitive_basis_atoms", valid_type=orm.Str, required=False)
+        spec.input(
             "output_filename",
             valid_type=orm.Str,
             default=lambda: orm.Str(DEFAULT_OUTPUT_FILENAME),
@@ -119,7 +125,16 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             "log",
             "--overlap-threshold",
             str(self.inputs.overlap_threshold.value),
+            "--basis-cluster-tol",
+            str(self.inputs.basis_cluster_tol.value),
         ]
+        if "primitive_basis_atoms" in self.inputs:
+            codeinfo.cmdline_params.extend(
+                [
+                    "--primitive-basis-atoms",
+                    self.inputs.primitive_basis_atoms.value,
+                ]
+            )
         if "emin" in self.inputs:
             codeinfo.cmdline_params.extend(["--emin", str(self.inputs.emin.value)])
         if "emax" in self.inputs:

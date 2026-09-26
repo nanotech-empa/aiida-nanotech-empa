@@ -109,6 +109,12 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             help="Approximate primitive vectors as rows, separated by semicolons or newlines.",
         )
         spec.input(
+            "unfolding_primitive_basis_atoms",
+            valid_type=orm.Str,
+            required=False,
+            help="1-based atom indices defining the primitive basis, e.g. 1 2 or 171 196.",
+        )
+        spec.input(
             "unfolding_path",
             valid_type=orm.Str,
             default=lambda: orm.Str("G-K-M-G"),
@@ -129,6 +135,20 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             required=False,
             help="Projection threshold for compact atom-resolved PDOS data attached to unfolding.",
         )
+        spec.input(
+            "unfolding_basis_cluster_tol",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(5.0e-2),
+            required=False,
+            help="Fallback fractional tolerance used only when primitive basis atoms are omitted.",
+        )
+        spec.input(
+            "unfolding_options",
+            valid_type=orm.Dict,
+            default=lambda: orm.Dict(dict={}),
+            required=False,
+            help="Metadata options for the unfolding post-processing CalcJob.",
+        )
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -147,6 +167,11 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             395,
             "ERROR_MISSING_UNFOLDING_OUTPUT",
             message="CP2K band unfolding finished without retrieving unfolding_bands.npz.",
+        )
+        spec.exit_code(
+            396,
+            "ERROR_MISSING_UNFOLDING_PRIMITIVE_BASIS",
+            message="Primitive basis atom indices are required to compute band unfolding.",
         )
         spec.inputs.validator = cls._validate_inputs
 
@@ -274,6 +299,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
     def run_unfolding(self):
         if "unfolding_primitive_vectors" not in self.inputs:
             return self.exit_codes.ERROR_MISSING_UNFOLDING_PRIMITIVE_VECTORS
+        if "unfolding_primitive_basis_atoms" not in self.inputs:
+            return self.exit_codes.ERROR_MISSING_UNFOLDING_PRIMITIVE_BASIS
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
             return self.exit_codes.ERROR_TERMINATION
 
@@ -282,24 +309,34 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.code = self.inputs.unfolding_code
         builder.parent_calc_folder = self.ctx.diag_scf.outputs.remote_folder
         builder.primitive_vectors = self.inputs.unfolding_primitive_vectors
+        builder.primitive_basis_atoms = self.inputs.unfolding_primitive_basis_atoms
         builder.path = self.inputs.unfolding_path
         builder.lattice_type = self.inputs.unfolding_lattice_type
         builder.overlap_threshold = self.inputs.overlap_threshold
+        builder.basis_cluster_tol = self.inputs.unfolding_basis_cluster_tol
         builder.parse_pdos_projections = orm.Bool(True)
         builder.pdos_threshold = self.inputs.unfolding_pdos_threshold
+        unfolding_options = self.inputs.unfolding_options.get_dict()
+        unfolding_options.setdefault(
+            "resources",
+            {
+                "num_machines": 1,
+                "num_mpiprocs_per_machine": 1,
+                "num_cores_per_mpiproc": 1,
+            },
+        )
+        unfolding_options.setdefault(
+            "max_wallclock_seconds",
+            min(7200, self.ctx.options["max_wallclock_seconds"]),
+        )
+        # Whether AiiDA launches the executable through MPI is a property of the
+        # configured code, not of the requested allocation. In particular, a
+        # serial unfolding code may still request multiple cores for threaded
+        # numerical libraries.
+        unfolding_options.setdefault("withmpi", self.inputs.unfolding_code.with_mpi)
         builder.metadata = {
             "label": "cp2k_unfolding",
-            "options": {
-                "resources": {
-                    "num_machines": 1,
-                    "num_mpiprocs_per_machine": 1,
-                    "num_cores_per_mpiproc": 1,
-                },
-                "max_wallclock_seconds": min(
-                    7200, self.ctx.options["max_wallclock_seconds"]
-                ),
-                "withmpi": False,
-            },
+            "options": unfolding_options,
         }
         return engine.ToContext(unfolding=self.submit(builder))
 
