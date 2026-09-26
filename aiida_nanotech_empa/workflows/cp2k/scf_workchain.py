@@ -1,6 +1,6 @@
 from aiida import engine, orm, plugins
 
-from ...plugins import sparse_overlap
+from ...plugins import sparse_overlap, unfolding
 from ...utils import common_utils
 from .diag_workchain import Cp2kDiagWorkChain
 
@@ -111,14 +111,14 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         spec.input(
             "unfolding_path",
             valid_type=orm.Str,
-            default=lambda: orm.Str("G-K-M-G"),
+            default=lambda: orm.Str(unfolding.DEFAULT_PATH),
             required=False,
             help="High-symmetry path labels, e.g. G-K-M-G.",
         )
         spec.input(
             "unfolding_lattice_type",
             valid_type=orm.Str,
-            default=lambda: orm.Str("auto"),
+            default=lambda: orm.Str(unfolding.DEFAULT_LATTICE_TYPE),
             required=False,
             help="1d, square, rectangular, hexagonal, oblique, or auto.",
         )

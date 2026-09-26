@@ -1,11 +1,13 @@
 from aiida import common, engine, orm
 
+from .sparse_overlap import DEFAULT_MATRIX_FILENAME
 
 DEFAULT_WFN_FILENAME = "aiida-RESTART.wfn"
 DEFAULT_XYZ_FILENAME = "aiida.coords.xyz"
 DEFAULT_CP2K_INPUT_FILENAME = "aiida.inp"
-DEFAULT_MATRIX_FILENAME = "aiida-overlap_matrix.out-1_0.Log"
 DEFAULT_OUTPUT_FILENAME = "unfolding_bands.npz"
+DEFAULT_PATH = "G-K-M-G"
+DEFAULT_LATTICE_TYPE = "auto"
 
 
 class Cp2kUnfoldingCalculation(engine.CalcJob):
@@ -21,13 +23,13 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
         spec.input(
             "path",
             valid_type=orm.Str,
-            default=lambda: orm.Str("G-K-M-G"),
+            default=lambda: orm.Str(DEFAULT_PATH),
             required=False,
         )
         spec.input(
             "lattice_type",
             valid_type=orm.Str,
-            default=lambda: orm.Str("auto"),
+            default=lambda: orm.Str(DEFAULT_LATTICE_TYPE),
             required=False,
         )
         spec.input("emin", valid_type=orm.Float, required=False)
@@ -90,7 +92,7 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
         )
 
     def prepare_for_submission(self, folder):
-        settings = self.inputs.settings.get_dict() if "settings" in self.inputs else {}
+        settings = self.inputs.settings.get_dict()
         output_filename = self.inputs.output_filename.value
 
         codeinfo = common.CodeInfo()
