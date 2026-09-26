@@ -57,6 +57,33 @@ def test_validator_diag_only_inputs(run_diag_scf, dft_params, with_settings, rej
 
 
 @pytest.mark.parametrize(
+    ("run_diag_scf", "overlap_matrix", "rejected"),
+    [
+        (False, "remote_only", True),
+        (True, "none", True),
+        (True, "remote_only", False),
+    ],
+)
+def test_validator_unfolding_requires_diag_and_overlap(
+    run_diag_scf, overlap_matrix, rejected
+):
+    message = Cp2kScfWorkChain._validate_inputs(
+        {
+            "run_diag_scf": orm.Bool(run_diag_scf),
+            "overlap_matrix": orm.Str(overlap_matrix),
+            "unfolding_code": object(),  # the validator only checks presence
+            "dft_params": orm.Dict(),
+        },
+        None,
+    )
+
+    if rejected:
+        assert "unfolding_code" in message
+    else:
+        assert message is None
+
+
+@pytest.mark.parametrize(
     ("hook", "run_diag_scf", "overlap_matrix", "printed"),
     [
         # The overlap matrix is printed in the last SCF step only.
@@ -118,6 +145,7 @@ def test_finalize_surfaces_outputs(run_diag_scf, already_tagged):
         should_run_diag_scf=lambda: run_diag_scf,
         should_run_sparse_overlap=lambda: False,
         should_run_bader=lambda: False,
+        should_run_unfolding=lambda: False,
         out=outputs.__setitem__,
         report=lambda message: None,
     )
