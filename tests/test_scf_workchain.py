@@ -72,6 +72,7 @@ def test_validator_unfolding_requires_diag_and_overlap(
             "run_diag_scf": orm.Bool(run_diag_scf),
             "overlap_matrix": orm.Str(overlap_matrix),
             "unfolding_code": object(),  # the validator only checks presence
+            "unfolding_primitive_vectors": orm.Str("1 0 0; 0 1 0"),
             "dft_params": orm.Dict(),
         },
         None,
@@ -81,6 +82,19 @@ def test_validator_unfolding_requires_diag_and_overlap(
         assert "unfolding_code" in message
     else:
         assert message is None
+
+
+def test_validator_unfolding_requires_primitive_vectors():
+    message = Cp2kScfWorkChain._validate_inputs(
+        {
+            "run_diag_scf": orm.Bool(True),
+            "overlap_matrix": orm.Str("remote_only"),
+            "unfolding_code": object(),  # the validator only checks presence
+            "dft_params": orm.Dict(),
+        },
+        None,
+    )
+    assert "unfolding_primitive_vectors" in message
 
 
 @pytest.mark.parametrize(

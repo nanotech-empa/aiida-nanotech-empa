@@ -132,11 +132,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             cls.finalize,
         )
         spec.exit_code(
-            394,
-            "ERROR_MISSING_UNFOLDING_PRIMITIVE_VECTORS",
-            message="Primitive vectors are required to compute band unfolding.",
-        )
-        spec.exit_code(
             395,
             "ERROR_MISSING_UNFOLDING_OUTPUT",
             message="CP2K band unfolding finished without retrieving unfolding_bands.npz.",
@@ -165,6 +160,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "'unfolding_code' uses the diagonalization SCF wavefunction and "
                 "AO overlap matrix: set 'run_diag_scf' and 'overlap_matrix'."
             )
+        if "unfolding_code" in value and "unfolding_primitive_vectors" not in value:
+            return "'unfolding_primitive_vectors' is required with 'unfolding_code'."
 
         if "bader_code" in value and value["run_diag_scf"].value:
             return (
@@ -254,8 +251,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         return engine.ToContext(sparse_overlap=self.submit(builder))
 
     def run_unfolding(self):
-        if "unfolding_primitive_vectors" not in self.inputs:
-            return self.exit_codes.ERROR_MISSING_UNFOLDING_PRIMITIVE_VECTORS
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
             return self.exit_codes.ERROR_TERMINATION
 
