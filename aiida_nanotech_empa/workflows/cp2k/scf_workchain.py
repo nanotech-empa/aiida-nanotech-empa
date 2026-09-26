@@ -108,7 +108,10 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             "unfolding_primitive_vectors",
             valid_type=orm.Str,
             required=False,
-            help="Approximate primitive vectors as rows, separated by semicolons or newlines.",
+            validator=unfolding.validate_primitive_vectors,
+            help="One or two approximate primitive vectors in Angstrom, along the "
+            "first cell vectors: rows of three numbers separated by ';' or "
+            "newlines. They are snapped to an exact tiling of the cell.",
         )
         spec.input(
             "unfolding_path",

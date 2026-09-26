@@ -75,3 +75,24 @@ def test_validate_lattice_type(lattice_type, valid):
         assert message is None
     else:
         assert "hexagonal" in message
+
+
+@pytest.mark.parametrize(
+    ("primitive_vectors", "valid"),
+    [
+        ("2.46 0 0; -1.23 2.13 0", True),
+        ("2.46, 0, 0\n-1.23, 2.13, 0", True),
+        ("4.0 0 0", True),
+        ("", False),
+        ("2.46 0; -1.23 2.13", False),
+        ("a b c", False),
+        ("1 0 0; 0 1 0; 0 0 1", False),
+    ],
+)
+def test_validate_primitive_vectors(primitive_vectors, valid):
+    message = unfolding.validate_primitive_vectors(orm.Str(primitive_vectors), None)
+
+    if valid:
+        assert message is None
+    else:
+        assert "three numbers" in message

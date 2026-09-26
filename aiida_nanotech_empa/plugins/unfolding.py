@@ -16,6 +16,22 @@ def validate_lattice_type(value, _):
         return f"must be one of {', '.join(LATTICE_TYPES)}."
 
 
+def validate_primitive_vectors(value, _):
+    try:
+        vectors = [
+            [float(x) for x in row.replace(",", " ").split()]
+            for row in value.value.replace(";", "\n").splitlines()
+            if row.strip()
+        ]
+    except ValueError:
+        vectors = []
+    if not 1 <= len(vectors) <= 2 or any(len(vector) != 3 for vector in vectors):
+        return (
+            "must be one or two vectors of three numbers, separated by ';' or "
+            "newlines; 3D unfolding is not supported."
+        )
+
+
 class Cp2kUnfoldingCalculation(engine.CalcJob):
     @classmethod
     def define(cls, spec):
@@ -25,7 +41,11 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             valid_type=orm.RemoteData,
             help="CP2K diagonalization folder containing the WFN, coordinates, and CP2K input.",
         )
-        spec.input("primitive_vectors", valid_type=orm.Str)
+        spec.input(
+            "primitive_vectors",
+            valid_type=orm.Str,
+            validator=validate_primitive_vectors,
+        )
         spec.input(
             "path",
             valid_type=orm.Str,
