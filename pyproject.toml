@@ -57,6 +57,7 @@ dev = [
 "nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.parsers:GaussianCasscfParser"
 "nanotech_empa.sparse_overlap" = "aiida_nanotech_empa.parsers:SparseOverlapParser"
 "nanotech_empa.bader" = "aiida_nanotech_empa.parsers:BaderParser"
+"nanotech_empa.cp2k_unfolding" = "aiida_nanotech_empa.parsers:Cp2kUnfoldingParser"
 
 [project.entry-points."aiida.calculations"]
 "nanotech_empa.stm" = "aiida_nanotech_empa.plugins:StmCalculation"

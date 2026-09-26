@@ -1,9 +1,13 @@
+import io
+
 from aiida import orm, plugins
 from aiida.common.folders import SandboxFolder
+from aiida.common.links import LinkType
 from aiida.engine.utils import instantiate_process
 from aiida.manage import get_manager
 
 Cp2kUnfoldingCalculation = plugins.CalculationFactory("nanotech_empa.cp2k_unfolding")
+Cp2kUnfoldingParser = plugins.ParserFactory("nanotech_empa.cp2k_unfolding")
 
 
 def test_unfolding_additional_retrieve_list_extends(aiida_localhost):
@@ -28,3 +32,31 @@ def test_unfolding_additional_retrieve_list_extends(aiida_localhost):
         calcinfo = process.prepare_for_submission(folder)
 
     assert calcinfo.retrieve_list == ["unfolding_bands.npz", "aiida.out"]
+
+
+def _unfolding_node(computer, retrieved_files):
+    node = orm.CalcJobNode(
+        computer=computer,
+        process_type="aiida.calculations:nanotech_empa.cp2k_unfolding",
+    )
+    node.set_option("resources", {"num_machines": 1, "num_mpiprocs_per_machine": 1})
+    output_filename = orm.Str("unfolding_bands.npz").store()
+    node.base.links.add_incoming(
+        output_filename, LinkType.INPUT_CALC, "output_filename"
+    )
+    node.store()
+
+    retrieved = orm.FolderData()
+    for name in retrieved_files:
+        retrieved.base.repository.put_object_from_filelike(io.BytesIO(b""), name)
+    retrieved.base.links.add_incoming(node, LinkType.CREATE, "retrieved")
+    retrieved.store()
+    return node
+
+
+def test_unfolding_parser_requires_output_file(aiida_localhost):
+    present = _unfolding_node(aiida_localhost, ["unfolding_bands.npz"])
+    assert Cp2kUnfoldingParser(present).parse() is None
+
+    missing = _unfolding_node(aiida_localhost, [])
+    assert Cp2kUnfoldingParser(missing).parse().status == 300

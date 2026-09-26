@@ -77,6 +77,17 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             "retrieve on top of 'output_filename'.",
         )
         spec.input("metadata.options.withmpi", valid_type=bool, default=False)
+        spec.input(
+            "metadata.options.parser_name",
+            valid_type=str,
+            default="nanotech_empa.cp2k_unfolding",
+        )
+
+        spec.exit_code(
+            300,
+            "ERROR_OUTPUT_FILE_MISSING",
+            message="The unfolded band output file was not retrieved.",
+        )
 
     def prepare_for_submission(self, folder):
         settings = self.inputs.settings.get_dict() if "settings" in self.inputs else {}
