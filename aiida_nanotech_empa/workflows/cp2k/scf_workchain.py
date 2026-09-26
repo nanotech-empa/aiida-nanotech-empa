@@ -76,7 +76,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             valid_type=orm.Float,
             default=lambda: orm.Float(1.0e-10),
             required=False,
-            help="Absolute-value threshold for retrieved sparse overlap entries.",
+            help="Absolute-value threshold below which AO overlap entries are "
+            "dropped, both in the retrieved sparse overlap and in band unfolding.",
         )
         spec.input(
             "bader_code",
@@ -98,9 +99,10 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             "unfolding_code",
             valid_type=orm.Code,
             required=False,
-            help="Python code configured for the nanotech_empa.cp2k_unfolding plugin. "
-            "If given, the diagonalization SCF wavefunction and AO overlap matrix "
-            "are post-processed into unfolded band weights.",
+            help="Code running cp2k-spm-tools' 'cp2k-unfold-wfn-sparse', configured "
+            "for the nanotech_empa.cp2k_unfolding plugin. If given, the "
+            "diagonalization SCF wavefunction and AO overlap matrix are "
+            "post-processed into unfolded band weights. Requires 'added_mos' > 0.",
         )
         spec.input(
             "unfolding_primitive_vectors",
@@ -164,6 +166,11 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         ):
             return (
                 "'unfolding_code' requires a periodic system, not 'periodic': 'NONE'."
+            )
+        if "unfolding_code" in value and value["dft_params"].get("added_mos", 0) <= 0:
+            return (
+                "'unfolding_code' needs unoccupied orbitals in the wavefunction: "
+                "set 'added_mos' > 0 in 'dft_params'."
             )
 
         if "bader_code" in value and value["run_diag_scf"].value:

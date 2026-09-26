@@ -57,58 +57,44 @@ def test_validator_diag_only_inputs(run_diag_scf, dft_params, with_settings, rej
 
 
 @pytest.mark.parametrize(
-    ("run_diag_scf", "overlap_matrix", "rejected"),
+    ("run_diag_scf", "overlap_matrix", "primitive_vectors", "dft_params", "rejected"),
     [
-        (False, "remote_only", True),
-        (True, "none", True),
-        (True, "remote_only", False),
+        # All unfolding requirements are met.
+        (True, "remote_only", "1 0 0; 0 1 0", {"added_mos": 10}, None),
+        # Unfolding reads the diagonalization WFN and the AO overlap matrix.
+        (False, "remote_only", "1 0 0; 0 1 0", {"added_mos": 10}, "run_diag_scf"),
+        (True, "none", "1 0 0; 0 1 0", {"added_mos": 10}, "overlap_matrix"),
+        (True, "remote_only", None, {"added_mos": 10}, "unfolding_primitive_vectors"),
+        # Unfolding needs a periodic lattice.
+        (
+            True,
+            "remote_only",
+            "1 0 0; 0 1 0",
+            {"added_mos": 10, "periodic": "NONE"},
+            "periodic",
+        ),
+        # cp2k-spm-tools needs the LUMO to set its energy reference.
+        (True, "remote_only", "1 0 0; 0 1 0", {}, "added_mos"),
     ],
 )
-def test_validator_unfolding_requires_diag_and_overlap(
-    run_diag_scf, overlap_matrix, rejected
+def test_validator_unfolding(
+    run_diag_scf, overlap_matrix, primitive_vectors, dft_params, rejected
 ):
-    message = Cp2kScfWorkChain._validate_inputs(
-        {
-            "run_diag_scf": orm.Bool(run_diag_scf),
-            "overlap_matrix": orm.Str(overlap_matrix),
-            "unfolding_code": object(),  # the validator only checks presence
-            "unfolding_primitive_vectors": orm.Str("1 0 0; 0 1 0"),
-            "dft_params": orm.Dict(),
-        },
-        None,
-    )
+    inputs = {
+        "run_diag_scf": orm.Bool(run_diag_scf),
+        "overlap_matrix": orm.Str(overlap_matrix),
+        "unfolding_code": object(),  # the validator only checks presence
+        "dft_params": orm.Dict(dft_params),
+    }
+    if primitive_vectors is not None:
+        inputs["unfolding_primitive_vectors"] = orm.Str(primitive_vectors)
 
-    if rejected:
-        assert "unfolding_code" in message
-    else:
+    message = Cp2kScfWorkChain._validate_inputs(inputs, None)
+
+    if rejected is None:
         assert message is None
-
-
-def test_validator_unfolding_requires_primitive_vectors():
-    message = Cp2kScfWorkChain._validate_inputs(
-        {
-            "run_diag_scf": orm.Bool(True),
-            "overlap_matrix": orm.Str("remote_only"),
-            "unfolding_code": object(),  # the validator only checks presence
-            "dft_params": orm.Dict(),
-        },
-        None,
-    )
-    assert "unfolding_primitive_vectors" in message
-
-
-def test_validator_unfolding_rejects_non_periodic():
-    message = Cp2kScfWorkChain._validate_inputs(
-        {
-            "run_diag_scf": orm.Bool(True),
-            "overlap_matrix": orm.Str("remote_only"),
-            "unfolding_code": object(),  # the validator only checks presence
-            "unfolding_primitive_vectors": orm.Str("1 0 0; 0 1 0"),
-            "dft_params": orm.Dict({"periodic": "NONE"}),
-        },
-        None,
-    )
-    assert "periodic" in message
+    else:
+        assert rejected in message
 
 
 @pytest.mark.parametrize(
