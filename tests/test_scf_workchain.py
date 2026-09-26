@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from aiida import orm, plugins
@@ -87,3 +88,50 @@ def test_overlap_matrix_printed_in_last_scf_step(
         assert ao_matrices["NDIGITS"] == 10
     else:
         assert "PRINT" not in input_dict["FORCE_EVAL"]["DFT"]
+
+
+@pytest.mark.parametrize("run_diag_scf", [False, True])
+@pytest.mark.parametrize("already_tagged", [False, True])
+def test_finalize_surfaces_outputs(run_diag_scf, already_tagged):
+    """Expose OT outputs and append the workflow to the structure's search tag."""
+    structure = orm.StructureData(pbc=False)
+    structure.append_atom(position=(0.0, 0.0, 0.0), symbols="H")
+    structure.store()
+    previous_workflows = [str(uuid4())] if already_tagged else []
+    if already_tagged:
+        structure.base.extras.set("surfaces", previous_workflows)
+
+    ot_scf, diag_scf = (
+        SimpleNamespace(
+            is_finished_ok=True,
+            outputs=SimpleNamespace(
+                output_parameters=object(), remote_folder=object(), retrieved=object()
+            ),
+        )
+        for _ in range(2)
+    )
+    outputs = {}
+    workchain = SimpleNamespace(
+        node=SimpleNamespace(uuid=str(uuid4())),
+        inputs=SimpleNamespace(structure=structure),
+        ctx=SimpleNamespace(ot_scf=ot_scf, diag_scf=diag_scf),
+        should_run_diag_scf=lambda: run_diag_scf,
+        should_run_sparse_overlap=lambda: False,
+        should_run_bader=lambda: False,
+        out=outputs.__setitem__,
+        report=lambda message: None,
+    )
+
+    Cp2kScfWorkChain.finalize(workchain)
+
+    final_calc = diag_scf if run_diag_scf else ot_scf
+    assert outputs == {
+        "output_parameters": final_calc.outputs.output_parameters,
+        "remote_folder": final_calc.outputs.remote_folder,
+        "retrieved": final_calc.outputs.retrieved,
+        "ot_retrieved": ot_scf.outputs.retrieved,
+    }
+    assert orm.load_node(structure.uuid).base.extras.get("surfaces") == [
+        *previous_workflows,
+        workchain.node.uuid,
+    ]
