@@ -8,6 +8,12 @@ DEFAULT_CP2K_INPUT_FILENAME = "aiida.inp"
 DEFAULT_OUTPUT_FILENAME = "unfolding_bands.npz"
 DEFAULT_PATH = "G-K-M-G"
 DEFAULT_LATTICE_TYPE = "auto"
+LATTICE_TYPES = ("auto", "1d", "square", "rectangular", "hexagonal", "oblique")
+
+
+def validate_lattice_type(value, _):
+    if value.value not in LATTICE_TYPES:
+        return f"must be one of {', '.join(LATTICE_TYPES)}."
 
 
 class Cp2kUnfoldingCalculation(engine.CalcJob):
@@ -31,6 +37,7 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             valid_type=orm.Str,
             default=lambda: orm.Str(DEFAULT_LATTICE_TYPE),
             required=False,
+            validator=validate_lattice_type,
         )
         spec.input("emin", valid_type=orm.Float, required=False)
         spec.input("emax", valid_type=orm.Float, required=False)

@@ -1,10 +1,13 @@
 import io
 
+import pytest
 from aiida import orm, plugins
 from aiida.common.folders import SandboxFolder
 from aiida.common.links import LinkType
 from aiida.engine.utils import instantiate_process
 from aiida.manage import get_manager
+
+from aiida_nanotech_empa.plugins import unfolding
 
 Cp2kUnfoldingCalculation = plugins.CalculationFactory("nanotech_empa.cp2k_unfolding")
 Cp2kUnfoldingParser = plugins.ParserFactory("nanotech_empa.cp2k_unfolding")
@@ -60,3 +63,15 @@ def test_unfolding_parser_requires_output_file(aiida_localhost):
 
     missing = _unfolding_node(aiida_localhost, [])
     assert Cp2kUnfoldingParser(missing).parse().status == 300
+
+
+@pytest.mark.parametrize(
+    ("lattice_type", "valid"), [("hexagonal", True), ("hexagnal", False)]
+)
+def test_validate_lattice_type(lattice_type, valid):
+    message = unfolding.validate_lattice_type(orm.Str(lattice_type), None)
+
+    if valid:
+        assert message is None
+    else:
+        assert "hexagonal" in message

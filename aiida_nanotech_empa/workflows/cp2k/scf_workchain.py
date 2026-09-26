@@ -120,7 +120,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             valid_type=orm.Str,
             default=lambda: orm.Str(unfolding.DEFAULT_LATTICE_TYPE),
             required=False,
-            help="1d, square, rectangular, hexagonal, oblique, or auto.",
+            validator=unfolding.validate_lattice_type,
+            help=f"One of {', '.join(unfolding.LATTICE_TYPES)}.",
         )
         spec.outline(
             cls.setup,
