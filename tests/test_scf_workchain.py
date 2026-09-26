@@ -57,28 +57,60 @@ def test_validator_diag_only_inputs(run_diag_scf, dft_params, with_settings, rej
 
 
 @pytest.mark.parametrize(
-    ("run_diag_scf", "overlap_matrix", "primitive_vectors", "dft_params", "rejected"),
+    (
+        "run_diag_scf",
+        "overlap_matrix",
+        "primitive_vectors",
+        "dft_params",
+        "window",
+        "rejected",
+    ),
     [
-        # All unfolding requirements are met.
-        (True, "remote_only", "1 0 0; 0 1 0", {"added_mos": 10}, None),
+        # All unfolding requirements are met, with and without an energy window.
+        (True, "remote_only", "1 0 0; 0 1 0", {"added_mos": 10}, {}, None),
+        (
+            True,
+            "remote_only",
+            "1 0 0; 0 1 0",
+            {"added_mos": 10},
+            {"unfolding_emin": -2.0, "unfolding_emax": 2.0},
+            None,
+        ),
         # Unfolding reads the diagonalization WFN and the AO overlap matrix.
-        (False, "remote_only", "1 0 0; 0 1 0", {"added_mos": 10}, "run_diag_scf"),
-        (True, "none", "1 0 0; 0 1 0", {"added_mos": 10}, "overlap_matrix"),
-        (True, "remote_only", None, {"added_mos": 10}, "unfolding_primitive_vectors"),
+        (False, "remote_only", "1 0 0; 0 1 0", {"added_mos": 10}, {}, "run_diag_scf"),
+        (True, "none", "1 0 0; 0 1 0", {"added_mos": 10}, {}, "overlap_matrix"),
+        (
+            True,
+            "remote_only",
+            None,
+            {"added_mos": 10},
+            {},
+            "unfolding_primitive_vectors",
+        ),
         # Unfolding needs a periodic lattice.
         (
             True,
             "remote_only",
             "1 0 0; 0 1 0",
             {"added_mos": 10, "periodic": "NONE"},
+            {},
             "periodic",
         ),
         # cp2k-spm-tools needs the LUMO to set its energy reference.
-        (True, "remote_only", "1 0 0; 0 1 0", {}, "added_mos"),
+        (True, "remote_only", "1 0 0; 0 1 0", {}, {}, "added_mos"),
+        # cp2k-spm-tools ignores a one-sided energy window.
+        (
+            True,
+            "remote_only",
+            "1 0 0; 0 1 0",
+            {"added_mos": 10},
+            {"unfolding_emin": -2.0},
+            "unfolding_emax",
+        ),
     ],
 )
 def test_validator_unfolding(
-    run_diag_scf, overlap_matrix, primitive_vectors, dft_params, rejected
+    run_diag_scf, overlap_matrix, primitive_vectors, dft_params, window, rejected
 ):
     inputs = {
         "run_diag_scf": orm.Bool(run_diag_scf),
@@ -88,6 +120,7 @@ def test_validator_unfolding(
     }
     if primitive_vectors is not None:
         inputs["unfolding_primitive_vectors"] = orm.Str(primitive_vectors)
+    inputs.update({key: orm.Float(bound) for key, bound in window.items()})
 
     message = Cp2kScfWorkChain._validate_inputs(inputs, None)
 

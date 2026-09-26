@@ -128,6 +128,20 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             validator=unfolding.validate_lattice_type,
             help=f"One of {', '.join(unfolding.LATTICE_TYPES)}.",
         )
+        spec.input(
+            "unfolding_emin",
+            valid_type=orm.Float,
+            required=False,
+            help="Lower bound (eV) of the unfolded energy window, relative to the "
+            "middle of the HOMO-LUMO gap. Set together with 'unfolding_emax'; "
+            "without a window, all bands in the wavefunction are unfolded.",
+        )
+        spec.input(
+            "unfolding_emax",
+            valid_type=orm.Float,
+            required=False,
+            help="Upper bound (eV) of the unfolded energy window, see 'unfolding_emin'.",
+        )
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -175,6 +189,11 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "'unfolding_code' needs unoccupied orbitals in the wavefunction: "
                 "set 'added_mos' > 0 in 'dft_params'."
             )
+        window_error = unfolding.validate_energy_window(
+            value, "unfolding_emin", "unfolding_emax"
+        )
+        if window_error:
+            return window_error
 
         if "bader_code" in value and value["run_diag_scf"].value:
             return (
@@ -275,6 +294,9 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.path = self.inputs.unfolding_path
         builder.lattice_type = self.inputs.unfolding_lattice_type
         builder.overlap_threshold = self.inputs.overlap_threshold
+        if "unfolding_emin" in self.inputs:
+            builder.emin = self.inputs.unfolding_emin
+            builder.emax = self.inputs.unfolding_emax
         builder.metadata = self._serial_postprocessing_metadata("cp2k_unfolding")
         return engine.ToContext(unfolding=self.submit(builder))
 

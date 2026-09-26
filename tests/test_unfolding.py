@@ -96,3 +96,23 @@ def test_validate_primitive_vectors(primitive_vectors, valid):
         assert message is None
     else:
         assert "three numbers" in message
+
+
+@pytest.mark.parametrize(
+    ("window", "error"),
+    [
+        ({}, None),
+        ({"emin": -2.0, "emax": 2.0}, None),
+        ({"emin": -2.0}, "set together"),
+        ({"emin": 2.0, "emax": -2.0}, "lower than"),
+    ],
+)
+def test_validate_energy_window(window, error):
+    inputs = {key: orm.Float(bound) for key, bound in window.items()}
+
+    message = unfolding.validate_energy_window(inputs, "emin", "emax")
+
+    if error is None:
+        assert message is None
+    else:
+        assert error in message

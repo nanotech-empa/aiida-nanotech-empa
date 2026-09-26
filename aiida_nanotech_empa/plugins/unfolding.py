@@ -32,6 +32,16 @@ def validate_primitive_vectors(value, _):
         )
 
 
+def validate_energy_window(inputs, emin_key, emax_key):
+    if (emin_key in inputs) != (emax_key in inputs):
+        return (
+            f"'{emin_key}' and '{emax_key}' must be set together: "
+            "cp2k-spm-tools ignores a one-sided energy window."
+        )
+    if emin_key in inputs and inputs[emin_key].value >= inputs[emax_key].value:
+        return f"'{emin_key}' must be lower than '{emax_key}'."
+
+
 class Cp2kUnfoldingCalculation(engine.CalcJob):
     @classmethod
     def define(cls, spec):
@@ -59,8 +69,19 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             required=False,
             validator=validate_lattice_type,
         )
-        spec.input("emin", valid_type=orm.Float, required=False)
-        spec.input("emax", valid_type=orm.Float, required=False)
+        spec.input(
+            "emin",
+            valid_type=orm.Float,
+            required=False,
+            help="Lower bound (eV) of the unfolded energy window, relative to the "
+            "middle of the HOMO-LUMO gap. Set together with 'emax'.",
+        )
+        spec.input(
+            "emax",
+            valid_type=orm.Float,
+            required=False,
+            help="Upper bound (eV) of the unfolded energy window, see 'emin'.",
+        )
         spec.input(
             "wfn_filename",
             valid_type=orm.Str,
@@ -119,6 +140,9 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
         )
 
     def prepare_for_submission(self, folder):
+        window_error = validate_energy_window(self.inputs, "emin", "emax")
+        if window_error:
+            raise common.InputValidationError(window_error)
         settings = self.inputs.settings.get_dict()
         output_filename = self.inputs.output_filename.value
 
