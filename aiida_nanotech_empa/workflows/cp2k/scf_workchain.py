@@ -95,17 +95,12 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             "runs. A higher cutoff from 'dft_params' or the structure is kept.",
         )
         spec.input(
-            "compute_unfolding",
-            valid_type=orm.Bool,
-            default=lambda: orm.Bool(False),
-            required=False,
-            help="Post-process WFN and sparse AO overlap into unfolded band weights.",
-        )
-        spec.input(
             "unfolding_code",
             valid_type=orm.Code,
             required=False,
-            help="Python code configured for the nanotech_empa.cp2k_unfolding plugin.",
+            help="Python code configured for the nanotech_empa.cp2k_unfolding plugin. "
+            "If given, the diagonalization SCF wavefunction and AO overlap matrix "
+            "are post-processed into unfolded band weights.",
         )
         spec.input(
             "unfolding_primitive_vectors",
@@ -137,11 +132,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             cls.finalize,
         )
         spec.exit_code(
-            393,
-            "ERROR_MISSING_UNFOLDING_CODE",
-            message="An unfolding code is required to compute band unfolding.",
-        )
-        spec.exit_code(
             394,
             "ERROR_MISSING_UNFOLDING_PRIMITIVE_VECTORS",
             message="Primitive vectors are required to compute band unfolding.",
@@ -168,11 +158,11 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "'sparse_overlap_code' is required when "
                 "'overlap_matrix' is 'remote_and_sparse_retrieved'."
             )
-        if value.get("compute_unfolding", orm.Bool(False)).value and (
+        if "unfolding_code" in value and (
             not value["run_diag_scf"].value or overlap_matrix == "none"
         ):
             return (
-                "'compute_unfolding' uses the diagonalization SCF wavefunction and "
+                "'unfolding_code' uses the diagonalization SCF wavefunction and "
                 "AO overlap matrix: set 'run_diag_scf' and 'overlap_matrix'."
             )
 
@@ -203,7 +193,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         return self.inputs.overlap_matrix.value == "remote_and_sparse_retrieved"
 
     def should_run_unfolding(self):
-        return self.inputs.compute_unfolding.value
+        return "unfolding_code" in self.inputs
 
     def update_ot_input_dict(self, input_dict):
         # Bader reads the final OT density, printed on the full grid.
@@ -264,8 +254,6 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         return engine.ToContext(sparse_overlap=self.submit(builder))
 
     def run_unfolding(self):
-        if "unfolding_code" not in self.inputs:
-            return self.exit_codes.ERROR_MISSING_UNFOLDING_CODE
         if "unfolding_primitive_vectors" not in self.inputs:
             return self.exit_codes.ERROR_MISSING_UNFOLDING_PRIMITIVE_VECTORS
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):

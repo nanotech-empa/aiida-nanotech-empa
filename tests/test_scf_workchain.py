@@ -71,14 +71,14 @@ def test_validator_unfolding_requires_diag_and_overlap(
         {
             "run_diag_scf": orm.Bool(run_diag_scf),
             "overlap_matrix": orm.Str(overlap_matrix),
-            "compute_unfolding": orm.Bool(True),
+            "unfolding_code": object(),  # the validator only checks presence
             "dft_params": orm.Dict(),
         },
         None,
     )
 
     if rejected:
-        assert "compute_unfolding" in message
+        assert "unfolding_code" in message
     else:
         assert message is None
 
@@ -100,7 +100,6 @@ def test_overlap_matrix_printed_in_last_scf_step(
     workchain = SimpleNamespace(
         inputs=SimpleNamespace(
             run_diag_scf=orm.Bool(run_diag_scf),
-            compute_unfolding=orm.Bool(False),
             overlap_matrix=orm.Str(overlap_matrix),
             overlap_ndigits=orm.Int(10),
         ),
