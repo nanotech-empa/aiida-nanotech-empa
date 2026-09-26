@@ -158,6 +158,13 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             )
         if "unfolding_code" in value and "unfolding_primitive_vectors" not in value:
             return "'unfolding_primitive_vectors' is required with 'unfolding_code'."
+        if (
+            "unfolding_code" in value
+            and value["dft_params"].get("periodic", "XYZ") == "NONE"
+        ):
+            return (
+                "'unfolding_code' requires a periodic system, not 'periodic': 'NONE'."
+            )
 
         if "bader_code" in value and value["run_diag_scf"].value:
             return (
