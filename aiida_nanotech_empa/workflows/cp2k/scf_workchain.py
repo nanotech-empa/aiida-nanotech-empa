@@ -126,7 +126,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             default=lambda: orm.Str(unfolding.DEFAULT_LATTICE_TYPE),
             required=False,
             validator=unfolding.validate_lattice_type,
-            help=f"One of {', '.join(unfolding.LATTICE_TYPES)}.",
+            help=unfolding.LATTICE_TYPE_HELP,
         )
         spec.input(
             "unfolding_emin",

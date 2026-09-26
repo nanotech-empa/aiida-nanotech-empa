@@ -16,6 +16,12 @@ LATTICE_TYPES = (
     "hexagonal",
     "oblique",
 )
+LATTICE_TYPE_HELP = (
+    f"One of {', '.join(LATTICE_TYPES)}. The lattice is set by the primitive "
+    "vectors (for example, rectangular vectors unfold a hexagonal lattice onto "
+    "its rectangular cell). An explicit value only checks that it matches, and "
+    "the unfolding job fails otherwise."
+)
 
 
 def validate_lattice_type(value, _):
@@ -75,6 +81,7 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             default=lambda: orm.Str(DEFAULT_LATTICE_TYPE),
             required=False,
             validator=validate_lattice_type,
+            help=LATTICE_TYPE_HELP,
         )
         spec.input(
             "emin",
