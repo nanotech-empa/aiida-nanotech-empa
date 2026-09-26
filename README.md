@@ -5,18 +5,31 @@
 
 # aiida-nanotech-empa
 
-AiiDA library containing plugins/workflows developed at nanotech@surfaces group from Empa.
+AiiDA library containing plugins, parsers, and workflows developed by the nanotech@surfaces group at Empa.
 
-Contents:
+The package focuses on automation around CP2K, Gaussian, Quantum ESPRESSO, and post-processing tools used in surface-science workflows. It is also used by the `aiidalab-empa-surfaces` app.
 
-* `nanotech_empa.nanoribbon`: work chain to characterize 1D periodic systems based on Quantum Espresso.
+## Contents
 
-* `nanotech_empa.gaussian.spin`: Work chain to characterize spin properties of molecular systems with Gaussian. Calls multiple child work chains. Steps:
-  * Wavefunction stability is tested for each spin multiplicity
-  * Geometry is relaxed for the different spin states and ground state is found
-  * Property calcuation on the ground state: ionization potential and electron affinity with Δ-SCF, natural orbital analysis in case of open-shell singlet
-  * Vertical excitation energies for non-ground state multiplicities
-  * Orbitals and densities are rendered with PyMOL (needs to be installed separately as a python library, e.g. from [pymol-open-source](https://github.com/schrodinger/pymol-open-source/tree/v2.4.0))
+### CP2K workflows
+
+* `nanotech_empa.cp2k.geo_opt`: CP2K geometry and cell optimization workflows with restart handling and optional cube post-processing.
+* `nanotech_empa.cp2k.scf`: single-point CP2K SCF workflow. It can run an OT-only energy calculation, an optional diagonalization step for empty states and AO overlap matrices, sparse AO-overlap retrieval, or Bader charge analysis from a fine charge-density cube.
+* `nanotech_empa.cp2k.diag`: OT plus diagonalization SCF workflow used by STM/PDOS-style workflows and by the SCF workflow.
+* `nanotech_empa.cp2k.stm`, `nanotech_empa.cp2k.afm`, `nanotech_empa.cp2k.hrstm`, `nanotech_empa.cp2k.orbitals`, `nanotech_empa.cp2k.pdos`: workflows for scanning-probe simulations, orbital cubes, and projected density of states.
+* `nanotech_empa.cp2k.fragment_separation`, `nanotech_empa.cp2k.replica`, `nanotech_empa.cp2k.neb`, `nanotech_empa.cp2k.phonons`: workflows for adsorption energies, replica chains, nudged elastic band calculations, and phonons.
+* `nanotech_empa.cp2k.ads_gw_ic`, `nanotech_empa.cp2k.molecule_gw`, `nanotech_empa.cp2k.mol_opt_gw`: CP2K/GW-oriented workflows.
+
+### Calculation plugins
+
+* `nanotech_empa.bader`: runs Bader charge analysis and retrieves `ACF.dat`, `AVF.dat`, and `BCF.dat`.
+* `nanotech_empa.sparse_overlap`: converts CP2K AO overlap matrix logs to sparse `.npz` files using an external converter executable.
+* `nanotech_empa.stm`, `nanotech_empa.overlap`, `nanotech_empa.afm`, `nanotech_empa.hrstm`, `nanotech_empa.cubehandler`: post-processing plugins used by the CP2K workflows.
+
+### Gaussian and Quantum ESPRESSO workflows
+
+* `nanotech_empa.gaussian.*`: Gaussian workflows for SCF, relaxations, spin-state analysis, constrained optimization, CASSCF, NICS, and related post-processing.
+* `nanotech_empa.nanoribbon`: workflow to characterize 1D periodic systems with Quantum ESPRESSO.
 
 ## Installation
 
