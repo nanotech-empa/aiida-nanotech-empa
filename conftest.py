@@ -126,7 +126,9 @@ def cp2k_code(local_code_factory):
     executable = "cp2k.ssmp" if shutil.which("cp2k.ssmp") else "cp2k"
     if not shutil.which(executable):
         pytest.skip("CP2K executable not available")
-    prepend_text = "export OMP_NUM_THREADS=2"
+    # Hosted GitHub runners for public repositories have 4 vCPUs, and the
+    # examples run one CP2K calculation at a time.
+    prepend_text = "export OMP_NUM_THREADS=4"
     return local_code_factory("cp2k", executable, prepend_text=prepend_text)
 
 

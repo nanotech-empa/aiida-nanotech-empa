@@ -83,7 +83,7 @@ jobs:
           bash .github/install_spm_tools.sh
       - name: Run pytest
         run: |
-          pytest examples/ --cov-report=xml --cov=aiida_nanotech_empa
+          pytest examples/ --durations=15 --cov-report=xml --cov=aiida_nanotech_empa
       - name: Upload coverage to codecov
         uses: codecov/codecov-action@v1
         with:
