@@ -42,6 +42,34 @@ def test_unfolding_additional_retrieve_list_extends(aiida_localhost):
     assert calcinfo.retrieve_list == ["unfolding_bands.npz", "aiida.out"]
 
 
+@pytest.mark.parametrize("parse_pdos_projections", [False, True])
+def test_unfolding_pdos_projections(aiida_localhost, parse_pdos_projections):
+    calcinfo = _prepare_submission(
+        aiida_localhost,
+        parse_pdos_projections=orm.Bool(parse_pdos_projections),
+        pdos_threshold=orm.Float(1e-3),
+        settings=orm.Dict({"additional_retrieve_list": ["aiida.out"]}),
+    )
+    command = calcinfo.codes_info[0].cmdline_params
+
+    if parse_pdos_projections:
+        assert command[command.index("--pdos-glob") + 1] == (
+            "parent_calc_folder/aiida-*list*-1.pdos"
+        )
+        assert command[command.index("--pdos-output") + 1] == (
+            "unfolding_projections.npz"
+        )
+        assert command[command.index("--pdos-threshold") + 1] == "0.001"
+        assert calcinfo.retrieve_list == [
+            "unfolding_bands.npz",
+            "unfolding_projections.npz",
+            "aiida.out",
+        ]
+    else:
+        assert not any(arg.startswith("--pdos") for arg in command)
+        assert calcinfo.retrieve_list == ["unfolding_bands.npz", "aiida.out"]
+
+
 @pytest.mark.parametrize("path", [None, "", "G-X-M-G", "G-X-A1-Y-G"])
 def test_unfolding_path_is_optional(aiida_localhost, path):
     inputs = {} if path is None else {"path": orm.Str(path)}
@@ -57,16 +85,18 @@ def test_unfolding_path_is_optional(aiida_localhost, path):
         assert command[command.index("--path") + 1] == path
 
 
-def _unfolding_node(computer, retrieved_files):
+def _unfolding_node(computer, retrieved_files, parse_pdos_projections=False):
     node = orm.CalcJobNode(
         computer=computer,
         process_type="aiida.calculations:nanotech_empa.cp2k_unfolding",
     )
     node.set_option("resources", {"num_machines": 1, "num_mpiprocs_per_machine": 1})
-    output_filename = orm.Str("unfolding_bands.npz").store()
-    node.base.links.add_incoming(
-        output_filename, LinkType.INPUT_CALC, "output_filename"
-    )
+    for label, value in (
+        ("output_filename", orm.Str("unfolding_bands.npz")),
+        ("parse_pdos_projections", orm.Bool(parse_pdos_projections)),
+        ("pdos_projection_filename", orm.Str("unfolding_projections.npz")),
+    ):
+        node.base.links.add_incoming(value.store(), LinkType.INPUT_CALC, label)
     node.store()
 
     retrieved = orm.FolderData()
@@ -83,6 +113,20 @@ def test_unfolding_parser_requires_output_file(aiida_localhost):
 
     missing = _unfolding_node(aiida_localhost, [])
     assert Cp2kUnfoldingParser(missing).parse().status == 300
+
+
+def test_unfolding_parser_requires_pdos_projection_file(aiida_localhost):
+    present = _unfolding_node(
+        aiida_localhost,
+        ["unfolding_bands.npz", "unfolding_projections.npz"],
+        parse_pdos_projections=True,
+    )
+    assert Cp2kUnfoldingParser(present).parse() is None
+
+    missing = _unfolding_node(
+        aiida_localhost, ["unfolding_bands.npz"], parse_pdos_projections=True
+    )
+    assert Cp2kUnfoldingParser(missing).parse().status == 301
 
 
 @pytest.mark.parametrize(
