@@ -57,12 +57,14 @@ dev = [
 "nanotech_empa.gaussian.casscf" = "aiida_nanotech_empa.parsers:GaussianCasscfParser"
 "nanotech_empa.sparse_overlap" = "aiida_nanotech_empa.parsers:SparseOverlapParser"
 "nanotech_empa.bader" = "aiida_nanotech_empa.parsers:BaderParser"
+"nanotech_empa.cp2k_unfolding" = "aiida_nanotech_empa.parsers:Cp2kUnfoldingParser"
 
 [project.entry-points."aiida.calculations"]
 "nanotech_empa.stm" = "aiida_nanotech_empa.plugins:StmCalculation"
 "nanotech_empa.overlap" = "aiida_nanotech_empa.plugins:OverlapCalculation"
 "nanotech_empa.sparse_overlap" = "aiida_nanotech_empa.plugins:SparseOverlapCalculation"
 "nanotech_empa.bader" = "aiida_nanotech_empa.plugins:BaderCalculation"
+"nanotech_empa.cp2k_unfolding" = "aiida_nanotech_empa.plugins:Cp2kUnfoldingCalculation"
 "nanotech_empa.afm" = "aiida_nanotech_empa.plugins:AfmCalculation"
 "nanotech_empa.hrstm" = "aiida_nanotech_empa.plugins:HrstmCalculation"
 "nanotech_empa.cubehandler" = "aiida_nanotech_empa.plugins:CubeHandlerCalculation"
