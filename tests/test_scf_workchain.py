@@ -130,6 +130,22 @@ def test_validator_unfolding(
         assert rejected in message
 
 
+def test_validator_unfolding_rejects_pdos_lists():
+    # Unfolding writes one PDOS list per atom, which would replace 'pdos_lists'.
+    inputs = {
+        "run_diag_scf": orm.Bool(True),
+        "overlap_matrix": orm.Str("remote_only"),
+        "unfolding_code": object(),  # the validator only checks presence
+        "unfolding_primitive_vectors": orm.Str("1 0 0; 0 1 0"),
+        "dft_params": orm.Dict({"added_mos": 10}),
+        "pdos_lists": orm.List([("1..4", "molecule")]),
+    }
+
+    message = Cp2kScfWorkChain._validate_inputs(inputs, None)
+
+    assert "pdos_lists" in message
+
+
 @pytest.mark.parametrize(
     ("hook", "run_diag_scf", "overlap_matrix", "printed"),
     [

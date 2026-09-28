@@ -196,6 +196,11 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "'unfolding_code' needs unoccupied orbitals in the wavefunction: "
                 "set 'added_mos' > 0 in 'dft_params'."
             )
+        if "unfolding_code" in value and "pdos_lists" in value:
+            return (
+                "'unfolding_code' prints one PDOS list per atom and cannot be "
+                "combined with 'pdos_lists'."
+            )
         window_error = unfolding.validate_energy_window(
             value, "unfolding_emin", "unfolding_emax"
         )
