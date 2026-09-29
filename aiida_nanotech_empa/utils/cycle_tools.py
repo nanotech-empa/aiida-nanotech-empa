@@ -13,7 +13,6 @@ def convert_neighbor_list(nl):
         new[i_v] = []
 
     for i_v, j_v in zip(nl[0], nl[1]):
-
         new[i_v].append(j_v)
 
     return new
@@ -34,7 +33,6 @@ def find_cycles(i_vert, cnl, max_length, cur_path, passed_edges):
     for n in neighbs:
         edge = (np.min([i_vert, n]), np.max([i_vert, n]))
         if edge not in passed_edges:
-
             if n in cur_path[1:]:
                 # path went too close to itself...
                 return []
@@ -43,7 +41,6 @@ def find_cycles(i_vert, cnl, max_length, cur_path, passed_edges):
     for n in neighbs:
         edge = (np.min([i_vert, n]), np.max([i_vert, n]))
         if edge not in passed_edges:
-
             if n == cur_path[0]:
                 # found cycle
                 return [cur_path]
@@ -52,7 +49,6 @@ def find_cycles(i_vert, cnl, max_length, cur_path, passed_edges):
     for n in neighbs:
         edge = (np.min([i_vert, n]), np.max([i_vert, n]))
         if edge not in passed_edges:
-
             cycs = find_cycles(
                 n, cnl, max_length, cur_path + [n], passed_edges + [edge]
             )
@@ -76,7 +72,6 @@ def dumb_cycle_detection(ase_atoms_no_h, max_length):
     cnl = convert_neighbor_list(neighbor_list)
 
     for i_vert in range(n_vert):
-
         cycs = find_cycles(i_vert, cnl, max_length, [i_vert], [])
         for cyc in cycs:
             sorted_cyc = tuple(sorted(cyc))

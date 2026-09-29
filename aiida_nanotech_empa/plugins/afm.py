@@ -67,7 +67,7 @@ class AfmCalculation(engine.CalcJob):
             ),
         ]
         calcinfo.remote_copy_list = []
-        calcinfo.retrieve_list = ["*/*/*.npy"]
+        calcinfo.retrieve_list = ["*/*/*.npz"]
 
         # Symlinks.
         if "parent_calc_folder" in self.inputs:

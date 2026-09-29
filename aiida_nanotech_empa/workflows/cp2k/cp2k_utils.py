@@ -11,6 +11,51 @@ import ase
 import numpy as np
 import yaml
 from aiida import common, orm
+from aiida.engine.processes.workchains.restart import validate_on_unhandled_failure
+
+
+def add_restart_policy_inputs(spec):
+    """Expose the BaseRestartWorkChain restart policy as workchain inputs."""
+    spec.input(
+        "max_iterations",
+        valid_type=orm.Int,
+        default=lambda: orm.Int(5),
+        required=False,
+        help="Maximum number of CP2K restart attempts delegated to cp2k.base.",
+    )
+    spec.input(
+        "clean_workdir",
+        valid_type=orm.Bool,
+        default=lambda: orm.Bool(False),
+        required=False,
+        help="Clean called CP2K calculation work directories after termination.",
+    )
+    spec.input(
+        "on_unhandled_failure",
+        valid_type=orm.Str,
+        default=lambda: orm.Str("pause"),
+        required=False,
+        validator=validate_on_unhandled_failure,
+        help=(
+            "Action for unhandled cp2k.base failures: abort, pause, "
+            "restart_once, or restart_and_pause."
+        ),
+    )
+    spec.input(
+        "pause_on_max_iterations",
+        valid_type=orm.Bool,
+        default=lambda: orm.Bool(True),
+        required=False,
+        help="Pause cp2k.base for inspection when restart max_iterations is reached.",
+    )
+
+
+def set_restart_policy(inputs, builder):
+    """Propagate restart-policy inputs onto a cp2k.base-derived builder."""
+    builder.max_iterations = inputs.max_iterations
+    builder.clean_workdir = inputs.clean_workdir
+    builder.on_unhandled_failure = inputs.on_unhandled_failure
+    builder.pause_on_max_iterations = inputs.pause_on_max_iterations
 
 
 class SizeDifferentThanNumberOfAtomsError(ValueError):
@@ -541,18 +586,127 @@ def angle_between(v1, v2):
 
 def string_range_to_list(strng, shift=-1):
     """Converts a string like '1 3..5' into a list like [0, 2, 3, 4].
-    Shift used when e.g. for a user interface numbering starts from 1 not from 0"""
-    singles = [int(s) + shift for s in strng.split() if s.isdigit()]
-    ranges = [r for r in strng.split() if ".." in r]
-    if len(singles) + len(ranges) != len(strng.split()):
+    Shift used when e.g. for a user interface numbering starts from 1 not from 0.
+
+    Accepts commas, semicolons, and whitespace around range separators, e.g.
+    ``"1,2 4; 7 .. 10"``.
+    """
+    if strng is None:
         return [], False
-    for rng in ranges:
-        try:
-            start, end = rng.split("..")
-            singles += [i + shift for i in range(int(start), int(end) + 1)]
-        except ValueError:
+
+    normalized = re.sub(r"\s*\.\.\s*", "..", str(strng).strip())
+    normalized = re.sub(r"[,;]+", " ", normalized)
+    if not normalized:
+        return [], True
+
+    indexes = []
+    for item in normalized.split():
+        if not re.fullmatch(r"[+-]?\d+(?:\.\.[+-]?\d+)?", item):
             return [], False
-    return singles, True
+
+        if ".." in item:
+            start, end = (int(value) for value in item.split(".."))
+            if start > end:
+                return [], False
+            indexes.extend(i + shift for i in range(start, end + 1))
+        else:
+            indexes.append(int(item) + shift)
+
+    return indexes, True
+
+
+def _atom_indexes_to_cp2k_list(strng, compact_ranges=False):
+    """Normalize user atom-index text for CP2K LIST/ATOMS fields.
+
+    When ``compact_ranges`` is True, consecutive runs of 3+ atoms are rendered
+    as ``start..end`` ranges to keep long fixed-atom lists compact.
+    """
+    indexes, all_ok = string_range_to_list(strng, shift=0)
+    if not all_ok:
+        raise ValueError(f"Invalid atom index range: {strng!r}")
+
+    if not compact_ranges:
+        return " ".join(str(index) for index in indexes)
+
+    # Keep CP2K input compact by collapsing consecutive runs into ranges.
+    if not indexes:
+        return ""
+
+    compressed = []
+    start = indexes[0]
+    previous = indexes[0]
+
+    for index in indexes[1:]:
+        if index == previous + 1:
+            previous = index
+            continue
+
+        if previous - start >= 2:
+            compressed.append(f"{start}..{previous}")
+        else:
+            compressed.extend(str(i) for i in range(start, previous + 1))
+        start = index
+        previous = index
+
+    if previous - start >= 2:
+        compressed.append(f"{start}..{previous}")
+    else:
+        compressed.extend(str(i) for i in range(start, previous + 1))
+
+    return " ".join(compressed)
+
+
+def _is_atom_index_token(token):
+    token = str(token).strip()
+    if token == "..":
+        return True
+    if not token:
+        return False
+    _, all_ok = string_range_to_list(token, shift=0)
+    return all_ok
+
+
+def _collect_atom_index_tokens(details, pos):
+    ids = []
+    while pos < len(details) and _is_atom_index_token(details[pos]):
+        ids.append(details[pos])
+        pos += 1
+    return " ".join(ids), pos
+
+
+def _require_atom_index_end(details, pos, terminators):
+    token = details[pos].lower() if pos < len(details) else "end"
+    if token not in terminators:
+        raise ValueError(f"Invalid atom index token: {details[pos]!r}")
+
+
+def _split_input_sections(strng, section_keywords):
+    """Split comma-separated sections without splitting atom-index commas."""
+    if not strng:
+        return []
+    section_start = "|".join(re.escape(keyword) for keyword in section_keywords)
+    return [
+        section.strip()
+        for section in re.split(
+            rf"\s*,\s*(?=(?:{section_start})\b|$)",
+            strng.strip(),
+            flags=re.IGNORECASE,
+        )
+        if section.strip()
+    ]
+
+
+def _fixed_constraint_dict(const):
+    """Parse one fixed-atoms constraint preserving comma-separated atom indexes."""
+    indexes = re.sub(r"^\s*fixed\b", "", const, flags=re.IGNORECASE).strip()
+    xyz = "XYZ"
+
+    match = re.match(r"^(?P<components>[xyz]+)\b(?P<indexes>.*)$", indexes, re.I)
+    if match:
+        xyz = match.group("components").upper()
+        indexes = match.group("indexes").strip()
+
+    return fixed_dict(xyz, _atom_indexes_to_cp2k_list(indexes, compact_ranges=True))
 
 
 def is_number(s):
@@ -581,12 +735,9 @@ def collective_dict(details):
 
 def get_atoms(details):
     """Gets atom elements in a stirng deifnition of a CP2K CV."""
-    try:
-        last_id = 1 + min(i for i, j in enumerate(details[2:]) if not is_number(j))
-    except ValueError:
-        last_id = len(details) - 1
-    ids = " ".join(i for i in details[2 : last_id + 1])
-    return {"ATOMS": ids}
+    ids, pos = _collect_atom_index_tokens(details, 2)
+    _require_atom_index_end(details, pos, {"axis", "end"})
+    return {"ATOMS": _atom_indexes_to_cp2k_list(ids)}
 
 
 def get_ids(details, label=None):
@@ -597,17 +748,23 @@ def get_ids(details, label=None):
         for lab in labels:
             ids0 = ""
             pos = lab + 2
-            while is_number(details[pos]):
-                ids0 += details[pos] + " "
-                pos += 1
+            if details[lab + 1].lower() == "atoms":
+                ids0, pos = _collect_atom_index_tokens(details, pos)
+                _require_atom_index_end(details, pos, {"point", "plane", "axis", "end"})
+                ids0 = _atom_indexes_to_cp2k_list(ids0)
+            else:
+                while pos < len(details) and is_number(details[pos]):
+                    ids0 += details[pos] + " "
+                    pos += 1
             ids.append(ids0)
     else:
         labels = []
         ids = []
         pos = 1
-        while is_number(details[pos]):
-            ids.append(details[pos])
+        while pos < len(details) and _is_atom_index_token(details[pos]):
+            ids.append(_atom_indexes_to_cp2k_list(details[pos]))
             pos += 1
+        _require_atom_index_end(details, pos, {"end"})
     return labels, ids
 
 
@@ -895,7 +1052,10 @@ def eval_cv_bond_rotation(details, atoms):
 def get_colvars_section(colvars):
     """Creates the COLVAR CP2K input dictionary."""
     allcvs = []
-    colvars = colvars.split(",")
+    colvars = _split_input_sections(
+        colvars,
+        ["distance", "angle", "angle_plane_plane", "bond_rotation", "torsion"],
+    )
     for cv in colvars:
         details = cv.split()
         details.append("end")
@@ -916,22 +1076,14 @@ def get_colvars_section(colvars):
 def get_constraints_section(constraints):
     """Creates the CONSTRAINTS CP2K input dictionary."""
     constraints_dict = {}
-    constraints = constraints.split(",")
+    constraints = _split_input_sections(constraints, ["fixed", "collective"])
     fixed = []
     colvar = []
     for const in constraints:
         details = const.split()
         details.append("end")
         if "fixed" in details[0].lower():
-            # 'fixed xy 1..2 7 9' --> '1..2 7 9'
-            indexes = const.lower().replace("fixed", "")
-            indexes = indexes.replace("x", "")
-            indexes = indexes.replace("y", "")
-            indexes = indexes.replace("z", "")
-            xyz = "XYZ"
-            if any(c in details[1].upper() for c in ["X", "Y", "Z"]):
-                xyz = details[1].upper()
-            fixed.append(fixed_dict(xyz, indexes.strip()))
+            fixed.append(_fixed_constraint_dict(const))
         if "collective" in details[0].lower():
             colvar.append(collective_dict(details[1:]))
         if fixed:

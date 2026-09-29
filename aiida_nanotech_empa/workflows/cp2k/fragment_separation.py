@@ -2,11 +2,12 @@ import pathlib
 
 from aiida import engine, orm, plugins
 
-from ...utils import analyze_structure, common_utils, split_structure
+from ...utils import common_utils, split_structure, string_utils
 from . import cp2k_utils
 
 StructureData = plugins.DataFactory("core.structure")
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
+CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
 
 DATA_DIR = pathlib.Path(__file__).parent.absolute() / "data"
 
@@ -18,7 +19,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
     def define(cls, spec):
         super().define(spec)
         spec.input("code", valid_type=orm.Code)
-
+        spec.input("cubehandler_code", valid_type=orm.Code, required=False)
         # Specify the input structure and its fragments.
         spec.input(
             "structure", valid_type=StructureData, help="A molecule on a substrate."
@@ -73,12 +74,21 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             required=False,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         # in case wfn for the whole system is available and matches uks/rks parameters
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
 
         # Outline.
-        spec.outline(cls.setup, cls.run_scfs, cls.run_geo_opts, cls.finalize)
+        spec.outline(
+            cls.setup,
+            cls.run_scfs,
+            cls.run_geo_opts,
+            engine.if_(cls.should_run_cubehandler)(
+                cls.run_cubehandler,
+            ),
+            cls.finalize,
+        )
 
         # Dynamic outputs.
         spec.outputs.dynamic = True
@@ -89,6 +99,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+
+    def should_run_cubehandler(self):
+        return "cubehandler_code" in self.inputs
 
     def setup(self):
         """Setup the work chain."""
@@ -136,8 +149,8 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             )
 
             self.report(
-                f"""Running SCF for the fragment '{inputs['label']}' consisting of {len(inputs['structure'].sites)} atoms, """
-                f"""where {analyze_structure.list_to_string_range(inputs['fixed_atoms']) or 'None'} atoms are fixed."""
+                f"""Running SCF for the fragment '{inputs["label"]}' consisting of {len(inputs["structure"].sites)} atoms, """
+                f"""where {string_utils.list_to_string_range(inputs["fixed_atoms"]) or "None"} atoms are fixed."""
             )
 
             # Fragment's label.
@@ -146,6 +159,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             # Generic inputs that are always the same.
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.code = self.inputs.code
+            cp2k_utils.set_restart_policy(self.inputs, builder)
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
             # restart wfn in case of fragment 'all'
@@ -162,9 +176,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             input_dict["FORCE_EVAL"]["DFT"]["MGRID"]["CUTOFF"] = self.ctx.cutoff
 
             # Always compute charge density with STRIDE 2 2 2 for the SCF part of the work chain.
-            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"][
-                "STRIDE"
-            ] = "2 2 2"
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]["STRIDE"] = (
+                "1 1 1"
+            )
 
             # If charge is set, add it to the corresponding section of the input.
             if (
@@ -201,7 +215,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             # Fixed atoms
             if "fixed_atoms" in self.inputs:
                 input_dict["MOTION"]["CONSTRAINT"]["FIXED_ATOMS"]["LIST"] = (
-                    analyze_structure.list_to_string_range(inputs["fixed_atoms"])
+                    string_utils.list_to_string_range(inputs["fixed_atoms"])
                 )
 
             # Finally, append auxilary dictionaries to the input dictonary.
@@ -229,6 +243,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             # Generic inputs that are always the same.
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.code = self.inputs.code
+            cp2k_utils.set_restart_policy(self.inputs, builder)
             builder.cp2k.metadata.options = self.inputs.options[fragment]
             builder.cp2k.file = self.ctx.file
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
@@ -239,9 +254,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             input_dict["GLOBAL"]["RUN_TYPE"] = "GEO_OPT"
 
             # For the geometry optimisation, we reset STRIDE back to 4 4 4.
-            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"][
-                "STRIDE"
-            ] = "4 4 4"
+            input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["E_DENSITY_CUBE"]["STRIDE"] = (
+                "4 4 4"
+            )
 
             builder.cp2k.parameters = orm.Dict(dict=input_dict)
             builder.cp2k.parent_calc_folder = previous_calc.outputs.remote_folder
@@ -249,6 +264,69 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             submitted_node = self.submit(builder)
             self.to_context(**{f"opt.{fragment}": submitted_node})
+
+    def run_cubehandler(self):
+        """Run cubehandler to build a charge-difference cube via linear combination."""
+        self.report("Running CubeHandler (sum)")
+
+        builder = CubeHandlerCalculation.get_builder()
+        builder.code = self.inputs.cubehandler_code
+
+        # Ensure geometry/SCF steps succeeded for each fragment we expect.
+        # Prefer order: 'all' first (if present), then the rest in declared order.
+        frags = ["all"] + [f for f in self.inputs.fragments.keys() if f != "all"]
+
+        # Collect remote folders and construct file paths
+        cube_paths = []  # "<label>/charge.cube" for each fragment
+
+        fragment_dict = {}
+        for fragment in frags:
+            scf_node = self.ctx.scf[fragment]
+            if scf_node is None or not common_utils.check_if_calc_ok(self, scf_node):
+                return self.exit_codes.ERROR_TERMINATION
+            cube_paths.append(f"{fragment}/aiida-ELECTRON_DENSITY-1_0.cube")
+            fragment_dict[fragment] = scf_node.outputs.remote_folder
+
+        builder.parent_folders = fragment_dict
+
+        # Choose weights: default is 1.0 for the first (usually 'all') and -1.0 for the rest
+        weights = [1.0] + [-1.0] * (len(cube_paths) - 1)
+        builder.parameters = orm.Dict(
+            dict={
+                "steps": [
+                    {
+                        "command": "sum",
+                        "args": [
+                            str(x) for pair in zip(cube_paths, weights) for x in pair
+                        ],
+                        "options": {
+                            "output": "ChargeDiff.cube",
+                        },
+                    },
+                    {
+                        "command": "shrink",
+                        "args": ["ChargeDiff.cube"],
+                        "options": {
+                            "output_dir": "out_cubes",
+                            "low_precision": True,
+                        },
+                    },
+                ]
+            }
+        )
+        builder.metadata = {
+            "label": "charge-lowres",
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
+                },
+                "max_wallclock_seconds": 600,
+            },
+        }
+
+        future = self.submit(builder)
+        return engine.ToContext(cubehandler=future)
 
     def finalize(self):
         energies = {}
@@ -278,3 +356,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
         # Add the workchain pk to the input structure extras
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
+        if "cubehandler_code" in self.inputs:
+            common_utils.add_extras(
+                self.inputs.structure, "surfaces", self.ctx.cubehandler.uuid
+            )

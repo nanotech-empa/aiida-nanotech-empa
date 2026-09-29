@@ -9,6 +9,16 @@ from aiida.orm import Code, Computer, QueryBuilder
 
 pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
 
+collect_ignore = [
+    "examples/workflows/example_cp2k_afm.py",
+    "examples/workflows/example_cp2k_hrstm.py",
+    "examples/workflows/example_gaussian_casscf.py",
+    "examples/workflows/example_gaussian_nics.py",
+    "examples/workflows/example_gaussian_opt.py",
+    "examples/workflows/example_gaussian_spin.py",
+    "examples/workflows/example_nanoribbon.py",
+]
+
 
 class ExecutableNotFoundError(Exception):
     """Raised when an executable is not found."""
@@ -113,5 +123,34 @@ def qe_projwfc_code(local_code_factory):
 
 @pytest.fixture(scope="function")
 def cp2k_code(local_code_factory):
+    executable = "cp2k.ssmp" if shutil.which("cp2k.ssmp") else "cp2k"
+    if not shutil.which(executable):
+        pytest.skip("CP2K executable not available")
     prepend_text = "export OMP_NUM_THREADS=2"
-    return local_code_factory("cp2k", "cp2k.ssmp", prepend_text=prepend_text)
+    return local_code_factory("cp2k", executable, prepend_text=prepend_text)
+
+
+@pytest.fixture(scope="function")
+def bader_code(local_code_factory):
+    return local_code_factory("nanotech_empa.bader", "bader")
+
+
+@pytest.fixture(scope="function")
+def spm_code(local_code_factory):
+    return local_code_factory("nanotech_empa.stm", "cp2k-stm-sts-wfn", label="stm")
+
+
+@pytest.fixture(scope="function")
+def overlap_code(local_code_factory):
+    return local_code_factory(
+        "nanotech_empa.overlap", "cp2k-overlap-from-wfns", label="overlap"
+    )
+
+
+@pytest.fixture(scope="function")
+def sparse_overlap_code(local_code_factory):
+    return local_code_factory(
+        "nanotech_empa.sparse_overlap",
+        "cp2k-overlap-to-sparse-npz",
+        label="sparse_overlap",
+    )

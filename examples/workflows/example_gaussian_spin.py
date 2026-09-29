@@ -8,10 +8,15 @@ from aiida.plugins import WorkflowFactory
 
 import aiida_nanotech_empa.utils.gaussian_wcs_postprocess as pp
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 GaussianSpinWorkChain = WorkflowFactory("nanotech_empa.gaussian.spin")
 
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = str(script_dir(__file__))
+OUTPUT_DIR = DATA_DIR
 
 
 def _example_gaussian_spin(gaussian_code, formchk_code, cubegen_code):

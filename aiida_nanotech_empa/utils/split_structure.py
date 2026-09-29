@@ -9,7 +9,7 @@ def split_structure(structure, fixed_atoms, magnetization_per_site, fragments):
 
     allfixed = [0 for i in ase_geo]
     mps = []
-    fixed = ""
+    fixed = []
     if "all" not in fragments:
         yield {
             "label": "all",

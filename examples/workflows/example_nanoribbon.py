@@ -1,16 +1,19 @@
-import pathlib
-
 import ase.io
 import click
 from aiida import engine, orm, plugins
 
 from aiida_nanotech_empa.utils.cube_utils import cube_from_qe_pp_arraydata
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 # AiiDA classes.
 NanoribbonWorkChain = plugins.WorkflowFactory("nanotech_empa.nanoribbon")
 
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
-OUTPUT_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
+OUTPUT_DIR = DATA_DIR
 
 
 def _example_nanoribbon(
@@ -36,8 +39,8 @@ def _example_nanoribbon(
     builder.structure = orm.StructureData(ase=ase.io.read(geo_file))
     # builder.pseudo_family = orm.Str("SSSP_modified")
     builder.pseudo_family = orm.Str(
-        "SSSP/1.2/PBE/efficiency"
-    )  # It requires aiida-pseudo install sssp!
+        "SSSP/1.3/PBE/precision"
+    )  # It requires: aiida-pseudo install sssp --functional PBE --version 1.3 -p precision
 
     # Metadata
     builder.metadata = {

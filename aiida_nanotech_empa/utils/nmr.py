@@ -50,7 +50,6 @@ def build_path(ref_pts, dx=0.1):
     point_arr = None
 
     for i_rp in range(len(ref_pts) - 1):
-
         pt1 = ref_pts[i_rp].position
         pt2 = ref_pts[i_rp + 1].position
 
@@ -114,7 +113,6 @@ def parse_nmr_cmo_matrix(log_file_str, property_dict):
 
     i_line = 0
     while i_line < len(lines):
-
         # --------------------------------------------------------------------------
         # Full Cartesian NMR shielding tensor (ppm) for atom  C(  1):
         # Canonical MO contributions
@@ -128,13 +126,11 @@ def parse_nmr_cmo_matrix(log_file_str, property_dict):
         #    ...
 
         if "Full Cartesian NMR shielding tensor (ppm) for atom" in lines[i_line]:
-
             i_atom = int(lines[i_line].replace("(", ")").split(")")[-2]) - 1
 
             i_line += 1
 
             if "Canonical MO contributions" in lines[i_line]:
-
                 for _i in range(2000):
                     i_line += 1
                     if "Total" in lines[i_line]:

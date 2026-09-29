@@ -1,17 +1,26 @@
-import pathlib
-
 import ase.io
 import click
 from aiida import engine, orm, plugins
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 Cp2kOrbiralsWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.orbitals")
 
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
 GEO_FILE = "c2h2.xyz"
 
 
 def _example_cp2k_orb(
-    cp2k_code, stm_code, sc_diag, force_multiplicity, uks, n_nodes, n_cores_per_node
+    cp2k_code,
+    stm_code,
+    sc_diag,
+    force_multiplicity,
+    uks,
+    n_nodes=1,
+    n_cores_per_node=1,
 ):
     # Check test geometry is already in database.
     qb = orm.QueryBuilder()
@@ -37,6 +46,9 @@ def _example_cp2k_orb(
     builder.protocol = orm.Str("debug")
 
     if uks:
+        magnetization_per_site = [0 for _ in range(len(structure.sites))]
+        magnetization_per_site[0] = 1
+        magnetization_per_site[1] = -1
         dft_params = {
             "sc_diag": sc_diag,
             "force_multiplicity": force_multiplicity,
@@ -45,9 +57,8 @@ def _example_cp2k_orb(
             "uks": uks,
             "charge": 0,
             "multiplicity": 1,
+            "magnetization_per_site": magnetization_per_site,
             "smear_t": 150,
-            "spin_up_guess": [0],
-            "spin_dw_guess": [1],
         }
     else:
         dft_params = {

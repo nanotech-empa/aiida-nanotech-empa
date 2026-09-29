@@ -48,7 +48,6 @@ initial_magnetization:
   Sb: 0
   Te: 0
   I: 0
-
 basis_set:
   H: TZV2P-MOLOPT-GTH
   He: DZVP-MOLOPT-SR-GTH-q2
@@ -136,7 +135,6 @@ basis_set:
   Po: DZVP-MOLOPT-SR-GTH-q6
   At: DZVP-MOLOPT-SR-GTH-q7
   Rn: DZVP-MOLOPT-SR-GTH-q8
-
 # -------------------------------------------------------------
 # Basis sets for the GW workchain
 # -------------------------------------------------------------
@@ -146,14 +144,12 @@ gpw_std_gw_basis_set:
   C: aug-DZVP-GTH-up-up-up-up
   N: aug-DZVP-GTH
   O: aug-DZVP-GTH
-
 gpw_std_gw_basis_set_aux:
   H: RI_aug_DZ
   B: K-RI_aug_DZ
   C: RI_aug_DZ
   N: RI_aug_DZ
   O: RI_DZVP-own
-
 gapw_std_gw_basis_set:
   H: aug-cc-pVDZ-up
   B: aug-cc-pVDZ-up
@@ -162,7 +158,6 @@ gapw_std_gw_basis_set:
   O: aug-cc-pVDZ-up
   S: aug-cc-pVDZ-up
   Zn: aug-cc-pVDZ-up
-
 gapw_std_gw_basis_set_aux:
   H: aug-cc-pVDZ-RIFIT
   B: aug-cc-pVDZ-RIFIT
@@ -171,7 +166,6 @@ gapw_std_gw_basis_set_aux:
   O: aug-cc-pVDZ-RIFIT
   S: aug-cc-pVDZ-RIFIT
   Zn: aug-cc-pVDZ-RIFIT
-
 gapw_hq_gw_basis_set:
   H: aug-cc-pVTZ
   B: aug-cc-pVQZ
@@ -180,7 +174,6 @@ gapw_hq_gw_basis_set:
   O: aug-cc-pVQZ
   S: aug-cc-pVQZ
   Zn: aug-cc-pVQZ
-
 gapw_hq_gw_basis_set_aux:
   H: aug-cc-pVTZ-RIFIT
   B: aug-cc-pVQZ-RIFIT
@@ -189,7 +182,6 @@ gapw_hq_gw_basis_set_aux:
   O: aug-cc-pVQZ-RIFIT
   S: aug-cc-pVQZ-RIFIT
   Zn: aug-cc-pVQZ-RIFIT
-
 # -------------------------------------------------------------
 # Pseudopotentials
 # -------------------------------------------------------------
@@ -280,7 +272,6 @@ pseudopotential:
   Po: GTH-PBE-q6
   At: GTH-PBE-q7
   Rn: GTH-PBE-q8
-
 all:
   H: ALL
   He: ALL
@@ -368,7 +359,6 @@ all:
   Po: ALL
   At: ALL
   Rn: ALL
-
 cutoff:
   H: 600
   He: 600

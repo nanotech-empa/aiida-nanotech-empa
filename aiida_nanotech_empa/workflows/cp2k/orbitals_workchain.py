@@ -1,11 +1,12 @@
 import numpy as np
 from aiida import engine, orm, plugins
-from aiida_shell import launch_shell_job
 
 from ...utils import common_utils
+from . import cp2k_utils
 
 Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 StmCalculation = plugins.CalculationFactory("nanotech_empa.stm")
+CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
 
 
 class Cp2kOrbitalsWorkChain(engine.WorkChain):
@@ -36,6 +37,7 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         spec.outline(
             cls.setup,
@@ -66,6 +68,7 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         self.report("Running CP2K diagonalization SCF")
         builder = Cp2kDiagWorkChain.get_builder()
         builder.cp2k_code = self.inputs.cp2k_code
+        cp2k_utils.set_restart_policy(self.inputs, builder)
         builder.structure = self.inputs.structure
         builder.dft_params = orm.Dict(self.ctx.dft_params)
         builder.protocol = self.inputs.protocol
@@ -86,7 +89,7 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         builder.options = orm.Dict(self.inputs.options)
 
         future = self.submit(builder)
-        self.to_context(diag_scf=future)
+        return engine.ToContext(diag_scf=future)
 
     def run_stm(self):
         self.report("STM calculation")
@@ -124,23 +127,42 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
     def run_cubehandler(self):
         self.report("Running CubeHandler")
         if not common_utils.check_if_calc_ok(self, self.ctx.diag_scf):
-            return self.exit_codes.ERROR_TERMINATIONx
+            return self.exit_codes.ERROR_TERMINATION
 
-        _, node = launch_shell_job(
-            self.inputs.cubehandler_code,
-            arguments=["shrink", ".", "out_cubes"],
-            metadata={
-                "options": {
-                    "prepend_text": "conda activate cubehandler",
-                    "use_symlinks": True,
-                },
-                "computer": orm.load_computer("daint-gpu"),
-                "label": "cube-shrink",
-            },
-            nodes={"remote_previous_job": self.ctx.diag_scf.outputs.remote_folder},
-            outputs=["out_cubes"],
+        builder = CubeHandlerCalculation.get_builder()
+        builder.code = self.inputs.cubehandler_code
+        builder.parameters = orm.Dict(
+            dict={
+                "steps": [
+                    {
+                        "command": "shrink",
+                        "args": [
+                            "folder1/*ELECTRON*.cube",
+                            "folder1/*HART*cube",
+                            "folder1/*SPIN*.cube",
+                            "folder1/*WFN*.cube",
+                        ],
+                        "options": {
+                            "output_dir": "out_cubes",
+                            "low_precision": True,
+                        },
+                    }
+                ]
+            }
         )
-        self.ctx.cubehandler_uuid = node.uuid
+        builder.parent_folders = {"folder1": self.ctx.diag_scf.outputs.remote_folder}
+        builder.metadata = {
+            "label": "charge-lowres",
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 1,
+                },
+                "max_wallclock_seconds": 600,
+            },
+        }
+        future = self.submit(builder)
+        return engine.ToContext(cubehandler=future)
 
     def finalize(self):
         if "orb.npz" not in [
@@ -153,6 +175,6 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
         if "cubehandler_code" in self.inputs:
             common_utils.add_extras(
-                self.inputs.structure, "surfaces", self.ctx.cubehandler_uuid
+                self.inputs.structure, "surfaces", self.ctx.cubehandler.uuid
             )
         self.report("The workchain is finished")

@@ -1,15 +1,18 @@
-import pathlib
-
 import ase.io
 import click
 from aiida import engine, orm, plugins
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 Cp2kPhononsWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.phonons")
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
 GEO_FILE = "c2h2.xyz"
 
 
-def _example_cp2k_phonons(cp2k_code, uks, n_nodes, n_cores_per_node):
+def _example_cp2k_phonons(cp2k_code, uks, n_nodes=1, n_cores_per_node=1):
     # check test geometry is already in database
     qb = orm.QueryBuilder()
     qb.append(orm.Node, filters={"label": {"in": [GEO_FILE]}})
@@ -76,16 +79,16 @@ def _example_cp2k_phonons(cp2k_code, uks, n_nodes, n_cores_per_node):
 
 
 def example_cp2k_phonons_rks(cp2k_code):
-    _example_cp2k_phonons(cp2k_code, "SlabXY", False)
+    _example_cp2k_phonons(cp2k_code, False)
 
 
 def example_cp2k_phonons_uks(cp2k_code):
-    _example_cp2k_phonons(cp2k_code, "SlabXY", True)
+    _example_cp2k_phonons(cp2k_code, True)
 
 
 @click.command("cli")
 @click.argument("cp2k_code", default="cp2k@localhost")
-@click.option("-n", "--n-nodes", default=3)
+@click.option("-n", "--n-nodes", default=1)
 @click.option("-c", "--n-cores-per-node", default=1)
 def run_all(cp2k_code, n_nodes, n_cores_per_node):
     print("#### ", " RKS")

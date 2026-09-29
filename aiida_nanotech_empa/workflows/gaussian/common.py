@@ -28,7 +28,7 @@ def _get_gaussian_mem_mb(total_mem_kb, computer):
 def setup_context_variables(self_):
     pymatgen_structure = self_.inputs.structure.get_pymatgen_molecule()
     self_.ctx.n_atoms = pymatgen_structure.num_sites
-    self_.ctx.n_electrons = pymatgen_structure.nelectrons
+    self_.ctx.n_electrons = pymatgen_structure.nelectrons - self_.ctx.charge
 
     if self_.inputs.multiplicity.value == 0:
         # RKS calculation

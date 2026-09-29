@@ -37,9 +37,9 @@ class NanoribbonWorkChain(engine.WorkChain):
             default=lambda: orm.Int(3600),
             required=False,
         )
-        spec.input("pw_code", valid_type=orm.Code)
-        spec.input("pp_code", valid_type=orm.Code)
-        spec.input("projwfc_code", valid_type=orm.Code)
+        spec.input("pw_code", valid_type=orm.AbstractCode)
+        spec.input("pp_code", valid_type=orm.AbstractCode)
+        spec.input("projwfc_code", valid_type=orm.AbstractCode)
         spec.input("structure", valid_type=orm.StructureData)
         spec.input(
             "tot_charge",
@@ -95,7 +95,7 @@ class NanoribbonWorkChain(engine.WorkChain):
         self.ctx.nproc_mach = (
             self.inputs.pw_code.computer.get_default_mpiprocs_per_machine()
         )
-        if "alps" in self.inputs.pw_code.computer.hostname:
+        if "daint.alps" in self.inputs.pw_code.computer.hostname:
             self.ctx.nproc_mach = 4
         self.report(f"nproc_mach: {self.ctx.nproc_mach}")
 
@@ -219,6 +219,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
+                "num_cores_per_mpiproc": 1,
             },
             "max_wallclock_seconds": 1800,  # 30 minutes
             "withmpi": True,
@@ -278,10 +279,10 @@ class NanoribbonWorkChain(engine.WorkChain):
         # use the same number of pools as in bands calculation
         builder.parameters = orm.Dict(
             {
-                "projwfc": {
+                "PROJWFC": {
                     "ngauss": 1,
                     "degauss": 0.007,
-                    "DeltaE": 0.01,
+                    "deltae": 0.01,
                     "filproj": "projection.out",
                 },
             }
@@ -292,19 +293,20 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": nproc_mach,
+                "num_cores_per_mpiproc": 1,
             },
             "max_wallclock_seconds": self.inputs.wall_seconds.value,  # default 1 hour, max 24 hours
             "withmpi": True,
+            "additional_retrieve_list": [
+                "./out/aiida.save/*.xml",
+                "*_up",
+                "*_down",
+                "*_tot",
+            ],
         }
 
         builder.settings = orm.Dict(
             {
-                "additional_retrieve_list": [
-                    "./out/aiida.save/*.xml",
-                    "*_up",
-                    "*_down",
-                    "*_tot",
-                ],
                 "cmdline": ["-npools", str(npools)],
             }
         )
@@ -371,6 +373,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
+                "num_cores_per_mpiproc": 1,
             },
             "max_wallclock_seconds": int(
                 self.inputs.wall_seconds.value / 24 * nhours
@@ -406,7 +409,7 @@ class NanoribbonWorkChain(engine.WorkChain):
         if self.ctx.export_orbitals_band_number == self.ctx.first_band:
             to_check = "bands_lowres"
         else:
-            to_check = f"export_orbitals_{self.ctx.export_orbitals_band_number-1}"
+            to_check = f"export_orbitals_{self.ctx.export_orbitals_band_number - 1}"
         if not common_utils.check_if_calc_ok(self, getattr(self.ctx, to_check)):
             return self.exit_codes.CALC_FAILED
 
@@ -421,12 +424,12 @@ class NanoribbonWorkChain(engine.WorkChain):
         builder.settings = self.ctx.export_orbitals_settings
 
         # Modifying the band number.
-        self.ctx.export_orbitals_parameters["INPUTPP"][
-            "kband(1)"
-        ] = self.ctx.export_orbitals_band_number
-        self.ctx.export_orbitals_parameters["INPUTPP"][
-            "kband(2)"
-        ] = self.ctx.export_orbitals_band_number
+        self.ctx.export_orbitals_parameters["INPUTPP"]["kband(1)"] = (
+            self.ctx.export_orbitals_band_number
+        )
+        self.ctx.export_orbitals_parameters["INPUTPP"]["kband(2)"] = (
+            self.ctx.export_orbitals_band_number
+        )
         builder.parameters = orm.Dict(self.ctx.export_orbitals_parameters)
 
         # Running the calculation.
@@ -475,6 +478,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
+                "num_cores_per_mpiproc": 1,
             },
             "max_wallclock_seconds": 30 * 60,  # 30 minutes
             "withmpi": True,
@@ -558,6 +562,7 @@ class NanoribbonWorkChain(engine.WorkChain):
 
         natoms = len(structure.sites)
         max_npools = spinpools * min(1 + int(nkpoints / 4), int(6))
+        max_npools = min(self.ctx.nproc_mach, max_npools)  # added for daint.alps
         nnodes_base = min(max_nodes, (1 + int(natoms / mem_node)))
 
         guess_nnodes = max_npools * nnodes_base
@@ -582,6 +587,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             "resources": {
                 "num_machines": int(nnodes),
                 "num_mpiprocs_per_machine": self.ctx.nproc_mach,
+                "num_cores_per_mpiproc": 1,
             },
             "withmpi": True,
             "max_wallclock_seconds": wallseconds,

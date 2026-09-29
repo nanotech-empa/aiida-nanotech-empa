@@ -32,6 +32,7 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
             non_db=True,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
 
         spec.outline(
             cls.setup,
@@ -71,9 +72,9 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
         # Removal of rotations.
         if "periodic" in dft_params and dft_params["periodic"] == "NONE":
             self.ctx.input_dict["VIBRATIONAL_ANALYSIS"]["FULLY_PERIODIC"] = ".FALSE."
-            self.ctx.input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MOMENTS"][
-                "PERIODIC"
-            ] = ".FALSE."
+            self.ctx.input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MOMENTS"]["PERIODIC"] = (
+                ".FALSE."
+            )
 
         # Constraints.
         if "constraints" in self.ctx.sys_params:
@@ -108,6 +109,7 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
 
         builder.code = self.inputs.code
         builder.structure = self.inputs.structure
+        cp2k_utils.set_restart_policy(self.inputs, builder)
 
         # Restart WFN.
         if "parent_calc_folder" in self.inputs:

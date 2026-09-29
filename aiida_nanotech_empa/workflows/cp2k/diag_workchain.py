@@ -44,6 +44,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             required=False,
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
+        cp2k_utils.add_restart_policy_inputs(spec)
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -74,6 +75,10 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.ctx.n_atoms = len(structure.sites)
 
         self.ctx.dft_params = self.inputs.dft_params.get_dict()
+        self.ctx.dft_params.setdefault("periodic", "XYZ")
+        self.ctx.dft_params.setdefault("uks", False)
+        self.ctx.dft_params.setdefault("elpa_switch", False)
+        self.ctx.dft_params.setdefault("sc_diag", False)
 
         # Resources.
         self.ctx.options = self.inputs.options.get_dict()
@@ -121,6 +126,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         # Set workflow inputs.
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
+        cp2k_utils.set_restart_policy(self.inputs, builder)
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
@@ -155,14 +161,20 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             600, self.ctx.options["max_wallclock_seconds"] - 600
         )
 
+        # Switch on restart_incomplete_calculation handler disabled by default.
+        builder.handler_overrides = orm.Dict(
+            {"restart_incomplete_calculation": {"enabled": True}}
+        )
+
         builder.cp2k.metadata.options = self.ctx.options
 
         # Parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
         # CP2K input dictionary.
-        builder.cp2k.parameters = orm.Dict(input_dict)
         self.ctx.input_dict = copy.deepcopy(input_dict)
+        self.update_ot_input_dict(input_dict)
+        builder.cp2k.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)
         self.to_context(ot_scf=future)
@@ -237,6 +249,8 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             )
             input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["MO_CUBES"]["STRIDE"] = "2 2 2"
 
+        self.update_diag_input_dict(input_dict)
+
         # Setup walltime.
         input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
@@ -244,6 +258,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
+        cp2k_utils.set_restart_policy(self.inputs, builder)
         builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
@@ -251,6 +266,11 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             builder.cp2k.settings = self.inputs.settings
 
         builder.cp2k.parent_calc_folder = self.ctx.ot_scf.outputs.remote_folder
+
+        # Switch on restart_incomplete_calculation handler disabled by default.
+        builder.handler_overrides = orm.Dict(
+            {"restart_incomplete_calculation": {"enabled": True}}
+        )
 
         builder.cp2k.metadata.options = self.ctx.options
 
@@ -271,3 +291,9 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         self.report("Work chain is finished")
+
+    def update_ot_input_dict(self, input_dict):
+        """Hook for derived workchains to add OT-only CP2K input."""
+
+    def update_diag_input_dict(self, input_dict):
+        """Hook for derived workchains to add diagonalization-only CP2K input."""

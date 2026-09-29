@@ -2,6 +2,7 @@ import numpy as np
 from aiida import engine, orm
 
 from .geo_opt_workchain import Cp2kGeoOptWorkChain
+from .molecule_opt_gw_workchain import geo_opt_dft_params
 from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
 
 IC_PLANE_HEIGHTS = {
@@ -152,6 +153,13 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
             help="Protocol supported by the Cp2kMoleculeGwWorkChain.",
         )
         spec.input(
+            "debug",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help="Run downstream CP2K work chains with fast debug settings.",
+        )
+        spec.input(
             "multiplicity",
             valid_type=orm.Int,
             default=lambda: orm.Int(0),
@@ -260,10 +268,15 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder = Cp2kGeoOptWorkChain.get_builder()
         builder.code = self.inputs.code
         builder.structure = self.ctx.mol_struct
-        builder.multiplicity = self.inputs.multiplicity
-        builder.magnetization_per_site = self.ctx.mol_mag_per_site
-        builder.vdw = orm.Bool(True)
-        builder.protocol = orm.Str("standard")
+        builder.dft_params = orm.Dict(
+            geo_opt_dft_params(
+                self.inputs.multiplicity,
+                self.ctx.mol_mag_per_site,
+                self.ctx.mol_struct,
+            )
+        )
+        builder.sys_params = orm.Dict({})
+        builder.protocol = orm.Str("debug" if self.inputs.debug.value else "standard")
         builder.options = self.inputs.options.scf
         builder.metadata.description = "gas_opt"
         submitted_node = self.submit(builder)
@@ -294,6 +307,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.multiplicity = self.inputs.multiplicity
         builder.run_image_charge = orm.Bool(True)
         builder.z_ic_plane = self.ctx.image_plane_z
+        builder.debug = self.inputs.debug
         builder.options.scf = self.inputs.options.scf
         builder.options.gw = self.inputs.options.ic
         builder.metadata.description = "ic"
@@ -312,6 +326,7 @@ class Cp2kAdsorbedGwIcWorkChain(engine.WorkChain):
         builder.structure = self.ctx.mol_struct
         builder.magnetization_per_site = self.ctx.mol_mag_per_site
         builder.multiplicity = self.inputs.multiplicity
+        builder.debug = self.inputs.debug
         builder.options.scf = self.inputs.options.scf
         builder.options.gw = self.inputs.options.gw
         builder.metadata.description = "gw"

@@ -34,7 +34,7 @@ class GaussianSpinWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             required=False,
             default=lambda: orm.Str(""),
-            help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
+            help=('Include empirical dispersion corrections(e.g. "GD3", "GD3BJ")'),
         )
         spec.input(
             "basis_set_opt", valid_type=orm.Str, required=True, help="basis_set for opt"

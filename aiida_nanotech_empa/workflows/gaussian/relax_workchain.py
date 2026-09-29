@@ -33,7 +33,13 @@ class GaussianRelaxWorkChain(engine.WorkChain):
             default=lambda: orm.Int(0),
             help="spin multiplicity; 0 means RKS",
         )
-
+        spec.input(
+            "charge",
+            valid_type=orm.Int,
+            required=False,
+            default=lambda: orm.Int(0),
+            help="Charge of the system",
+        )
         spec.input(
             "wfn_stable_opt",
             valid_type=orm.Bool,
@@ -86,7 +92,7 @@ class GaussianRelaxWorkChain(engine.WorkChain):
             valid_type=orm.Str,
             required=False,
             default=lambda: orm.Str(""),
-            help=("Include empirical dispersion corrections" '(e.g. "GD3", "GD3BJ")'),
+            help=('Include empirical dispersion corrections(e.g. "GD3", "GD3BJ")'),
         )
 
         spec.input(
@@ -198,6 +204,7 @@ class GaussianRelaxWorkChain(engine.WorkChain):
     def setup(self):
         self.report("Inspecting input and setting up things")
 
+        self.ctx.charge = self.inputs.charge.value
         common.setup_context_variables(self)
 
         if self.ctx.mult % 2 == self.ctx.n_electrons % 2:
@@ -211,6 +218,7 @@ class GaussianRelaxWorkChain(engine.WorkChain):
             self.ctx.metadata_options, self.ctx.comp
         )
 
+        self.report(f"the charge is {self.ctx.charge}")
         self.ctx.link0 = {
             "%chk": "aiida.chk",
             "%mem": "%dMB" % memory_mb,
@@ -228,7 +236,7 @@ class GaussianRelaxWorkChain(engine.WorkChain):
                 "dieze_tag": "#P",
                 "functional": self.ctx.functional,
                 "basis_set": self.inputs.basis_set.value,
-                "charge": 0,
+                "charge": self.ctx.charge,
                 "multiplicity": self.ctx.mult,
                 "route_parameters": {
                     "scf": {
@@ -261,7 +269,7 @@ class GaussianRelaxWorkChain(engine.WorkChain):
                 "dieze_tag": "#P",
                 "functional": self.ctx.functional,
                 "basis_set": self.inputs.basis_set.value,
-                "charge": 0,
+                "charge": self.ctx.charge,
                 "multiplicity": self.ctx.mult,
                 "route_parameters": {
                     "scf": {"maxcycle": 140},
@@ -290,9 +298,9 @@ class GaussianRelaxWorkChain(engine.WorkChain):
             parameters["route_parameters"]["freq"] = None
 
         if self.inputs.empirical_dispersion.value != "":
-            parameters["route_parameters"][
-                "empiricaldispersion"
-            ] = self.inputs.empirical_dispersion.value
+            parameters["route_parameters"]["empiricaldispersion"] = (
+                self.inputs.empirical_dispersion.value
+            )
 
         opt_dict = {}
 

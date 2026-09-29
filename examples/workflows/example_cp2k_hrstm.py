@@ -1,14 +1,17 @@
 import os
-import pathlib
-
 import ase.io
 import click
 import numpy as np
 from aiida import engine, orm, plugins
 
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
+
 Cp2kHrstmWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.hrstm")
 
-DATA_DIR = pathlib.Path(__file__).parent.absolute()
+DATA_DIR = script_dir(__file__)
 GEO_FILE = "c2h2_on_au111.xyz"
 
 

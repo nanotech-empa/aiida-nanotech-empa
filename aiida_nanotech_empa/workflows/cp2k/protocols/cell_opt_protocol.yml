@@ -1,48 +1,48 @@
 standard:
-    MOTION:
-        CELL_OPT:
-            EXTERNAL_PRESSURE: 0
-            PRESSURE_TOLERANCE: 100
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 0.0001
-            RMS_DR: 0.001
-            RMS_FORCE: 0.0001
-            MAX_DR: 0.003
-            MAX_ITER: 1000
-            OPTIMIZER: BFGS
-            TYPE: DIRECT_CELL_OPT
-    FORCE_EVAL:
-        STRESS_TENSOR: ANALYTICAL
+  MOTION:
+    CELL_OPT:
+      EXTERNAL_PRESSURE: 0
+      PRESSURE_TOLERANCE: 100
+      BFGS:
+        TRUST_RADIUS: '[bohr] 0.1'
+      MAX_FORCE: 0.0001
+      RMS_DR: 0.001
+      RMS_FORCE: 0.0001
+      MAX_DR: 0.003
+      MAX_ITER: 1000
+      OPTIMIZER: BFGS
+      TYPE: DIRECT_CELL_OPT
+  FORCE_EVAL:
+    STRESS_TENSOR: ANALYTICAL
 low_accuracy:
-    MOTION:
-        CELL_OPT:
-            EXTERNAL_PRESSURE: 0
-            PRESSURE_TOLERANCE: 100
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 0.00045
-            RMS_DR: 0.0015
-            RMS_FORCE: 0.0003
-            MAX_DR: 0.003
-            MAX_ITER: 1000
-            OPTIMIZER: BFGS
-            TYPE: DIRECT_CELL_OPT
-    FORCE_EVAL:
-        STRESS_TENSOR: ANALYTICAL
+  MOTION:
+    CELL_OPT:
+      EXTERNAL_PRESSURE: 0
+      PRESSURE_TOLERANCE: 100
+      BFGS:
+        TRUST_RADIUS: '[bohr] 0.1'
+      MAX_FORCE: 0.00045
+      RMS_DR: 0.0015
+      RMS_FORCE: 0.0003
+      MAX_DR: 0.003
+      MAX_ITER: 1000
+      OPTIMIZER: BFGS
+      TYPE: DIRECT_CELL_OPT
+  FORCE_EVAL:
+    STRESS_TENSOR: ANALYTICAL
 debug:
-    MOTION:
-        CELL_OPT:
-            EXTERNAL_PRESSURE: 1000
-            PRESSURE_TOLERANCE: 1000000
-            BFGS:
-                TRUST_RADIUS: '[bohr] 0.1'
-            MAX_FORCE: 1
-            RMS_DR: 1
-            RMS_FORCE: 1
-            MAX_DR: 1
-            MAX_ITER: 3
-            OPTIMIZER: BFGS
-            TYPE: DIRECT_CELL_OPT
-    FORCE_EVAL:
-        STRESS_TENSOR: ANALYTICAL
+  MOTION:
+    CELL_OPT:
+      EXTERNAL_PRESSURE: 1000
+      PRESSURE_TOLERANCE: 1000000
+      BFGS:
+        TRUST_RADIUS: '[bohr] 0.1'
+      MAX_FORCE: 1
+      RMS_DR: 1
+      RMS_FORCE: 1
+      MAX_DR: 1
+      MAX_ITER: 3
+      OPTIMIZER: BFGS
+      TYPE: DIRECT_CELL_OPT
+  FORCE_EVAL:
+    STRESS_TENSOR: ANALYTICAL

@@ -1,10 +1,52 @@
 name: ci
-
-on: [push, pull_request]
-
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+# Cancel superseded runs on PRs. Other runs get their own group (run_id),
+# so runs on master are never cancelled or dropped from the queue.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-
-  tests:
+  # Fast tests that use stand-in codes: run on every supported Python.
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:12
+        ports:
+          - 5432:5432
+      rabbitmq:
+        image: rabbitmq:3.13
+        ports:
+          - 5672:5672
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install python dependencies
+        run: |
+          pip install -e .[dev]
+      - name: Run pytest
+        run: |
+          pytest tests/ --cov-report=xml --cov=aiida_nanotech_empa
+      - name: Upload coverage to codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
+          file: ./coverage.xml
+  # Slow examples that run the real codes: one Python version is enough.
+  examples:
+    needs: unit
     runs-on: ubuntu-latest
     timeout-minutes: 120
     services:
@@ -13,40 +55,37 @@ jobs:
         ports:
           - 5432:5432
       rabbitmq:
-        image: rabbitmq:latest
+        image: rabbitmq:3.13
         ports:
           - 5672:5672
-    strategy:
-      matrix:
-        python-version: ['3.9', '3.10', '3.11']
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install python dependencies
-      run: |
-        pip install -e .[dev]
-
-    - name: Install CP2K
-      run: |
-        bash .github/install_cp2k.sh
-        echo "$PWD/cp2k" >> $GITHUB_PATH
-
-    - name: Install QE
-      run: |
-        bash .github/install_qe.sh
-        echo "$PWD/qe/bin" >> $GITHUB_PATH
-
-    - name: Run pytest
-      run: |
-        pytest --cov-report=xml --cov=aiida_nanotech_empa
-
-    - name: Upload coverage to codecov
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{secrets.CODECOV_TOKEN}}
-        file: ./coverage.xml
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+      - name: Install python dependencies
+        run: |
+          pip install -e .[dev]
+      - name: Install CP2K
+        run: |
+          bash .github/install_cp2k.sh
+          echo "$PWD/cp2k" >> $GITHUB_PATH
+      - name: Install Bader
+        run: |
+          bash .github/install_bader.sh
+          echo "$PWD/bader" >> $GITHUB_PATH
+      - name: Install QE
+        run: |
+          bash .github/install_qe.sh
+      - name: Install CP2K SPM tools
+        run: |
+          bash .github/install_spm_tools.sh
+      - name: Run pytest
+        run: |
+          pytest examples/ --durations=15 --cov-report=xml --cov=aiida_nanotech_empa
+      - name: Upload coverage to codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
+          file: ./coverage.xml

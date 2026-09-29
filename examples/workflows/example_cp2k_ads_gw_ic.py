@@ -1,11 +1,17 @@
 import os
 
 import ase
+import ase.io
 from aiida import engine, orm, plugins
+
+try:
+    from examples.workflows._paths import script_dir
+except ModuleNotFoundError:
+    from _paths import script_dir
 
 Cp2kAdsorbedGwIcWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.ads_gw_ic")
 
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = str(script_dir(__file__))
 GEO_FILE = "h2_on_au111.xyz"
 
 
