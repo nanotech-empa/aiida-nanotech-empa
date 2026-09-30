@@ -14,9 +14,13 @@ ALLOWED_PROTOCOLS = ["scf_ot_no_wfn"]
 def find_multiples_of_ngpus(ngpus, n, max_N):
     """Return MPI tasks per node divisible by the GPU count.
 
+    Zero GPUs means CPU-only and imposes no task-divisibility restriction.
     The unused node-count argument preserves the draft helper's call signature.
     """
-    return list(range(ngpus, max_N + 1, ngpus))
+    if ngpus < 0:
+        raise ValueError("GPUs per node must be non-negative.")
+    divisor = max(1, ngpus)
+    return list(range(divisor, max_N + 1, divisor))
 
 
 @engine.calcfunction
@@ -179,17 +183,13 @@ def get_timing_from_FolderData(folder_node=None):
 class Cp2kBenchmarkWorkChain(engine.WorkChain):
     @staticmethod
     def resource_grid(inputs):
-        """Select MPI-task multiples of the GPU count within the CPU capacity."""
+        """Select task counts within CPU capacity; zero GPUs is the CPU-only case."""
         capacity = inputs["code"].computer.get_default_mpiprocs_per_machine()
         tasks_per_node = (
             inputs["list_tasks_per_node"].get_list()
             if "list_tasks_per_node" in inputs
-            else list(
-                range(
-                    inputs["ngpus"].value,
-                    inputs["max_tasks_per_node"].value + 1,
-                    inputs["ngpus"].value,
-                )
+            else find_multiples_of_ngpus(
+                inputs["ngpus"].value, None, inputs["max_tasks_per_node"].value
             )
         )
         return [
@@ -214,11 +214,14 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
                 return f"{name} must contain positive integers."
             if len(set(values)) != len(values):
                 return f"{name} must not contain duplicates."
-        for name in ("ngpus", "max_tasks_per_node", "wallclock", "cutoff"):
+        if inputs["ngpus"].value < 0:
+            return "GPUs per node must be non-negative (0 means CPU-only)."
+        for name in ("max_tasks_per_node", "wallclock", "cutoff"):
             if name in inputs and inputs[name].value <= 0:
                 return f"{name} must be positive."
         if "list_tasks_per_node" in inputs and any(
-            tasks % inputs["ngpus"].value for tasks in inputs["list_tasks_per_node"]
+            tasks % max(1, inputs["ngpus"].value)
+            for tasks in inputs["list_tasks_per_node"]
         ):
             return "MPI tasks per node must be multiples of GPUs per node."
         if inputs["multiplicity"].value < 0:
@@ -231,6 +234,10 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
             or not code.computer.get_default_mpiprocs_per_machine()
         ):
             return "Configure the computer's default MPI processes per machine (used as the CPU capacity)."
+        if code.computer.scheduler_type == "core.direct" and inputs[
+            "list_nodes"
+        ].get_list() != [1]:
+            return "The direct scheduler runs on one machine; set the node list to 1."
         if not cls.resource_grid(inputs):
             return (
                 "No resource combinations satisfy the GPU and CPU-capacity constraints."
@@ -280,7 +287,7 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
             valid_type=orm.Int,
             default=lambda: orm.Int(4),
             required=True,
-            help="Number of GPUs per node.",
+            help="Number of GPUs per node; 0 means CPU-only with unrestricted MPI-task divisibility.",
         )
         spec.input(
             "max_tasks_per_node",
@@ -293,7 +300,7 @@ class Cp2kBenchmarkWorkChain(engine.WorkChain):
             "list_tasks_per_node",
             valid_type=orm.List,
             required=False,
-            help="Explicit MPI task counts per node, each a multiple of ngpus. Overrides max_tasks_per_node.",
+            help="Explicit MPI task counts per node, each a multiple of max(1, ngpus). Overrides max_tasks_per_node.",
         )
         spec.input(
             "list_threads_per_task",

@@ -52,7 +52,7 @@ def test_report_uses_smallest_successful_node_count():
 
 @pytest.mark.parametrize(
     "nodes,ngpus,tasks,threads",
-    [([], 1, 2, [1]), ([1], 0, 2, [1]), ([1], 1, 2, [0]), ([2], 4, 2, [1])],
+    [([], 1, 2, [1]), ([1], -1, 2, [1]), ([1], 1, 2, [0]), ([2], 4, 2, [1])],
 )
 def test_invalid_resource_grid(aiida_localhost, nodes, ngpus, tasks, threads):
     aiida_localhost.set_default_mpiprocs_per_machine(8)
@@ -149,11 +149,12 @@ def test_explicit_tasks_obey_gpu_rule(aiida_localhost):
         )
     }
     inputs["code"] = code
+    inputs["list_nodes"] = orm.List(list=[1])
     inputs["list_tasks_per_node"] = orm.List(list=[4, 6])
     assert "multiples" in Cp2kBenchmarkWorkChain.validate_inputs(inputs, None)
     inputs["list_tasks_per_node"] = orm.List(list=[4, 12])
     assert Cp2kBenchmarkWorkChain.validate_inputs(inputs, None) is None
-    assert len(Cp2kBenchmarkWorkChain.resource_grid(inputs)) == 80
+    assert len(Cp2kBenchmarkWorkChain.resource_grid(inputs)) == 8
 
 
 def test_child_resources_and_openmp_script(tmp_path, monkeypatch):
@@ -275,3 +276,68 @@ def test_all_failed_workchain_keeps_outputs(aiida_localhost):
     assert result.status == 390
     assert outputs["timings"]["1_4_2"] == ["FAILED", "failed-job"]
     assert outputs["report"]["closest_to_60"] is None
+
+
+@pytest.mark.parametrize("explicit_tasks", [False, True])
+def test_zero_gpus_matches_one_gpu(aiida_localhost, explicit_tasks):
+    from itertools import product
+    from aiida_nanotech_empa.workflows.cp2k.cp2k_benchmark_workchain import (
+        find_multiples_of_ngpus,
+    )
+
+    aiida_localhost.set_default_mpiprocs_per_machine(8)
+    code = orm.InstalledCode(
+        computer=aiida_localhost,
+        filepath_executable="/bin/true",
+        default_calc_job_plugin="cp2k",
+    )
+    inputs = {
+        name: Cp2kBenchmarkWorkChain.spec().inputs[name].default()
+        for name in (
+            "protocol",
+            "multiplicity",
+            "wallclock",
+        )
+    }
+    inputs.update(
+        code=code,
+        list_nodes=orm.List(list=[1]),
+        max_tasks_per_node=orm.Int(4),
+        list_threads_per_task=orm.List(list=[1, 2]),
+    )
+    if explicit_tasks:
+        inputs["list_tasks_per_node"] = orm.List(list=[1, 2, 3, 4])
+    grids = []
+    for gpu_count in (0, 1):
+        inputs["ngpus"] = orm.Int(gpu_count)
+        assert Cp2kBenchmarkWorkChain.validate_inputs(inputs, None) is None
+        grids.append(Cp2kBenchmarkWorkChain.resource_grid(inputs))
+    assert grids[0] == grids[1] == list(product([1], [1, 2, 3, 4], [1, 2]))
+    assert find_multiples_of_ngpus(0, 1, 4) == [1, 2, 3, 4]
+    inputs["ngpus"] = orm.Int(-1)
+    assert "non-negative" in Cp2kBenchmarkWorkChain.validate_inputs(inputs, None)
+
+
+def test_direct_scheduler_rejects_multiple_nodes(aiida_localhost):
+    aiida_localhost.set_default_mpiprocs_per_machine(8)
+    code = orm.InstalledCode(
+        computer=aiida_localhost,
+        filepath_executable="/bin/true",
+        default_calc_job_plugin="cp2k",
+    )
+    inputs = {
+        name: Cp2kBenchmarkWorkChain.spec().inputs[name].default()
+        for name in (
+            "protocol",
+            "multiplicity",
+            "wallclock",
+        )
+    }
+    inputs.update(
+        code=code,
+        ngpus=orm.Int(0),
+        list_nodes=orm.List(list=[1, 2]),
+        list_tasks_per_node=orm.List(list=[1]),
+        list_threads_per_task=orm.List(list=[2]),
+    )
+    assert "one machine" in Cp2kBenchmarkWorkChain.validate_inputs(inputs, None)
