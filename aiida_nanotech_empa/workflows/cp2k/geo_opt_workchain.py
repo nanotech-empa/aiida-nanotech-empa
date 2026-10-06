@@ -88,7 +88,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         # UKS.
         magnetization_per_site = [0 for i in range(len(self.inputs.structure.sites))]
-        if "uks" in self.ctx.dft_params and self.ctx.dft_params["uks"]:
+        if self.ctx.dft_params.get("uks"):
             magnetization_per_site = self.ctx.dft_params["magnetization_per_site"]
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
             self.ctx.input_dict["FORCE_EVAL"]["DFT"]["MULTIPLICITY"] = (

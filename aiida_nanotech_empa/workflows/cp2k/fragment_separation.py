@@ -189,7 +189,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
                     "charges"
                 ][fragment]
 
-            if "uks" in self.inputs.dft_params and self.inputs.dft_params["uks"]:
+            if self.inputs.dft_params.get("uks"):
                 input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
 
                 # If the multiplicity is set, add it to the corresponding section of the input.

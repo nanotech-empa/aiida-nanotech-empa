@@ -92,7 +92,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
 
         # Get initial magnetization.
         magnetization_per_site = [0 for i in range(len(self.inputs.structure.sites))]
-        if "uks" in self.ctx.dft_params and self.ctx.dft_params["uks"]:
+        if self.ctx.dft_params.get("uks"):
             magnetization_per_site = self.ctx.dft_params["magnetization_per_site"]
 
         structure_with_tags, kinds_dict = cp2k_utils.determine_kinds(

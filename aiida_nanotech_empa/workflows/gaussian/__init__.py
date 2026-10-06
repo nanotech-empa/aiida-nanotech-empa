@@ -10,14 +10,14 @@ from .scf_workchain import GaussianScfWorkChain
 from .spin_workchain import GaussianSpinWorkChain
 
 __all__ = (
-    "GaussianScfWorkChain",
-    "GaussianRelaxWorkChain",
-    "GaussianDeltaScfWorkChain",
-    "GaussianNatOrbWorkChain",
-    "GaussianSpinWorkChain",
-    "GaussianHfMp2WorkChain",
-    "GaussianConstrOptChainWorkChain",
-    "GaussianCasscfWorkChain",
     "GaussianCasscfSeriesWorkChain",
+    "GaussianCasscfWorkChain",
+    "GaussianConstrOptChainWorkChain",
+    "GaussianDeltaScfWorkChain",
+    "GaussianHfMp2WorkChain",
+    "GaussianNatOrbWorkChain",
     "GaussianNicsWorkChain",
+    "GaussianRelaxWorkChain",
+    "GaussianScfWorkChain",
+    "GaussianSpinWorkChain",
 )

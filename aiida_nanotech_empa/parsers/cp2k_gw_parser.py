@@ -58,7 +58,7 @@ class Cp2kGwParser(Cp2kBaseParser):
 
         return None
 
-    def _parse_cp2k_gw_output(self, output_string):  # noqa
+    def _parse_cp2k_gw_output(self, output_string):
         lines = output_string.splitlines()
 
         results = {}
