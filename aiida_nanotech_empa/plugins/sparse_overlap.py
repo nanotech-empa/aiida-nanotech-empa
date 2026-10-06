@@ -1,6 +1,5 @@
 from aiida import common, engine, orm
 
-
 # CP2K writes PRINT/AO_MATRICES with FILENAME=OVERLAP_FILENAME to this log file.
 OVERLAP_FILENAME = "overlap_matrix.out"
 DEFAULT_MATRIX_FILENAME = f"aiida-{OVERLAP_FILENAME}-1_0.Log"

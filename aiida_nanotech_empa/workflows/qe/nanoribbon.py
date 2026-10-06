@@ -108,7 +108,7 @@ class NanoribbonWorkChain(engine.WorkChain):
                 label="cell_opt1",
                 runtype="vc-relax",
                 precision=0.5,
-                min_kpoints=int(1),
+                min_kpoints=1,
                 max_nodes=self.inputs.max_nodes.value,
                 mem_node=self.inputs.mem_node.value,
                 wallseconds=self.inputs.wall_seconds.value,  # max 24 hours
@@ -130,7 +130,7 @@ class NanoribbonWorkChain(engine.WorkChain):
                 label="cell_opt2",
                 runtype="vc-relax",
                 precision=1.0,
-                min_kpoints=int(1),
+                min_kpoints=1,
                 max_nodes=self.inputs.max_nodes.value,
                 mem_node=self.inputs.mem_node.value,
                 wallseconds=self.inputs.wall_seconds.value,  # max 24 hours
@@ -148,7 +148,7 @@ class NanoribbonWorkChain(engine.WorkChain):
             structure = prev_calc.outputs.output_structure
         else:
             structure = self.inputs.structure
-        min_kpoints = min(int(10), self.inputs.max_kpoints.value)
+        min_kpoints = min(10, self.inputs.max_kpoints.value)
         return self._submit_pw_calc(
             structure,
             tot_charge=self.inputs.tot_charge.value,
@@ -234,7 +234,7 @@ class NanoribbonWorkChain(engine.WorkChain):
         prev_calc = self.ctx.scf
         structure = prev_calc.inputs.structure
         parent_folder = prev_calc.outputs.remote_folder
-        min_kpoints = min(int(20), self.inputs.max_kpoints.value)
+        min_kpoints = min(20, self.inputs.max_kpoints.value)
         return self._submit_pw_calc(
             structure,
             tot_charge=self.inputs.tot_charge.value,
@@ -265,11 +265,11 @@ class NanoribbonWorkChain(engine.WorkChain):
         previous_nodes = int(prev_calc.base.attributes.all["resources"]["num_machines"])
         previous_pools = int(prev_calc.inputs.parallelization.get_dict()["npool"])
         if natoms < 60:
-            nnodes = min(int(1), previous_nodes)
-            npools = min(int(1), previous_pools)
-        elif natoms < int(120):
-            nnodes = min(int(2), previous_nodes)
-            npools = min(int(2), previous_pools)
+            nnodes = min(1, previous_nodes)
+            npools = min(1, previous_pools)
+        elif natoms < 120:
+            nnodes = min(2, previous_nodes)
+            npools = min(2, previous_pools)
         else:
             nnodes = previous_nodes
             npools = previous_pools
@@ -323,7 +323,7 @@ class NanoribbonWorkChain(engine.WorkChain):
         prev_calc = self.ctx.scf
         structure = prev_calc.inputs.structure
         parent_folder = prev_calc.outputs.remote_folder
-        min_kpoints = min(int(12), self.inputs.max_kpoints.value)
+        min_kpoints = min(12, self.inputs.max_kpoints.value)
         return self._submit_pw_calc(
             structure,
             tot_charge=self.inputs.tot_charge.value,
@@ -349,7 +349,7 @@ class NanoribbonWorkChain(engine.WorkChain):
                 # contribution of a selected wavefunction
                 # to charge density
                 "plot_num": 7,
-                "kpoint(1)": int(1),
+                "kpoint(1)": 1,
                 "kpoint(2)": int(
                     prev_calc.res.number_of_k_points
                     * prev_calc.res.number_of_spin_components
@@ -555,13 +555,13 @@ class NanoribbonWorkChain(engine.WorkChain):
 
         # parallelization settings
         # Temporary double pools in case of spin
-        spinpools = int(1)
+        spinpools = 1
         start_mag = self._get_magnetization(structure)
         if any(m != 0 for m in start_mag.values()):
-            spinpools = int(2)
+            spinpools = 2
 
         natoms = len(structure.sites)
-        max_npools = spinpools * min(1 + int(nkpoints / 4), int(6))
+        max_npools = spinpools * min(1 + int(nkpoints / 4), 6)
         max_npools = min(self.ctx.nproc_mach, max_npools)  # added for daint.alps
         nnodes_base = min(max_nodes, (1 + int(natoms / mem_node)))
 

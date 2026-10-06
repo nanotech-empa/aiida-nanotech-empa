@@ -60,7 +60,7 @@ def _save_and_crop(fname, max_w, view):
     _crop_image_bbox(fname)
 
 
-def make_pymol_png(  # noqa
+def make_pymol_png(
     input_file,
     isov=0.05,
     colors=("brightorange", "marine"),

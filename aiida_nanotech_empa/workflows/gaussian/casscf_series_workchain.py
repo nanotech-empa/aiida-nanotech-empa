@@ -221,11 +221,7 @@ class GaussianCasscfSeriesWorkChain(engine.WorkChain):
             prev_calc_folder = self.ctx[prev_label].outputs.remote_folder
         else:
             # For any other multiplicity, use the orbitals of the corresponding base casscf.
-            prev_label = "cas_{}_{}_m{}".format(
-                self.ctx.current_nm[0],
-                self.ctx.current_nm[1],
-                self.inputs.multiplicity_list[0],
-            )
+            prev_label = f"cas_{self.ctx.current_nm[0]}_{self.ctx.current_nm[1]}_m{self.inputs.multiplicity_list[0]}"
             prev_calc_folder = self.ctx[prev_label].outputs.remote_folder
 
         builder = GaussianCasscfWorkChain.get_builder()
