@@ -122,13 +122,7 @@ class Axis:
         Note: SetScale/P expects minimum value and step-size
         """
         delta = 0 if self.delta is None else self.delta
-        s = 'X SetScale/P {symb} {min},{delta}, "{unit}", {name};\n'.format(
-            symb=self.symbol,
-            min=self.min,
-            delta=delta,
-            unit=self.unit,
-            name=self.wavename,
-        )
+        s = f'X SetScale/P {self.symbol} {self.min},{delta}, "{self.unit}", {self.wavename};\n'
         return s
 
     def read(self, string):
