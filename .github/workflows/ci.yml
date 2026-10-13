@@ -55,6 +55,9 @@ jobs:
     needs: unit
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    env:
+      # GitHub VMs cannot provide the InfiniBand verbs selected by UCX.
+      UCX_TLS: tcp,self,sm
     services:
       postgres:
         image: postgres:12
