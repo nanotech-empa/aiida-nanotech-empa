@@ -1,5 +1,6 @@
 from .adsorbed_gw_ic_workchain import Cp2kAdsorbedGwIcWorkChain
 from .afm_workchain import Cp2kAfmWorkChain
+from .cp2k_benchmark_workchain import Cp2kBenchmarkWorkChain
 from .diag_workchain import Cp2kDiagWorkChain
 from .fragment_separation import Cp2kFragmentSeparationWorkChain
 from .geo_opt_workchain import Cp2kGeoOptWorkChain
@@ -12,6 +13,7 @@ from .pdos_workchain import Cp2kPdosWorkChain
 from .phonons_workchain import Cp2kPhononsWorkChain
 from .reftraj_md_workchain import Cp2kRefTrajWorkChain
 from .replica_workchain import Cp2kReplicaWorkChain
+from .scf_workchain import Cp2kScfWorkChain
 from .stm_workchain import Cp2kStmWorkChain
 
 __all__ = (
@@ -26,8 +28,10 @@ __all__ = (
     "Cp2kAfmWorkChain",
     "Cp2kHrstmWorkChain",
     "Cp2kDiagWorkChain",
+    "Cp2kScfWorkChain",
     "Cp2kReplicaWorkChain",
     "Cp2kNebWorkChain",
     "Cp2kPhononsWorkChain",
+    "Cp2kBenchmarkWorkChain",
     "Cp2kRefTrajWorkChain",
 )
