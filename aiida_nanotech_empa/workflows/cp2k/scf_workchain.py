@@ -163,6 +163,13 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             required=False,
             help="Metadata options for the unfolding post-processing CalcJob.",
         )
+        spec.input(
+            "unfolding_pdos_threshold",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(1.0e-4),
+            required=False,
+            help="Projection threshold for compact atom-resolved PDOS data attached to unfolding.",
+        )
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -213,6 +220,11 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             return (
                 "'unfolding_code' needs unoccupied orbitals in the wavefunction: "
                 "set 'added_mos' > 0 in 'dft_params'."
+            )
+        if "unfolding_code" in value and "pdos_lists" in value:
+            return (
+                "'unfolding_code' prints one PDOS list per atom and cannot be "
+                "combined with 'pdos_lists'."
             )
         window_error = unfolding.validate_energy_window(
             value, "unfolding_emin", "unfolding_emax"
@@ -277,6 +289,17 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         if self.inputs.overlap_matrix.value != "none":
             _print_overlap_matrix(input_dict, self.inputs.overlap_ndigits.value)
 
+        if self.should_run_unfolding():
+            added_mos = int(self.ctx.dft_params.get("added_mos", 0))
+            print_section = input_dict["FORCE_EVAL"]["DFT"].setdefault("PRINT", {})
+            print_section["PDOS"] = {
+                "LDOS": [
+                    {"COMPONENTS": "", "LIST": atom_index}
+                    for atom_index in range(1, self.ctx.n_atoms + 1)
+                ],
+                "NLUMO": added_mos,
+            }
+
     def _serial_postprocessing_metadata(self, label):
         """Single-core job, capped at one hour or the SCF wall time."""
         return {
@@ -326,6 +349,8 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         if "unfolding_emin" in self.inputs:
             builder.emin = self.inputs.unfolding_emin
             builder.emax = self.inputs.unfolding_emax
+        builder.parse_pdos_projections = orm.Bool(True)
+        builder.pdos_threshold = self.inputs.unfolding_pdos_threshold
         metadata = self._serial_postprocessing_metadata("cp2k_unfolding")
         options = metadata["options"]
         options.update(self.inputs.unfolding_options.get_dict())
@@ -336,6 +361,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         if self.inputs.unfolding_code.with_mpi is not None:
             options.setdefault("withmpi", self.inputs.unfolding_code.with_mpi)
         builder.metadata = metadata
+
         return engine.ToContext(unfolding=self.submit(builder))
 
     def run_bader(self):

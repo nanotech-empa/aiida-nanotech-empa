@@ -146,6 +146,23 @@ def test_validator_unfolding_requires_primitive_basis_atoms():
     assert "unfolding_primitive_basis_atoms" in message
 
 
+def test_validator_unfolding_rejects_pdos_lists():
+    # Unfolding writes one PDOS list per atom, which would replace 'pdos_lists'.
+    inputs = {
+        "run_diag_scf": orm.Bool(True),
+        "overlap_matrix": orm.Str("remote_only"),
+        "unfolding_primitive_basis_atoms": orm.Str("1 2"),
+        "unfolding_code": object(),  # the validator only checks presence
+        "unfolding_primitive_vectors": orm.Str("1 0 0; 0 1 0"),
+        "dft_params": orm.Dict({"added_mos": 10}),
+        "pdos_lists": orm.List([("1..4", "molecule")]),
+    }
+
+    message = Cp2kScfWorkChain._validate_inputs(inputs, None)
+
+    assert "pdos_lists" in message
+
+
 @pytest.mark.parametrize(
     ("hook", "run_diag_scf", "overlap_matrix", "printed"),
     [
@@ -167,6 +184,7 @@ def test_overlap_matrix_printed_in_last_scf_step(
             overlap_ndigits=orm.Int(10),
         ),
         should_run_bader=lambda: False,
+        should_run_unfolding=lambda: False,
     )
     input_dict = {"FORCE_EVAL": {"DFT": {}}}
 
@@ -248,6 +266,7 @@ def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path
             unfolding_basis_cluster_tol=orm.Float(5.0e-2),
             unfolding_options=orm.Dict(),
             overlap_threshold=orm.Float(1e-10),
+            unfolding_pdos_threshold=orm.Float(1e-4),
         )
     )
     if path is not None:
@@ -281,3 +300,19 @@ def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path
         assert submitted[0].path is None
     else:
         assert submitted[0].path.value == path
+
+
+def test_unfolding_prints_atom_resolved_pdos():
+    workchain = SimpleNamespace(
+        inputs=SimpleNamespace(overlap_matrix=orm.Str("none")),
+        ctx=SimpleNamespace(dft_params={"added_mos": 12}, n_atoms=3),
+        should_run_unfolding=lambda: True,
+    )
+    input_dict = {"FORCE_EVAL": {"DFT": {}}}
+
+    Cp2kScfWorkChain.update_diag_input_dict(workchain, input_dict)
+
+    assert input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["PDOS"] == {
+        "LDOS": [{"COMPONENTS": "", "LIST": atom} for atom in (1, 2, 3)],
+        "NLUMO": 12,
+    }
