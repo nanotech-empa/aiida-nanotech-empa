@@ -3,8 +3,10 @@ import click
 from aiida import engine, orm, plugins
 
 try:
+    from examples.workflows._diagnostics import assert_finished_ok
     from examples.workflows._paths import script_dir
 except ModuleNotFoundError:
+    from _diagnostics import assert_finished_ok
     from _paths import script_dir
 
 Cp2kOrbiralsWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.orbitals")
@@ -105,7 +107,7 @@ def _example_cp2k_orb(
 
     _, calc_node = engine.run_get_node(builder)
 
-    assert calc_node.is_finished_ok
+    assert_finished_ok(calc_node.uuid)
 
 
 def example_cp2k_orb_no_sc_diag(cp2k_code, spm_code):
