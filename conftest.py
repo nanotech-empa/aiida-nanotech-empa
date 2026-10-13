@@ -131,6 +131,11 @@ def cp2k_code(local_code_factory):
 
 
 @pytest.fixture(scope="function")
+def bader_code(local_code_factory):
+    return local_code_factory("nanotech_empa.bader", "bader")
+
+
+@pytest.fixture(scope="function")
 def spm_code(local_code_factory):
     return local_code_factory("nanotech_empa.stm", "cp2k-stm-sts-wfn", label="stm")
 
@@ -144,8 +149,6 @@ def overlap_code(local_code_factory):
 
 @pytest.fixture(scope="function")
 def sparse_overlap_code(local_code_factory):
-    if not shutil.which("cp2k-overlap-to-sparse-npz"):
-        pytest.skip("cp2k-overlap-to-sparse-npz executable not available")
     return local_code_factory(
         "nanotech_empa.sparse_overlap",
         "cp2k-overlap-to-sparse-npz",

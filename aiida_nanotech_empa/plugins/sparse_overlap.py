@@ -1,7 +1,9 @@
 from aiida import common, engine, orm
 
 
-DEFAULT_MATRIX_FILENAME = "aiida-overlap_matrix.out-1_0.Log"
+# CP2K writes PRINT/AO_MATRICES with FILENAME=OVERLAP_FILENAME to this log file.
+OVERLAP_FILENAME = "overlap_matrix.out"
+DEFAULT_MATRIX_FILENAME = f"aiida-{OVERLAP_FILENAME}-1_0.Log"
 DEFAULT_OUTPUT_FILENAME = "sparse_overlap.npz"
 
 
@@ -40,9 +42,20 @@ class SparseOverlapCalculation(engine.CalcJob):
             required=False,
         )
         spec.input("metadata.options.withmpi", valid_type=bool, default=False)
+        spec.input(
+            "metadata.options.parser_name",
+            valid_type=str,
+            default="nanotech_empa.sparse_overlap",
+        )
+
+        spec.exit_code(
+            300,
+            "ERROR_OUTPUT_FILE_MISSING",
+            message="The sparse overlap output file was not retrieved.",
+        )
 
     def prepare_for_submission(self, folder):
-        settings = self.inputs.settings.get_dict() if "settings" in self.inputs else {}
+        settings = self.inputs.settings.get_dict()
 
         output_filename = self.inputs.output_filename.value
         codeinfo = common.CodeInfo()
@@ -60,8 +73,8 @@ class SparseOverlapCalculation(engine.CalcJob):
         calcinfo.remote_symlink_list = []
         calcinfo.remote_copy_list = []
         calcinfo.local_copy_list = []
-        calcinfo.retrieve_list = settings.pop(
-            "additional_retrieve_list", [output_filename]
+        calcinfo.retrieve_list = [output_filename] + settings.pop(
+            "additional_retrieve_list", []
         )
 
         comp_uuid = self.inputs.parent_calc_folder.computer.uuid

@@ -1,4 +1,5 @@
 import copy
+
 import numpy as np
 from aiida import engine, orm, plugins
 
@@ -43,7 +44,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
         cp2k_utils.add_restart_policy_inputs(spec)
-
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -166,17 +166,13 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         # Parser.
         builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
-        self.update_ot_input_dict(input_dict)
-
         # CP2K input dictionary.
-        builder.cp2k.parameters = orm.Dict(input_dict)
         self.ctx.input_dict = copy.deepcopy(input_dict)
+        self.update_ot_input_dict(input_dict)
+        builder.cp2k.parameters = orm.Dict(input_dict)
 
         future = self.submit(builder)
         self.to_context(ot_scf=future)
-
-    def update_ot_input_dict(self, input_dict):
-        pass
 
     def run_diag_scf(self):
         self.report("Running CP2K diagonalization SCF")
@@ -291,6 +287,9 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         self.out("remote_folder", self.ctx.diag_scf.outputs.remote_folder)
         self.out("retrieved", self.ctx.diag_scf.outputs.retrieved)
         self.report("Work chain is finished")
+
+    def update_ot_input_dict(self, input_dict):
+        """Hook for derived workchains to add OT-only CP2K input."""
 
     def update_diag_input_dict(self, input_dict):
         """Hook for derived workchains to add diagonalization-only CP2K input."""
