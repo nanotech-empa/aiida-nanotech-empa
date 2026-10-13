@@ -75,3 +75,125 @@ def test_prepare_folded_kpoints(aiida_profile, fixture_localhost):
     assert primitive.shape[1] >= 3
     assert len(folded) > 0
     assert len(primitive) > 0
+
+
+def test_primitive_reference_keeps_periodicity_and_collapses_replicas(
+    aiida_profile, fixture_localhost
+):
+    """A two-cell supercell produces one primitive site and the right mesh."""
+    import numpy as np
+
+    structure = orm.StructureData(
+        ase=ase.Atoms(
+            "C2",
+            positions=[[0, 0, 0], [4, 0, 0]],
+            cell=[8, 4, 4],
+            pbc=[True, True, False],
+        )
+    )
+    process = (
+        get_manager()
+        .get_runner()
+        .instantiate_process(
+            QeBanduppyUnfoldingWorkChain,
+            pw_code=_code(fixture_localhost, "quantumespresso.pw"),
+            banduppy_code=_code(fixture_localhost, "nanotech_empa.qe_banduppy"),
+            structure=structure,
+            parameters=orm.Dict(dict={"CONTROL": {}, "SYSTEM": {}, "ELECTRONS": {}}),
+            template_remote_folder=orm.RemoteData(
+                computer=fixture_localhost, remote_path="/tmp"
+            ),
+            unfolding_parameters=orm.Dict(
+                dict={
+                    "supercell_matrix": [[2, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    "path": [[0, 0, 0], [0.5, 0, 0], [0, 0, 0]],
+                    "labels": ["G", "X", "G"],
+                    "npoints_per_segment": [3, 3],
+                }
+            ),
+            pseudos={},
+        )
+    )
+    try:
+        process.setup()
+        process.prepare_folded_kpoints()
+        process.prepare_reference_inputs()
+        reference = process.ctx.reference_structure
+        np.testing.assert_allclose(reference.cell, np.diag([4, 4, 4]))
+        assert reference.pbc == (True, True, False)
+        assert len(reference.sites) == 1
+        assert reference.kinds[0].symbols == ("C",)
+        mesh, offset = process.ctx.reference_scf_kpoints.get_kpoints_mesh()
+        assert tuple(mesh) == (2, 1, 1)
+        assert tuple(offset) == (0.0, 0.0, 0.0)
+        np.testing.assert_allclose(
+            process.ctx.reference_kpoints.get_kpoints()[[0, -1]], [[0, 0, 0], [0, 0, 0]]
+        )
+        assert [label for _, label in process.ctx.reference_kpoints.labels] == [
+            "G",
+            "X",
+            "G",
+        ]
+    finally:
+        process.close()
+
+
+def test_reference_parameters_are_pristine_without_mutating_template():
+    """The primitive reference removes defect charge/spin and rescales bands."""
+    import copy
+
+    import numpy as np
+
+    from aiida_nanotech_empa.workflows.qe.banduppy import _reference_qe_parameters
+
+    parameters = {
+        "CONTROL": {
+            "calculation": "scf",
+            "restart_mode": "restart",
+            "prefix": "source",
+        },
+        "SYSTEM": {
+            "nbnd": 13,
+            "tot_charge": 1,
+            "nspin": 2,
+            "starting_magnetization": {"C": 0.5},
+            "starting_ns_eigenvalue(1,1,1)": 1,
+        },
+        "ELECTRONS": {
+            "startingpot": "file",
+            "startingwfc": "file",
+            "diago_full_acc": True,
+            "conv_thr": 1e-8,
+        },
+    }
+    original = copy.deepcopy(parameters)
+    matrix = np.diag([2, 1, 1])
+    scf = _reference_qe_parameters(parameters, matrix, calculation="scf")
+    bands = _reference_qe_parameters(parameters, matrix, calculation="bands")
+    assert parameters == original
+    assert scf["CONTROL"] == {
+        "calculation": "scf",
+        "restart_mode": "from_scratch",
+        "prefix": "source",
+    }
+    assert scf["SYSTEM"] == {}
+    assert scf["ELECTRONS"] == {"conv_thr": 1e-8}
+    assert bands["SYSTEM"] == {"nbnd": 7}
+    assert bands["CONTROL"]["calculation"] == "bands"
+    assert bands["CONTROL"]["restart_mode"] == "from_scratch"
+
+
+def test_folded_diagonalization_preserves_template():
+    from aiida_nanotech_empa.workflows.qe.banduppy import _folded_qe_parameters
+
+    parameters = {
+        "CONTROL": {"calculation": "scf"},
+        "ELECTRONS": {"diagonalization": "david"},
+    }
+    inherited = _folded_qe_parameters(parameters, {"folded_diagonalization": "inherit"})
+    overridden = _folded_qe_parameters(parameters, {"folded_diagonalization": "cg"})
+    assert parameters["CONTROL"]["calculation"] == "scf"
+    assert parameters["ELECTRONS"]["diagonalization"] == "david"
+    assert inherited["CONTROL"]["calculation"] == "bands"
+    assert inherited["ELECTRONS"]["diagonalization"] == "david"
+    assert overridden["ELECTRONS"]["diagonalization"] == "cg"
