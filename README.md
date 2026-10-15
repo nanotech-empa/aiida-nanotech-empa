@@ -61,3 +61,30 @@ We acknowledge support from:
 * the [swissuniversities P-5 project "Materials Cloud"](https://www.materialscloud.org/swissuniversities).
 <img src="https://github.com/nanotech-empa/aiida-nanotech-empa/blob/master/images/MARVEL.png" width="250px" height="131px"/>
 <img src="https://github.com/nanotech-empa/aiida-nanotech-empa/blob/master/images/swissuniversities.png" width="300px" height="35px"/>
+
+## Software attribution and scientific acknowledgements
+
+Please credit [aiida-nanotech-empa](https://github.com/nanotech-empa/aiida-nanotech-empa) and its
+[contributors](https://github.com/nanotech-empa/aiida-nanotech-empa/graphs/contributors),
+and identify the release or immutable commit used. Existing author,
+contributor and funding acknowledgements remain authoritative.
+
+See [CITATION.cff](CITATION.cff) for the software citation. A project DOI
+covers archived releases; identify the exact version or commit separately.
+Use a release DOI only for the release it identifies.
+
+Preserve the copyright and permission notices in [LICENSE](LICENSE)
+when copying or distributing copies or substantial portions of MIT-licensed
+code. Separately licensed components retain their own notices. A name or
+repository link does not replace the applicable licence notices.
+
+When this software's AiiDA workflows or provenance helped the research,
+acknowledge the [AiiDA team and cite its three papers](https://github.com/nanotech-empa/.github/blob/main/CITATION_GUIDANCE.md#aiida).
+Also acknowledge [AiiDAlab and its two platform papers](https://github.com/nanotech-empa/.github/blob/main/CITATION_GUIDANCE.md#aiidalab)
+when AiiDAlab was used to access those workflows.
+
+Also cite the calculation plugins, simulation codes and post-processing tools actually used, including cp2k-spm-tools for its unfolding or microscopy implementations.
+
+The [shared credit guide](https://github.com/nanotech-empa/.github/blob/main/CITATION_GUIDANCE.md) keeps software attribution, licence
+compliance and scientific citation requests separate. Scientific citation
+requests are not additional MIT licence conditions.
