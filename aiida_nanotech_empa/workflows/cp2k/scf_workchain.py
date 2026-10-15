@@ -114,6 +114,12 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             "newlines. They are snapped to an exact tiling of the cell.",
         )
         spec.input(
+            "unfolding_primitive_basis_atoms",
+            valid_type=orm.Str,
+            required=False,
+            help="1-based atom indices defining the primitive basis, e.g. 1 2 or 171 196.",
+        )
+        spec.input(
             "unfolding_path",
             valid_type=orm.Str,
             required=False,
@@ -141,6 +147,20 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             valid_type=orm.Float,
             required=False,
             help="Upper bound (eV) of the unfolded energy window, see 'unfolding_emin'.",
+        )
+        spec.input(
+            "unfolding_basis_cluster_tol",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(5.0e-2),
+            required=False,
+            help="Fallback fractional tolerance used only when primitive basis atoms are omitted.",
+        )
+        spec.input(
+            "unfolding_options",
+            valid_type=orm.Dict,
+            default=lambda: orm.Dict(dict={}),
+            required=False,
+            help="Metadata options for the unfolding post-processing CalcJob.",
         )
         spec.outline(
             cls.setup,
@@ -177,6 +197,10 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             )
         if "unfolding_code" in value and "unfolding_primitive_vectors" not in value:
             return "'unfolding_primitive_vectors' is required with 'unfolding_code'."
+        if "unfolding_code" in value and "unfolding_primitive_basis_atoms" not in value:
+            return (
+                "'unfolding_primitive_basis_atoms' is required with 'unfolding_code'."
+            )
         if (
             "unfolding_code" in value
             and value["dft_params"].get("periodic", "XYZ") == "NONE"
@@ -291,14 +315,25 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.code = self.inputs.unfolding_code
         builder.parent_calc_folder = self.ctx.diag_scf.outputs.remote_folder
         builder.primitive_vectors = self.inputs.unfolding_primitive_vectors
+        builder.primitive_basis_atoms = self.inputs.unfolding_primitive_basis_atoms
         if "unfolding_path" in self.inputs:
             builder.path = self.inputs.unfolding_path
         builder.lattice_type = self.inputs.unfolding_lattice_type
         builder.overlap_threshold = self.inputs.overlap_threshold
+        builder.basis_cluster_tol = self.inputs.unfolding_basis_cluster_tol
         if "unfolding_emin" in self.inputs:
             builder.emin = self.inputs.unfolding_emin
             builder.emax = self.inputs.unfolding_emax
-        builder.metadata = self._serial_postprocessing_metadata("cp2k_unfolding")
+        metadata = self._serial_postprocessing_metadata("cp2k_unfolding")
+        options = metadata["options"]
+        options.update(self.inputs.unfolding_options.get_dict())
+        # Whether AiiDA launches the executable through MPI is a property of the
+        # configured code, not of the requested allocation. In particular, a
+        # serial unfolding code may still request multiple cores for threaded
+        # numerical libraries.
+        if self.inputs.unfolding_code.with_mpi is not None:
+            options.setdefault("withmpi", self.inputs.unfolding_code.with_mpi)
+        builder.metadata = metadata
         return engine.ToContext(unfolding=self.submit(builder))
 
     def run_bader(self):
