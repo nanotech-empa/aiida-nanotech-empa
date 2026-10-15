@@ -36,7 +36,7 @@ class Cp2kGwParser(Cp2kBaseParser):
         try:
             output_string = self.retrieved.base.repository.get_object_content(fname)
         except OSError:
-            return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
+            return self.exit_codes.ERROR_OUTPUT_READ
 
         # CP2K advanced parsing provided by aiida-cp2k
         result_dict = parse_cp2k_output_advanced(output_string)
