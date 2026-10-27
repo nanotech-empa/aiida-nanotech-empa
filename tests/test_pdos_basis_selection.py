@@ -178,6 +178,7 @@ def test_overlap_forwards_each_parents_actual_orbital_files(
 def test_overlap_calcjob_expands_basis_file_lists(aiida_localhost):
     from aiida.common.folders import SandboxFolder
     from aiida.manage import get_manager
+
     from aiida_nanotech_empa.plugins.overlap import OverlapCalculation
 
     code = orm.InstalledCode(

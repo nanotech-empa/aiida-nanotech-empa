@@ -19,6 +19,7 @@ from .stm_workchain import Cp2kStmWorkChain
 __all__ = (
     "Cp2kAdsorbedGwIcWorkChain",
     "Cp2kAfmWorkChain",
+    "Cp2kBenchmarkWorkChain",
     "Cp2kDiagWorkChain",
     "Cp2kFragmentSeparationWorkChain",
     "Cp2kGeoOptWorkChain",
@@ -29,7 +30,6 @@ __all__ = (
     "Cp2kOrbitalsWorkChain",
     "Cp2kPdosWorkChain",
     "Cp2kPhononsWorkChain",
-    "Cp2kBenchmarkWorkChain",
     "Cp2kRefTrajWorkChain",
     "Cp2kReplicaWorkChain",
     "Cp2kScfWorkChain",

@@ -312,7 +312,7 @@ def dict_merge(dct, merge_dct):
 
 def get_cutoff(structure=None):
     if structure is None:
-        return int(600)
+        return 600
     with open(DATA_DIR / "atomic_kinds.yml", encoding="utf-8") as fhandle:
         atom_data = yaml.safe_load(fhandle)
     elements = structure.get_symbols_set()
@@ -840,7 +840,9 @@ def _fixed_constraint_dict(const):
     indexes = re.sub(r"^\s*fixed\b", "", const, flags=re.IGNORECASE).strip()
     xyz = "XYZ"
 
-    match = re.match(r"^(?P<components>[xyz]+)\b(?P<indexes>.*)$", indexes, re.IGNORECASE)
+    match = re.match(
+        r"^(?P<components>[xyz]+)\b(?P<indexes>.*)$", indexes, re.IGNORECASE
+    )
     if match:
         xyz = match.group("components").upper()
         indexes = match.group("indexes").strip()
