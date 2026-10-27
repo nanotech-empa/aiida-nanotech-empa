@@ -1,0 +1,23 @@
+# Software authorship source: https://zenodo.org/records/21935879
+cff-version: 1.2.0
+type: software
+title: aiida-nanotech-empa
+message: If you use this software, please cite it and identify the exact version or commit
+  used. See README.md for software attribution and applicable scientific references.
+identifiers:
+- type: doi
+  value: 10.5281/zenodo.6845124
+  description: Project DOI covering archived releases; identify the exact version or commit
+    used separately.
+authors:
+- family-names: Yakutovich
+  given-names: Aliaksandr
+- family-names: Eimre
+  given-names: Kristjan
+- family-names: Pignedoli
+  given-names: Carlo
+- family-names: Ortega-Guerrero
+  given-names: Andres
+repository-code: https://github.com/nanotech-empa/aiida-nanotech-empa
+url: https://github.com/nanotech-empa/aiida-nanotech-empa
+license: MIT

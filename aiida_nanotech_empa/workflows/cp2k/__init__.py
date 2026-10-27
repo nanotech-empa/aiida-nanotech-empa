@@ -1,5 +1,6 @@
 from .adsorbed_gw_ic_workchain import Cp2kAdsorbedGwIcWorkChain
 from .afm_workchain import Cp2kAfmWorkChain
+from .cp2k_benchmark_workchain import Cp2kBenchmarkWorkChain
 from .diag_workchain import Cp2kDiagWorkChain
 from .fragment_separation import Cp2kFragmentSeparationWorkChain
 from .geo_opt_workchain import Cp2kGeoOptWorkChain
@@ -28,6 +29,7 @@ __all__ = (
     "Cp2kOrbitalsWorkChain",
     "Cp2kPdosWorkChain",
     "Cp2kPhononsWorkChain",
+    "Cp2kBenchmarkWorkChain",
     "Cp2kRefTrajWorkChain",
     "Cp2kReplicaWorkChain",
     "Cp2kScfWorkChain",
