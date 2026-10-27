@@ -66,5 +66,5 @@ The proposed ELN 0.1.5 includes [ELN #94](https://github.com/aiidalab/aiidalab-e
 [#141](https://github.com/nanotech-empa/aiidalab-openbis/pull/141) (project dropdown) and
 [#143](https://github.com/nanotech-empa/aiidalab-openbis/pull/143) (synchronisation interface).
 For the complete changes, compare
-[ELN v0.1.4...v0.1.5](https://github.com/aiidalab/aiidalab-eln/compare/v0.1.4...v0.1.5) and
+[ELN changes after v0.1.4](https://github.com/aiidalab/aiidalab-eln/compare/v0.1.4...5a0eb9b7a172b0d24e40600ab6d0fab925271ba7) and
 [openBIS v0.1.0...v0.1.1](https://github.com/nanotech-empa/aiidalab-openbis/compare/v0.1.0...v0.1.1).
