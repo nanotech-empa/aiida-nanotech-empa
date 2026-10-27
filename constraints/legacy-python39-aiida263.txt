@@ -1,0 +1,11 @@
+# Empa legacy primary-package constraints: Python 3.9 / AiiDA 2.6.3.
+# Source selection and declared requirements checked on 2026-10-27.
+# Not a full dependency/environment lock; preserve the tested legacy image.
+aiida-core==2.6.3
+aiida-nanotech-empa==1.0.0
+surfaces==1.1.0
+cp2k-spm-tools==1.5.0
+aiidalab-empa-setup==2025.214
+aiidalab-eln==0.1.5
+aiidalab-openbis==0.1.1
+nanoribbons==2.2.0

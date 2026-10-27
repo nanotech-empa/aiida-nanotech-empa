@@ -5,6 +5,8 @@
 
 # aiida-nanotech-empa
 
+> **Legacy Python 3.9 / AiiDA 2.6.3:** use [v1.0.0](https://github.com/nanotech-empa/aiida-nanotech-empa/releases/tag/v1.0.0). See the [Empa legacy compatibility guide](https://github.com/nanotech-empa/aiida-nanotech-empa/blob/master/docs/legacy-python39-aiida263.md) for the matching package versions and installation constraints. Use a tagged version to preserve this runtime.
+
 AiiDA library containing plugins/workflows developed at nanotech@surfaces group from Empa.
 
 Contents:
