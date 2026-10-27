@@ -6,6 +6,6 @@ aiida-nanotech-empa==1.0.0
 surfaces==1.1.0
 cp2k-spm-tools==1.5.0
 aiidalab-empa-setup==2025.214
-aiidalab-eln==0.1.5
+aiidalab-eln==0.1.4
 aiidalab-openbis==0.1.1
 nanoribbons==2.2.0
