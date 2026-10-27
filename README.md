@@ -5,6 +5,8 @@
 
 # aiida-nanotech-empa
 
+> **Legacy Python 3.9 / AiiDA 2.6.3:** use [v1.0.0](https://github.com/nanotech-empa/aiida-nanotech-empa/releases/tag/v1.0.0). See the [Empa legacy compatibility guide](https://github.com/nanotech-empa/aiida-nanotech-empa/blob/master/docs/legacy-python39-aiida263.md) for the matching package versions and installation constraints. Use a tagged version to preserve this runtime.
+
 AiiDA library containing plugins, parsers, and workflows developed by the nanotech@surfaces group at Empa.
 
 The package focuses on automation around CP2K, Gaussian, Quantum ESPRESSO, and post-processing tools used in surface-science workflows. It is also used by the `aiidalab-empa-surfaces` app.
@@ -19,6 +21,8 @@ The package focuses on automation around CP2K, Gaussian, Quantum ESPRESSO, and p
 * `nanotech_empa.cp2k.stm`, `nanotech_empa.cp2k.afm`, `nanotech_empa.cp2k.hrstm`, `nanotech_empa.cp2k.orbitals`, `nanotech_empa.cp2k.pdos`: workflows for scanning-probe simulations, orbital cubes, and projected density of states.
 * `nanotech_empa.cp2k.fragment_separation`, `nanotech_empa.cp2k.replica`, `nanotech_empa.cp2k.neb`, `nanotech_empa.cp2k.phonons`: workflows for adsorption energies, replica chains, nudged elastic band calculations, and phonons.
 * `nanotech_empa.cp2k.ads_gw_ic`, `nanotech_empa.cp2k.molecule_gw`, `nanotech_empa.cp2k.mol_opt_gw`: CP2K/GW-oriented workflows.
+* `nanotech_empa.cp2k.reftraj`: batched calculations along a reference trajectory.
+* `nanotech_empa.cp2k.benchmark`: benchmark CP2K resource configurations on selected structures.
 
 ### Calculation plugins
 
@@ -31,11 +35,17 @@ The package focuses on automation around CP2K, Gaussian, Quantum ESPRESSO, and p
 * `nanotech_empa.gaussian.*`: Gaussian workflows for SCF, relaxations, spin-state analysis, constrained optimization, CASSCF, NICS, and related post-processing.
 * `nanotech_empa.nanoribbon`: workflow to characterize 1D periodic systems with Quantum ESPRESSO.
 
+The Gaussian spin workflow supports wavefunction-stability checks and optimizes the requested multiplicities, selects the lowest-energy state, and runs Δ-SCF ionization-potential/electron-affinity and vertical-excitation calculations. Natural-orbital analysis is available for an open-shell singlet ground state. Orbital image rendering requires the [PyMOL Python module](https://github.com/schrodinger/pymol-open-source), installed separately in the rendering environment.
+
 ## Installation
+
+Install the latest published package with:
 
 ```shell
 pip install aiida-nanotech-empa
 ```
+
+The overview above follows the development branch. Check the [release notes](https://github.com/nanotech-empa/aiida-nanotech-empa/releases) for the features included in a published version.
 
 ## For maintainers
 
@@ -61,3 +71,30 @@ We acknowledge support from:
 * the [swissuniversities P-5 project "Materials Cloud"](https://www.materialscloud.org/swissuniversities).
 <img src="https://github.com/nanotech-empa/aiida-nanotech-empa/blob/master/images/MARVEL.png" width="250px" height="131px"/>
 <img src="https://github.com/nanotech-empa/aiida-nanotech-empa/blob/master/images/swissuniversities.png" width="300px" height="35px"/>
+
+## Software attribution and scientific acknowledgements
+
+Please credit [aiida-nanotech-empa](https://github.com/nanotech-empa/aiida-nanotech-empa) and its
+[contributors](https://github.com/nanotech-empa/aiida-nanotech-empa/graphs/contributors),
+and identify the release or immutable commit used. Existing author,
+contributor and funding acknowledgements remain authoritative.
+
+See [CITATION.cff](CITATION.cff) for the software citation. A project DOI
+covers archived releases; identify the exact version or commit separately.
+Use a release DOI only for the release it identifies.
+
+Preserve the copyright and permission notices in [LICENSE](LICENSE)
+when copying or distributing copies or substantial portions of MIT-licensed
+code. Separately licensed components retain their own notices. A name or
+repository link does not replace the applicable licence notices.
+
+When this software's AiiDA workflows or provenance helped the research,
+acknowledge the [AiiDA team and cite its three papers](https://github.com/nanotech-empa/.github/blob/main/CITATION_GUIDANCE.md#aiida).
+Also acknowledge [AiiDAlab and its two platform papers](https://github.com/nanotech-empa/.github/blob/main/CITATION_GUIDANCE.md#aiidalab)
+when AiiDAlab was used to access those workflows.
+
+Also cite the calculation plugins, simulation codes and post-processing tools actually used, including cp2k-spm-tools for its unfolding or microscopy implementations.
+
+The [shared credit guide](https://github.com/nanotech-empa/.github/blob/main/CITATION_GUIDANCE.md) keeps software attribution, licence
+compliance and scientific citation requests separate. Scientific citation
+requests are not additional MIT licence conditions.
