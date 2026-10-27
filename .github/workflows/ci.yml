@@ -4,6 +4,12 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      example_filter:
+        description: "Optional pytest -k expression for diagnostic example runs"
+        required: false
+        default: ""
+        type: string
 # Cancel superseded runs on PRs. Other runs get their own group (run_id),
 # so runs on master are never cancelled or dropped from the queue.
 concurrency:
@@ -44,11 +50,16 @@ jobs:
         with:
           token: ${{secrets.CODECOV_TOKEN}}
           file: ./coverage.xml
-  # Slow examples that run the real codes: one Python version is enough.
+  # During release-stack integration, run the full scientific suite manually
+  # on the combined revision. Keep unit tests automatic for each intermediate PR.
   examples:
+    if: github.event_name == 'workflow_dispatch'
     needs: unit
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    env:
+      # GitHub VMs cannot provide the InfiniBand verbs selected by UCX.
+      UCX_TLS: tcp,self,sm
     services:
       postgres:
         image: postgres:12
@@ -82,9 +93,12 @@ jobs:
         run: |
           bash .github/install_spm_tools.sh
       - name: Run pytest
+        env:
+          EXAMPLE_FILTER: ${{ github.event.inputs.example_filter || '' }}
         run: |
-          pytest examples/ --durations=15 --cov-report=xml --cov=aiida_nanotech_empa
+          pytest examples/ -k "$EXAMPLE_FILTER" --durations=15 --cov-report=xml --cov=aiida_nanotech_empa
       - name: Upload coverage to codecov
+        if: ${{ !github.event.inputs.example_filter }}
         uses: codecov/codecov-action@v1
         with:
           token: ${{secrets.CODECOV_TOKEN}}
