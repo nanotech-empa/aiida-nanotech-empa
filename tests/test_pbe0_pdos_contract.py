@@ -1,6 +1,7 @@
 """Verify the authored hybrid diagonalization and matching overlap basis inputs."""
 
 import copy
+import shutil
 from types import SimpleNamespace
 
 import ase
@@ -107,9 +108,28 @@ def test_diagonalization_builder_updates_admm_without_mutating_ot(
         ({}, "BASIS_MOLOPT"),
         ({"xc_functional": "PBE0"}, "BASIS_MOLOPT_UZH"),
         ({"basis_set_file_names": ["CUSTOM_BASIS", "CUSTOM_ADMM"]}, "CUSTOM_BASIS"),
+        pytest.param(
+            {
+                "xc_functional": "PBE0",
+                "basis_set_file_names": ["BASIS_ADMM_UZH", "BASIS_MOLOPT_UZH"],
+            },
+            "BASIS_MOLOPT_UZH",
+            id="reordered-pbe0-files",
+        ),
     ],
 )
-def test_pdos_overlap_uses_scf_basis_for_both_parents(aiida_localhost, params, basis):
+def test_pdos_overlap_uses_scf_basis_for_both_parents(
+    aiida_localhost, params, basis, tmp_path, monkeypatch
+):
+    if basis == "CUSTOM_BASIS":
+        data_dir = cp2k_utils.DATA_DIR
+        for source, target in [
+            ("atomic_kinds.yml", "atomic_kinds.yml"),
+            ("BASIS_MOLOPT", "CUSTOM_BASIS"),
+            ("BASIS_ADMM_UZH", "CUSTOM_ADMM"),
+        ]:
+            shutil.copyfile(data_dir / source, tmp_path / target)
+        monkeypatch.setattr(cp2k_utils, "DATA_DIR", tmp_path)
     code = orm.InstalledCode(
         computer=aiida_localhost,
         filepath_executable="/bin/true",
@@ -126,6 +146,13 @@ def test_pdos_overlap_uses_scf_basis_for_both_parents(aiida_localhost, params, b
         ),
         ctx=SimpleNamespace(
             dft_parameters=params,
+            structure=orm.StructureData(
+                ase=ase.Atoms("H2", positions=[[0, 0, 0], [0, 0, 0.74]], cell=[10] * 3)
+            ),
+            mol_dft_parameters=params,
+            molecule_structure=orm.StructureData(
+                ase=ase.Atoms("H2", positions=[[0, 0, 0], [0, 0, 0.74]], cell=[10] * 3)
+            ),
             n_slab_atoms=2,
             slab_diag_scf=SimpleNamespace(
                 is_finished_ok=True, outputs=SimpleNamespace(remote_folder=slab)

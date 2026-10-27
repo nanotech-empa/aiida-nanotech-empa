@@ -10,6 +10,42 @@ Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 OverlapCalculation = plugins.CalculationFactory("nanotech_empa.overlap")
 
 
+def _get_overlap_basis_files(dft_params, elements):
+    """Find the files supplying the orbital bases, in CP2K search order.
+
+    Resolve the first definition of every primary basis. Auxiliary-only files
+    are excluded unless a kind explicitly uses one of their bases as orbital.
+    """
+    kinds = cp2k_utils.get_kinds_section(
+        {element: {"mag": 0.0, "ghost": 0} for element in elements},
+        protocol="gpw",
+        dft_params=dft_params,
+    )["FORCE_EVAL"]["SUBSYS"]["KIND"]
+    required = {(kind["ELEMENT"], kind["BASIS_SET"]) for kind in kinds}
+    sources = {}
+    filenames = cp2k_utils.get_dft_file_names(dft_params)["basis_set_file_names"]
+    for filename in filenames:
+        with (cp2k_utils.DATA_DIR / filename).open(encoding="utf-8") as handle:
+            for line in handle:
+                parts = line.split("#", 1)[0].split()
+                if len(parts) < 2:
+                    continue
+                for alias in parts[1:]:
+                    basis = (parts[0], alias)
+                    if basis in required:
+                        sources.setdefault(basis, filename)
+    missing = required.difference(sources)
+    if missing:
+        details = ", ".join(f"{element}/{basis}" for element, basis in sorted(missing))
+        raise ValueError(
+            "Orbital basis definitions not found in the configured files: " + details
+        )
+    used_files = set(sources.values())
+    return list(
+        dict.fromkeys(filename for filename in filenames if filename in used_files)
+    )
+
+
 class Cp2kPdosWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
@@ -123,6 +159,12 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             "magnetization_per_site"
         ]
 
+        # Check basis definitions before starting either SCF calculation.
+        if self.ctx.do_overlap:
+            _get_overlap_basis_files(
+                self.ctx.dft_parameters, self.ctx.structure.get_symbols_set()
+            )
+
     def run_diags(self):
         # Full system part.
         self.report("Running Diag Workchain for the full system.")
@@ -168,11 +210,29 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         builder = OverlapCalculation.get_builder()
         builder.code = self.inputs.overlap_code
         overlap_params = self.inputs.overlap_params.get_dict()
-        basis_file = cp2k_utils.get_dft_file_names(self.ctx.dft_parameters)[
-            "basis_set_file_names"
-        ][0]
-        overlap_params["--basis_set_file1"] = f"parent_slab_folder/{basis_file}"
-        overlap_params["--basis_set_file2"] = f"parent_mol_folder/{basis_file}"
+        for key, folder, params, structure in (
+            (
+                "--basis_set_file1",
+                "parent_slab_folder",
+                self.ctx.dft_parameters,
+                self.ctx.structure,
+            ),
+            (
+                "--basis_set_file2",
+                "parent_mol_folder",
+                self.ctx.mol_dft_parameters,
+                self.ctx.molecule_structure,
+            ),
+        ):
+            paths = [
+                f"{folder}/{filename}"
+                for filename in _get_overlap_basis_files(
+                    params, structure.get_symbols_set()
+                )
+            ]
+            # Preserve the existing scalar input for one file. Multiple files
+            # require the SPM-tools companion's extended overlap CLI.
+            overlap_params[key] = paths[0] if len(paths) == 1 else paths
         builder.parameters = orm.Dict(overlap_params)
         builder.parent_slab_folder = self.ctx.slab_diag_scf.outputs.remote_folder
         builder.parent_mol_folder = self.ctx.mol_diag_scf.outputs.remote_folder
