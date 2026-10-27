@@ -1,6 +1,6 @@
 import ase
-
 from aiida import orm, plugins
+
 from aiida_nanotech_empa.workflows.cp2k import cp2k_utils
 
 

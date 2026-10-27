@@ -281,6 +281,7 @@ def test_all_failed_workchain_keeps_outputs(aiida_localhost):
 @pytest.mark.parametrize("explicit_tasks", [False, True])
 def test_zero_gpus_matches_one_gpu(aiida_localhost, explicit_tasks):
     from itertools import product
+
     from aiida_nanotech_empa.workflows.cp2k.cp2k_benchmark_workchain import (
         find_multiples_of_ngpus,
     )

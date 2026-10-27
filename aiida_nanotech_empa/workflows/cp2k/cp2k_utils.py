@@ -312,7 +312,7 @@ def dict_merge(dct, merge_dct):
 
 def get_cutoff(structure=None):
     if structure is None:
-        return int(600)
+        return 600
     with open(DATA_DIR / "atomic_kinds.yml", encoding="utf-8") as fhandle:
         atom_data = yaml.safe_load(fhandle)
     elements = structure.get_symbols_set()
@@ -570,7 +570,7 @@ def structure_available_wfn(
         return None
 
     # check if UKS or RKS and in case of UKS if matching magnetization options
-    try:  # noqa TRY101
+    try:
         orig_dft_params = generating_workchain.inputs.dft_params.get_dict()
         was_uks = "uks" in orig_dft_params and orig_dft_params["uks"]
         is_uks = "uks" in dft_params and orig_dft_params["uks"]
@@ -625,7 +625,7 @@ def structure_available_wfn(
         create_a_copy = False
 
     wfn_exists = False
-    try:  # noqa TRY101
+    try:
         wfn_search_path = (
             generating_workchain.outputs.remote_folder.get_remote_path()
             + "/"
@@ -840,7 +840,9 @@ def _fixed_constraint_dict(const):
     indexes = re.sub(r"^\s*fixed\b", "", const, flags=re.IGNORECASE).strip()
     xyz = "XYZ"
 
-    match = re.match(r"^(?P<components>[xyz]+)\b(?P<indexes>.*)$", indexes, re.I)
+    match = re.match(
+        r"^(?P<components>[xyz]+)\b(?P<indexes>.*)$", indexes, re.IGNORECASE
+    )
     if match:
         xyz = match.group("components").upper()
         indexes = match.group("indexes").strip()
