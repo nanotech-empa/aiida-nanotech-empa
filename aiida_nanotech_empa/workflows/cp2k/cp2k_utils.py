@@ -143,7 +143,13 @@ def _get_kind_value(atom_data, key, element, overrides=None):
     overrides = overrides or {}
     if element in overrides:
         return overrides[element]
-    return atom_data[key][element]
+    values = atom_data[key]
+    if element not in values:
+        raise ValueError(
+            f"No default {key!r} is available for element {element!r}. "
+            "Provide an explicit per-element override and matching data files."
+        )
+    return values[element]
 
 
 def get_kinds_section(kinds_dict, protocol="gapw_std", dft_params=None):

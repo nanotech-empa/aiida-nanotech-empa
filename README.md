@@ -88,6 +88,10 @@ when copying or distributing copies or substantial portions of MIT-licensed
 code. Separately licensed components retain their own notices. A name or
 repository link does not replace the applicable licence notices.
 
+The bundled CP2K UZH parameter files retain their upstream authorship and licence.
+Their [source snapshot and licence notice](aiida_nanotech_empa/workflows/cp2k/data/README.UZH.md)
+are recorded alongside the data.
+
 When this software's AiiDA workflows or provenance helped the research,
 acknowledge the [AiiDA team and cite its three papers](https://github.com/nanotech-empa/.github/blob/main/CITATION_GUIDANCE.md#aiida).
 Also acknowledge [AiiDAlab and its two platform papers](https://github.com/nanotech-empa/.github/blob/main/CITATION_GUIDANCE.md#aiidalab)

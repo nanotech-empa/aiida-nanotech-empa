@@ -460,8 +460,8 @@ pbe0_basis_set:
   O: TZVP-MOLOPT-PBE0-GTH-q6
   F: TZVP-MOLOPT-PBE0-GTH-q7
   Ne: TZVP-MOLOPT-PBE0-GTH-q8
-  Na: TZVP-MOLOPT-PBE0-GTH-q1
-  Mg: TZVP-MOLOPT-PBE0-GTH-q2
+  Na: TZVP-MOLOPT-PBE0-GTH-q9
+  Mg: TZVP-MOLOPT-PBE0-GTH-q10
   Al: TZVP-MOLOPT-PBE0-GTH-q3
   Si: TZVP-MOLOPT-PBE0-GTH-q4
   P: TZVP-MOLOPT-PBE0-GTH-q5
@@ -494,7 +494,7 @@ pbe0_basis_set:
   Mo: TZVP-MOLOPT-PBE0-GTH-q14
   Tc: TZVP-MOLOPT-PBE0-GTH-q15
   Ru: TZVP-MOLOPT-PBE0-GTH-q16
-  Rh: TZVP-MOLOPT-PBE0-GTH-q9
+  Rh: TZVP-MOLOPT-PBE0-GTH-q17
   Pd: TZVP-MOLOPT-PBE0-GTH-q18
   Ag: TZVP-MOLOPT-PBE0-GTH-q11
   Cd: TZVP-MOLOPT-PBE0-GTH-q12
@@ -506,21 +506,6 @@ pbe0_basis_set:
   Xe: TZVP-MOLOPT-PBE0-GTH-q8
   Cs: TZVP-MOLOPT-PBE0-GTH-q9
   Ba: TZVP-MOLOPT-PBE0-GTH-q10
-  La: TZVP-MOLOPT-PBE0-GTH-q11
-  Ce: TZVP-MOLOPT-PBE0-GTH-q12
-  Pr: TZVP-MOLOPT-PBE0-GTH-q13
-  Nd: TZVP-MOLOPT-PBE0-GTH-q14
-  Pm: TZVP-MOLOPT-PBE0-GTH-q15
-  Sm: TZVP-MOLOPT-PBE0-GTH-q16
-  Eu: TZVP-MOLOPT-PBE0-GTH-q17
-  Gd: TZVP-MOLOPT-PBE0-GTH-q18
-  Tb: TZVP-MOLOPT-PBE0-GTH-q19
-  Dy: TZVP-MOLOPT-PBE0-GTH-q20
-  Ho: TZVP-MOLOPT-PBE0-GTH-q21
-  Er: TZVP-MOLOPT-PBE0-GTH-q22
-  Tm: TZVP-MOLOPT-PBE0-GTH-q23
-  Yb: TZVP-MOLOPT-PBE0-GTH-q24
-  Lu: TZVP-MOLOPT-PBE0-GTH-q25
   Hf: TZVP-MOLOPT-PBE0-GTH-q12
   Ta: TZVP-MOLOPT-PBE0-GTH-q13
   W: TZVP-MOLOPT-PBE0-GTH-q14
@@ -547,8 +532,8 @@ pbe0_aux_basis_set:
   O: admm-tzp-q6
   F: admm-tzp-q7
   Ne: admm-tzp-q8
-  Na: admm-tzp-q1
-  Mg: admm-tzp-q2
+  Na: admm-tzp-q9
+  Mg: admm-tzp-q10
   Al: admm-tzp-q3
   Si: admm-tzp-q4
   P: admm-tzp-q5
@@ -581,7 +566,7 @@ pbe0_aux_basis_set:
   Mo: admm-tzp-q14
   Tc: admm-tzp-q15
   Ru: admm-tzp-q16
-  Rh: admm-tzp-q9
+  Rh: admm-tzp-q17
   Pd: admm-tzp-q18
   Ag: admm-tzp-q11
   Cd: admm-tzp-q12
@@ -593,21 +578,6 @@ pbe0_aux_basis_set:
   Xe: admm-tzp-q8
   Cs: admm-tzp-q9
   Ba: admm-tzp-q10
-  La: admm-tzp-q11
-  Ce: admm-tzp-q12
-  Pr: admm-tzp-q13
-  Nd: admm-tzp-q14
-  Pm: admm-tzp-q15
-  Sm: admm-tzp-q16
-  Eu: admm-tzp-q17
-  Gd: admm-tzp-q18
-  Tb: admm-tzp-q19
-  Dy: admm-tzp-q20
-  Ho: admm-tzp-q21
-  Er: admm-tzp-q22
-  Tm: admm-tzp-q23
-  Yb: admm-tzp-q24
-  Lu: admm-tzp-q25
   Hf: admm-tzp-q12
   Ta: admm-tzp-q13
   W: admm-tzp-q14
@@ -634,8 +604,8 @@ pbe0_pseudopotential:
   O: GTH-PBE0-q6
   F: GTH-PBE0-q7
   Ne: GTH-PBE0-q8
-  Na: GTH-PBE0-q1
-  Mg: GTH-PBE0-q2
+  Na: GTH-PBE0-q9
+  Mg: GTH-PBE0-q10
   Al: GTH-PBE0-q3
   Si: GTH-PBE0-q4
   P: GTH-PBE0-q5
@@ -668,7 +638,7 @@ pbe0_pseudopotential:
   Mo: GTH-PBE0-q14
   Tc: GTH-PBE0-q15
   Ru: GTH-PBE0-q16
-  Rh: GTH-PBE0-q9
+  Rh: GTH-PBE0-q17
   Pd: GTH-PBE0-q18
   Ag: GTH-PBE0-q11
   Cd: GTH-PBE0-q12
@@ -680,21 +650,6 @@ pbe0_pseudopotential:
   Xe: GTH-PBE0-q8
   Cs: GTH-PBE0-q9
   Ba: GTH-PBE0-q10
-  La: GTH-PBE0-q11
-  Ce: GTH-PBE0-q12
-  Pr: GTH-PBE0-q13
-  Nd: GTH-PBE0-q14
-  Pm: GTH-PBE0-q15
-  Sm: GTH-PBE0-q16
-  Eu: GTH-PBE0-q17
-  Gd: GTH-PBE0-q18
-  Tb: GTH-PBE0-q19
-  Dy: GTH-PBE0-q20
-  Ho: GTH-PBE0-q21
-  Er: GTH-PBE0-q22
-  Tm: GTH-PBE0-q23
-  Yb: GTH-PBE0-q24
-  Lu: GTH-PBE0-q25
   Hf: GTH-PBE0-q12
   Ta: GTH-PBE0-q13
   W: GTH-PBE0-q14
