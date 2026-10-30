@@ -88,6 +88,29 @@ def test_pbe_xc_settings_preserve_the_protocol(functional):
     assert parameters == original
 
 
+@pytest.mark.parametrize("functional", ["PBE", "PBE0"])
+def test_ot_minimizer_override(functional):
+    parameters = cp2k_utils.load_protocol("scf_ot_protocol.yml", "standard")
+    params = {"xc_functional": functional, "ot_minimizer": "DIIS"}
+    cp2k_utils.apply_xc_settings(parameters, params)
+    assert parameters["FORCE_EVAL"]["DFT"]["SCF"]["OT"]["MINIMIZER"] == "DIIS"
+
+
+def test_pbe0_tunes_qs_and_ot_scf_and_keeps_the_rest():
+    parameters = cp2k_utils.load_protocol("scf_ot_protocol.yml", "standard")
+    original = copy.deepcopy(parameters["FORCE_EVAL"]["DFT"])
+    cp2k_utils.apply_xc_settings(parameters, {"xc_functional": "PBE0", "max_scf": 7})
+    dft = parameters["FORCE_EVAL"]["DFT"]
+    assert dft["QS"] == {"METHOD": "GPW", "EPS_PGF_ORB": 1e-32}
+    assert dft["SCF"]["MAX_SCF"] == 7
+    assert dft["SCF"]["EPS_LUMO"] == original["SCF"]["EPS_SCF"]
+    assert dft["SCF"]["OT"]["PRECONDITIONER"] == "FULL_KINETIC"
+    assert dft["SCF"]["OUTER_SCF"]["MAX_SCF"] == 100
+    assert dft["SCF"]["PRINT"] == original["SCF"]["PRINT"]
+    pair_potential = dft["XC"]["VDW_POTENTIAL"]["PAIR_POTENTIAL"]
+    assert pair_potential["REFERENCE_FUNCTIONAL"] == "PBE0"
+
+
 def test_unknown_xc_functional_fails_explicitly():
     parameters = cp2k_utils.load_protocol("geo_opt_protocol.yml", "standard")
     with pytest.raises(ValueError, match="Unsupported CP2K XC functional: SCAN"):

@@ -14,17 +14,12 @@ from aiida_nanotech_empa.workflows.cp2k.diag_workchain import Cp2kDiagWorkChain
 from aiida_nanotech_empa.workflows.cp2k.pdos_workchain import Cp2kPdosWorkChain
 
 
-@pytest.mark.parametrize(
-    ("method", "purification"), [("ot", "MO_DIAG"), ("diag", "NONE")]
-)
-def test_pbe0_purification_depends_on_scf_method(method, purification):
+@pytest.mark.parametrize("method", ["ot", "diag"])
+def test_pbe0_default_admm_purification(method):
     template = cp2k_utils.load_protocol("scf_ot_protocol.yml", "debug")
     cp2k_utils.apply_xc_settings(template, {"xc_functional": "PBE0"}, scf_method=method)
     dft = template["FORCE_EVAL"]["DFT"]
-    assert (
-        dft["AUXILIARY_DENSITY_MATRIX_METHOD"]["ADMM_PURIFICATION_METHOD"]
-        == purification
-    )
+    assert dft["AUXILIARY_DENSITY_MATRIX_METHOD"]["ADMM_PURIFICATION_METHOD"] == "NONE"
     assert dft["XC"]["HF"]["FRACTION"] == 0.25
 
 
