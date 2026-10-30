@@ -4,6 +4,8 @@ import ase
 import numpy as np
 from aiida import common, engine, orm, parsers, plugins
 
+from ..utils import common_utils
+
 StructureData = plugins.DataFactory("structure")
 ArrayData = plugins.DataFactory("array")
 
@@ -32,17 +34,12 @@ class Cp2kNebParser(parsers.Parser):
     def _parse_stdout(self):
         """Basic CP2K output file parser."""
 
-        fname = self.node.process_class._DEFAULT_OUTPUT_FILE
+        exit_code, output_string = common_utils.read_retrieved(
+            self, self.node.process_class._DEFAULT_OUTPUT_FILE
+        )
+        if exit_code is not None:
+            return exit_code
 
-        if fname not in self.retrieved.list_object_names():
-            return self.exit_codes.ERROR_OUTPUT_STDOUT_MISSING
-
-        try:
-            output_string = self.retrieved.get_object_content(fname)
-        except OSError:
-            return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
-
-        """Parse CP2K output into a dictionary."""
         lines = output_string.splitlines()
 
         result_dict = {"exceeded_walltime": False}
@@ -87,19 +84,11 @@ class Cp2kNebParser(parsers.Parser):
     def _parse_trajectory(self):
         """CP2K trajectory parser."""
 
-        fname = self.node.process_class._DEFAULT_RESTART_FILE_NAME
-
-        # Check if the restart file is present.
-        if fname not in self.retrieved.list_object_names():
-            raise common.NotExistent(
-                "No restart file available, so the output trajectory can't be extracted"
-            )
-
-        # Read the restart file.
-        try:
-            output_string = self.retrieved.get_object_content(fname)
-        except OSError:
-            return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
+        exit_code, output_string = common_utils.read_retrieved(
+            self, self.node.process_class._DEFAULT_RESTART_FILE_NAME
+        )
+        if exit_code is not None:
+            return exit_code
 
         m = re.search(r"\n\s*&CELL\n(.*?)\n\s*&END CELL\n", output_string, re.DOTALL)
         cell_lines = [line.strip().split() for line in m.group(1).split("\n")]
