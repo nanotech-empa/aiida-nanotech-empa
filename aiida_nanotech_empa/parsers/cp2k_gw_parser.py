@@ -1,20 +1,11 @@
 """AiiDA-CP2K output parser for GW calculations."""
 
-from aiida import common, orm
+from aiida import orm
 from aiida_cp2k.parsers import Cp2kBaseParser
 from aiida_cp2k.utils import parse_cp2k_output_advanced
 
 from ..helpers import HART_2_EV
-
-
-class Cp2kNoOutputFileError(common.OutputParsingError):
-    def __init__(self):
-        super().__init__("CP2K output file  not retrieved")
-
-
-class Cp2kDidNotFinishProperlyError(common.OutputParsingError):
-    def __init__(self):
-        super().__init__("CP2K did not finish properly")
+from ..utils import common_utils
 
 
 def is_number(s):
@@ -29,14 +20,11 @@ class Cp2kGwParser(Cp2kBaseParser):
     """AiiDA parser class for the output of CP2K GW calculations."""
 
     def _parse_stdout(self):
-        fname = self.node.process_class._DEFAULT_OUTPUT_FILE
-        if fname not in self.retrieved.base.repository.list_object_names():
-            raise Cp2kNoOutputFileError()
-
-        try:
-            output_string = self.retrieved.base.repository.get_object_content(fname)
-        except OSError:
-            return self.exit_codes.ERROR_OUTPUT_READ
+        exit_code, output_string = common_utils.read_retrieved(
+            self, self.node.process_class._DEFAULT_OUTPUT_FILE
+        )
+        if exit_code is not None:
+            return exit_code
 
         # CP2K advanced parsing provided by aiida-cp2k
         result_dict = parse_cp2k_output_advanced(output_string)
@@ -44,7 +32,7 @@ class Cp2kGwParser(Cp2kBaseParser):
         # nwarnings is the last thing to be printed in th eCP2K output file:
         # if it is not there, CP2K didn't finish properly
         if "nwarnings" not in result_dict:
-            raise Cp2kDidNotFinishProperlyError()
+            return self.exit_codes.ERROR_OUTPUT_INCOMPLETE
 
         if "aborted" in result_dict:
             return self.exit_codes.ERROR_OUTPUT_CONTAINS_ABORT
