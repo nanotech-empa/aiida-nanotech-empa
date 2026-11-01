@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      AIIDA_PATH: ${{ runner.temp }}/backend-unit-aiida
+      AIIDA_PATH: /tmp/backend-unit-aiida
       AIIDA_REQUIREMENT: ${{ matrix.aiida-core }}
     services:
       postgres:
@@ -67,7 +67,7 @@ jobs:
     env:
       # GitHub VMs cannot provide the InfiniBand verbs selected by UCX.
       UCX_TLS: tcp,self,sm
-      AIIDA_PATH: ${{ runner.temp }}/backend-examples-aiida
+      AIIDA_PATH: /tmp/backend-examples-aiida
     services:
       postgres:
         image: postgres:12
