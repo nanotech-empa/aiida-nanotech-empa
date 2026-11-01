@@ -2,6 +2,7 @@ import inspect
 
 import ase
 import banduppy
+import pytest
 
 from aiida import orm, plugins
 from aiida.manage import get_manager
@@ -139,7 +140,7 @@ def test_primitive_reference_keeps_periodicity_and_collapses_replicas(
 
 
 def test_reference_parameters_are_pristine_without_mutating_template():
-    """The primitive reference removes defect charge/spin and rescales bands."""
+    """An explicitly nonmagnetic reference removes defect charge and rescales bands."""
     import copy
 
     import numpy as np
@@ -168,17 +169,21 @@ def test_reference_parameters_are_pristine_without_mutating_template():
     }
     original = copy.deepcopy(parameters)
     matrix = np.diag([2, 1, 1])
-    scf = _reference_qe_parameters(parameters, matrix, calculation="scf")
-    bands = _reference_qe_parameters(parameters, matrix, calculation="bands")
+    scf = _reference_qe_parameters(
+        parameters, matrix, calculation="scf", reference_spin_parameters={"nspin": 1}
+    )
+    bands = _reference_qe_parameters(
+        parameters, matrix, calculation="bands", reference_spin_parameters={"nspin": 1}
+    )
     assert parameters == original
     assert scf["CONTROL"] == {
         "calculation": "scf",
         "restart_mode": "from_scratch",
         "prefix": "source",
     }
-    assert scf["SYSTEM"] == {}
+    assert scf["SYSTEM"] == {"nspin": 1}
     assert scf["ELECTRONS"] == {"conv_thr": 1e-8}
-    assert bands["SYSTEM"] == {"nbnd": 7}
+    assert bands["SYSTEM"] == {"nbnd": 7, "nspin": 1}
     assert bands["CONTROL"]["calculation"] == "bands"
     assert bands["CONTROL"]["restart_mode"] == "from_scratch"
 
@@ -197,3 +202,124 @@ def test_folded_diagonalization_preserves_template():
     assert inherited["CONTROL"]["calculation"] == "bands"
     assert inherited["ELECTRONS"]["diagonalization"] == "david"
     assert overridden["ELECTRONS"]["diagonalization"] == "cg"
+
+
+@pytest.mark.parametrize("calculation", ["scf", "bands"])
+def test_reference_requires_explicit_spin_and_uses_primitive_moments(calculation):
+    import copy
+    import numpy as np
+    from aiida_nanotech_empa.workflows.qe.banduppy import (
+        _reference_qe_parameters,
+        _folded_qe_parameters,
+    )
+
+    source = {"SYSTEM": {"nspin": 2, "tot_magnetization": 8, "tot_charge": 1}}
+    original = copy.deepcopy(source)
+    with pytest.raises(ValueError, match="explicit reference_spin_parameters"):
+        _reference_qe_parameters(source, np.diag([2, 1, 1]), calculation=calculation)
+    for chosen in (
+        {"nspin": 1},
+        {"nspin": 2, "tot_magnetization": 2},
+        {"nspin": 2, "starting_magnetization": {"C": 0.3}},
+    ):
+        result = _reference_qe_parameters(
+            source,
+            np.diag([2, 1, 1]),
+            calculation=calculation,
+            reference_spin_parameters=chosen,
+        )
+        assert result["SYSTEM"] == chosen
+    assert _folded_qe_parameters(source)["SYSTEM"] == original["SYSTEM"]
+    assert source == original
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        {},
+        {"nspin": 4},
+        {"nspin": True},
+        {"nspin": 2},
+        {"nspin": 1, "tot_magnetization": 0},
+        {"nspin": 2, "starting_magnetization": {}},
+        {"nspin": 2, "tot_magnetization": float("nan")},
+        {"nspin": 2, "tot_charge": 0, "tot_magnetization": 1},
+        {"nspin": 2, "tot_magnetization": 1, "starting_magnetization": {"C": 1}},
+    ],
+)
+def test_reference_rejects_incomplete_or_conflicting_spin_settings(settings):
+    from aiida_nanotech_empa.workflows.qe.banduppy import reference_spin_settings
+
+    with pytest.raises(ValueError):
+        reference_spin_settings({"SYSTEM": {"nspin": 2}}, settings)
+
+
+@pytest.mark.parametrize(
+    "run_reference,explicit",
+    [
+        (True, None),
+        (False, None),
+        (True, {"nspin": 1}),
+        (True, {"nspin": 2, "tot_magnetization": 0}),
+    ],
+)
+def test_magnetic_source_is_validated_before_work_starts(
+    aiida_profile, fixture_localhost, run_reference, explicit
+):
+    inputs = {
+        "pw_code": _code(fixture_localhost, "quantumespresso.pw"),
+        "banduppy_code": _code(fixture_localhost, "nanotech_empa.qe_banduppy"),
+        "structure": orm.StructureData(
+            ase=ase.Atoms("C", positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True)
+        ),
+        "parameters": orm.Dict(dict={"SYSTEM": {"nspin": 2}}),
+        "template_remote_folder": orm.RemoteData(
+            computer=fixture_localhost, remote_path="/tmp"
+        ),
+        "unfolding_parameters": orm.Dict(dict={}),
+        "pseudos": {},
+        "run_reference_bands": orm.Bool(run_reference),
+    }
+    if explicit is not None:
+        inputs["reference_spin_parameters"] = orm.Dict(dict=explicit)
+    runner = get_manager().get_runner()
+    if run_reference and explicit is None:
+        with pytest.raises(ValueError, match="explicit reference_spin_parameters"):
+            runner.instantiate_process(QeBanduppyUnfoldingWorkChain, **inputs)
+    else:
+        process = runner.instantiate_process(QeBanduppyUnfoldingWorkChain, **inputs)
+        process.close()
+
+
+def test_reference_rejects_moments_for_absent_primitive_kinds(
+    aiida_profile, fixture_localhost
+):
+    process = (
+        get_manager()
+        .get_runner()
+        .instantiate_process(
+            QeBanduppyUnfoldingWorkChain,
+            pw_code=_code(fixture_localhost, "quantumespresso.pw"),
+            banduppy_code=_code(fixture_localhost, "nanotech_empa.qe_banduppy"),
+            structure=orm.StructureData(
+                ase=ase.Atoms("C", positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True)
+            ),
+            parameters=orm.Dict(dict={"SYSTEM": {"nspin": 2}}),
+            template_remote_folder=orm.RemoteData(
+                computer=fixture_localhost, remote_path="/tmp"
+            ),
+            unfolding_parameters=orm.Dict(
+                dict={"supercell_matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]}
+            ),
+            reference_spin_parameters=orm.Dict(
+                dict={"nspin": 2, "starting_magnetization": {"Fe": 0.5}}
+            ),
+            pseudos={},
+        )
+    )
+    try:
+        process.setup()
+        result = process.prepare_reference_inputs()
+        assert result == process.exit_codes.ERROR_REFERENCE_SPIN_CONFIGURATION
+    finally:
+        process.close()

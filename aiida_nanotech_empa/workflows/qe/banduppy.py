@@ -25,6 +25,14 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
         spec.input("template_metadata", valid_type=orm.Dict, required=False)
         spec.input("unfolding_parameters", valid_type=orm.Dict)
         spec.input(
+            "reference_spin_parameters",
+            valid_type=orm.Dict,
+            required=False,
+            help="Explicit QE SYSTEM spin settings for the primitive reference: "
+            "nspin=1 confirms a nonmagnetic reference; nspin=2 requires reference "
+            "starting_magnetization or tot_magnetization. Required for magnetic sources.",
+        )
+        spec.input(
             "run_reference_bands",
             valid_type=orm.Bool,
             default=lambda: orm.Bool(True),
@@ -36,6 +44,7 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
         spec.input("pw_metadata_options", valid_type=orm.Dict, required=False)
         spec.input("reference_pw_metadata_options", valid_type=orm.Dict, required=False)
         spec.input("banduppy_metadata_options", valid_type=orm.Dict, required=False)
+        spec.inputs.validator = cls.validate_inputs
         spec.outline(
             cls.setup,
             cls.inspect_template_remote,
@@ -93,6 +102,11 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
             message="The primitive reference bands calculation failed.",
         )
         spec.exit_code(
+            317,
+            "ERROR_REFERENCE_SPIN_CONFIGURATION",
+            message="The explicit magnetic settings do not match the primitive reference kinds.",
+        )
+        spec.exit_code(
             320,
             "ERROR_FOLDED_QE_REMOTE_EMPTY",
             message="The folded QE remote folder is missing or empty.",
@@ -105,6 +119,23 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
             "ERROR_BANDUPPY_OUTPUT_MISSING",
             message="The BandUPpy calculation did not retrieve unfolding_bands.npz.",
         )
+
+    @staticmethod
+    def validate_inputs(inputs, _):
+        run_reference = inputs.get("run_reference_bands")
+        if run_reference is not None and not run_reference.value:
+            return None
+        if "parameters" not in inputs:
+            return None
+        settings = inputs.get("reference_spin_parameters")
+        try:
+            reference_spin_settings(
+                inputs["parameters"].get_dict(),
+                settings.get_dict() if settings is not None else None,
+            )
+        except ValueError as exc:
+            return str(exc)
+        return None
 
     def setup(self):
         self.ctx.unfolding_parameters = self.inputs.unfolding_parameters.get_dict()
@@ -208,6 +239,15 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
         reference_structure = _build_reference_primitive_structure(
             self.inputs.structure, matrix, tolerance=tolerance
         )
+        spin = self._reference_spin_parameters()
+        unknown = set(spin.get("starting_magnetization", {})) - {
+            kind.name for kind in reference_structure.kinds
+        }
+        if unknown:
+            self.report(
+                f"Magnetization names absent from the primitive reference: {sorted(unknown)}"
+            )
+            return self.exit_codes.ERROR_REFERENCE_SPIN_CONFIGURATION
         reference_structure.label = "BandUPpy pristine primitive reference structure"
         reference_structure.store()
 
@@ -256,7 +296,10 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
         builder.kpoints = self.ctx.reference_scf_kpoints
         builder.parameters = orm.Dict(
             dict=_reference_qe_parameters(
-                self.inputs.parameters.get_dict(), matrix, calculation="scf"
+                self.inputs.parameters.get_dict(),
+                matrix,
+                calculation="scf",
+                reference_spin_parameters=self._reference_spin_parameters(),
             )
         )
         if "settings" in self.inputs:
@@ -295,7 +338,10 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
         builder.kpoints = self.ctx.reference_kpoints
         builder.parameters = orm.Dict(
             dict=_reference_qe_parameters(
-                self.inputs.parameters.get_dict(), matrix, calculation="bands"
+                self.inputs.parameters.get_dict(),
+                matrix,
+                calculation="bands",
+                reference_spin_parameters=self._reference_spin_parameters(),
             )
         )
         builder.parent_folder = self.ctx.reference_scf.outputs.remote_folder
@@ -315,6 +361,13 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
         )
         self.report("Submitting primitive reference bands calculation")
         return engine.ToContext(reference_bands_calc=self.submit(builder))
+
+    def _reference_spin_parameters(self):
+        settings = self.inputs.get("reference_spin_parameters")
+        return reference_spin_settings(
+            self.inputs.parameters.get_dict(),
+            settings.get_dict() if settings is not None else None,
+        )
 
     def inspect_reference_bands(self):
         calc = self.ctx.reference_bands_calc
@@ -414,7 +467,70 @@ def _folded_qe_parameters(parameters, unfolding_parameters=None):
     return result
 
 
-def _reference_qe_parameters(parameters, supercell_matrix, *, calculation):
+def reference_spin_settings(parameters, settings=None):
+    """Require an explicit primitive-reference spin model for magnetic sources."""
+    source = parameters.get("SYSTEM", {})
+    if source.get("noncolin") or source.get("lspinorb"):
+        raise ValueError(
+            "Automatic primitive reference bands support collinear sources only; "
+            "set run_reference_bands=False for this source."
+        )
+    if not settings:
+        if source.get("nspin", 1) != 1:
+            raise ValueError(
+                "A spin-polarized source requires explicit reference_spin_parameters "
+                "for the primitive reference, or run_reference_bands=False."
+            )
+        return {}
+    settings = copy.deepcopy(settings)
+    allowed = {"nspin", "starting_magnetization", "tot_magnetization"}
+    if set(settings) - allowed:
+        raise ValueError(
+            "Reference spin settings only accept nspin, starting_magnetization "
+            "and tot_magnetization."
+        )
+    nspin = settings.get("nspin")
+    if isinstance(nspin, bool) or nspin not in (1, 2):
+        raise ValueError(
+            "Choose reference nspin=1 (nonmagnetic) or nspin=2 (collinear magnetic)."
+        )
+    magnetic = set(settings) & {"starting_magnetization", "tot_magnetization"}
+    if nspin == 1 and magnetic:
+        raise ValueError(
+            "A nonmagnetic reference must not contain magnetization settings."
+        )
+    if nspin == 2 and len(magnetic) != 1:
+        raise ValueError(
+            "A magnetic reference requires either starting_magnetization by kind "
+            "or an explicit primitive-cell tot_magnetization."
+        )
+    if "starting_magnetization" in settings:
+        moments = settings["starting_magnetization"]
+        if not isinstance(moments, dict) or not moments:
+            raise ValueError(
+                "Reference starting_magnetization must be a nonempty mapping of kind names."
+            )
+        if not all(isinstance(kind, str) for kind in moments):
+            raise ValueError("Reference magnetization keys must be kind names.")
+        values = list(moments.values())
+    else:
+        values = (
+            [settings["tot_magnetization"]] if "tot_magnetization" in settings else []
+        )
+    if any(
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not np.isfinite(value)
+        for value in values
+    ):
+        raise ValueError("Reference magnetizations must be finite numbers.")
+    return settings
+
+
+def _reference_qe_parameters(
+    parameters, supercell_matrix, *, calculation, reference_spin_parameters=None
+):
+    spin = reference_spin_settings(parameters, reference_spin_parameters)
     result = copy.deepcopy(parameters)
     result.setdefault("CONTROL", {})
     result.setdefault("SYSTEM", {})
@@ -435,6 +551,7 @@ def _reference_qe_parameters(parameters, supercell_matrix, *, calculation):
     for key in list(system):
         if str(key).startswith("starting_ns_eigenvalue"):
             system.pop(key, None)
+    system.update(spin)
 
     det = max(1, int(round(abs(float(np.linalg.det(supercell_matrix))))))
     if original_nbnd is not None and calculation == "bands":
