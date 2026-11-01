@@ -153,7 +153,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             valid_type=orm.Float,
             default=lambda: orm.Float(5.0e-2),
             required=False,
-            help="Fallback fractional tolerance used only when primitive basis atoms are omitted.",
+            help="Fractional basis-clustering tolerance forwarded to unfolding post-processing.",
         )
         spec.input(
             "unfolding_options",
@@ -197,9 +197,14 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             )
         if "unfolding_code" in value and "unfolding_primitive_vectors" not in value:
             return "'unfolding_primitive_vectors' is required with 'unfolding_code'."
-        if "unfolding_code" in value and "unfolding_primitive_basis_atoms" not in value:
+        if "unfolding_code" in value and (
+            "unfolding_primitive_basis_atoms" not in value
+            or not value["unfolding_primitive_basis_atoms"].value.strip()
+        ):
             return (
-                "'unfolding_primitive_basis_atoms' is required with 'unfolding_code'."
+                "A non-empty 'unfolding_primitive_basis_atoms' is required with "
+                "'unfolding_code'; select atoms explicitly or check the primitive "
+                "cell in the app before submitting."
             )
         if (
             "unfolding_code" in value

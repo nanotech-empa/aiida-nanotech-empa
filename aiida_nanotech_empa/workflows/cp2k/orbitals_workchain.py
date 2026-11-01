@@ -104,7 +104,9 @@ class Cp2kOrbitalsWorkChain(engine.WorkChain):
         inputs["metadata"]["label"] = "orb"
         inputs["code"] = self.inputs.spm_code
         spm_params = cp2k_utils.update_legacy_basis_parameter(
-            self.inputs.spm_params.get_dict(), self.ctx.dft_params
+            self.inputs.spm_params.get_dict(),
+            self.ctx.dft_params,
+            self.inputs.structure.get_symbols_set(),
         )
         inputs["parameters"] = orm.Dict(spm_params)
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder

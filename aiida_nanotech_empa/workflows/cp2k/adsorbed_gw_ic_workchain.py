@@ -2,8 +2,8 @@ import numpy as np
 from aiida import engine, orm
 
 from .geo_opt_workchain import Cp2kGeoOptWorkChain
-from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
 from .molecule_opt_gw_workchain import geo_opt_dft_params
+from .molecule_gw_workchain import Cp2kMoleculeGwWorkChain
 
 IC_PLANE_HEIGHTS = {
     "Au(111)": 1.42,  # Kharche J. Phys. Chem. Lett. 7, 1526–1533 (2016).

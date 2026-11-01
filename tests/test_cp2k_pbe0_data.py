@@ -2,6 +2,7 @@
 
 import functools
 import re
+import shlex
 
 import pytest
 import yaml
@@ -110,7 +111,6 @@ def test_pbe0_stages_both_bases_potential_and_coulomb_data(params, aiida_profile
     dft = parameters["FORCE_EVAL"]["DFT"]
     assert dft["BASIS_SET_FILE_NAME"] == ["BASIS_MOLOPT_UZH", "BASIS_ADMM_UZH"]
     assert dft["POTENTIAL_FILE_NAME"] == files["pseudo"].filename
-    assert (
-        dft["XC"]["HF"]["INTERACTION_POTENTIAL"]["T_C_G_DATA"]
-        == files["extra_1"].filename
-    )
+    assert shlex.split(dft["XC"]["HF"]["INTERACTION_POTENTIAL"]["T_C_G_DATA"]) == [
+        files["extra_1"].filename
+    ]
