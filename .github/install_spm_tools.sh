@@ -4,7 +4,7 @@ set -e
 sudo apt-get update
 sudo apt-get install -y mpich libmpich-dev
 
-pip install "cp2k-spm-tools>=1.6.0"
+pip install -c constraints/modern-preview.txt "cp2k-spm-tools>=1.6.0"
 
 which cp2k-stm-sts-wfn
 which cp2k-overlap-from-wfns

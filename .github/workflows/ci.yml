@@ -20,6 +20,9 @@ jobs:
   unit:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      AIIDA_PATH: /tmp/backend-unit-aiida
+      AIIDA_REQUIREMENT: ${{ matrix.aiida-core }}
     services:
       postgres:
         image: postgres:12
@@ -33,6 +36,10 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.12', '3.13']
+        aiida-core: ['aiida-core>=2.8,<3']
+        include:
+          - python-version: '3.12'
+            aiida-core: aiida-core==2.8.0
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -41,7 +48,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install python dependencies
         run: |
-          pip install -e .[dev]
+          pip install -c constraints/modern-preview.txt -e .[dev] "$AIIDA_REQUIREMENT"
       - name: Run pytest
         run: |
           pytest tests/ --cov-report=xml --cov=aiida_nanotech_empa
@@ -60,6 +67,7 @@ jobs:
     env:
       # GitHub VMs cannot provide the InfiniBand verbs selected by UCX.
       UCX_TLS: tcp,self,sm
+      AIIDA_PATH: /tmp/backend-examples-aiida
     services:
       postgres:
         image: postgres:12
@@ -77,7 +85,7 @@ jobs:
           python-version: '3.13'
       - name: Install python dependencies
         run: |
-          pip install -e .[dev]
+          pip install -c constraints/modern-preview.txt -e .[dev] "aiida-core==2.9.4"
       - name: Install CP2K
         run: |
           bash .github/install_cp2k.sh
