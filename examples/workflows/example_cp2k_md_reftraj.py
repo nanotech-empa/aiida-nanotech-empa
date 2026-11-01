@@ -12,7 +12,9 @@ StructureData = plugins.DataFactory("core.structure")
 TrajectoryData = plugins.DataFactory("core.array.trajectory")
 
 
-def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False, to_be_killed=False):
+def _example_cp2k_reftraj(
+    cp2k_code, num_batches=2, restart=False, to_be_killed=False, run_synchronously=False
+):
     os.path.dirname(os.path.realpath(__file__))
 
     # Structure.
@@ -93,15 +95,26 @@ def _example_cp2k_reftraj(cp2k_code, num_batches=2, restart=False, to_be_killed=
     builder.dft_params = orm.Dict(dft_params)
     builder.sys_params = orm.Dict(sys_params)
 
-    # _, calc_node = engine.run_get_node(builder)
-    # we use submit to be able to kill the workchain
-    calc_node = engine.submit(builder)
+    if run_synchronously:
+        _, calc_node = engine.run_get_node(builder)
+    else:
+        # Interactive kill/restart examples need an asynchronous submission.
+        calc_node = engine.submit(builder)
     return calc_node.pk
 
 
 def example_cp2k_reftraj(cp2k_code):
-    _example_cp2k_reftraj(cp2k_code)
-    # _example_cp2k_replicachain(cp2k_code, pk1)
+    # The pytest profile is brokerless. Wait for the workflow and validate its
+    # output instead of merely submitting a process that the test never awaits.
+    identifier = _example_cp2k_reftraj(cp2k_code, run_synchronously=True)
+    node = orm.load_node(identifier)
+    assert node.is_finished_ok, node.exit_message
+    reference = node.inputs.trajectory
+    result = node.outputs.output_trajectory
+    np.testing.assert_allclose(result.get_array("cells"), reference.get_array("cells"))
+    np.testing.assert_allclose(
+        result.get_array("positions"), reference.get_array("positions"), atol=1e-7
+    )
 
 
 @click.command("cli")
