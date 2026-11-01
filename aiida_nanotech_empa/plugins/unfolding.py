@@ -6,6 +6,7 @@ DEFAULT_WFN_FILENAME = "aiida-RESTART.wfn"
 DEFAULT_XYZ_FILENAME = "aiida.coords.xyz"
 DEFAULT_CP2K_INPUT_FILENAME = "aiida.inp"
 DEFAULT_OUTPUT_FILENAME = "unfolding_bands.npz"
+DEFAULT_PDOS_PROJECTION_FILENAME = "unfolding_projections.npz"
 DEFAULT_LATTICE_TYPE = "auto"
 LATTICE_TYPES = (
     "auto",
@@ -127,9 +128,34 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             required=False,
         )
         spec.input(
+            "basis_cluster_tol",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(5.0e-2),
+            required=False,
+        )
+        spec.input("primitive_basis_atoms", valid_type=orm.Str, required=False)
+        spec.input(
             "output_filename",
             valid_type=orm.Str,
             default=lambda: orm.Str(DEFAULT_OUTPUT_FILENAME),
+            required=False,
+        )
+        spec.input(
+            "parse_pdos_projections",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+        )
+        spec.input(
+            "pdos_projection_filename",
+            valid_type=orm.Str,
+            default=lambda: orm.Str(DEFAULT_PDOS_PROJECTION_FILENAME),
+            required=False,
+        )
+        spec.input(
+            "pdos_threshold",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(1.0e-4),
             required=False,
         )
         spec.input(
@@ -151,6 +177,11 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             300,
             "ERROR_OUTPUT_FILE_MISSING",
             message="The unfolded band output file was not retrieved.",
+        )
+        spec.exit_code(
+            301,
+            "ERROR_PDOS_PROJECTION_FILE_MISSING",
+            message="The atom-resolved PDOS projection file was not retrieved.",
         )
 
     def prepare_for_submission(self, folder):
@@ -178,13 +209,33 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
             "log",
             "--overlap-threshold",
             str(self.inputs.overlap_threshold.value),
+            "--basis-cluster-tol",
+            str(self.inputs.basis_cluster_tol.value),
         ]
         if "path" in self.inputs:
             codeinfo.cmdline_params.extend(["--path", self.inputs.path.value])
+        if "primitive_basis_atoms" in self.inputs:
+            codeinfo.cmdline_params.extend(
+                [
+                    "--primitive-basis-atoms",
+                    self.inputs.primitive_basis_atoms.value,
+                ]
+            )
         if "emin" in self.inputs:
             codeinfo.cmdline_params.extend(["--emin", str(self.inputs.emin.value)])
         if "emax" in self.inputs:
             codeinfo.cmdline_params.extend(["--emax", str(self.inputs.emax.value)])
+        if self.inputs.parse_pdos_projections.value:
+            codeinfo.cmdline_params.extend(
+                [
+                    "--pdos-glob",
+                    "parent_calc_folder/aiida-*list*-1.pdos",
+                    "--pdos-output",
+                    self.inputs.pdos_projection_filename.value,
+                    "--pdos-threshold",
+                    str(self.inputs.pdos_threshold.value),
+                ]
+            )
 
         calcinfo = common.CalcInfo()
         calcinfo.uuid = self.uuid
@@ -192,9 +243,10 @@ class Cp2kUnfoldingCalculation(engine.CalcJob):
         calcinfo.remote_symlink_list = []
         calcinfo.remote_copy_list = []
         calcinfo.local_copy_list = []
-        calcinfo.retrieve_list = [output_filename] + settings.pop(
-            "additional_retrieve_list", []
-        )
+        calcinfo.retrieve_list = [output_filename]
+        if self.inputs.parse_pdos_projections.value:
+            calcinfo.retrieve_list.append(self.inputs.pdos_projection_filename.value)
+        calcinfo.retrieve_list += settings.pop("additional_retrieve_list", [])
 
         comp_uuid = self.inputs.parent_calc_folder.computer.uuid
         remote_path = self.inputs.parent_calc_folder.get_remote_path()

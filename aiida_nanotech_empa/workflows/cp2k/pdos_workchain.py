@@ -123,6 +123,12 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             "magnetization_per_site"
         ]
 
+        # Check basis definitions before starting either SCF calculation.
+        if self.ctx.do_overlap:
+            cp2k_utils.get_orbital_basis_file_names(
+                self.ctx.dft_parameters, self.ctx.structure.get_symbols_set()
+            )
+
     def run_diags(self):
         # Full system part.
         self.report("Running Diag Workchain for the full system.")
@@ -167,7 +173,31 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         self.report("Running overlap")
         builder = OverlapCalculation.get_builder()
         builder.code = self.inputs.overlap_code
-        builder.parameters = self.inputs.overlap_params
+        overlap_params = self.inputs.overlap_params.get_dict()
+        for key, folder, params, structure in (
+            (
+                "--basis_set_file1",
+                "parent_slab_folder",
+                self.ctx.dft_parameters,
+                self.ctx.structure,
+            ),
+            (
+                "--basis_set_file2",
+                "parent_mol_folder",
+                self.ctx.mol_dft_parameters,
+                self.ctx.molecule_structure,
+            ),
+        ):
+            paths = [
+                f"{folder}/{filename}"
+                for filename in cp2k_utils.get_orbital_basis_file_names(
+                    params, structure.get_symbols_set()
+                )
+            ]
+            # Preserve the existing scalar input for one file. Multiple files
+            # require the SPM-tools companion's extended overlap CLI.
+            overlap_params[key] = paths[0] if len(paths) == 1 else paths
+        builder.parameters = orm.Dict(overlap_params)
         builder.parent_slab_folder = self.ctx.slab_diag_scf.outputs.remote_folder
         builder.parent_mol_folder = self.ctx.mol_diag_scf.outputs.remote_folder
 
