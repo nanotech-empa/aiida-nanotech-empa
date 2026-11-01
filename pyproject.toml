@@ -16,12 +16,11 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "aiida-core>=2.8,<3.0.0",
     "aiida-quantumespresso>=5,<6",
@@ -30,6 +29,7 @@ dependencies = [
     "ase~=3.21",
     "aiida-gaussian~=2.0",
     "aiida-shell",
+    "banduppy>=1,<2",
     "pillow>=8.0.0",
     "more-itertools",
 ]
@@ -62,6 +62,7 @@ dev = [
 [project.entry-points."aiida.calculations"]
 "nanotech_empa.stm" = "aiida_nanotech_empa.plugins:StmCalculation"
 "nanotech_empa.overlap" = "aiida_nanotech_empa.plugins:OverlapCalculation"
+"nanotech_empa.qe_banduppy" = "aiida_nanotech_empa.plugins:QeBanduppyCalculation"
 "nanotech_empa.sparse_overlap" = "aiida_nanotech_empa.plugins:SparseOverlapCalculation"
 "nanotech_empa.bader" = "aiida_nanotech_empa.plugins:BaderCalculation"
 "nanotech_empa.cp2k_unfolding" = "aiida_nanotech_empa.plugins:Cp2kUnfoldingCalculation"
@@ -71,6 +72,7 @@ dev = [
 
 [project.entry-points."aiida.workflows"]
 "nanotech_empa.nanoribbon" = "aiida_nanotech_empa.workflows.qe:NanoribbonWorkChain"
+"nanotech_empa.qe.banduppy_unfolding" = "aiida_nanotech_empa.workflows.qe:QeBanduppyUnfoldingWorkChain"
 "nanotech_empa.gaussian.scf" = "aiida_nanotech_empa.workflows.gaussian:GaussianScfWorkChain"
 "nanotech_empa.gaussian.relax" = "aiida_nanotech_empa.workflows.gaussian:GaussianRelaxWorkChain"
 "nanotech_empa.gaussian.delta_scf" = "aiida_nanotech_empa.workflows.gaussian:GaussianDeltaScfWorkChain"
