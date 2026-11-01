@@ -67,6 +67,8 @@ def test_bader_disabled_preserves_ot_input(scf_process):
     parameters = {"FORCE_EVAL": {"DFT": {"MGRID": {"CUTOFF": 300}}}}
     original = copy.deepcopy(parameters)
     process.update_ot_input_dict(parameters)
+    dft = parameters["FORCE_EVAL"]["DFT"]
+    assert dft.pop("PRINT") == {"LOWDIN": {"PRINT_GOP": "T"}}
     assert parameters == original
     assert not process.should_run_bader()
     assert process.should_run_diag_scf()

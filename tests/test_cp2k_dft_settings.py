@@ -180,8 +180,12 @@ def test_submitted_dft_settings_reach_every_stage(
             process.ctx.ot_scf = children[-1]
             process.run_diag_scf()
         assert len(submitted) == (1 if workflow == "geo_opt" else 2)
-        for builder in submitted:
+        for index, builder in enumerate(submitted):
             dft = builder.cp2k.parameters.get_dict()["FORCE_EVAL"]["DFT"]
+            if workflow == "geo_opt" or (workflow == "scf" and index == 0):
+                assert dft["PRINT"]["LOWDIN"] == {"PRINT_GOP": "T"}
+            else:
+                assert "LOWDIN" not in dft.get("PRINT", {})
             kind = builder.cp2k.parameters.get_dict()["FORCE_EVAL"]["SUBSYS"]["KIND"][0]
             assert dft["BASIS_SET_FILE_NAME"] == (
                 ["BASIS_MOLOPT", "BASIS_DEFAULT"] if custom else "BASIS_MOLOPT"

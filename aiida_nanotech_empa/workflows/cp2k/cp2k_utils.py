@@ -392,6 +392,12 @@ def _quote_cp2k_file_name(value):
     return f'"{text}"'
 
 
+def apply_default_charge_analysis(input_dict):
+    """Request Löwdin populations without replacing existing print settings."""
+    print_section = input_dict["FORCE_EVAL"]["DFT"].setdefault("PRINT", {})
+    print_section.setdefault("LOWDIN", {}).setdefault("PRINT_GOP", "T")
+
+
 def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
     """Apply XC and SCF settings. OT minimizer controls also apply to PBE."""
 
