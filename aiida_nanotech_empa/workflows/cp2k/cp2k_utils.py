@@ -329,11 +329,16 @@ def load_protocol(fname, protocol=None):
 
 
 def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
-    """Apply additive XC settings while preserving the legacy PBE input by default."""
+    """Apply XC and SCF settings. All keys except 'ot_minimizer' apply to PBE0 only."""
 
     dft_params = dft_params or {}
-    xc_section = input_dict["FORCE_EVAL"]["DFT"]["XC"]
+    dft_section = input_dict["FORCE_EVAL"]["DFT"]
+    xc_section = dft_section["XC"]
     functional = _xc_functional(dft_params)
+
+    ot_section = dft_section["SCF"].get("OT")
+    if ot_section is not None and "ot_minimizer" in dft_params:
+        ot_section["MINIMIZER"] = dft_params["ot_minimizer"]
 
     if functional in ("PBE", "PBE-D3", "PBE_D3"):
         return
@@ -343,13 +348,33 @@ def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
 
     hfx_fraction = dft_params.get("hfx_fraction", 0.25)
     hfx_cutoff_radius = dft_params.get("hfx_cutoff_radius", 10.0)
-    default_purification = "NONE" if scf_method == "diag" else "MO_DIAG"
-    input_dict["FORCE_EVAL"]["DFT"]["AUXILIARY_DENSITY_MATRIX_METHOD"] = {
-        "ADMM_PURIFICATION_METHOD": dft_params.get(
-            "admm_purification_method", default_purification
-        ),
+
+    qs_section = dft_section["QS"]
+    for key in ("EPS_DEFAULT", "EXTRAPOLATION", "EXTRAPOLATION_ORDER"):
+        qs_section.pop(key, None)
+    qs_section["METHOD"] = dft_params.get("qs_method", qs_section["METHOD"])
+    qs_section["EPS_PGF_ORB"] = dft_params.get("eps_pgf_orb", 1e-32)
+
+    if scf_method == "ot":
+        scf = dft_section["SCF"]
+        scf["MAX_SCF"] = dft_params.get("max_scf", 20)
+        scf["EPS_LUMO"] = dft_params.get("eps_lumo", scf["EPS_SCF"])
+        scf["MAX_ITER_LUMO"] = dft_params.get("max_iter_lumo", 5000)
+        scf["OT"]["PRECONDITIONER"] = dft_params.get(
+            "ot_preconditioner", "FULL_KINETIC"
+        )
+        scf["OUTER_SCF"]["MAX_SCF"] = dft_params.get("outer_scf_max_scf", 100)
+
+    dft_section["AUXILIARY_DENSITY_MATRIX_METHOD"] = {
+        "ADMM_PURIFICATION_METHOD": dft_params.get("admm_purification_method", "NONE"),
         "METHOD": dft_params.get("admm_method", "BASIS_PROJECTION"),
+        "EXCH_CORRECTION_FUNC": dft_params.get("admm_exch_correction_func", "PBEX"),
     }
+
+    if "VDW_POTENTIAL" in xc_section:
+        xc_section["VDW_POTENTIAL"]["PAIR_POTENTIAL"]["REFERENCE_FUNCTIONAL"] = (
+            dft_params.get("pbe0_vdw_reference_functional", "PBE0")
+        )
     xc_section["DENSITY_CUTOFF"] = dft_params.get("xc_density_cutoff", 1e-10)
     xc_section["GRADIENT_CUTOFF"] = dft_params.get("xc_gradient_cutoff", 1e-10)
     xc_section["TAU_CUTOFF"] = dft_params.get("xc_tau_cutoff", 1e-10)
