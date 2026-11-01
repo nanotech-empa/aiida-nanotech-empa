@@ -173,6 +173,7 @@ def test_overlap_matrix_printed_in_last_scf_step(
             overlap_ndigits=orm.Int(10),
         ),
         should_run_bader=lambda: False,
+        should_run_unfolding=lambda: False,
     )
     input_dict = {"FORCE_EVAL": {"DFT": {}}}
 
@@ -267,6 +268,7 @@ def test_run_unfolding_forwards_optional_path(
             unfolding_primitive_basis_atoms=orm.Str("1 2"),
             unfolding_lattice_type=orm.Str("auto"),
             unfolding_basis_cluster_tol=orm.Float(5.0e-2),
+            unfolding_pdos_threshold=orm.Float(1e-4),
             unfolding_options=orm.Dict(
                 {
                     "resources": {
@@ -322,6 +324,8 @@ def test_run_unfolding_forwards_optional_path(
         assert options.withmpi is expected_mpi
     assert builder.primitive_basis_atoms.value == "1 2"
     assert builder.basis_cluster_tol.value == 5e-2
+    assert builder.parse_pdos_projections.value is True
+    assert builder.pdos_threshold.value == 1e-4
 
     # Generate a real submission script, without running the executable, to test
     # AiiDA's code/metadata precedence and rejection of contradictory MPI flags.
@@ -351,3 +355,36 @@ def test_run_unfolding_forwards_optional_path(
                 assert ("mpirun" in script) is bool(expected_mpi)
     finally:
         process.close()
+
+
+def test_validator_unfolding_rejects_pdos_lists():
+    # Unfolding writes one PDOS list per atom, which would replace 'pdos_lists'.
+    inputs = {
+        "run_diag_scf": orm.Bool(True),
+        "overlap_matrix": orm.Str("remote_only"),
+        "unfolding_primitive_basis_atoms": orm.Str("1 2"),
+        "unfolding_code": object(),  # the validator only checks presence
+        "unfolding_primitive_vectors": orm.Str("1 0 0; 0 1 0"),
+        "dft_params": orm.Dict({"added_mos": 10}),
+        "pdos_lists": orm.List([("1..4", "molecule")]),
+    }
+
+    message = Cp2kScfWorkChain._validate_inputs(inputs, None)
+
+    assert "pdos_lists" in message
+
+
+def test_unfolding_prints_atom_resolved_pdos():
+    workchain = SimpleNamespace(
+        inputs=SimpleNamespace(overlap_matrix=orm.Str("none")),
+        ctx=SimpleNamespace(dft_params={"added_mos": 12}, n_atoms=3),
+        should_run_unfolding=lambda: True,
+    )
+    input_dict = {"FORCE_EVAL": {"DFT": {}}}
+
+    Cp2kScfWorkChain.update_diag_input_dict(workchain, input_dict)
+
+    assert input_dict["FORCE_EVAL"]["DFT"]["PRINT"]["PDOS"] == {
+        "LDOS": [{"COMPONENTS": "", "LIST": atom} for atom in (1, 2, 3)],
+        "NLUMO": 12,
+    }
