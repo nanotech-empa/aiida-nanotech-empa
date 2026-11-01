@@ -127,7 +127,9 @@ class Cp2kHrstmWorkChain(engine.WorkChain):
         inputs["metadata"]["label"] = "hrstm"
         inputs["code"] = self.inputs.hrstm_code
         hrstm_params = cp2k_utils.update_legacy_basis_parameter(
-            self.inputs.hrstm_params.get_dict(), self.ctx.dft_params
+            self.inputs.hrstm_params.get_dict(),
+            self.ctx.dft_params,
+            self.inputs.structure.get_symbols_set(),
         )
         inputs["parameters"] = orm.Dict(hrstm_params)
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder

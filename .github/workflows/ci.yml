@@ -50,8 +50,10 @@ jobs:
         with:
           token: ${{secrets.CODECOV_TOKEN}}
           file: ./coverage.xml
-  # Slow examples that run the real codes: one Python version is enough.
+  # During release-stack integration, run the full scientific suite manually
+  # on the combined revision. Keep unit tests automatic for each intermediate PR.
   examples:
+    if: github.event_name == 'workflow_dispatch'
     needs: unit
     runs-on: ubuntu-latest
     timeout-minutes: 120

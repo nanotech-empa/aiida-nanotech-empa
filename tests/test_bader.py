@@ -65,10 +65,11 @@ def test_bader_disabled_preserves_ot_input(scf_process):
         run_diag_scf=orm.Bool(True), overlap_matrix=orm.Str("remote_only")
     )
     parameters = {"FORCE_EVAL": {"DFT": {"MGRID": {"CUTOFF": 300}}}}
+    original = copy.deepcopy(parameters)
     process.update_ot_input_dict(parameters)
     dft = parameters["FORCE_EVAL"]["DFT"]
-    assert dft["MGRID"]["CUTOFF"] == 300
-    assert "E_DENSITY_CUBE" not in dft.get("PRINT", {})
+    assert dft.pop("PRINT") == {"LOWDIN": {"PRINT_GOP": "T"}}
+    assert parameters == original
     assert not process.should_run_bader()
     assert process.should_run_diag_scf()
 
