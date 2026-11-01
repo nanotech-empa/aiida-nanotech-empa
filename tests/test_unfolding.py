@@ -137,3 +137,17 @@ def test_validate_energy_window(window, error):
         assert message is None
     else:
         assert error in message
+
+
+def test_unfolding_forwards_explicit_primitive_basis_and_tolerance(aiida_localhost):
+    command = (
+        _prepare_submission(
+            aiida_localhost,
+            primitive_basis_atoms=orm.Str("1 3 5"),
+            basis_cluster_tol=orm.Float(0.03),
+        )
+        .codes_info[0]
+        .cmdline_params
+    )
+    assert command[command.index("--primitive-basis-atoms") + 1] == "1 3 5"
+    assert command[command.index("--basis-cluster-tol") + 1] == "0.03"

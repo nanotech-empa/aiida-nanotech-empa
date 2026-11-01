@@ -201,3 +201,51 @@ def test_submitted_dft_settings_reach_every_stage(
             )
     finally:
         process.close()
+
+
+@pytest.mark.parametrize("functional", ["PBE", "PBE0"])
+def test_ot_diis_alias_preserves_unrelated_settings(functional):
+    parameters = cp2k_utils.load_protocol("scf_ot_protocol.yml", "standard")
+    cp2k_utils.apply_xc_settings(
+        parameters, {"xc_functional": functional, "ot_diis": True}
+    )
+    assert parameters["FORCE_EVAL"]["DFT"]["SCF"]["OT"]["MINIMIZER"] == "DIIS"
+
+
+def test_advanced_pbe0_controls_preserve_existing_scf_fields():
+    parameters = cp2k_utils.load_protocol("scf_ot_protocol.yml", "standard")
+    scf = parameters["FORCE_EVAL"]["DFT"]["SCF"]
+    scf["OT"]["STEPSIZE"] = 0.08
+    original = copy.deepcopy(scf)
+    cp2k_utils.apply_xc_settings(
+        parameters,
+        {
+            "xc_functional": "PBE0",
+            "eps_scf": 2e-8,
+            "outer_scf_eps_scf": 3e-8,
+            "scf_guess": "ATOMIC",
+        },
+    )
+    assert parameters["FORCE_EVAL"]["DFT"]["SCF"] is scf
+    assert scf["EPS_SCF"] == scf["EPS_LUMO"] == 2e-8
+    assert scf["OUTER_SCF"]["EPS_SCF"] == 3e-8
+    assert scf["SCF_GUESS"] == "ATOMIC"
+    assert scf["OT"]["STEPSIZE"] == original["OT"]["STEPSIZE"]
+    assert scf["PRINT"] == original["PRINT"]
+
+
+@pytest.mark.parametrize(
+    "filename",
+    ["t_c_g.dat", "coulomb data.dat", '"coulomb data.dat"', "'coulomb data.dat'"],
+)
+def test_coulomb_data_filename_remains_one_cp2k_token(filename):
+    import shlex
+
+    parameters = cp2k_utils.load_protocol("scf_ot_protocol.yml", "standard")
+    cp2k_utils.apply_xc_settings(
+        parameters, {"xc_functional": "PBE0", "tcg_data_file_name": filename}
+    )
+    token = parameters["FORCE_EVAL"]["DFT"]["XC"]["HF"]["INTERACTION_POTENTIAL"][
+        "T_C_G_DATA"
+    ]
+    assert shlex.split(token) == [filename.strip("\"'")]

@@ -111,6 +111,60 @@ def get_dft_file_names(dft_params=None):
     }
 
 
+def get_orbital_basis_file_names(dft_params, elements):
+    """Find the files supplying the orbital bases, in CP2K search order.
+
+    Resolve the first definition of every primary basis. Auxiliary-only files
+    are excluded unless a kind explicitly uses one of their bases as orbital.
+    """
+    kinds = get_kinds_section(
+        {element: {"mag": 0.0, "ghost": 0} for element in elements},
+        protocol="gpw",
+        dft_params=dft_params,
+    )["FORCE_EVAL"]["SUBSYS"]["KIND"]
+    required = {(kind["ELEMENT"], kind["BASIS_SET"]) for kind in kinds}
+    sources = {}
+    filenames = get_dft_file_names(dft_params)["basis_set_file_names"]
+    for filename in filenames:
+        with (DATA_DIR / filename).open(encoding="utf-8") as handle:
+            for line in handle:
+                parts = line.split("#", 1)[0].split()
+                if len(parts) < 2:
+                    continue
+                for alias in parts[1:]:
+                    basis = (parts[0], alias)
+                    if basis in required:
+                        sources.setdefault(basis, filename)
+    missing = required.difference(sources)
+    if missing:
+        details = ", ".join(f"{element}/{basis}" for element, basis in sorted(missing))
+        raise ValueError(
+            "Orbital basis definitions not found in the configured files: " + details
+        )
+    used_files = set(sources.values())
+    return list(
+        dict.fromkeys(filename for filename in filenames if filename in used_files)
+    )
+
+
+def update_legacy_basis_parameter(
+    parameters,
+    dft_params,
+    elements,
+    key="--basis_set_file",
+    parent_dir="parent_calc_folder",
+):
+    """Resolve generated orbital-basis paths, preserving explicit user overrides."""
+    params = dict(parameters)
+    current_value = params.get(key)
+    if current_value is not None and current_value != f"{parent_dir}/BASIS_MOLOPT":
+        return params
+    files = get_orbital_basis_file_names(dft_params, elements)
+    paths = [f"{parent_dir}/{filename}" for filename in files]
+    params[key] = paths[0] if len(paths) == 1 else paths
+    return params
+
+
 def get_dft_file_inputs(dft_params=None):
     """Build SinglefileData inputs for CP2K data files packaged with the plugin."""
 
@@ -328,8 +382,18 @@ def load_protocol(fname, protocol=None):
         return protocols[protocol] if protocol else protocols
 
 
+def _quote_cp2k_file_name(value):
+    """Return a quoted CP2K filename without adding a second set of quotes."""
+    text = str(value)
+    if (text.startswith('"') and text.endswith('"')) or (
+        text.startswith("'") and text.endswith("'")
+    ):
+        return text
+    return f'"{text}"'
+
+
 def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
-    """Apply XC and SCF settings. All keys except 'ot_minimizer' apply to PBE0 only."""
+    """Apply XC and SCF settings. OT minimizer controls also apply to PBE."""
 
     dft_params = dft_params or {}
     dft_section = input_dict["FORCE_EVAL"]["DFT"]
@@ -337,8 +401,11 @@ def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
     functional = _xc_functional(dft_params)
 
     ot_section = dft_section["SCF"].get("OT")
-    if ot_section is not None and "ot_minimizer" in dft_params:
-        ot_section["MINIMIZER"] = dft_params["ot_minimizer"]
+    if ot_section is not None:
+        if dft_params.get("ot_diis", False):
+            ot_section["MINIMIZER"] = "DIIS"
+        elif "ot_minimizer" in dft_params:
+            ot_section["MINIMIZER"] = dft_params["ot_minimizer"]
 
     if functional in ("PBE", "PBE-D3", "PBE_D3"):
         return
@@ -357,6 +424,11 @@ def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
 
     if scf_method == "ot":
         scf = dft_section["SCF"]
+        for parameter, keyword in (("eps_scf", "EPS_SCF"), ("scf_guess", "SCF_GUESS")):
+            if parameter in dft_params:
+                scf[keyword] = dft_params[parameter]
+        if "outer_scf_eps_scf" in dft_params:
+            scf["OUTER_SCF"]["EPS_SCF"] = dft_params["outer_scf_eps_scf"]
         scf["MAX_SCF"] = dft_params.get("max_scf", 20)
         scf["EPS_LUMO"] = dft_params.get("eps_lumo", scf["EPS_SCF"])
         scf["MAX_ITER_LUMO"] = dft_params.get("max_iter_lumo", 5000)
@@ -396,7 +468,9 @@ def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
         "INTERACTION_POTENTIAL": {
             "POTENTIAL_TYPE": dft_params.get("hfx_potential_type", "TRUNCATED"),
             "CUTOFF_RADIUS": hfx_cutoff_radius,
-            "T_C_G_DATA": dft_params.get("tcg_data_file_name", "t_c_g.dat"),
+            "T_C_G_DATA": _quote_cp2k_file_name(
+                dft_params.get("tcg_data_file_name", "t_c_g.dat")
+            ),
         },
         "MEMORY": {
             "EPS_STORAGE_SCALING": dft_params.get("hfx_eps_storage_scaling", 0.1),

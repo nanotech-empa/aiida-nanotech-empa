@@ -116,6 +116,7 @@ def test_validator_unfolding(
         "run_diag_scf": orm.Bool(run_diag_scf),
         "overlap_matrix": orm.Str(overlap_matrix),
         "unfolding_code": object(),  # the validator only checks presence
+        "unfolding_primitive_basis_atoms": orm.Str("1 2"),
         "dft_params": orm.Dict(dft_params),
     }
     if primitive_vectors is not None:
@@ -128,6 +129,27 @@ def test_validator_unfolding(
         assert message is None
     else:
         assert rejected in message
+
+
+@pytest.mark.parametrize("atoms", [None, "", " \t\n"])
+def test_validator_unfolding_requires_primitive_basis_atoms(atoms):
+    message = Cp2kScfWorkChain._validate_inputs(
+        {
+            "run_diag_scf": orm.Bool(True),
+            "overlap_matrix": orm.Str("remote_only"),
+            "unfolding_code": object(),
+            **(
+                {}
+                if atoms is None
+                else {"unfolding_primitive_basis_atoms": orm.Str(atoms)}
+            ),
+            "unfolding_primitive_vectors": orm.Str("1 0 0; 0 1 0"),
+            "dft_params": orm.Dict({"added_mos": 10}),
+        },
+        None,
+    )
+
+    assert "unfolding_primitive_basis_atoms" in message
 
 
 @pytest.mark.parametrize(
@@ -213,7 +235,21 @@ def test_finalize_surfaces_outputs(run_diag_scf, already_tagged):
 
 
 @pytest.mark.parametrize("path", [None, "", "G-X-M-G", "G-X-A1-Y-G"])
-def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path):
+@pytest.mark.parametrize(
+    "code_mpi,option_mpi,cores",
+    [
+        (None, None, 1),
+        (False, None, 4),
+        (True, None, 4),
+        (None, True, 4),
+        (None, False, 4),
+        (True, False, 4),
+        (False, True, 4),
+    ],
+)
+def test_run_unfolding_forwards_optional_path(
+    aiida_localhost, monkeypatch, path, code_mpi, option_mpi, cores
+):
     from aiida.common import AttributeDict
 
     from aiida_nanotech_empa.workflows.cp2k import scf_workchain
@@ -222,12 +258,25 @@ def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path
         computer=aiida_localhost,
         filepath_executable="/bin/true",
         default_calc_job_plugin="nanotech_empa.cp2k_unfolding",
+        with_mpi=code_mpi,
     ).store()
     inputs = AttributeDict(
         dict(
             unfolding_code=code,
             unfolding_primitive_vectors=orm.Str("1 0 0; 0 1 0"),
+            unfolding_primitive_basis_atoms=orm.Str("1 2"),
             unfolding_lattice_type=orm.Str("auto"),
+            unfolding_basis_cluster_tol=orm.Float(5.0e-2),
+            unfolding_options=orm.Dict(
+                {
+                    "resources": {
+                        "num_machines": 1,
+                        "num_mpiprocs_per_machine": 1,
+                        "num_cores_per_mpiproc": cores,
+                    },
+                    **({} if option_mpi is None else {"withmpi": option_mpi}),
+                }
+            ),
             overlap_threshold=orm.Float(1e-10),
         )
     )
@@ -262,3 +311,43 @@ def test_run_unfolding_forwards_optional_path(aiida_localhost, monkeypatch, path
         assert submitted[0].path is None
     else:
         assert submitted[0].path.value == path
+
+    builder = submitted[0]
+    options = builder.metadata.options
+    assert options.resources["num_cores_per_mpiproc"] == cores
+    expected_mpi = option_mpi if option_mpi is not None else code_mpi
+    if expected_mpi is None:
+        assert "withmpi" not in options
+    else:
+        assert options.withmpi is expected_mpi
+    assert builder.primitive_basis_atoms.value == "1 2"
+    assert builder.basis_cluster_tol.value == 5e-2
+
+    # Generate a real submission script, without running the executable, to test
+    # AiiDA's code/metadata precedence and rejection of contradictory MPI flags.
+    from pathlib import Path
+
+    from aiida.common.folders import SandboxFolder
+    from aiida.manage import get_manager
+
+    aiida_localhost.set_mpirun_command(["mpirun", "-np", "{tot_num_mpiprocs}"])
+    process = get_manager().get_runner().instantiate_process(builder)
+    try:
+        with SandboxFolder() as folder:
+            if (
+                code_mpi is not None
+                and option_mpi is not None
+                and code_mpi != option_mpi
+            ):
+                with pytest.raises(RuntimeError, match="(?i)inconsistent"):
+                    process.presubmit(folder)
+            else:
+                process.presubmit(folder)
+                script = Path(
+                    folder.get_abs_path(
+                        process.node.get_option("submit_script_filename")
+                    )
+                ).read_text()
+                assert ("mpirun" in script) is bool(expected_mpi)
+    finally:
+        process.close()
