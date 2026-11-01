@@ -10,7 +10,8 @@ class Cp2kUnfoldingParser(parsers.Parser):
         if self.node.inputs.output_filename.value not in retrieved_names:
             return self.exit_codes.ERROR_OUTPUT_FILE_MISSING
         if (
-            self.node.inputs.parse_pdos_projections.value
+            "parse_pdos_projections" in self.node.inputs
+            and self.node.inputs.parse_pdos_projections.value
             and self.node.inputs.pdos_projection_filename.value not in retrieved_names
         ):
             return self.exit_codes.ERROR_PDOS_PROJECTION_FILE_MISSING

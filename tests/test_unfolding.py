@@ -91,11 +91,13 @@ def _unfolding_node(computer, retrieved_files, parse_pdos_projections=False):
         process_type="aiida.calculations:nanotech_empa.cp2k_unfolding",
     )
     node.set_option("resources", {"num_machines": 1, "num_mpiprocs_per_machine": 1})
-    for label, value in (
-        ("output_filename", orm.Str("unfolding_bands.npz")),
-        ("parse_pdos_projections", orm.Bool(parse_pdos_projections)),
-        ("pdos_projection_filename", orm.Str("unfolding_projections.npz")),
-    ):
+    values = [("output_filename", orm.Str("unfolding_bands.npz"))]
+    if parse_pdos_projections is not None:
+        values += [
+            ("parse_pdos_projections", orm.Bool(parse_pdos_projections)),
+            ("pdos_projection_filename", orm.Str("unfolding_projections.npz")),
+        ]
+    for label, value in values:
         node.base.links.add_incoming(value.store(), LinkType.INPUT_CALC, label)
     node.store()
 
@@ -181,3 +183,27 @@ def test_validate_energy_window(window, error):
         assert message is None
     else:
         assert error in message
+
+
+def test_unfolding_forwards_explicit_primitive_basis_and_tolerance(aiida_localhost):
+    command = (
+        _prepare_submission(
+            aiida_localhost,
+            primitive_basis_atoms=orm.Str("1 3 5"),
+            basis_cluster_tol=orm.Float(0.03),
+        )
+        .codes_info[0]
+        .cmdline_params
+    )
+    assert command[command.index("--primitive-basis-atoms") + 1] == "1 3 5"
+    assert command[command.index("--basis-cluster-tol") + 1] == "0.03"
+
+
+def test_unfolding_parser_accepts_nodes_created_before_projection_inputs(
+    aiida_localhost,
+):
+    legacy = _unfolding_node(
+        aiida_localhost, ["unfolding_bands.npz"], parse_pdos_projections=None
+    )
+    assert "parse_pdos_projections" not in legacy.inputs
+    assert Cp2kUnfoldingParser(legacy).parse() is None

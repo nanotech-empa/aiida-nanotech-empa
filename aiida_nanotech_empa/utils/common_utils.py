@@ -42,3 +42,14 @@ def add_extras(node, app, uuid):
         workflows_list = node.base.extras.all[app]
         workflows_list.append(uuid)
         node.base.extras.set(app, workflows_list)
+
+
+def read_retrieved(parser, fname):
+    """Return (exit_code, content) for a retrieved file; exit_code is None on success."""
+    repository = parser.retrieved.base.repository
+    if fname not in repository.list_object_names():
+        return parser.exit_codes.ERROR_OUTPUT_MISSING, None
+    try:
+        return None, repository.get_object_content(fname)
+    except OSError:
+        return parser.exit_codes.ERROR_OUTPUT_READ, None
