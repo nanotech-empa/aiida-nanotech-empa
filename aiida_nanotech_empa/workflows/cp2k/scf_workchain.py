@@ -243,6 +243,10 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "cannot be combined with 'run_diag_scf'."
             )
 
+        poisson_error = cp2k_utils.validate_poisson_inputs(value)
+        if poisson_error:
+            return poisson_error
+
         if value["run_diag_scf"].value:
             return None
 

@@ -1,8 +1,8 @@
-import numpy as np
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
 from . import cp2k_utils
+from .electrostatics import apply_poisson
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
@@ -32,6 +32,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
         cp2k_utils.add_restart_policy_inputs(spec)
+        spec.inputs.validator = cp2k_utils.validate_poisson_inputs
 
         # Workchain outline.
         spec.outline(
@@ -96,24 +97,7 @@ class Cp2kGeoOptWorkChain(engine.WorkChain):
 
         ase_atoms = structure_with_tags.get_ase()
 
-        # Non-periodic systems only NONE and XYZ implemented:
-        if "periodic" in self.ctx.dft_params:
-            if self.ctx.dft_params["periodic"] == "NONE":
-                # Make sure cell is big enough for MT poisson solver and center molecule.
-                if self.inputs.protocol.value == "debug":
-                    extra_cell = 5.0
-                else:
-                    extra_cell = 15.0
-                ase_atoms.cell = 2 * (np.ptp(ase_atoms.positions, axis=0)) + extra_cell
-                ase_atoms.center()
-
-                # Poisson solver
-                self.ctx.input_dict["FORCE_EVAL"]["SUBSYS"]["CELL"]["PERIODIC"] = "NONE"
-                self.ctx.input_dict["FORCE_EVAL"]["DFT"]["POISSON"]["PERIODIC"] = "NONE"
-                self.ctx.input_dict["FORCE_EVAL"]["DFT"]["POISSON"][
-                    "POISSON_SOLVER"
-                ] = "MT"
-            # to be done: more cases
+        apply_poisson(self.ctx.input_dict, ase_atoms, self.ctx.dft_params)
 
         self.ctx.structure_with_tags = ase_atoms
         self.ctx.kinds_section = cp2k_utils.get_kinds_section(

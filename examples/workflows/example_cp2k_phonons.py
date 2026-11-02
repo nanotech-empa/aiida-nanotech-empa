@@ -1,6 +1,7 @@
 import ase.io
 import click
 from aiida import engine, orm, plugins
+from aiida_nanotech_empa.workflows.cp2k.electrostatics import prepare_cell
 
 try:
     from examples.workflows._paths import script_dir
@@ -69,6 +70,13 @@ def _example_cp2k_phonons(cp2k_code, uks, n_nodes=1, n_cores_per_node=1):
     sys_params["colvars"] = "distance atoms 2 3 , distance atoms 1 2"
 
     builder.structure = structure
+    # Keep the fast example padding explicit; production GUI preparation uses 15 Å.
+    if dft_params.get("periodic") == "NONE":
+        builder.structure = orm.StructureData(
+            ase=prepare_cell(
+                builder.structure.get_ase(), dft_params, padding_angstrom=5.0
+            )
+        )
     builder.dft_params = orm.Dict(dft_params)
     builder.sys_params = orm.Dict(sys_params)
     builder.phonons_params = orm.Dict(phonons_params)

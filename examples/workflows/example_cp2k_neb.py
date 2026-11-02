@@ -1,6 +1,7 @@
 import ase
 import click
 from aiida import engine, orm, plugins
+from aiida_nanotech_empa.workflows.cp2k.electrostatics import prepare_cells
 
 try:
     from examples.workflows._paths import script_dir
@@ -154,6 +155,18 @@ def _example_cp2k_neb(cp2k_code, uks, restart_uuid, n_nodes=1, n_cores_per_node=
         "nsteps_it": 1,
         "optimize_end_points": ".TRUE.",
     }
+
+    # Prepare the whole band together, retaining one common origin and cell.
+    if restart_uuid is None and dft_params.get("periodic") == "NONE":
+        sources = [builder.structure, *builder.replicas.values()]
+        prepared = prepare_cells(
+            [node.get_ase() for node in sources], dft_params, padding_angstrom=5.0
+        )
+        builder.structure = orm.StructureData(ase=prepared[0])
+        builder.replicas = {
+            f"replica_{i:03d}": orm.StructureData(ase=atoms)
+            for i, atoms in enumerate(prepared[1:], start=1)
+        }
 
     builder.dft_params = orm.Dict(dict=dft_params)
     builder.sys_params = orm.Dict(dict=sys_params)

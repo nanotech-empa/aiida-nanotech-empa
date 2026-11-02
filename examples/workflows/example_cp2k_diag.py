@@ -1,6 +1,7 @@
 import ase.io
 import click
 from aiida import engine, orm, plugins
+from aiida_nanotech_empa.workflows.cp2k.electrostatics import prepare_cell
 
 try:
     from examples.workflows._paths import script_dir
@@ -64,6 +65,15 @@ def _example_cp2k_diag(
                 "smear_t": 150,
             }
         )
+    # Cell preparation is explicit: WorkChains no longer resize it.
+    builder.structure = orm.StructureData(
+        ase=prepare_cell(
+            builder.structure.get_ase(),
+            builder.dft_params.get_dict(),
+            padding_angstrom=9.0,
+        )
+    )
+
     builder.options = orm.Dict(
         {
             "max_wallclock_seconds": 600,

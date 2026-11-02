@@ -1,6 +1,7 @@
 import ase.io
 import click
 from aiida import engine, orm, plugins
+from aiida_nanotech_empa.workflows.cp2k.electrostatics import prepare_cell
 
 try:
     from examples.workflows._diagnostics import assert_finished_ok
@@ -73,6 +74,13 @@ def _example_cp2k_orb(
             "smear_t": 150,
         }
 
+    # Keep the fast example padding explicit; production GUI preparation uses 15 Å.
+    if dft_params.get("periodic") == "NONE":
+        builder.structure = orm.StructureData(
+            ase=prepare_cell(
+                builder.structure.get_ase(), dft_params, padding_angstrom=5.0
+            )
+        )
     builder.dft_params = orm.Dict(dft_params)
     builder.options = {
         "max_wallclock_seconds": 600,

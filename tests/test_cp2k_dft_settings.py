@@ -141,7 +141,13 @@ def test_submitted_dft_settings_reach_every_stage(
             "potential_file_name": "POTENTIALS_DEFAULT",
             "basis_set_overrides": {"H": "SZV-MOLOPT-SR-GTH-q1"},
             "potential_overrides": {"H": "GTH-PBE"},
+            "periodic": "NONE",
+            "poisson_solver": "MT",
+            "poisson_settings": {"MT": {"ALPHA": 9.0}},
         }
+        from aiida_nanotech_empa.workflows.cp2k.electrostatics import prepare_cell
+
+        structure = orm.StructureData(ase=prepare_cell(structure.get_ase(), params))
     workchain = plugins.WorkflowFactory(f"nanotech_empa.cp2k.{workflow}")
     inputs = {"structure": structure, "dft_params": orm.Dict(params)}
     if workflow == "geo_opt":
@@ -182,6 +188,13 @@ def test_submitted_dft_settings_reach_every_stage(
         assert len(submitted) == (1 if workflow == "geo_opt" else 2)
         for index, builder in enumerate(submitted):
             dft = builder.cp2k.parameters.get_dict()["FORCE_EVAL"]["DFT"]
+            assert dft["POISSON"] == (
+                {"PERIODIC": "NONE", "POISSON_SOLVER": "MT", "MT": {"ALPHA": 9.0}}
+                if custom
+                else {"PERIODIC": "XYZ", "POISSON_SOLVER": "PERIODIC"}
+            )
+            assert builder.cp2k.structure.cell == structure.cell
+            assert builder.cp2k.structure.get_ase() == structure.get_ase()
             if workflow == "geo_opt" or (workflow == "scf" and index == 0):
                 assert dft["PRINT"]["LOWDIN"] == {"PRINT_GOP": "T"}
             else:

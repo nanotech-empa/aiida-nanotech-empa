@@ -34,6 +34,7 @@ class Cp2kPhononsWorkChain(engine.WorkChain):
         )
         cp2k_utils.add_restart_policy_inputs(spec)
 
+        spec.inputs.validator = cp2k_utils.validate_poisson_inputs
         spec.outline(
             cls.setup,
             cls.submit_geo_opt,
