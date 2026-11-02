@@ -485,7 +485,41 @@ def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
     }
 
 
+def validate_poisson_inputs(inputs, _=None):
+    """Reject invalid electrostatics before a WorkChain submits any calculations."""
+    from .electrostatics import poisson_settings, validate_cell
+
+    if "dft_params" not in inputs:
+        return None
+    params = inputs["dft_params"].get_dict()
+    try:
+        poisson_settings(params)
+        nodes = [inputs["structure"]] if "structure" in inputs else []
+        if "trajectory" in inputs:
+            trajectory = inputs["trajectory"]
+            nodes.extend(
+                trajectory.get_step_structure(i) for i in range(trajectory.numsteps)
+            )
+        nodes.extend(inputs.get("replicas", {}).values())
+        for node in nodes:
+            validate_cell(node.get_ase(), params)
+        if "replicas" in inputs and any(
+            not np.allclose(node.cell, inputs["structure"].cell)
+            for node in inputs["replicas"].values()
+        ):
+            return "NEB replicas must share the explicitly prepared input cell"
+    except ValueError as exc:
+        return str(exc)
+    return None
+
+
 def get_dft_inputs(dft_params, structure, template, protocol):
+    from .electrostatics import apply_poisson, validate_cell
+
+    # Every trajectory frame must satisfy the same explicit electrostatics plan.
+    if isinstance(structure, orm.TrajectoryData):
+        for index in range(structure.numsteps):
+            validate_cell(structure.get_step_structure(index).get_ase(), dft_params)
     files = get_dft_file_inputs(dft_params)
 
     # number of atoms
@@ -530,22 +564,7 @@ def get_dft_inputs(dft_params, structure, template, protocol):
 
     ase_atoms = structure_with_tags.get_ase()
 
-    # non periodic systems only NONE and XYZ implemented: TO BE CHECKED FOR NEB!!!!
-    if "periodic" in dft_params:
-        if dft_params["periodic"] == "NONE":
-            # make sure cell is big enough for MT poisson solver and center molecule
-            if protocol == "debug":
-                extra_cell = 5.0
-            else:
-                extra_cell = 15.0
-            ase_atoms.cell = 2 * (np.ptp(ase_atoms.positions, axis=0)) + extra_cell
-            ase_atoms.center()
-
-            # Poisson solver
-            input_dict["FORCE_EVAL"]["SUBSYS"]["CELL"]["PERIODIC"] = "NONE"
-            input_dict["FORCE_EVAL"]["DFT"]["POISSON"]["PERIODIC"] = "NONE"
-            input_dict["FORCE_EVAL"]["DFT"]["POISSON"]["POISSON_SOLVER"] = "MT"
-        # to be done: more cases
+    apply_poisson(input_dict, ase_atoms, dft_params)
 
     # must be after if 'periodic'
     structure_with_tags = ase_atoms

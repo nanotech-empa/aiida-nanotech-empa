@@ -183,6 +183,7 @@ class Cp2kRefTrajWorkChain(engine.WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
 
+        spec.inputs.validator = cp2k_utils.validate_poisson_inputs
         spec.outline(
             cls.setup,  # create batches, if reordering of structures create indexing
             engine.if_(cls.still_batches_to_run)(

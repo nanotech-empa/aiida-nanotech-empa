@@ -41,6 +41,7 @@ class Cp2kNebWorkChain(engine.WorkChain):
         )
 
         # Workchain outline.
+        spec.inputs.validator = cp2k_utils.validate_poisson_inputs
         spec.outline(
             cls.setup,
             engine.if_(cls.should_run_scf)(cls.first_scf),

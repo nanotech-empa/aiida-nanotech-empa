@@ -1,9 +1,9 @@
 import copy
-import numpy as np
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils
 from . import cp2k_utils
+from .electrostatics import apply_poisson, validate_cell
 
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 
@@ -43,6 +43,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
         cp2k_utils.add_restart_policy_inputs(spec)
+        spec.inputs.validator = cp2k_utils.validate_poisson_inputs
         spec.outline(
             cls.setup,
             cls.run_ot_scf,
@@ -97,14 +98,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         )
 
     def _handle_periodicity(self, structure):
-        if self.ctx.dft_params["periodic"] == "NONE":
-            # Make sure cell is big enough for MT poisson solver and center positions.
-            if self.inputs.protocol == "debug":
-                extra_cell = 9.0  # Angstrom.
-            else:
-                extra_cell = 15.0  # Angstrom.
-            structure.cell = 2 * (np.ptp(structure.positions, axis=0)) + extra_cell
-            structure.center()
+        validate_cell(structure, self.ctx.dft_params)
 
     def run_ot_scf(self):
         self.report("Running CP2K OT SCF")
@@ -132,10 +126,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
             input_dict["FORCE_EVAL"]["DFT"]["XC"].pop("VDW_POTENTIAL", None)
         cp2k_utils.apply_xc_settings(input_dict, self.ctx.dft_params)
 
-        # POISSON_SOLVER
-        if self.ctx.dft_params["periodic"] == "NONE":
-            input_dict["FORCE_EVAL"]["DFT"]["POISSON"]["PERIODIC"] = "NONE"
-            input_dict["FORCE_EVAL"]["DFT"]["POISSON"]["POISSON_SOLVER"] = "MT"
+        apply_poisson(input_dict, self.ctx.structure_with_tags, self.ctx.dft_params)
 
         # UKS
         if self.ctx.dft_params["uks"]:
