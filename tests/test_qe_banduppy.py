@@ -3,7 +3,6 @@ import inspect
 import ase
 import banduppy
 import pytest
-
 from aiida import orm, plugins
 from aiida.manage import get_manager
 
@@ -207,10 +206,12 @@ def test_folded_diagonalization_preserves_template():
 @pytest.mark.parametrize("calculation", ["scf", "bands"])
 def test_reference_requires_explicit_spin_and_uses_primitive_moments(calculation):
     import copy
+
     import numpy as np
+
     from aiida_nanotech_empa.workflows.qe.banduppy import (
-        _reference_qe_parameters,
         _folded_qe_parameters,
+        _reference_qe_parameters,
     )
 
     source = {"SYSTEM": {"nspin": 2, "tot_magnetization": 8, "tot_charge": 1}}
