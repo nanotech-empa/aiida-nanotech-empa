@@ -129,7 +129,7 @@ class GaussianCasscfSeriesWorkChain(engine.WorkChain):
 
         self.ctx.link0 = {
             "%chk": "aiida.chk",
-            "%mem": "%dMB" % memory_mb,
+            "%mem": f"{int(memory_mb)}MB",
             "%nprocshared": str(num_cores),
         }
 
@@ -146,7 +146,7 @@ class GaussianCasscfSeriesWorkChain(engine.WorkChain):
     def initial_scf(self):
         self.report("Submitting initial SCF")
 
-        self.ctx.init_mult = list(self.inputs.multiplicity_list)[0]
+        self.ctx.init_mult = next(iter(self.inputs.multiplicity_list))
 
         parameters = orm.Dict(
             {
@@ -197,11 +197,10 @@ class GaussianCasscfSeriesWorkChain(engine.WorkChain):
         return True
 
     def casscf(self):
-        if self.ctx.last_submitted_label is not None:
-            if not common_utils.check_if_calc_ok(
-                self, self.ctx[self.ctx.last_submitted_label]
-            ):
-                return self.exit_codes.ERROR_TERMINATION
+        if self.ctx.last_submitted_label is not None and not (
+            common_utils.check_if_calc_ok(self, self.ctx[self.ctx.last_submitted_label])
+        ):
+            return self.exit_codes.ERROR_TERMINATION
 
         uno = False
 

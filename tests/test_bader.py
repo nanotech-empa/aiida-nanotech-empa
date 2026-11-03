@@ -254,9 +254,11 @@ def test_bader_unknown_settings_are_rejected(fixture_localhost, bader_code):
         )
     )
     try:
-        with SandboxFolder() as folder:
-            with pytest.raises(common.InputValidationError, match="unexpected"):
-                process.prepare_for_submission(folder)
+        with (
+            SandboxFolder() as folder,
+            pytest.raises(common.InputValidationError, match="unexpected"),
+        ):
+            process.prepare_for_submission(folder)
     finally:
         process.close()
 

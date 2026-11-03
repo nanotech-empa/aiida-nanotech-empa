@@ -50,8 +50,8 @@ def _example_cp2k_gw(cp2k_code, ic, protocol, mult):
 
     gw_out_dict = dict(calc_node.outputs.gw_output_parameters)
     print()
-    for k in gw_out_dict:
-        print(f"  {k}: {gw_out_dict[k]}")
+    for k, v in gw_out_dict.items():
+        print(f"  {k}: {v}")
 
 
 def example_cp2k_gw_gpw_std_rks(cp2k_code):

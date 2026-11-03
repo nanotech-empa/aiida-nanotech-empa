@@ -278,15 +278,15 @@ def test_stm_workflows_submit_actual_orbital_files(
     submitted = []
     chain = SimpleNamespace(
         inputs=AttributeDict(
-            dict(
-                structure=structure,
-                cp2k_code=code,
-                spm_code=code,
-                hrstm_code=code,
-                protocol=orm.Str("standard"),
-                spm_params=orm.Dict({"--basis_set_file": explicit}),
-                hrstm_params=orm.Dict({"--basis_set_file": explicit}),
-            )
+            {
+                "structure": structure,
+                "cp2k_code": code,
+                "spm_code": code,
+                "hrstm_code": code,
+                "protocol": orm.Str("standard"),
+                "spm_params": orm.Dict({"--basis_set_file": explicit}),
+                "hrstm_params": orm.Dict({"--basis_set_file": explicit}),
+            }
         ),
         ctx=SimpleNamespace(
             n_atoms=2,

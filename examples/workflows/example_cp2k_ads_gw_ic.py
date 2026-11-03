@@ -71,8 +71,8 @@ def _example_cp2k_ads_gw_ic(cp2k_code, slab_included):
 
     gw_ic_res = dict(calc_node.outputs.gw_ic_parameters)
     print()
-    for k in gw_ic_res:
-        print(f"  {k}: {gw_ic_res[k]}")
+    for k, v in gw_ic_res.items():
+        print(f"  {k}: {v}")
     print()
 
 

@@ -7,6 +7,7 @@ Code is based on asetk module by Leopold Talirz
 """
 
 import re
+from typing import ClassVar
 
 import numpy as np
 
@@ -101,8 +102,8 @@ def igor_wave_factory(fname):
             wave = read_wave(lines, fname)
             if wave is not None:
                 waves.append(wave)
-        except Exception as e:
-            print("  Error: %.80s..." % str(e))
+        except Exception as e:  # noqa: BLE001 - skip unreadable waves, keep the rest
+            print(f"  Error: {e!s:.80}...")
 
     return waves
 
@@ -245,14 +246,10 @@ class Wave:
             ax = self.axes[i_ax]
             if header != "":
                 header += "\n"
-            header += "axis %d: %s [unit: %s] [%.6e, %.6e], delta=%.6e, n=%d" % (
-                i_ax,
-                ax.symbol,
-                ax.unit,
-                ax.min,
-                ax.min + ax.delta * (s - 1),
-                ax.delta,
-                s,
+            ax_max = ax.min + ax.delta * (s - 1)
+            header += (
+                f"axis {i_ax}: {ax.symbol} [unit: {ax.unit}] "
+                f"[{ax.min:.6e}, {ax_max:.6e}], delta={ax.delta:.6e}, n={s}"
             )
         return header
 
@@ -263,7 +260,7 @@ class Wave:
 class Wave1d(Wave):
     """1d Igor wave"""
 
-    default_parameters = {
+    default_parameters: ClassVar[dict] = {
         "xmin": 0.0,
         "xdelta": None,
         "xlabel": "x",
@@ -274,7 +271,7 @@ class Wave1d(Wave):
         """Initialize 1d IGOR wave"""
         super().__init__(data, axes, name)
 
-        self.parameters = self.default_parameters
+        self.parameters = self.default_parameters.copy()
         for key, value in kwargs.items():
             if key in self.parameters:
                 self.parameters[key] = value
@@ -303,7 +300,7 @@ class Wave1d(Wave):
 class Wave2d(Wave):
     """2d Igor wave"""
 
-    default_parameters = {
+    default_parameters: ClassVar[dict] = {
         "xmin": 0.0,
         "xdelta": None,
         "xlabel": "x",
@@ -326,7 +323,7 @@ class Wave2d(Wave):
         """
         super().__init__(data, axes=axes, name=name)
 
-        self.parameters = self.default_parameters
+        self.parameters = self.default_parameters.copy()
         for key, value in kwargs.items():
             if key in self.parameters:
                 self.parameters[key] = value

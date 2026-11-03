@@ -176,9 +176,7 @@ class GaussianScfWorkChain(engine.WorkChain):
         )
 
     def is_uks(self):
-        if self.inputs.multiplicity.value == 0:
-            return False
-        return True
+        return self.inputs.multiplicity.value != 0
 
     def setup(self):
         self.report("Inspecting input and setting up things")
@@ -197,7 +195,7 @@ class GaussianScfWorkChain(engine.WorkChain):
         )
         self.ctx.link0 = {
             "%chk": "aiida.chk",
-            "%mem": "%dMB" % memory_mb,
+            "%mem": f"{int(memory_mb)}MB",
             "%nprocshared": str(num_cores),
         }
 

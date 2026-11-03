@@ -39,7 +39,8 @@ def poisson_settings(dft_params):
         )
     extra = deepcopy(dft_params.get("poisson_settings", {}))
     if not isinstance(extra, dict):
-        raise ValueError(
+        # ValueError on purpose: callers report invalid dft_params via ValueError.
+        raise ValueError(  # noqa: TRY004
             "poisson_settings must be a dictionary of CP2K POISSON settings"
         )
     reserved = {"PERIODIC", "POISSON_SOLVER", "POISSON", "PSOLVER"}

@@ -17,14 +17,16 @@ GEO_FILE = "ch4.xyz"
 def _check_sparse_overlap(retrieved):
     assert "sparse_overlap.npz" in retrieved.base.repository.list_object_names()
 
-    with retrieved.base.repository.open("sparse_overlap.npz", "rb") as handle:
-        with np.load(handle) as sparse_overlap:
-            shape = tuple(sparse_overlap["shape"])
-            elements = set(sparse_overlap["element"].astype(str))
-            assert shape[0] == shape[1]
-            assert shape[0] == sparse_overlap["basis_index"].size
-            assert sparse_overlap["data"].size >= shape[0]
-            assert {"C", "H"} <= elements
+    with (
+        retrieved.base.repository.open("sparse_overlap.npz", "rb") as handle,
+        np.load(handle) as sparse_overlap,
+    ):
+        shape = tuple(sparse_overlap["shape"])
+        elements = set(sparse_overlap["element"].astype(str))
+        assert shape[0] == shape[1]
+        assert shape[0] == sparse_overlap["basis_index"].size
+        assert sparse_overlap["data"].size >= shape[0]
+        assert {"C", "H"} <= elements
 
 
 def _example_cp2k_scf(

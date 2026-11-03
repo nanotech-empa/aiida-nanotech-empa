@@ -210,7 +210,7 @@ class GaussianNatOrbWorkChain(engine.WorkChain):
             "link0_parameters": {
                 "%chk": "aiida.chk",
                 "%oldchk": "parent_calc/aiida.chk",
-                "%mem": "%dMB" % memory_mb,
+                "%mem": f"{int(memory_mb)}MB",
                 "%nprocshared": str(num_cores),
             },
             "route_parameters": {
@@ -251,7 +251,7 @@ class GaussianNatOrbWorkChain(engine.WorkChain):
             "link0_parameters": {
                 "%chk": "aiida.chk",
                 "%oldchk": "parent_calc/aiida.chk",
-                "%mem": "%dMB" % self.ctx.memory_mb,
+                "%mem": f"{int(self.ctx.memory_mb)}MB",
                 "%nprocshared": str(self.ctx.num_cores),
             },
             "route_parameters": {

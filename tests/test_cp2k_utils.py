@@ -44,7 +44,7 @@ def test_get_dft_inputs_accepts_plain_dict(aiida_profile):
     )
     dft_params = orm.Dict(dict={"vdw": False, "periodic": "XYZ"}).get_dict()
 
-    files, input_dict, structure_with_tags = cp2k_utils.get_dft_inputs(
+    _, input_dict, _ = cp2k_utils.get_dft_inputs(
         dft_params,
         structure,
         "geo_opt_protocol.yml",

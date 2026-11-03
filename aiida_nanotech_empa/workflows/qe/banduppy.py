@@ -271,8 +271,8 @@ class QeBanduppyUnfoldingWorkChain(engine.WorkChain):
                 self.ctx.special_labels.get_dict(),
                 self.ctx.mapping_arrays.get_array("kpoints_pbz_full")[:, :3],
             )
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - labels are cosmetic, never fatal
+            self.report(f"Could not assign high-symmetry k-point labels: {exc}")
         reference_kpoints.label = "BandUPpy primitive reference k-points"
         reference_kpoints.store()
 
@@ -553,7 +553,7 @@ def _reference_qe_parameters(
             system.pop(key, None)
     system.update(spin)
 
-    det = max(1, int(round(abs(float(np.linalg.det(supercell_matrix))))))
+    det = max(1, round(abs(float(np.linalg.det(supercell_matrix)))))
     if original_nbnd is not None and calculation == "bands":
         system["nbnd"] = max(1, int(np.ceil(float(original_nbnd) / det)))
     else:
@@ -608,9 +608,9 @@ def _build_reference_primitive_structure(structure, supercell_matrix, *, toleran
         kind_counts = {}
         for _, kind_name in cluster["items"]:
             kind_counts[kind_name] = kind_counts.get(kind_name, 0) + 1
-        majority_kind = sorted(
-            kind_counts.items(), key=lambda item: (-item[1], item[0])
-        )[0][0]
+        majority_kind = min(kind_counts.items(), key=lambda item: (-item[1], item[0]))[
+            0
+        ]
         majority_positions = [
             frac for frac, kind_name in cluster["items"] if kind_name == majority_kind
         ]
@@ -667,7 +667,7 @@ def _reference_scf_kpoints(
             try:
                 mesh, offset = creator.inputs.kpoints.get_kpoints_mesh()
                 mesh = np.asarray(mesh, dtype=int)
-            except Exception:
+            except AttributeError:  # explicit k-point list, no mesh
                 mesh = np.ones(3, dtype=int)
     factors = np.maximum(
         1,
