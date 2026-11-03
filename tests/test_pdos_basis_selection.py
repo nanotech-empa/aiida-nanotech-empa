@@ -1,5 +1,6 @@
 """Select the actual orbital file without changing the SCF basis or its order."""
 
+import pathlib
 import shutil
 from types import SimpleNamespace
 
@@ -37,7 +38,7 @@ from aiida_nanotech_empa.workflows.cp2k import cp2k_utils, pdos_workchain
     ],
 )
 def test_orbital_selection_ignores_auxiliary_and_unrelated_files(params, expected):
-    assert pdos_workchain._get_overlap_basis_files(params, {"C", "H"}) == [expected]
+    assert cp2k_utils.get_orbital_basis_file_names(params, {"C", "H"}) == [expected]
 
 
 @pytest.fixture
@@ -57,24 +58,24 @@ def custom_basis_files(tmp_path, monkeypatch):
 
 def test_orbital_selection_accepts_a_complete_custom_file(custom_basis_files):
     params = {**custom_basis_files, "basis_set_file_names": ["both"]}
-    assert pdos_workchain._get_overlap_basis_files(params, {"H", "C"}) == ["both"]
+    assert cp2k_utils.get_orbital_basis_file_names(params, {"H", "C"}) == ["both"]
 
 
 @pytest.mark.parametrize("files", [["hydrogen", "carbon"], ["hydrogen", "both"]])
 def test_orbital_selection_keeps_all_required_files(custom_basis_files, files):
     params = {**custom_basis_files, "basis_set_file_names": files}
-    assert pdos_workchain._get_overlap_basis_files(params, {"H", "C"}) == files
+    assert cp2k_utils.get_orbital_basis_file_names(params, {"H", "C"}) == files
 
 
 def test_orbital_selection_respects_first_file_precedence(custom_basis_files):
     params = {**custom_basis_files, "basis_set_file_names": ["both", "hydrogen"]}
-    assert pdos_workchain._get_overlap_basis_files(params, {"H", "C"}) == ["both"]
+    assert cp2k_utils.get_orbital_basis_file_names(params, {"H", "C"}) == ["both"]
 
 
 def test_orbital_selection_reports_a_missing_definition(custom_basis_files):
     params = {**custom_basis_files, "basis_set_file_names": ["hydrogen"]}
     with pytest.raises(ValueError, match="C/C-alias"):
-        pdos_workchain._get_overlap_basis_files(params, {"H", "C"})
+        cp2k_utils.get_orbital_basis_file_names(params, {"H", "C"})
 
 
 @pytest.mark.parametrize("overlap_enabled", [False, True])
@@ -113,7 +114,7 @@ def test_setup_checks_overlap_support_before_starting_scf(
         calls.append(elements)
         raise ValueError("missing selected orbital basis")
 
-    monkeypatch.setattr(pdos_workchain, "_get_overlap_basis_files", reject)
+    monkeypatch.setattr(cp2k_utils, "get_orbital_basis_file_names", reject)
     if overlap_enabled:
         with pytest.raises(ValueError, match="missing selected orbital basis"):
             pdos_workchain.Cp2kPdosWorkChain.setup(process)
@@ -227,3 +228,105 @@ def test_overlap_calcjob_expands_basis_file_lists(aiida_localhost):
         ]
     finally:
         process.close()
+
+
+@pytest.mark.parametrize("workflow", ["stm", "orbitals", "hrstm"])
+@pytest.mark.parametrize("selection", ["pbe", "pbe0-aux-first", "split", "explicit"])
+def test_stm_workflows_submit_actual_orbital_files(
+    fixture_localhost, custom_basis_files, workflow, selection, monkeypatch
+):
+    from aiida import plugins
+    from aiida.common.folders import SandboxFolder
+    from aiida.manage import get_manager
+
+    # Restore the packaged data for default PBE/PBE0; use split fixtures otherwise.
+    params = {**custom_basis_files, "basis_set_file_names": ["hydrogen", "carbon"]}
+    expected = ["parent_calc_folder/hydrogen", "parent_calc_folder/carbon"]
+    explicit = "parent_calc_folder/BASIS_MOLOPT"
+    if selection in ("pbe", "pbe0-aux-first"):
+        monkeypatch.setattr(
+            cp2k_utils, "DATA_DIR", pathlib.Path(cp2k_utils.__file__).parent / "data"
+        )
+        params = (
+            {}
+            if selection == "pbe"
+            else {
+                "xc_functional": "PBE0",
+                "basis_set_file_names": ["BASIS_ADMM_UZH", "BASIS_MOLOPT_UZH"],
+            }
+        )
+        expected = "parent_calc_folder/" + (
+            "BASIS_MOLOPT" if selection == "pbe" else "BASIS_MOLOPT_UZH"
+        )
+    elif selection == "explicit":
+        explicit = ["user/orbitals-C", "user/orbitals-H"]
+        expected = explicit
+        # An explicit remote override must not try to resolve packaged files.
+        params = {"basis_set_file_names": ["not-a-packaged-file"]}
+
+    code = orm.InstalledCode(
+        computer=fixture_localhost,
+        filepath_executable="/bin/true",
+        default_calc_job_plugin="nanotech_empa.hrstm"
+        if workflow == "hrstm"
+        else "nanotech_empa.stm",
+    ).store()
+    remote = orm.RemoteData(computer=fixture_localhost, remote_path="/tmp/parent")
+    structure = orm.StructureData(
+        ase=ase.Atoms("CH", positions=[[0, 0, 0], [0, 0, 1]], cell=[10] * 3)
+    )
+    submitted = []
+    chain = SimpleNamespace(
+        inputs=AttributeDict(
+            dict(
+                structure=structure,
+                cp2k_code=code,
+                spm_code=code,
+                hrstm_code=code,
+                protocol=orm.Str("standard"),
+                spm_params=orm.Dict({"--basis_set_file": explicit}),
+                hrstm_params=orm.Dict({"--basis_set_file": explicit}),
+            )
+        ),
+        ctx=SimpleNamespace(
+            n_atoms=2,
+            dft_params=params,
+            diag_scf=SimpleNamespace(
+                is_finished_ok=True, outputs=SimpleNamespace(remote_folder=remote)
+            ),
+            ppm=SimpleNamespace(
+                outputs=SimpleNamespace(
+                    remote_folder=remote,
+                    retrieved=SimpleNamespace(
+                        list_objects=lambda: [
+                            SimpleNamespace(name=name)
+                            for name in ["df.npy", "df_vec.npy"]
+                        ]
+                    ),
+                )
+            ),
+        ),
+        report=lambda message: None,
+        submit=lambda cls, **inputs: submitted.append((cls, inputs)),
+    )
+    workchain = plugins.WorkflowFactory(f"nanotech_empa.cp2k.{workflow}")
+    getattr(workchain, "run_hrstm" if workflow == "hrstm" else "run_stm")(chain)
+    cls, inputs = submitted[0]
+    assert inputs["parameters"].get_dict()["--basis_set_file"] == expected
+    process = get_manager().get_runner().instantiate_process(cls, **inputs)
+    try:
+        with SandboxFolder() as folder:
+            info = process.prepare_for_submission(folder)
+        paths = expected if isinstance(expected, list) else [expected]
+        assert info.codes_info[0].cmdline_params == ["--basis_set_file", *paths]
+    finally:
+        process.close()
+
+
+def test_generated_basis_parameter_handles_omitted_flag_and_does_not_mutate_input():
+    original = {"--energy_range": ["-2", "2", "0.1"]}
+    result = cp2k_utils.update_legacy_basis_parameter(
+        original, {"xc_functional": "PBE0"}, {"H"}
+    )
+    assert result["--basis_set_file"] == "parent_calc_folder/BASIS_MOLOPT_UZH"
+    assert "--basis_set_file" not in original

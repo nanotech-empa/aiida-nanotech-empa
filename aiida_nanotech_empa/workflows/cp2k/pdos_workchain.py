@@ -10,42 +10,6 @@ Cp2kDiagWorkChain = plugins.WorkflowFactory("nanotech_empa.cp2k.diag")
 OverlapCalculation = plugins.CalculationFactory("nanotech_empa.overlap")
 
 
-def _get_overlap_basis_files(dft_params, elements):
-    """Find the files supplying the orbital bases, in CP2K search order.
-
-    Resolve the first definition of every primary basis. Auxiliary-only files
-    are excluded unless a kind explicitly uses one of their bases as orbital.
-    """
-    kinds = cp2k_utils.get_kinds_section(
-        {element: {"mag": 0.0, "ghost": 0} for element in elements},
-        protocol="gpw",
-        dft_params=dft_params,
-    )["FORCE_EVAL"]["SUBSYS"]["KIND"]
-    required = {(kind["ELEMENT"], kind["BASIS_SET"]) for kind in kinds}
-    sources = {}
-    filenames = cp2k_utils.get_dft_file_names(dft_params)["basis_set_file_names"]
-    for filename in filenames:
-        with (cp2k_utils.DATA_DIR / filename).open(encoding="utf-8") as handle:
-            for line in handle:
-                parts = line.split("#", 1)[0].split()
-                if len(parts) < 2:
-                    continue
-                for alias in parts[1:]:
-                    basis = (parts[0], alias)
-                    if basis in required:
-                        sources.setdefault(basis, filename)
-    missing = required.difference(sources)
-    if missing:
-        details = ", ".join(f"{element}/{basis}" for element, basis in sorted(missing))
-        raise ValueError(
-            "Orbital basis definitions not found in the configured files: " + details
-        )
-    used_files = set(sources.values())
-    return list(
-        dict.fromkeys(filename for filename in filenames if filename in used_files)
-    )
-
-
 class Cp2kPdosWorkChain(engine.WorkChain):
     @classmethod
     def define(cls, spec):
@@ -161,7 +125,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
 
         # Check basis definitions before starting either SCF calculation.
         if self.ctx.do_overlap:
-            _get_overlap_basis_files(
+            cp2k_utils.get_orbital_basis_file_names(
                 self.ctx.dft_parameters, self.ctx.structure.get_symbols_set()
             )
 
@@ -226,7 +190,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
         ):
             paths = [
                 f"{folder}/{filename}"
-                for filename in _get_overlap_basis_files(
+                for filename in cp2k_utils.get_orbital_basis_file_names(
                     params, structure.get_symbols_set()
                 )
             ]

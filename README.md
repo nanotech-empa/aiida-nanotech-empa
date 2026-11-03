@@ -34,6 +34,17 @@ The package focuses on automation around CP2K, Gaussian, Quantum ESPRESSO, and p
 
 * `nanotech_empa.gaussian.*`: Gaussian workflows for SCF, relaxations, spin-state analysis, constrained optimization, CASSCF, NICS, and related post-processing.
 * `nanotech_empa.nanoribbon`: workflow to characterize 1D periodic systems with Quantum ESPRESSO.
+* `nanotech_empa.qe.banduppy_unfolding`: unfold supercell bands with BandUPpy, with optional neutral primitive-reference SCF and bands.
+
+For a spin-polarized source, primitive-reference bands require an explicit
+`reference_spin_parameters` input: `{"nspin": 1}` confirms a nonmagnetic
+reference; `{"nspin": 2, "starting_magnetization": {"Fe": 0.5}}` specifies
+collinear starting moments by primitive-cell kind. Alternatively provide an
+explicit primitive-cell `tot_magnetization`, or disable reference calculations
+with `run_reference_bands=False`. The primitive cell must accommodate the chosen
+magnetic order. Supercell charge and total magnetization are not copied into
+the primitive reference. Folded supercell calculations preserve the source spin
+settings. Noncollinear/SOC reference calculations are not supported.
 
 The Gaussian spin workflow supports wavefunction-stability checks and optimizes the requested multiplicities, selects the lowest-energy state, and runs Δ-SCF ionization-potential/electron-affinity and vertical-excitation calculations. Natural-orbital analysis is available for an open-shell singlet ground state. Orbital image rendering requires the [PyMOL Python module](https://github.com/schrodinger/pymol-open-source), installed separately in the rendering environment.
 

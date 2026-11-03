@@ -2,6 +2,7 @@ from aiida import engine, orm, plugins
 
 from ...plugins import sparse_overlap, unfolding
 from ...utils import common_utils
+from . import cp2k_utils
 from .diag_workchain import Cp2kDiagWorkChain
 
 BaderCalculation = plugins.CalculationFactory("nanotech_empa.bader")
@@ -114,6 +115,12 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             "newlines. They are snapped to an exact tiling of the cell.",
         )
         spec.input(
+            "unfolding_primitive_basis_atoms",
+            valid_type=orm.Str,
+            required=False,
+            help="1-based atom indices defining the primitive basis, e.g. 1 2 or 171 196.",
+        )
+        spec.input(
             "unfolding_path",
             valid_type=orm.Str,
             required=False,
@@ -141,6 +148,27 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             valid_type=orm.Float,
             required=False,
             help="Upper bound (eV) of the unfolded energy window, see 'unfolding_emin'.",
+        )
+        spec.input(
+            "unfolding_pdos_threshold",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(1.0e-4),
+            required=False,
+            help="Projection threshold for compact atom-resolved PDOS data attached to unfolding.",
+        )
+        spec.input(
+            "unfolding_basis_cluster_tol",
+            valid_type=orm.Float,
+            default=lambda: orm.Float(5.0e-2),
+            required=False,
+            help="Fractional basis-clustering tolerance forwarded to unfolding post-processing.",
+        )
+        spec.input(
+            "unfolding_options",
+            valid_type=orm.Dict,
+            default=lambda: orm.Dict(dict={}),
+            required=False,
+            help="Metadata options for the unfolding post-processing CalcJob.",
         )
         spec.outline(
             cls.setup,
@@ -177,6 +205,15 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
             )
         if "unfolding_code" in value and "unfolding_primitive_vectors" not in value:
             return "'unfolding_primitive_vectors' is required with 'unfolding_code'."
+        if "unfolding_code" in value and (
+            "unfolding_primitive_basis_atoms" not in value
+            or not value["unfolding_primitive_basis_atoms"].value.strip()
+        ):
+            return (
+                "A non-empty 'unfolding_primitive_basis_atoms' is required with "
+                "'unfolding_code'; select atoms explicitly or check the primitive "
+                "cell in the app before submitting."
+            )
         if (
             "unfolding_code" in value
             and value["dft_params"].get("periodic", "XYZ") == "NONE"
@@ -189,6 +226,11 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "'unfolding_code' needs unoccupied orbitals in the wavefunction: "
                 "set 'added_mos' > 0 in 'dft_params'."
             )
+        if "unfolding_code" in value and "pdos_lists" in value:
+            return (
+                "'unfolding_code' prints one PDOS list per atom and cannot be "
+                "combined with 'pdos_lists'."
+            )
         window_error = unfolding.validate_energy_window(
             value, "unfolding_emin", "unfolding_emax"
         )
@@ -200,6 +242,10 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
                 "'bader_code' runs Bader on the OT SCF charge density and "
                 "cannot be combined with 'run_diag_scf'."
             )
+
+        poisson_error = cp2k_utils.validate_poisson_inputs(value)
+        if poisson_error:
+            return poisson_error
 
         if value["run_diag_scf"].value:
             return None
@@ -225,6 +271,7 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         return "unfolding_code" in self.inputs
 
     def update_ot_input_dict(self, input_dict):
+        cp2k_utils.apply_default_charge_analysis(input_dict)
         # Bader reads the final OT density, printed on the full grid.
         if self.should_run_bader():
             mgrid = input_dict["FORCE_EVAL"]["DFT"]["MGRID"]
@@ -250,6 +297,17 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
     def update_diag_input_dict(self, input_dict):
         if self.inputs.overlap_matrix.value != "none":
             _print_overlap_matrix(input_dict, self.inputs.overlap_ndigits.value)
+
+        if self.should_run_unfolding():
+            added_mos = int(self.ctx.dft_params.get("added_mos", 0))
+            print_section = input_dict["FORCE_EVAL"]["DFT"].setdefault("PRINT", {})
+            print_section["PDOS"] = {
+                "LDOS": [
+                    {"COMPONENTS": "", "LIST": atom_index}
+                    for atom_index in range(1, self.ctx.n_atoms + 1)
+                ],
+                "NLUMO": added_mos,
+            }
 
     def _serial_postprocessing_metadata(self, label):
         """Single-core job, capped at one hour or the SCF wall time."""
@@ -291,14 +349,27 @@ class Cp2kScfWorkChain(Cp2kDiagWorkChain):
         builder.code = self.inputs.unfolding_code
         builder.parent_calc_folder = self.ctx.diag_scf.outputs.remote_folder
         builder.primitive_vectors = self.inputs.unfolding_primitive_vectors
+        builder.primitive_basis_atoms = self.inputs.unfolding_primitive_basis_atoms
         if "unfolding_path" in self.inputs:
             builder.path = self.inputs.unfolding_path
         builder.lattice_type = self.inputs.unfolding_lattice_type
         builder.overlap_threshold = self.inputs.overlap_threshold
+        builder.basis_cluster_tol = self.inputs.unfolding_basis_cluster_tol
         if "unfolding_emin" in self.inputs:
             builder.emin = self.inputs.unfolding_emin
             builder.emax = self.inputs.unfolding_emax
-        builder.metadata = self._serial_postprocessing_metadata("cp2k_unfolding")
+        builder.parse_pdos_projections = orm.Bool(True)
+        builder.pdos_threshold = self.inputs.unfolding_pdos_threshold
+        metadata = self._serial_postprocessing_metadata("cp2k_unfolding")
+        options = metadata["options"]
+        options.update(self.inputs.unfolding_options.get_dict())
+        # Whether AiiDA launches the executable through MPI is a property of the
+        # configured code, not of the requested allocation. In particular, a
+        # serial unfolding code may still request multiple cores for threaded
+        # numerical libraries.
+        if self.inputs.unfolding_code.with_mpi is not None:
+            options.setdefault("withmpi", self.inputs.unfolding_code.with_mpi)
+        builder.metadata = metadata
         return engine.ToContext(unfolding=self.submit(builder))
 
     def run_bader(self):

@@ -2,12 +2,13 @@
 
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 from aiida.common import exceptions
 from aiida.orm import Code, Computer, QueryBuilder
 
-pytest_plugins = ["aiida.manage.tests.pytest_fixtures"]
+pytest_plugins = ["aiida.tools.pytest_fixtures"]
 
 collect_ignore = [
     "examples/workflows/example_cp2k_afm.py",
@@ -28,11 +29,16 @@ class ExecutableNotFoundError(Exception):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_sssp_pseudos(aiida_profile):
+def setup_sssp_pseudos(aiida_profile, request):
     """Create an SSSP pseudo potential family from scratch."""
+    examples = Path(__file__).parent / "examples"
+    if not any(item.path.is_relative_to(examples) for item in request.session.items):
+        return
     subprocess.run(
         [
             "aiida-pseudo",
+            "--profile",
+            aiida_profile.name,
             "install",
             "sssp",
             "-p",
@@ -41,7 +47,8 @@ def setup_sssp_pseudos(aiida_profile):
             "PBE",
             "-v",
             "1.2",
-        ]
+        ],
+        check=True,
     )
 
 

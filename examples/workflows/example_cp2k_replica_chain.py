@@ -1,6 +1,7 @@
 import ase.io
 import click
 from aiida import engine, orm, plugins
+from aiida_nanotech_empa.workflows.cp2k.electrostatics import prepare_cell
 
 try:
     from examples.workflows._paths import script_dir
@@ -65,6 +66,13 @@ def _example_cp2k_replicachain(
     )
     sys_params["colvars_targets"] = targets
     sys_params["colvars_increments"] = [0.06, 0.05, 0.0]
+    # Keep the fast example padding explicit; production GUI preparation uses 15 Å.
+    if dft_params.get("periodic") == "NONE":
+        builder.structure = orm.StructureData(
+            ase=prepare_cell(
+                builder.structure.get_ase(), dft_params, padding_angstrom=5.0
+            )
+        )
     builder.dft_params = orm.Dict(dft_params)
     builder.sys_params = orm.Dict(sys_params)
 

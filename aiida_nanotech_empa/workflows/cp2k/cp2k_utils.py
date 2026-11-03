@@ -111,6 +111,60 @@ def get_dft_file_names(dft_params=None):
     }
 
 
+def get_orbital_basis_file_names(dft_params, elements):
+    """Find the files supplying the orbital bases, in CP2K search order.
+
+    Resolve the first definition of every primary basis. Auxiliary-only files
+    are excluded unless a kind explicitly uses one of their bases as orbital.
+    """
+    kinds = get_kinds_section(
+        {element: {"mag": 0.0, "ghost": 0} for element in elements},
+        protocol="gpw",
+        dft_params=dft_params,
+    )["FORCE_EVAL"]["SUBSYS"]["KIND"]
+    required = {(kind["ELEMENT"], kind["BASIS_SET"]) for kind in kinds}
+    sources = {}
+    filenames = get_dft_file_names(dft_params)["basis_set_file_names"]
+    for filename in filenames:
+        with (DATA_DIR / filename).open(encoding="utf-8") as handle:
+            for line in handle:
+                parts = line.split("#", 1)[0].split()
+                if len(parts) < 2:
+                    continue
+                for alias in parts[1:]:
+                    basis = (parts[0], alias)
+                    if basis in required:
+                        sources.setdefault(basis, filename)
+    missing = required.difference(sources)
+    if missing:
+        details = ", ".join(f"{element}/{basis}" for element, basis in sorted(missing))
+        raise ValueError(
+            "Orbital basis definitions not found in the configured files: " + details
+        )
+    used_files = set(sources.values())
+    return list(
+        dict.fromkeys(filename for filename in filenames if filename in used_files)
+    )
+
+
+def update_legacy_basis_parameter(
+    parameters,
+    dft_params,
+    elements,
+    key="--basis_set_file",
+    parent_dir="parent_calc_folder",
+):
+    """Resolve generated orbital-basis paths, preserving explicit user overrides."""
+    params = dict(parameters)
+    current_value = params.get(key)
+    if current_value is not None and current_value != f"{parent_dir}/BASIS_MOLOPT":
+        return params
+    files = get_orbital_basis_file_names(dft_params, elements)
+    paths = [f"{parent_dir}/{filename}" for filename in files]
+    params[key] = paths[0] if len(paths) == 1 else paths
+    return params
+
+
 def get_dft_file_inputs(dft_params=None):
     """Build SinglefileData inputs for CP2K data files packaged with the plugin."""
 
@@ -328,12 +382,36 @@ def load_protocol(fname, protocol=None):
         return protocols[protocol] if protocol else protocols
 
 
+def _quote_cp2k_file_name(value):
+    """Return a quoted CP2K filename without adding a second set of quotes."""
+    text = str(value)
+    if (text.startswith('"') and text.endswith('"')) or (
+        text.startswith("'") and text.endswith("'")
+    ):
+        return text
+    return f'"{text}"'
+
+
+def apply_default_charge_analysis(input_dict):
+    """Request Löwdin populations without replacing existing print settings."""
+    print_section = input_dict["FORCE_EVAL"]["DFT"].setdefault("PRINT", {})
+    print_section.setdefault("LOWDIN", {}).setdefault("PRINT_GOP", "T")
+
+
 def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
-    """Apply additive XC settings while preserving the legacy PBE input by default."""
+    """Apply XC and SCF settings. OT minimizer controls also apply to PBE."""
 
     dft_params = dft_params or {}
-    xc_section = input_dict["FORCE_EVAL"]["DFT"]["XC"]
+    dft_section = input_dict["FORCE_EVAL"]["DFT"]
+    xc_section = dft_section["XC"]
     functional = _xc_functional(dft_params)
+
+    ot_section = dft_section["SCF"].get("OT")
+    if ot_section is not None:
+        if dft_params.get("ot_diis", False):
+            ot_section["MINIMIZER"] = "DIIS"
+        elif "ot_minimizer" in dft_params:
+            ot_section["MINIMIZER"] = dft_params["ot_minimizer"]
 
     if functional in ("PBE", "PBE-D3", "PBE_D3"):
         return
@@ -343,13 +421,38 @@ def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
 
     hfx_fraction = dft_params.get("hfx_fraction", 0.25)
     hfx_cutoff_radius = dft_params.get("hfx_cutoff_radius", 10.0)
-    default_purification = "NONE" if scf_method == "diag" else "MO_DIAG"
-    input_dict["FORCE_EVAL"]["DFT"]["AUXILIARY_DENSITY_MATRIX_METHOD"] = {
-        "ADMM_PURIFICATION_METHOD": dft_params.get(
-            "admm_purification_method", default_purification
-        ),
+
+    qs_section = dft_section["QS"]
+    for key in ("EPS_DEFAULT", "EXTRAPOLATION", "EXTRAPOLATION_ORDER"):
+        qs_section.pop(key, None)
+    qs_section["METHOD"] = dft_params.get("qs_method", qs_section["METHOD"])
+    qs_section["EPS_PGF_ORB"] = dft_params.get("eps_pgf_orb", 1e-32)
+
+    if scf_method == "ot":
+        scf = dft_section["SCF"]
+        for parameter, keyword in (("eps_scf", "EPS_SCF"), ("scf_guess", "SCF_GUESS")):
+            if parameter in dft_params:
+                scf[keyword] = dft_params[parameter]
+        if "outer_scf_eps_scf" in dft_params:
+            scf["OUTER_SCF"]["EPS_SCF"] = dft_params["outer_scf_eps_scf"]
+        scf["MAX_SCF"] = dft_params.get("max_scf", 20)
+        scf["EPS_LUMO"] = dft_params.get("eps_lumo", scf["EPS_SCF"])
+        scf["MAX_ITER_LUMO"] = dft_params.get("max_iter_lumo", 5000)
+        scf["OT"]["PRECONDITIONER"] = dft_params.get(
+            "ot_preconditioner", "FULL_KINETIC"
+        )
+        scf["OUTER_SCF"]["MAX_SCF"] = dft_params.get("outer_scf_max_scf", 100)
+
+    dft_section["AUXILIARY_DENSITY_MATRIX_METHOD"] = {
+        "ADMM_PURIFICATION_METHOD": dft_params.get("admm_purification_method", "NONE"),
         "METHOD": dft_params.get("admm_method", "BASIS_PROJECTION"),
+        "EXCH_CORRECTION_FUNC": dft_params.get("admm_exch_correction_func", "PBEX"),
     }
+
+    if "VDW_POTENTIAL" in xc_section:
+        xc_section["VDW_POTENTIAL"]["PAIR_POTENTIAL"]["REFERENCE_FUNCTIONAL"] = (
+            dft_params.get("pbe0_vdw_reference_functional", "PBE0")
+        )
     xc_section["DENSITY_CUTOFF"] = dft_params.get("xc_density_cutoff", 1e-10)
     xc_section["GRADIENT_CUTOFF"] = dft_params.get("xc_gradient_cutoff", 1e-10)
     xc_section["TAU_CUTOFF"] = dft_params.get("xc_tau_cutoff", 1e-10)
@@ -371,7 +474,9 @@ def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
         "INTERACTION_POTENTIAL": {
             "POTENTIAL_TYPE": dft_params.get("hfx_potential_type", "TRUNCATED"),
             "CUTOFF_RADIUS": hfx_cutoff_radius,
-            "T_C_G_DATA": dft_params.get("tcg_data_file_name", "t_c_g.dat"),
+            "T_C_G_DATA": _quote_cp2k_file_name(
+                dft_params.get("tcg_data_file_name", "t_c_g.dat")
+            ),
         },
         "MEMORY": {
             "EPS_STORAGE_SCALING": dft_params.get("hfx_eps_storage_scaling", 0.1),
@@ -380,7 +485,41 @@ def apply_xc_settings(input_dict, dft_params=None, scf_method="ot"):
     }
 
 
+def validate_poisson_inputs(inputs, _=None):
+    """Reject invalid electrostatics before a WorkChain submits any calculations."""
+    from .electrostatics import poisson_settings, validate_cell
+
+    if "dft_params" not in inputs:
+        return None
+    params = inputs["dft_params"].get_dict()
+    try:
+        poisson_settings(params)
+        nodes = [inputs["structure"]] if "structure" in inputs else []
+        if "trajectory" in inputs:
+            trajectory = inputs["trajectory"]
+            nodes.extend(
+                trajectory.get_step_structure(i) for i in range(trajectory.numsteps)
+            )
+        nodes.extend(inputs.get("replicas", {}).values())
+        for node in nodes:
+            validate_cell(node.get_ase(), params)
+        if "replicas" in inputs and any(
+            not np.allclose(node.cell, inputs["structure"].cell)
+            for node in inputs["replicas"].values()
+        ):
+            return "NEB replicas must share the explicitly prepared input cell"
+    except ValueError as exc:
+        return str(exc)
+    return None
+
+
 def get_dft_inputs(dft_params, structure, template, protocol):
+    from .electrostatics import apply_poisson, validate_cell
+
+    # Every trajectory frame must satisfy the same explicit electrostatics plan.
+    if isinstance(structure, orm.TrajectoryData):
+        for index in range(structure.numsteps):
+            validate_cell(structure.get_step_structure(index).get_ase(), dft_params)
     files = get_dft_file_inputs(dft_params)
 
     # number of atoms
@@ -425,22 +564,7 @@ def get_dft_inputs(dft_params, structure, template, protocol):
 
     ase_atoms = structure_with_tags.get_ase()
 
-    # non periodic systems only NONE and XYZ implemented: TO BE CHECKED FOR NEB!!!!
-    if "periodic" in dft_params:
-        if dft_params["periodic"] == "NONE":
-            # make sure cell is big enough for MT poisson solver and center molecule
-            if protocol == "debug":
-                extra_cell = 5.0
-            else:
-                extra_cell = 15.0
-            ase_atoms.cell = 2 * (np.ptp(ase_atoms.positions, axis=0)) + extra_cell
-            ase_atoms.center()
-
-            # Poisson solver
-            input_dict["FORCE_EVAL"]["SUBSYS"]["CELL"]["PERIODIC"] = "NONE"
-            input_dict["FORCE_EVAL"]["DFT"]["POISSON"]["PERIODIC"] = "NONE"
-            input_dict["FORCE_EVAL"]["DFT"]["POISSON"]["POISSON_SOLVER"] = "MT"
-        # to be done: more cases
+    apply_poisson(input_dict, ase_atoms, dft_params)
 
     # must be after if 'periodic'
     structure_with_tags = ase_atoms

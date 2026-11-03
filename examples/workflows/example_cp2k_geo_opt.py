@@ -1,6 +1,7 @@
 import ase.io
 import click
 from aiida import engine, orm, plugins
+from aiida_nanotech_empa.workflows.cp2k.electrostatics import prepare_cell
 
 try:
     from examples.workflows._paths import script_dir
@@ -99,6 +100,13 @@ def _example_cp2k_geo_opt(cp2k_code, sys_type, uks, n_nodes=1, n_cores_per_node=
         sys_params["constraints"] = "fixed xy 1 , fixed xyz 2"
 
     builder.structure = structure
+    # Keep the fast example padding explicit; production GUI preparation uses 15 Å.
+    if dft_params.get("periodic") == "NONE":
+        builder.structure = orm.StructureData(
+            ase=prepare_cell(
+                builder.structure.get_ase(), dft_params, padding_angstrom=5.0
+            )
+        )
     builder.dft_params = orm.Dict(dict=dft_params)
     builder.sys_params = orm.Dict(dict=sys_params)
 
