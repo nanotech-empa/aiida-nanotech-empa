@@ -100,10 +100,12 @@ def validate_metadata_options(options, computer):
     if get_total_number_of_cores(res, computer) is None:
         return "num_cores can not be determined from the inputted resources"
 
-    if "max_memory_kb" in options:
-        # see if at least 200 MB memory will be accessible to Gaussian
-        if _get_gaussian_mem_mb(options["max_memory_kb"], computer) < 200:
-            return "Too little memory specified."
+    # see if at least 200 MB memory will be accessible to Gaussian
+    if (
+        "max_memory_kb" in options
+        and _get_gaussian_mem_mb(options["max_memory_kb"], computer) < 200
+    ):
+        return "Too little memory specified."
 
     if "num_machines" in res and res["num_machines"] != 1:
         # if 'num_machines' is set, it should be 1 as Gaussian doesn't support MPI

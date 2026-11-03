@@ -47,7 +47,7 @@ def analyze_speedup(time_dict):
     # Extract nnodes and collect times
     for key, time_and_id in time_dict.items():
         # Split the key to get nnodes, ntasks, nthreads
-        nnodes_str, ntasks_str, nthreads_str = key.split("_")
+        nnodes_str, _ntasks_str, _nthreads_str = key.split("_")
         nnodes = int(nnodes_str)
         time = time_and_id[0]
         # Collect time for each nnodes

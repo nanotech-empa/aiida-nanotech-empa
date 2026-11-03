@@ -76,9 +76,7 @@ class Cp2kPdosWorkChain(engine.WorkChain):
             structure=self.inputs.structure,
             fixed_atoms=[],
             magnetization_per_site=(
-                self.inputs.dft_params["magnetization_per_site"]
-                if "magnetization_per_site" in self.inputs.dft_params
-                else None
+                self.inputs.dft_params.get("magnetization_per_site", None)
             ),
             fragments={"molecule": self.inputs.molecule_indices},
         )
@@ -235,12 +233,11 @@ class Cp2kPdosWorkChain(engine.WorkChain):
 
     def finalize(self):
         self.report("Finalizing workchain")
-        if self.ctx.do_overlap:
-            if "overlap.npz" not in [
-                obj.name for obj in self.ctx.overlap.outputs.retrieved.list_objects()
-            ]:
-                self.report("Overlap calculation did not finish correctly")
-                return self.exit_codes.ERROR_TERMINATION
+        if self.ctx.do_overlap and "overlap.npz" not in [
+            obj.name for obj in self.ctx.overlap.outputs.retrieved.list_objects()
+        ]:
+            self.report("Overlap calculation did not finish correctly")
+            return self.exit_codes.ERROR_TERMINATION
         self.out("slab_retrieved", self.ctx.slab_diag_scf.outputs.retrieved)
 
         # Add the workchain uuid to the input structure extras.

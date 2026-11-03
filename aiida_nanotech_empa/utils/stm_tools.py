@@ -168,13 +168,13 @@ def save_figure_and_igor(data_2d, filename, title, **imshow_args):
 def get_rel_homo_label(i_mo, i_homo):
     i_mo_wrt_homo = i_mo - i_homo
     if i_mo_wrt_homo < 0:
-        label = "homo%+d" % i_mo_wrt_homo
+        label = f"homo{i_mo_wrt_homo:+d}"
     elif i_mo_wrt_homo == 0:
         label = "homo"
     elif i_mo_wrt_homo == 1:
         label = "lumo"
     elif i_mo_wrt_homo > 1:
-        label = "lumo%+d" % (i_mo_wrt_homo - 1)
+        label = f"lumo{i_mo_wrt_homo - 1:+d}"
     return label
 
 

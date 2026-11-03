@@ -89,14 +89,14 @@ class Cp2kNebWorkChain(engine.WorkChain):
         # Check if restarting.
         if "replicas" in self.inputs:
             for i in range(1, len(self.inputs.replicas) + 1):
-                name = "replica_%s" % str(i).zfill(3)
+                name = f"replica_{str(i).zfill(3)}"
                 all_replica_nodes.append(self.inputs.replicas[name])
         elif "restart_from" in self.inputs:
             self.report("checking wfn available from previos neb")
             workcalc = orm.load_node(self.inputs.restart_from.value)
             n_previous_replica = workcalc.inputs.neb_params["number_of_replica"]
             all_replica_nodes = [
-                workcalc.outputs["opt_replica_%s" % str(i).zfill(3)]
+                workcalc.outputs[f"opt_replica_{str(i).zfill(3)}"]
                 for i in range(n_previous_replica)
             ]
         else:
@@ -122,7 +122,7 @@ class Cp2kNebWorkChain(engine.WorkChain):
         tags = self.ctx.structure_with_tags.get_tags().astype(np.int32).tolist()
 
         for i, node in enumerate(all_replica_nodes):
-            filename = "replica_%s" % str(i).zfill(3) + ".xyz"
+            filename = f"replica_{str(i).zfill(3)}" + ".xyz"
             self.ctx.files[filename.replace(".", "_")] = cp2k_utils.make_geom_file(
                 node.get_ase(), filename, tags=tags
             )
@@ -228,7 +228,7 @@ class Cp2kNebWorkChain(engine.WorkChain):
             cp_commands = ""
             ndigits = len(str(self.ctx.neb_params["number_of_replica"]))
             for i in range(self.ctx.neb_params["number_of_replica"]):
-                wfn_name = "aiida-BAND%s-RESTART.wfn" % str(i + 1).zfill(ndigits)
+                wfn_name = f"aiida-BAND{str(i + 1).zfill(ndigits)}-RESTART.wfn"
                 cp_commands += (
                     "cp "
                     + self.ctx.initial_scf.outputs.remote_folder.get_remote_path()
@@ -253,7 +253,7 @@ class Cp2kNebWorkChain(engine.WorkChain):
             return self.exit_codes.ERROR_TERMINATION
 
         for i_rep in range(self.ctx.neb_params["number_of_replica"]):
-            label = "opt_replica_%s" % str(i_rep).zfill(3)
+            label = f"opt_replica_{str(i_rep).zfill(3)}"
             self.out(label, self.ctx.neb.outputs[label])
 
         self.out("replica_energies", self.ctx.neb.outputs["replica_energies"])

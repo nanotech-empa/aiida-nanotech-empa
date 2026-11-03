@@ -63,7 +63,7 @@ def build_path(ref_pts, dx=0.1):
         else:
             point_arr = np.concatenate([point_arr, points], axis=0)
 
-    ase_arr = ase.Atoms("X%d" % len(point_arr), point_arr)
+    ase_arr = ase.Atoms(f"X{len(point_arr)}", point_arr)
     return ase_arr
 
 

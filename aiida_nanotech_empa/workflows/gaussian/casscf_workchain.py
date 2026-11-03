@@ -126,7 +126,7 @@ class GaussianCasscfWorkChain(engine.WorkChain):
 
         self.ctx.link0 = {
             "%chk": "aiida.chk",
-            "%mem": "%dMB" % memory_mb,
+            "%mem": f"{int(memory_mb)}MB",
             "%nprocshared": str(num_cores),
             "%oldchk": "parent_calc/aiida.chk",
         }

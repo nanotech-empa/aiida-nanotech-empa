@@ -32,18 +32,16 @@ def find_cycles(i_vert, cnl, max_length, cur_path, passed_edges):
     # then we crossed multiple cycles
     for n in neighbs:
         edge = (np.min([i_vert, n]), np.max([i_vert, n]))
-        if edge not in passed_edges:
-            if n in cur_path[1:]:
-                # path went too close to itself...
-                return []
+        if edge not in passed_edges and n in cur_path[1:]:
+            # path went too close to itself...
+            return []
 
     # CHeck if we are at the end
     for n in neighbs:
         edge = (np.min([i_vert, n]), np.max([i_vert, n]))
-        if edge not in passed_edges:
-            if n == cur_path[0]:
-                # found cycle
-                return [cur_path]
+        if edge not in passed_edges and n == cur_path[0]:
+            # found cycle
+            return [cur_path]
 
     # Continue in all possible directions
     for n in neighbs:
@@ -87,7 +85,7 @@ def cycle_normal(cycle, h):
     centroid = np.mean(cycle, axis=0)
 
     points = cycle - centroid
-    u, s, v = np.linalg.svd(points.T)
+    u, _, _ = np.linalg.svd(points.T)
     normal = u[:, -1]
     normal /= np.linalg.norm(normal)
     if np.dot(normal, h * np.array([1, 1, 1])) < 0.0:

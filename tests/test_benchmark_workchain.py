@@ -61,16 +61,16 @@ def test_invalid_resource_grid(aiida_localhost, nodes, ngpus, tasks, threads):
         filepath_executable="/bin/true",
         default_calc_job_plugin="cp2k",
     )
-    inputs = dict(
-        code=code,
-        protocol=orm.Str("scf_ot_no_wfn"),
-        list_nodes=orm.List(list=nodes),
-        ngpus=orm.Int(ngpus),
-        max_tasks_per_node=orm.Int(tasks),
-        list_threads_per_task=orm.List(list=threads),
-        wallclock=orm.Int(600),
-        multiplicity=orm.Int(0),
-    )
+    inputs = {
+        "code": code,
+        "protocol": orm.Str("scf_ot_no_wfn"),
+        "list_nodes": orm.List(list=nodes),
+        "ngpus": orm.Int(ngpus),
+        "max_tasks_per_node": orm.Int(tasks),
+        "list_threads_per_task": orm.List(list=threads),
+        "wallclock": orm.Int(600),
+        "multiplicity": orm.Int(0),
+    }
     assert Cp2kBenchmarkWorkChain.validate_inputs(inputs, None)
 
 
@@ -85,14 +85,14 @@ def test_setup_serializes_numeric_inputs(aiida_localhost):
     )
     chain = SimpleNamespace(
         inputs=AttributeDict(
-            dict(
-                code=code,
-                structure=structure,
-                protocol=orm.Str("scf_ot_no_wfn"),
-                cutoff=orm.Int(400),
-                multiplicity=orm.Int(2),
-                wallclock=orm.Int(1800),
-            )
+            {
+                "code": code,
+                "structure": structure,
+                "protocol": orm.Str("scf_ot_no_wfn"),
+                "cutoff": orm.Int(400),
+                "multiplicity": orm.Int(2),
+                "wallclock": orm.Int(1800),
+            }
         ),
         ctx=AttributeDict(),
         report=lambda _: None,
@@ -248,23 +248,23 @@ def test_all_failed_workchain_keeps_outputs(aiida_localhost):
     )
     structure = orm.StructureData(pbc=False).store()
     inputs = AttributeDict(
-        dict(
-            code=code,
-            structure=structure,
-            list_nodes=orm.List(list=[1]),
-            list_tasks_per_node=orm.List(list=[4]),
-            list_threads_per_task=orm.List(list=[2]),
-        )
+        {
+            "code": code,
+            "structure": structure,
+            "list_nodes": orm.List(list=[1]),
+            "list_tasks_per_node": orm.List(list=[4]),
+            "list_threads_per_task": orm.List(list=[2]),
+        }
     )
     outputs = {}
     chain = SimpleNamespace(
         inputs=inputs,
         ctx=AttributeDict(
-            dict(
-                run_1_4_2=SimpleNamespace(
+            {
+                "run_1_4_2": SimpleNamespace(
                     is_finished_ok=False, get_job_id=lambda: "failed-job"
                 )
-            )
+            }
         ),
         node=SimpleNamespace(uuid="00000000-0000-0000-0000-000000000001"),
         report=lambda _: None,
@@ -281,6 +281,7 @@ def test_all_failed_workchain_keeps_outputs(aiida_localhost):
 @pytest.mark.parametrize("explicit_tasks", [False, True])
 def test_zero_gpus_matches_one_gpu(aiida_localhost, explicit_tasks):
     from itertools import product
+
     from aiida_nanotech_empa.workflows.cp2k.cp2k_benchmark_workchain import (
         find_multiples_of_ngpus,
     )

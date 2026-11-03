@@ -25,9 +25,7 @@ class ETHZEulerLsfScheduler(LsfScheduler):
                     continue
                 if not line.startswith("#") and not rusage_added:
                     # Add the rusage line after the other #BSUB commands.
-                    rusage_line = '#BSUB -R "rusage[mem={},scratch={}]"'.format(
-                        mem_per_proc_mb, 2 * mem_per_proc_mb
-                    )
+                    rusage_line = f'#BSUB -R "rusage[mem={mem_per_proc_mb},scratch={2 * mem_per_proc_mb}]"'
                     new_lines.append(rusage_line)
                     rusage_added = True
 

@@ -192,14 +192,10 @@ class GaussianRelaxWorkChain(engine.WorkChain):
         )
 
     def is_uks(self):
-        if self.inputs.multiplicity.value == 0:
-            return False
-        return True
+        return self.inputs.multiplicity.value != 0
 
     def should_do_wfn_stability(self):
-        if self.is_uks() and self.inputs.wfn_stable_opt:
-            return True
-        return False
+        return bool(self.is_uks() and self.inputs.wfn_stable_opt)
 
     def setup(self):
         self.report("Inspecting input and setting up things")
@@ -221,7 +217,7 @@ class GaussianRelaxWorkChain(engine.WorkChain):
         self.report(f"the charge is {self.ctx.charge}")
         self.ctx.link0 = {
             "%chk": "aiida.chk",
-            "%mem": "%dMB" % memory_mb,
+            "%mem": f"{int(memory_mb)}MB",
             "%nprocshared": str(num_cores),
         }
 
@@ -378,9 +374,10 @@ class GaussianRelaxWorkChain(engine.WorkChain):
         if not common_utils.check_if_calc_ok(self, self.ctx.opt):
             return self.exit_codes.ERROR_TERMINATION
 
-        if self.inputs.freq:
-            if "vibfreqs" not in dict(self.ctx.opt.outputs.output_parameters):
-                return self.exit_codes.ERROR_NO_VIBR_ANALYSIS
+        if self.inputs.freq and "vibfreqs" not in dict(
+            self.ctx.opt.outputs.output_parameters
+        ):
+            return self.exit_codes.ERROR_NO_VIBR_ANALYSIS
 
         self.report("Finalizing...")
 

@@ -136,9 +136,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             structure=self.inputs.structure,
             fixed_atoms=self.inputs.fixed_atoms,
             magnetization_per_site=(
-                self.inputs.dft_params["magnetization_per_site"]
-                if "magnetization_per_site" in self.inputs.dft_params
-                else None
+                self.inputs.dft_params.get("magnetization_per_site", None)
             ),
             fragments=self.inputs.fragments,
         ):
@@ -163,9 +161,8 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
             # restart wfn in case of fragment 'all'
-            if inputs["label"] == "all":
-                if "parent_calc_folder" in self.inputs:
-                    builder.cp2k.parent_calc_folder = self.inputs.parent_calc_folder
+            if inputs["label"] == "all" and "parent_calc_folder" in self.inputs:
+                builder.cp2k.parent_calc_folder = self.inputs.parent_calc_folder
 
             # If options are defined for a specific fragment, use them.
             if "options" in self.inputs and fragment in self.inputs.options:
@@ -189,7 +186,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
                     "charges"
                 ][fragment]
 
-            if "uks" in self.inputs.dft_params and self.inputs.dft_params["uks"]:
+            if self.inputs.dft_params.get("uks"):
                 input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
 
                 # If the multiplicity is set, add it to the corresponding section of the input.
@@ -220,7 +217,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             # Finally, append auxilary dictionaries to the input dictonary.
             if "auxilary_dictionaries" in self.inputs:
-                for _, value in self.inputs.auxilary_dictionaries.items():
+                for value in self.inputs.auxilary_dictionaries.values():
                     cp2k_utils.dict_merge(input_dict, value)
 
             if "max_wallclock_seconds" in self.inputs.options[fragment]:
@@ -235,7 +232,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             self.to_context(**{f"scf.{fragment}": submitted_node})
 
     def run_geo_opts(self):
-        for fragment in self.inputs.fragments.keys():
+        for fragment in self.inputs.fragments:
             # We deliberately do not run optimisation for the full structure.
             if fragment == "all":
                 continue
@@ -274,7 +271,7 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
         # Ensure geometry/SCF steps succeeded for each fragment we expect.
         # Prefer order: 'all' first (if present), then the rest in declared order.
-        frags = ["all"] + [f for f in self.inputs.fragments.keys() if f != "all"]
+        frags = ["all"] + [f for f in self.inputs.fragments if f != "all"]
 
         # Collect remote folders and construct file paths
         cube_paths = []  # "<label>/charge.cube" for each fragment

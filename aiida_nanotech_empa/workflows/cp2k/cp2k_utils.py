@@ -311,9 +311,9 @@ def determine_kinds(structure, magnetization_per_site=None, ghost_per_site=None)
 
     # Assign a unique tag for every atom kind. Use OrderedDict for order
     combined = {}
-    for symbol in counters:
+    for symbol, mag_ghosts in counters.items():
         tag = 0
-        for mag_ghost in counters[symbol]:
+        for mag_ghost in mag_ghosts:
             if mag_ghost == (0, 0):
                 combined[symbol + "_0_0"] = 0
             else:
@@ -328,13 +328,12 @@ def determine_kinds(structure, magnetization_per_site=None, ghost_per_site=None)
 
     kinds_dict = {}
 
-    for c_symbol in combined:
+    for c_symbol, tag in combined.items():
         element = c_symbol.split("_")[0]
         mag = float(c_symbol.split("_")[1])
         ghost = int(c_symbol.split("_")[2])
-        tag = combined[c_symbol]
         if tag != 0:
-            kind_name = element + str(combined[c_symbol])
+            kind_name = element + str(tag)
         else:
             kind_name = element
         info_dict = {"mag": mag, "ghost": ghost}
@@ -353,20 +352,22 @@ def dict_merge(dct, merge_dct):
     :param merge_dct: dct merged into dct
     :return: None
     """
-    for k in merge_dct.keys():
+    # Iterate over items() rather than the mapping itself: merge_dct may be an
+    # orm.Dict, which supports items() but is not iterable.
+    for k, value in merge_dct.items():
         if (
             k in dct
             and isinstance(dct[k], dict)
-            and isinstance(merge_dct[k], collections.abc.Mapping)
+            and isinstance(value, collections.abc.Mapping)
         ):
-            dict_merge(dct[k], merge_dct[k])
+            dict_merge(dct[k], value)
         else:
-            dct[k] = merge_dct[k]
+            dct[k] = value
 
 
 def get_cutoff(structure=None):
     if structure is None:
-        return int(600)
+        return 600
     with open(DATA_DIR / "atomic_kinds.yml", encoding="utf-8") as fhandle:
         atom_data = yaml.safe_load(fhandle)
     elements = structure.get_symbols_set()
@@ -553,11 +554,10 @@ def get_dft_inputs(dft_params, structure, template, protocol):
 
     # uks
     magnetization_per_site = [0 for i in range(natoms)]
-    if "uks" in dft_params:
-        if dft_params["uks"]:
-            magnetization_per_site = dft_params["magnetization_per_site"]
-            input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
-            input_dict["FORCE_EVAL"]["DFT"]["MULTIPLICITY"] = dft_params["multiplicity"]
+    if dft_params.get("uks"):
+        magnetization_per_site = dft_params["magnetization_per_site"]
+        input_dict["FORCE_EVAL"]["DFT"]["UKS"] = ".TRUE."
+        input_dict["FORCE_EVAL"]["DFT"]["MULTIPLICITY"] = dft_params["multiplicity"]
 
     # get initial magnetization
     structure_with_tags, kinds_dict = determine_kinds(structure, magnetization_per_site)
@@ -591,9 +591,9 @@ def make_geom_file(atoms, filename, tags=None):
         singlefile = True
         all_atoms = [atoms]
         all_filenames = [filename]
-    for ifile, atoms in enumerate(all_atoms):
+    for ifile, frame in enumerate(all_atoms):
         orig_file = io.StringIO()
-        atoms.write(orig_file, format="xyz")
+        frame.write(orig_file, format="xyz")
         orig_file.seek(0)
         all_lines = orig_file.readlines()
         comment = all_lines[1]  # with newline character!
@@ -612,7 +612,7 @@ def make_geom_file(atoms, filename, tags=None):
                     )
             modif_lines.append(new_line)
 
-        final_str = "%d\n%s" % (len(atoms), comment) + "".join(modif_lines)
+        final_str = f"{len(frame)}\n{comment}" + "".join(modif_lines)
 
         file_path = tmpdir + "/" + all_filenames[ifile]
         with open(file_path, "w") as f:
@@ -694,7 +694,7 @@ def structure_available_wfn(
         return None
 
     # check if UKS or RKS and in case of UKS if matching magnetization options
-    try:  # noqa TRY101
+    try:
         orig_dft_params = generating_workchain.inputs.dft_params.get_dict()
         was_uks = "uks" in orig_dft_params and orig_dft_params["uks"]
         is_uks = "uks" in dft_params and orig_dft_params["uks"]
@@ -741,7 +741,7 @@ def structure_available_wfn(
             eff_replica_number = int(re.findall(r"\d+", struc_node.label)[0])
             create_a_copy = True
         # aiida-BAND2-RESTART.wfn 'replica_%s.xyz' % str(i +2 ).zfill(3)
-        wfn_name = "aiida-BAND%s-RESTART.wfn" % str(eff_replica_number).zfill(ndigits)
+        wfn_name = f"aiida-BAND{str(eff_replica_number).zfill(ndigits)}-RESTART.wfn"
     elif generating_workchain.label in ["CP2K_GeoOpt", "CP2K_CellOpt"]:
         # In all other cases, e.g. geo opt, replica, ...
         # use the standard name
@@ -749,7 +749,7 @@ def structure_available_wfn(
         create_a_copy = False
 
     wfn_exists = False
-    try:  # noqa TRY101
+    try:
         wfn_search_path = (
             generating_workchain.outputs.remote_folder.get_remote_path()
             + "/"
@@ -964,7 +964,9 @@ def _fixed_constraint_dict(const):
     indexes = re.sub(r"^\s*fixed\b", "", const, flags=re.IGNORECASE).strip()
     xyz = "XYZ"
 
-    match = re.match(r"^(?P<components>[xyz]+)\b(?P<indexes>.*)$", indexes, re.I)
+    match = re.match(
+        r"^(?P<components>[xyz]+)\b(?P<indexes>.*)$", indexes, re.IGNORECASE
+    )
     if match:
         xyz = match.group("components").upper()
         indexes = match.group("indexes").strip()
@@ -1053,7 +1055,7 @@ def get_points_coords(points, atoms):
                 [float(i) for i in point["XYZ"].replace("[angstrom]", "").split()]
             )
         else:
-            ids, all_ok = string_range_to_list(point["ATOMS"], shift=-1)
+            ids, _ = string_range_to_list(point["ATOMS"], shift=-1)
             coords.append(
                 np.mean(atoms.get_distances(ids[0], ids, mic=True, vector=True), axis=0)
                 + atoms[ids[0]].position
@@ -1080,7 +1082,7 @@ def get_plane_normal(plane, atoms):
     """Computes the normal to a plane defined in  the CP2K input dict. MIC is used if the plane is defined by three atoms.
     The atoms input could be the result of a previous parsing of points"""
     if plane["DEF_TYPE"] == "ATOMS":
-        ids, all_ok = string_range_to_list(plane["ATOMS"], shift=-1)
+        ids, _ = string_range_to_list(plane["ATOMS"], shift=-1)
         basis = atoms.get_distances(ids[1], [ids[0], ids[2]], mic=True, vector=True)
         normal = np.cross(basis[0], basis[1])
     else:
@@ -1273,7 +1275,7 @@ def cv_bond_rotation(details):
         )
         return return_dict
     # else:
-    labels, ids = get_ids(details)
+    _, ids = get_ids(details)
     return {
         "BOND_ROTATION": {
             "P1_BOND1": ids[0],

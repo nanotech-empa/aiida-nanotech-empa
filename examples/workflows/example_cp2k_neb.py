@@ -1,6 +1,7 @@
 import ase
 import click
 from aiida import engine, orm, plugins
+
 from aiida_nanotech_empa.workflows.cp2k.electrostatics import prepare_cells
 
 try:

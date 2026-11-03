@@ -96,9 +96,7 @@ class GaussianConstrOptChainWorkChain(engine.WorkChain):
         )
 
     def is_uks(self):
-        if self.inputs.multiplicity.value == 0:
-            return False
-        return True
+        return self.inputs.multiplicity.value != 0
 
     def setup(self):
         self.ctx.i_constr = 0

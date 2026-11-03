@@ -1,6 +1,7 @@
 import ase.io
 import click
 from aiida import engine, orm, plugins
+
 from aiida_nanotech_empa.workflows.cp2k.electrostatics import prepare_cell
 
 try:
@@ -116,8 +117,8 @@ def _example_cp2k_geo_opt(cp2k_code, sys_type, uks, n_nodes=1, n_cores_per_node=
 
     slabopt_out_dict = dict(calc_node.outputs.output_parameters)
     print()
-    for k in slabopt_out_dict:
-        print(f"  {k}: {slabopt_out_dict[k]}")
+    for k, v in slabopt_out_dict.items():
+        print(f"  {k}: {v}")
 
 
 def example_cp2k_slab_opt_rks(cp2k_code):

@@ -99,8 +99,8 @@ def _example_cp2k_ads_ene(cp2k_code, mult, n_nodes=1, n_cores_per_node=1):
 
     adsorption_energy_out_dict = dict(calc_node.outputs.energies)
 
-    for k in adsorption_energy_out_dict:
-        print(f"{k}: {adsorption_energy_out_dict[k]}")
+    for k, v in adsorption_energy_out_dict.items():
+        print(f"{k}: {v}")
 
 
 def example_cp2k_ads_ene_rks(cp2k_code):

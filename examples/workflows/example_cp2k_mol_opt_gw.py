@@ -118,8 +118,8 @@ def _example_cp2k_mol_opt_gw(cp2k_code, multiplicity=0, mag_list=None):
 
     gw_res = dict(calc_node.outputs.gw_output_parameters)
     print()
-    for k in gw_res:
-        print(f"  {k}: {gw_res[k]}")
+    for k, v in gw_res.items():
+        print(f"  {k}: {v}")
     print()
 
 

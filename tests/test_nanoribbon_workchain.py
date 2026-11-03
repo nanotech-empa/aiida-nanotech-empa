@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import ase
-
 from aiida import orm, plugins
 from aiida.common import AttributeDict
 from aiida.manage import get_manager

@@ -47,13 +47,11 @@ def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
             # make grids match
             diff_0 = np.round((c_p0[i] - i_p0[i]) / dv[i]) * dv[i]
             c_p0[i] = i_p0[i] + diff_0
-            if c_p0[i] < i_p0[i]:
-                c_p0[i] = i_p0[i]
+            c_p0[i] = max(c_p0[i], i_p0[i])
 
             diff_1 = np.round((c_p1[i] - i_p1[i]) / dv[i]) * dv[i]
             c_p1[i] = i_p1[i] + diff_1
-            if c_p1[i] > i_p1[i]:
-                c_p1[i] = i_p1[i]
+            c_p1[i] = min(c_p1[i], i_p1[i])
 
     # crop indexes
     crop_s = ((c_p0 - i_p0) / dv).astype(int)

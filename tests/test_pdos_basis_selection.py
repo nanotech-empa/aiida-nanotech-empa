@@ -179,6 +179,7 @@ def test_overlap_forwards_each_parents_actual_orbital_files(
 def test_overlap_calcjob_expands_basis_file_lists(aiida_localhost):
     from aiida.common.folders import SandboxFolder
     from aiida.manage import get_manager
+
     from aiida_nanotech_empa.plugins.overlap import OverlapCalculation
 
     code = orm.InstalledCode(
@@ -277,15 +278,15 @@ def test_stm_workflows_submit_actual_orbital_files(
     submitted = []
     chain = SimpleNamespace(
         inputs=AttributeDict(
-            dict(
-                structure=structure,
-                cp2k_code=code,
-                spm_code=code,
-                hrstm_code=code,
-                protocol=orm.Str("standard"),
-                spm_params=orm.Dict({"--basis_set_file": explicit}),
-                hrstm_params=orm.Dict({"--basis_set_file": explicit}),
-            )
+            {
+                "structure": structure,
+                "cp2k_code": code,
+                "spm_code": code,
+                "hrstm_code": code,
+                "protocol": orm.Str("standard"),
+                "spm_params": orm.Dict({"--basis_set_file": explicit}),
+                "hrstm_params": orm.Dict({"--basis_set_file": explicit}),
+            }
         ),
         ctx=SimpleNamespace(
             n_atoms=2,

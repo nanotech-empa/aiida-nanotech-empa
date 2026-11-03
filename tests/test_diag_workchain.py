@@ -1,5 +1,4 @@
 import ase
-
 from aiida import orm, plugins
 from aiida.manage import get_manager
 

@@ -262,14 +262,14 @@ def test_run_unfolding_forwards_optional_path(
         with_mpi=code_mpi,
     ).store()
     inputs = AttributeDict(
-        dict(
-            unfolding_code=code,
-            unfolding_primitive_vectors=orm.Str("1 0 0; 0 1 0"),
-            unfolding_primitive_basis_atoms=orm.Str("1 2"),
-            unfolding_lattice_type=orm.Str("auto"),
-            unfolding_basis_cluster_tol=orm.Float(5.0e-2),
-            unfolding_pdos_threshold=orm.Float(1e-4),
-            unfolding_options=orm.Dict(
+        {
+            "unfolding_code": code,
+            "unfolding_primitive_vectors": orm.Str("1 0 0; 0 1 0"),
+            "unfolding_primitive_basis_atoms": orm.Str("1 2"),
+            "unfolding_lattice_type": orm.Str("auto"),
+            "unfolding_basis_cluster_tol": orm.Float(5.0e-2),
+            "unfolding_pdos_threshold": orm.Float(1e-4),
+            "unfolding_options": orm.Dict(
                 {
                     "resources": {
                         "num_machines": 1,
@@ -279,8 +279,8 @@ def test_run_unfolding_forwards_optional_path(
                     **({} if option_mpi is None else {"withmpi": option_mpi}),
                 }
             ),
-            overlap_threshold=orm.Float(1e-10),
-        )
+            "overlap_threshold": orm.Float(1e-10),
+        }
     )
     if path is not None:
         inputs.unfolding_path = orm.Str(path)
