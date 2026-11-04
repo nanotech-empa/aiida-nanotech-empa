@@ -1,8 +1,8 @@
-# Exact sources for combined modern-release validation, pending official releases.
+# Exact versions for combined modern-release validation.
 # Runtime support remains Python >=3.12 / AiiDA >=2.8,<3.
-# aiida-pseudo PR 215 is needed for released input-tools 0.9.3 on Python >=3.12.
-aiida-pseudo @ git+https://github.com/t-reents/aiida-pseudo.git@40a6870e39afb698d9de030356e8fe013b2d439b
-aiida-cp2k @ git+https://github.com/aiidateam/aiida-cp2k.git@ee49d91f7eb1a7396cdb6f112e78ce70bbccef8a
+# Published releases replace the temporary CP2K and aiida-pseudo source pins.
+aiida-pseudo==1.11.0
+aiida-cp2k==2.2.1
 cp2k-input-tools==0.9.3
 pint==0.26.2
 cp2k-spm-tools @ git+https://github.com/nanotech-empa/cp2k-spm-tools.git@a0e486a12ad0102c6af5f9a9572c2449ec26e81e
