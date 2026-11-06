@@ -12,18 +12,21 @@ sources below instead of a moving `main` or `master` branch.
 | cp2k-spm-tools | [v1.5.0](https://github.com/nanotech-empa/cp2k-spm-tools/releases/tag/v1.5.0) |
 | aiidalab-empa-setup | [v2025.0214](https://github.com/nanotech-empa/aiidalab-empa-setup/releases/tag/v2025.0214) |
 | aiidalab-eln | [v0.1.4](https://github.com/aiidalab/aiidalab-eln/releases/tag/v0.1.4) |
-| aiidalab-openbis | [v0.1.1](https://github.com/nanotech-empa/aiidalab-openbis/releases/tag/v0.1.1) |
+| aiidalab-openbis | [v0.1.2](https://github.com/nanotech-empa/aiidalab-openbis/releases/tag/v0.1.2) |
 | aiidalab-empa-nanoribbons | [v2.2.0](https://github.com/nanotech-empa/aiidalab-empa-nanoribbons/releases/tag/v2.2.0) |
 
 The backend, Surfaces, SPM tools and Nanoribbons use their existing immutable
-release tags. Setup preserves its existing 2025.0214 source version. openBIS 0.1.1 preserves
-the latest merged legacy code, including Fabio's changes, with version metadata
-and documentation updates only. Existing older tags remain available.
+release tags. Setup preserves its existing 2025.0214 source version. openBIS
+0.1.2 adds Fabio's synchronization, measurement-upload, logging and
+machine-configuration fixes through nanotech-empa/aiidalab-openbis#151.
+Existing older tags remain available.
 
-ELN 0.1.5 is prepared in [aiidalab/aiidalab-eln#95](https://github.com/aiidalab/aiidalab-eln/pull/95)
-to preserve its latest merged code, including Fabio's scikit-learn dependency
-fix. It requires review before release; the published ELN 0.1.4 remains pinned
-here until then. Do not replace that pin with an unpublished version.
+ELN 0.1.5 is prepared in [aiidalab/aiidalab-eln#95](https://github.com/aiidalab/aiidalab-eln/pull/95).
+Fabio's hold has been lifted, but GitHub still requires a maintainer's approving
+review before merge and publication. It includes the configuration/shared-widget
+fixes, Fabio's scikit-learn dependency correction and the missing widgets-base
+dependency. Keep published ELN 0.1.4 selected until 0.1.5 is actually available.
+openBIS 0.1.2 does not introduce a dependency on the unpublished ELN version.
 
 ## Selecting an application
 
@@ -44,27 +47,34 @@ app do not themselves declare an AiiDA dependency.
 
 ## Validation and preserved environment
 
-On 2026-10-27, the selected source identities and declared Python/AiiDA
-requirements were checked. The tracked Python files in the selected
-source snapshots and the proposed ELN 0.1.5 source parse with Python 3.9
-syntax rules. ELN main
-and openBIS master still declare requirements admitting this legacy runtime;
-their modern integration PRs are separate.
+The original seven source selections and their declared Python/AiiDA
+requirements were checked on 2026-10-27. The openBIS 0.1.2 release preparation
+on 2026-11-06 additionally builds and installs both the openBIS wheel and the
+ELN 0.1.5 candidate in a clean Python 3.9.25 / AiiDA 2.6.3 runner. The combined
+checks passed: wheel installation, imports outside the checkout, `pip check`,
+4 ELN tests and 39 openBIS regressions. The resolved environment includes
+widgets-base 2.5.1, ipywidgets 7.7.4 and pyBIS 7.0.0rc6. The checks use
+independent AiiDA state and mocked external services. The ELN
+candidate is commit `2e09cd578bf7b4aa6cfa068488f26c9ed89eeaa9`; this test does
+not make it a published release. Validation results and the resolved package
+inventory are linked from the openBIS release notes.
 
-This is a source selection and primary-package constraint set, not a complete
-dependency lock or a new Python 3.9 installation/browser validation. Keep the
+The primary-package constraints are not a complete dependency lock. Keep the
 existing tested AiiDAlab, ipywidgets, plugin dependencies, container image,
 external-code versions and openBIS configuration with a legacy deployment.
-The source tags do not freeze those components or change an AiiDA database.
-Do not use these package pins to downgrade a database already upgraded by a
-newer AiiDA.
+The automated checks do not establish browser/live-server acceptance or a
+production deployment. Source tags do not freeze those components or change
+an AiiDA database. Do not use these package pins to downgrade a database
+already upgraded by a newer AiiDA.
 
 The proposed ELN 0.1.5 includes [ELN #94](https://github.com/aiidalab/aiidalab-eln/pull/94)
-(scikit-learn dependency). openBIS 0.1.1 includes
-[#139](https://github.com/nanotech-empa/aiidalab-openbis/pull/139) (rooms before instruments),
-[#140](https://github.com/nanotech-empa/aiidalab-openbis/pull/140) (chatbot interface),
-[#141](https://github.com/nanotech-empa/aiidalab-openbis/pull/141) (project dropdown) and
-[#143](https://github.com/nanotech-empa/aiidalab-openbis/pull/143) (synchronisation interface).
+(scikit-learn dependency) and the configuration/shared-widget changes merged
+since 0.1.4. openBIS 0.1.2 retains the rooms, chatbot, project-dropdown and
+synchronization features from 0.1.1 and adds the fixes in
+[#145](https://github.com/nanotech-empa/aiidalab-openbis/pull/145) through
+[#151](https://github.com/nanotech-empa/aiidalab-openbis/pull/151).
+Its package-discovery correction also includes the `aiida_openbis` and
+`nanonis_importer` packages and their required package resources in the wheel.
 For the complete changes, compare
-[ELN changes after v0.1.4](https://github.com/aiidalab/aiidalab-eln/compare/v0.1.4...5a0eb9b7a172b0d24e40600ab6d0fab925271ba7) and
-[openBIS v0.1.0...v0.1.1](https://github.com/nanotech-empa/aiidalab-openbis/compare/v0.1.0...v0.1.1).
+[ELN release preparation](https://github.com/aiidalab/aiidalab-eln/pull/95) and
+[openBIS v0.1.1...v0.1.2](https://github.com/nanotech-empa/aiidalab-openbis/compare/v0.1.1...v0.1.2).
