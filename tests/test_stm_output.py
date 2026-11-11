@@ -229,9 +229,8 @@ def test_real_compressed_payload_corruption_returns_390():
     offset = info.header_offset + 30 + name_length + extra_length
     raw[offset] ^= 255
     corrupted = bytes(raw)
-    with zipfile.ZipFile(io.BytesIO(corrupted)) as archive:
-        with pytest.raises(zlib.error):
-            archive.testzip()
+    with zipfile.ZipFile(io.BytesIO(corrupted)) as archive, pytest.raises(zlib.error):
+        archive.testzip()
     result, reports, outputs, extras = finalize(helper(corrupted))
     assert result.status == 390 and "unreadable or empty" in reports[-1]
     assert not outputs and "surfaces" not in extras

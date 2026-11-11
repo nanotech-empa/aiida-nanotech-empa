@@ -43,14 +43,14 @@ def test_helper_resources_follow_parent(
     original = copy.deepcopy(options)
     params = orm.Dict({"--basis_set_file": "BASIS_MOLOPT"})
     inputs = AttributeDict(
-        dict(
-            options=options,
-            structure=structure,
-            spm_code=code,
-            ppafm_code=code,
-            spm_params=params,
-            ppafm_params=params,
-        )
+        {
+            "options": options,
+            "structure": structure,
+            "spm_code": code,
+            "ppafm_code": code,
+            "spm_params": params,
+            "ppafm_params": params,
+        }
     )
     files = {
         name: orm.SinglefileData(io.BytesIO(b"synthetic fixture\n"), filename=name)
