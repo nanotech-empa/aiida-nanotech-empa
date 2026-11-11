@@ -13,8 +13,9 @@ from aiida.common.links import LinkType
 from ase import Atoms
 from plumpy import ProcessState
 
-pytest_plugins = ["aiida.tools.pytest_fixtures"]
 from aiida_nanotech_empa.workflows.cp2k.stm_workchain import Cp2kStmWorkChain
+
+pytest_plugins = ["aiida.tools.pytest_fixtures"]
 
 
 def workflow(version):
