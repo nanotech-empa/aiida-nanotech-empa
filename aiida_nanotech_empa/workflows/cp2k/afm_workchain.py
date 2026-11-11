@@ -1,3 +1,4 @@
+import copy
 import os
 
 import numpy as np
@@ -101,14 +102,7 @@ class Cp2kAfmWorkChain(engine.WorkChain):
             "geo_no_labels": self.ctx.files["geo_no_labels"],
             "metadata": {
                 "label": "ppafm",
-                "options": {
-                    "max_wallclock_seconds": 3600,
-                    "resources": {
-                        "num_machines": 1,
-                        "num_mpiprocs_per_machine": 1,
-                        "num_cores_per_mpiproc": 1,
-                    },
-                },
+                "options": copy.deepcopy(self.inputs.options),
             },
             "code": self.inputs.ppafm_code,
             "parameters": self.inputs.ppafm_params,

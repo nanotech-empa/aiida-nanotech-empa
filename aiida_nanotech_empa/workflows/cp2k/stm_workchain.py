@@ -1,3 +1,7 @@
+import copy
+import zipfile
+import zlib
+
 import numpy as np
 from aiida import engine, orm, plugins
 
@@ -91,27 +95,7 @@ class Cp2kStmWorkChain(engine.WorkChain):
         inputs["parameters"] = orm.Dict(spm_params)
         inputs["parent_calc_folder"] = self.ctx.diag_scf.outputs.remote_folder
 
-        n_machines = 1
-        if self.ctx.n_atoms > 500:
-            n_machines = 2
-        if self.ctx.n_atoms > 1500:
-            n_machines = 4
-        if self.ctx.n_atoms > 3000:
-            n_machines = 8
-
-        inputs["metadata"]["options"] = {
-            "resources": {
-                "num_machines": n_machines,
-                "num_mpiprocs_per_machine": min(
-                    36,
-                    self.inputs.cp2k_code.computer.get_default_mpiprocs_per_machine(),
-                ),
-                "num_cores_per_mpiproc": 1,
-            },
-            "max_wallclock_seconds": 36000,
-        }
-        if self.inputs.protocol.value == "debug":
-            inputs["metadata"]["options"]["max_wallclock_seconds"] = 600
+        inputs["metadata"]["options"] = copy.deepcopy(self.inputs.options)
 
         # Need to make an explicit instance for the node to be stored to AiiDA.
         settings = orm.Dict({"additional_retrieve_list": ["stm.npz"]})
@@ -121,10 +105,35 @@ class Cp2kStmWorkChain(engine.WorkChain):
         return engine.ToContext(stm=future)
 
     def finalize(self):
-        if "stm.npz" not in [
-            obj.name for obj in self.ctx.stm.outputs.retrieved.list_objects()
-        ]:
-            self.report("STM calculation did not finish correctly")
+        if not self.ctx.stm.is_finished_ok:
+            self.report(
+                "STM helper did not finish successfully "
+                f"(exit status: {self.ctx.stm.exit_status})."
+            )
+            return self.exit_codes.ERROR_TERMINATION
+        if "retrieved" not in self.ctx.stm.outputs:
+            self.report("STM helper produced no retrieved results.")
+            return self.exit_codes.ERROR_TERMINATION
+        repository = self.ctx.stm.outputs.retrieved.base.repository
+        if "stm.npz" not in repository.list_object_names():
+            self.report("STM helper produced no stm.npz result.")
+            return self.exit_codes.ERROR_TERMINATION
+        try:
+            with repository.open("stm.npz", mode="rb") as handle:
+                # Check every ZIP member without unpickling legacy metadata.
+                with zipfile.ZipFile(handle) as archive:
+                    if archive.testzip() is not None:
+                        raise ValueError("archive checksum failed")
+                handle.seek(0)
+                with np.load(handle, allow_pickle=False) as result:
+                    required = {"stm_general_info", "stm_series_info", "stm_series_data"}
+                    if not required.issubset(result.files):
+                        raise ValueError("required STM result entries are missing")
+                    maps = result["stm_series_data"]
+                    if maps.ndim != 4 or not maps.size or maps.dtype.kind not in "fiu":
+                        raise ValueError("STM map array is empty or has an invalid format")
+        except (OSError, ValueError, EOFError, zipfile.BadZipFile, zlib.error) as exc:
+            self.report(f"STM helper produced an unreadable or empty stm.npz result: {exc}")
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("dft_output_parameters", self.ctx.diag_scf.outputs.output_parameters)
