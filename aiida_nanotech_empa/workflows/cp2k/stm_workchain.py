@@ -126,14 +126,22 @@ class Cp2kStmWorkChain(engine.WorkChain):
                         raise ValueError("archive checksum failed")
                 handle.seek(0)
                 with np.load(handle, allow_pickle=False) as result:
-                    required = {"stm_general_info", "stm_series_info", "stm_series_data"}
+                    required = {
+                        "stm_general_info",
+                        "stm_series_info",
+                        "stm_series_data",
+                    }
                     if not required.issubset(result.files):
                         raise ValueError("required STM result entries are missing")
                     maps = result["stm_series_data"]
                     if maps.ndim != 4 or not maps.size or maps.dtype.kind not in "fiu":
-                        raise ValueError("STM map array is empty or has an invalid format")
+                        raise ValueError(
+                            "STM map array is empty or has an invalid format"
+                        )
         except (OSError, ValueError, EOFError, zipfile.BadZipFile, zlib.error) as exc:
-            self.report(f"STM helper produced an unreadable or empty stm.npz result: {exc}")
+            self.report(
+                f"STM helper produced an unreadable or empty stm.npz result: {exc}"
+            )
             return self.exit_codes.ERROR_TERMINATION
 
         self.out("dft_output_parameters", self.ctx.diag_scf.outputs.output_parameters)

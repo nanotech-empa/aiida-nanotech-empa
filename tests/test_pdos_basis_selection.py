@@ -287,8 +287,11 @@ def test_stm_workflows_submit_actual_orbital_files(
                 "spm_params": orm.Dict({"--basis_set_file": explicit}),
                 "hrstm_params": orm.Dict({"--basis_set_file": explicit}),
                 "options": {
-                    "resources": {"num_machines": 1, "num_mpiprocs_per_machine": 2,
-                                  "num_cores_per_mpiproc": 1},
+                    "resources": {
+                        "num_machines": 1,
+                        "num_mpiprocs_per_machine": 2,
+                        "num_cores_per_mpiproc": 1,
+                    },
                     "max_wallclock_seconds": 600,
                 },
             }
