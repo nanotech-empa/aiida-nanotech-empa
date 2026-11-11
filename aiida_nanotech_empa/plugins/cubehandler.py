@@ -1,5 +1,35 @@
+import json
+from pathlib import PurePosixPath
+
 import yaml
 from aiida import common, engine, orm
+
+
+def json_companion_files(parameters):
+    """Serialize explicit JSON companions inside a new job's input directory."""
+    values = parameters.get("json_files", {})
+    if not isinstance(values, dict):
+        raise common.InputValidationError(
+            "json_files must be a filename-to-JSON mapping"
+        )
+    result = {}
+    for name, value in values.items():
+        if (
+            not isinstance(name, str)
+            or PurePosixPath(name).name != name
+            or not name.endswith(".json")
+            or name.startswith(".")
+        ):
+            raise common.InputValidationError(
+                "JSON companion filenames must be plain .json basenames"
+            )
+        try:
+            result[name] = json.dumps(value, allow_nan=False, sort_keys=True)
+        except (ValueError, TypeError) as exc:
+            raise common.InputValidationError(
+                "JSON companions must contain finite JSON values"
+            ) from exc
+    return result
 
 
 class CubeHandlerCalculation(engine.CalcJob):
@@ -22,9 +52,15 @@ class CubeHandlerCalculation(engine.CalcJob):
     def prepare_for_submission(self, folder):
         """Create the input files from the input nodes passed to this instance of the `CalcJob`."""
 
+        parameters = self.inputs.parameters.get_dict()
+        companions = json_companion_files(parameters)
+        for name, content in companions.items():
+            with folder.open(name, "w") as handle:
+                handle.write(content)
+
         # Create input file.
         with folder.open(self._DEFAULT_INPUT_FILE, "w") as infile:
-            yaml.dump(self.inputs.parameters.get_dict(), infile)
+            yaml.dump(parameters, infile)
 
         # Create code info.
         codeinfo = common.CodeInfo()
