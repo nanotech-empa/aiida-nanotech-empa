@@ -175,6 +175,8 @@ class Cp2kReplicaWorkChain(engine.WorkChain):
 
         builder = Cp2kCalculation.get_builder()
         builder.structure = orm.StructureData(ase=structure_with_tags)
+        if builder.structure.pbc != self.ctx.lowest_energy_structure.pbc:
+            self.ctx.lowest_energy_structure = builder.structure
         builder.code = self.inputs.code
         builder.file = files
         if "parent_calc_folder" in self.inputs:
