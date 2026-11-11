@@ -9,9 +9,10 @@ from copy import deepcopy
 
 import numpy as np
 
-from ...utils.cp2k_results import SOLVER_DIMENSIONS as SOLVER_DIMENSIONS
+from ...utils import cp2k_results
 from ...utils.cp2k_results import periodic_pbc, validate_periodic_solver
 
+SOLVER_DIMENSIONS = cp2k_results.SOLVER_DIMENSIONS
 PERIODICITIES = ("NONE", "X", "Y", "Z", "XY", "XZ", "YZ", "XYZ")
 MT_PADDING_ANGSTROM = 15.0
 

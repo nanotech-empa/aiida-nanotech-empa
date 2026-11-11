@@ -28,6 +28,8 @@ class Cp2kNebParser(parsers.Parser):
 
         try:
             trajectory_exit = self._parse_trajectory()
+            if trajectory_exit == self.exit_codes.ERROR_OUTPUT_MISSING:
+                trajectory_exit = self.exit_codes.ERROR_STRUCTURE_PARSE
         except (AttributeError, IndexError, KeyError, ValueError) as exc:
             self.logger.warning("Could not parse the saved NEB structures: %s", exc)
             trajectory_exit = self.exit_codes.ERROR_STRUCTURE_PARSE
@@ -100,11 +102,7 @@ class Cp2kNebParser(parsers.Parser):
             self, self.node.process_class._DEFAULT_RESTART_FILE_NAME
         )
         if exit_code is not None:
-            return (
-                self.exit_codes.ERROR_STRUCTURE_PARSE
-                if exit_code == self.exit_codes.ERROR_OUTPUT_MISSING
-                else exit_code
-            )
+            return exit_code
 
         m = re.search(r"\n\s*&CELL\n(.*?)\n\s*&END CELL\n", output_string, re.DOTALL)
         cell_lines = [line.strip().split() for line in m.group(1).split("\n")]
