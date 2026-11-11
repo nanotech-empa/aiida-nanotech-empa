@@ -56,6 +56,11 @@ class Cp2kNebWorkChain(engine.WorkChain):
             message="One or more steps of the work chain failed.",
         )
         spec.exit_code(
+            391,
+            "ERROR_INCOMPLETE_NEB",
+            message="NEB incomplete; available partial results are retained for inspection.",
+        )
+        spec.exit_code(
             380,
             "ERROR_UUIDS",
             message="no structures specified",
@@ -249,17 +254,20 @@ class Cp2kNebWorkChain(engine.WorkChain):
     def finalize(self):
         self.report("Finalizing.")
 
-        if not self.ctx.neb.is_finished_ok:
-            return self.exit_codes.ERROR_TERMINATION
+        # Publish available results even when native convergence/time limits fail.
+        # The GUI and restart path must retain access to an incomplete band.
+        for label in self.ctx.neb.outputs:
+            if label.startswith("opt_replica_") or label in (
+                "replica_energies",
+                "replica_distances",
+                "remote_folder",
+                "output_parameters",
+            ):
+                self.out(label, self.ctx.neb.outputs[label])
 
-        for i_rep in range(self.ctx.neb_params["number_of_replica"]):
-            label = f"opt_replica_{str(i_rep).zfill(3)}"
-            self.out(label, self.ctx.neb.outputs[label])
-
-        self.out("replica_energies", self.ctx.neb.outputs["replica_energies"])
-        self.out("replica_distances", self.ctx.neb.outputs["replica_distances"])
-        self.out("remote_folder", self.ctx.neb.outputs.remote_folder)
-
-        # Add the workchain pk to the input structure extras.
         common_utils.add_extras(self.inputs.structure, "surfaces", self.node.uuid)
+        if not self.ctx.neb.is_finished_ok:
+            if "replica_energies" in self.ctx.neb.outputs:
+                return self.exit_codes.ERROR_INCOMPLETE_NEB
+            return self.exit_codes.ERROR_TERMINATION
         return engine.ExitCode(0)

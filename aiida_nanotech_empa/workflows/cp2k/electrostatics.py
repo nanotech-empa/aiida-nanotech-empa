@@ -9,15 +9,11 @@ from copy import deepcopy
 
 import numpy as np
 
+from ...utils import cp2k_results
+from ...utils.cp2k_results import periodic_pbc, validate_periodic_solver
+
+SOLVER_DIMENSIONS = cp2k_results.SOLVER_DIMENSIONS
 PERIODICITIES = ("NONE", "X", "Y", "Z", "XY", "XZ", "YZ", "XYZ")
-SOLVER_DIMENSIONS = {
-    "PERIODIC": (3,),
-    "MT": (0, 2),
-    "ANALYTIC": (0, 1, 2),
-    "MULTIPOLE": (0,),
-    "WAVELET": (0, 2, 3),
-    "IMPLICIT": (0, 1, 2, 3),
-}
 MT_PADDING_ANGSTROM = 15.0
 
 
@@ -30,13 +26,7 @@ def poisson_settings(dft_params):
     solver = str(
         dft_params.get("poisson_solver", "PERIODIC" if dimension == 3 else "MT")
     ).upper()
-    if solver not in SOLVER_DIMENSIONS:
-        raise ValueError(f"Unknown CP2K Poisson solver: {solver}")
-    if dimension not in SOLVER_DIMENSIONS[solver]:
-        raise ValueError(
-            f"CP2K {solver} does not support {dimension}D periodicity ({periodic}). "
-            "MT is implemented only for 0D and 2D; use an explicit supported solver for 1D."
-        )
+    validate_periodic_solver(periodic, solver)
     extra = deepcopy(dft_params.get("poisson_settings", {}))
     if not isinstance(extra, dict):
         # ValueError on purpose: callers report invalid dft_params via ValueError.
@@ -152,6 +142,13 @@ def apply_poisson(parameters, atoms, dft_params):
     """Set both CP2K periodicities, preserving all supplied atomic coordinates."""
     settings = poisson_settings(dft_params)
     validate_cell(atoms, dft_params)
+    if settings["POISSON_SOLVER"] == "WAVELET":
+        global_settings = parameters.setdefault("GLOBAL", {})
+        if global_settings.get("PREFERRED_FFT_LIBRARY", "FFTSG").upper() != "FFTSG":
+            raise ValueError("CP2K WAVELET requires PREFERRED_FFT_LIBRARY FFTSG")
+        global_settings["PREFERRED_FFT_LIBRARY"] = "FFTSG"
+    # This ASE object is the derived working copy, never the source node.
+    atoms.pbc = periodic_pbc(settings["PERIODIC"])
     force_eval = parameters["FORCE_EVAL"]
     force_eval["SUBSYS"]["CELL"]["PERIODIC"] = settings["PERIODIC"]
     force_eval["DFT"]["POISSON"] = settings

@@ -114,7 +114,6 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         builder = Cp2kBaseWorkChain.get_builder()
         builder.cp2k.code = self.inputs.cp2k_code
         cp2k_utils.set_restart_policy(self.inputs, builder)
-        builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         builder.cp2k.file = self.ctx.files
         # restart wfn
@@ -128,6 +127,7 @@ class Cp2kDiagWorkChain(engine.WorkChain):
         cp2k_utils.apply_xc_settings(input_dict, self.ctx.dft_params)
 
         apply_poisson(input_dict, self.ctx.structure_with_tags, self.ctx.dft_params)
+        builder.cp2k.structure = orm.StructureData(ase=self.ctx.structure_with_tags)
 
         # UKS
         if self.ctx.dft_params["uks"]:
