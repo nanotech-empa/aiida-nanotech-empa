@@ -3,13 +3,41 @@ import pathlib
 from aiida import engine, orm, plugins
 
 from ...utils import common_utils, split_structure, string_utils
+from ...utils.cp2k_results import calculation_boundary
 from . import cp2k_utils
+from .electrostatics import apply_poisson
 
 StructureData = plugins.DataFactory("core.structure")
 Cp2kBaseWorkChain = plugins.WorkflowFactory("cp2k.base")
 CubeHandlerCalculation = plugins.CalculationFactory("nanotech_empa.cubehandler")
 
 DATA_DIR = pathlib.Path(__file__).parent.absolute() / "data"
+
+
+def _apply_fragment_model(parameters, atoms, dft_params, auxiliary_dictionaries):
+    """Apply one explicit model, then reject contradictory auxiliary overrides."""
+    apply_poisson(parameters, atoms, dft_params)
+    expected = calculation_boundary(parameters)
+    for value in auxiliary_dictionaries.values():
+        cp2k_utils.dict_merge(parameters, value.get_dict())
+    actual = calculation_boundary(parameters)
+    if actual != expected:
+        raise ValueError(
+            "Auxiliary electrostatic settings conflict with dft_params. "
+            "Set periodic and poisson_solver explicitly in dft_params."
+        )
+    # Retain compatible extra POISSON settings, and validate the final FFT choice.
+    poisson = parameters["FORCE_EVAL"]["DFT"]["POISSON"]
+    effective = {
+        "periodic": actual["periodic"],
+        "poisson_solver": actual["poisson_solver"],
+        "poisson_settings": {
+            key: value
+            for key, value in poisson.items()
+            if key not in ("PERIODIC", "POISSON_SOLVER")
+        },
+    }
+    apply_poisson(parameters, atoms, effective)
 
 
 class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
@@ -75,15 +103,33 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             help="Define options for the cacluations: walltime, memory, CPUs, etc.",
         )
         cp2k_utils.add_restart_policy_inputs(spec)
+        spec.inputs.validator = cls.validate_inputs
 
         # in case wfn for the whole system is available and matches uks/rks parameters
         spec.input("parent_calc_folder", valid_type=orm.RemoteData, required=False)
 
+        spec.input(
+            "serial_execution",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
+            required=False,
+            help=(
+                "Wait for each component stage before submitting the next. "
+                "Parallel execution remains the default."
+            ),
+        )
+
         # Outline.
         spec.outline(
             cls.setup,
-            cls.run_scfs,
-            cls.run_geo_opts,
+            engine.if_(cls.should_run_serially)(
+                engine.while_(cls.has_pending_scfs)(
+                    cls.run_scfs, cls.inspect_serial_stage
+                ),
+                engine.while_(cls.has_pending_opts)(
+                    cls.run_geo_opts, cls.inspect_serial_stage
+                ),
+            ).else_(cls.run_scfs, cls.run_geo_opts),
             engine.if_(cls.should_run_cubehandler)(
                 cls.run_cubehandler,
             ),
@@ -99,6 +145,40 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             "ERROR_TERMINATION",
             message="One or more steps of the work chain failed.",
         )
+
+    @staticmethod
+    def validate_inputs(inputs, _=None):
+        """Validate the complete boundary model before any component is submitted."""
+        try:
+            parameters = cp2k_utils.load_protocol(
+                "geo_opt_protocol.yml", inputs["protocol"].value
+            )
+            _apply_fragment_model(
+                parameters,
+                inputs["structure"].get_ase(),
+                inputs["dft_params"].get_dict(),
+                inputs.get("auxilary_dictionaries", {}),
+            )
+        except ValueError as exc:
+            return str(exc)
+
+    def should_run_serially(self):
+        return "serial_execution" in self.inputs and self.inputs.serial_execution.value
+
+    def has_pending_scfs(self):
+        return bool(self.ctx.pending_scfs)
+
+    def has_pending_opts(self):
+        return bool(self.ctx.pending_opts)
+
+    def inspect_serial_stage(self):
+        child = self.ctx[self.ctx.serial_phase][self.ctx.serial_fragment]
+        if not child.is_finished_ok:
+            self.report(
+                f"Serial stage {self.ctx.serial_phase}.{self.ctx.serial_fragment} failed. "
+                "No later stage will be submitted."
+            )
+            return self.exit_codes.ERROR_TERMINATION
 
     def should_run_cubehandler(self):
         return "cubehandler_code" in self.inputs
@@ -117,6 +197,10 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
                 )
                 return self.exit_codes.ERROR_TERMINATION
 
+        self.ctx.pending_opts = [
+            name for name in self.inputs.fragments if name != "all"
+        ]
+        self.ctx.pending_scfs = ["all", *self.ctx.pending_opts]
         self.ctx.cutoff = cp2k_utils.get_cutoff(structure=self.inputs.structure)
 
         self.ctx.file = {
@@ -140,6 +224,11 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             ),
             fragments=self.inputs.fragments,
         ):
+            if (
+                self.should_run_serially()
+                and inputs["label"] != self.ctx.pending_scfs[0]
+            ):
+                continue
             # Re-loading the input dictionary for the given protocol.
             input_dict = cp2k_utils.load_protocol(
                 fname="geo_opt_protocol.yml",
@@ -207,7 +296,6 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             kinds_section = cp2k_utils.get_kinds_section(kinds_dict, protocol="gpw")
             cp2k_utils.dict_merge(input_dict, kinds_section)
-            builder.cp2k.structure = structure
 
             # Fixed atoms
             if "fixed_atoms" in self.inputs:
@@ -215,10 +303,15 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
                     string_utils.list_to_string_range(inputs["fixed_atoms"])
                 )
 
-            # Finally, append auxilary dictionaries to the input dictonary.
-            if "auxilary_dictionaries" in self.inputs:
-                for value in self.inputs.auxilary_dictionaries.values():
-                    cp2k_utils.dict_merge(input_dict, value)
+            # Keep the common cell and coordinates, with PBC matching the model.
+            atoms = structure.get_ase()
+            _apply_fragment_model(
+                input_dict,
+                atoms,
+                self.inputs.dft_params.get_dict(),
+                self.inputs.get("auxilary_dictionaries", {}),
+            )
+            builder.cp2k.structure = StructureData(ase=atoms)
 
             if "max_wallclock_seconds" in self.inputs.options[fragment]:
                 # Calculation might require up to 5 minutes to gracefully finish the calculation.
@@ -230,11 +323,18 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             submitted_node = self.submit(builder)
             self.to_context(**{f"scf.{fragment}": submitted_node})
+            if self.should_run_serially():
+                self.ctx.serial_phase = "scf"
+                self.ctx.serial_fragment = fragment
+                self.ctx.pending_scfs.pop(0)
+                break
 
     def run_geo_opts(self):
         for fragment in self.inputs.fragments:
             # We deliberately do not run optimisation for the full structure.
             if fragment == "all":
+                continue
+            if self.should_run_serially() and fragment != self.ctx.pending_opts[0]:
                 continue
 
             # Generic inputs that are always the same.
@@ -261,6 +361,11 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
 
             submitted_node = self.submit(builder)
             self.to_context(**{f"opt.{fragment}": submitted_node})
+            if self.should_run_serially():
+                self.ctx.serial_phase = "opt"
+                self.ctx.serial_fragment = fragment
+                self.ctx.pending_opts.pop(0)
+                break
 
     def run_cubehandler(self):
         """Run cubehandler to build a charge-difference cube via linear combination."""
@@ -326,6 +431,13 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
         return engine.ToContext(cubehandler=future)
 
     def finalize(self):
+        if (
+            self.should_run_serially()
+            and self.should_run_cubehandler()
+            and not self.ctx.cubehandler.is_finished_ok
+        ):
+            self.report("The density-difference helper failed.")
+            return self.exit_codes.ERROR_TERMINATION
         energies = {}
         self.report("Finalizing...")
         energies["all"] = self.ctx.scf["all"].outputs.output_parameters["energy"]
