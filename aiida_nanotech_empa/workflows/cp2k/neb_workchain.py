@@ -1,4 +1,5 @@
 import copy
+from numbers import Integral
 
 import numpy as np
 from aiida import engine, orm, plugins
@@ -7,6 +8,44 @@ from ...utils import common_utils
 from . import cp2k_utils
 
 Cp2kCalculation = plugins.CalculationFactory("cp2k")
+
+
+def _initial_scf_resources(resources, nproc_rep, scheduler):
+    """Fit one replica's MPI ranks within the BAND node/per-node limits."""
+    for name, value in {"nproc_rep": nproc_rep, **resources}.items():
+        if isinstance(value, bool) or not isinstance(value, Integral) or value < 1:
+            raise ValueError(f"{name} must be a positive integer")
+    band = scheduler.create_job_resource(**resources)
+    total = band.get_tot_num_mpiprocs()
+    if nproc_rep > total or total % nproc_rep:
+        raise ValueError("nproc_rep must divide the total BAND MPI allocation")
+
+    # Use the fewest nodes that can hold exactly NPROC_REP ranks. Rounding up
+    # the node count alone could silently run too many ranks (e.g. 8 on 2x6).
+    first = (
+        nproc_rep + band.num_mpiprocs_per_machine - 1
+    ) // band.num_mpiprocs_per_machine
+    for machines in range(first, min(band.num_machines, nproc_rep) + 1):
+        if nproc_rep % machines == 0:
+            break
+    else:
+        raise ValueError("Cannot fit nproc_rep within the BAND node/per-node limits")
+    scf = copy.deepcopy(resources)
+    scf["num_machines"] = machines
+    scf["num_mpiprocs_per_machine"] = nproc_rep // machines
+    if "tot_num_mpiprocs" in scf:
+        scf["tot_num_mpiprocs"] = nproc_rep
+    if "num_cores_per_machine" in scf:
+        threads, remainder = divmod(
+            scf["num_cores_per_machine"], band.num_mpiprocs_per_machine
+        )
+        if remainder or threads != scf.get("num_cores_per_mpiproc", threads):
+            raise ValueError(
+                "BAND cores per machine must match MPI ranks times threads"
+            )
+        scf["num_cores_per_machine"] = scf["num_mpiprocs_per_machine"] * threads
+    scheduler.create_job_resource(**scf)
+    return scf
 
 
 class Cp2kNebWorkChain(engine.WorkChain):
@@ -59,6 +98,11 @@ class Cp2kNebWorkChain(engine.WorkChain):
             391,
             "ERROR_INCOMPLETE_NEB",
             message="NEB incomplete; available partial results are retained for inspection.",
+        )
+        spec.exit_code(
+            392,
+            "ERROR_INVALID_SCF_RESOURCES",
+            message="Cannot allocate the initial SCF for one NEB replica environment.",
         )
         spec.exit_code(
             380,
@@ -174,11 +218,16 @@ class Cp2kNebWorkChain(engine.WorkChain):
         self.ctx.options = self.inputs.options
         self.ctx.scf_options = copy.deepcopy(self.ctx.options)
 
-        # Number of mpi processes for scf derived from nproc_replica
-        self.ctx.scf_options["resources"]["num_machines"] = int(
-            self.ctx.neb_params["nproc_rep"]
-            / self.ctx.options["resources"]["num_mpiprocs_per_machine"]
-        )
+        if self.ctx.should_run_scf:
+            try:
+                self.ctx.scf_options["resources"] = _initial_scf_resources(
+                    self.ctx.options["resources"],
+                    self.ctx.neb_params["nproc_rep"],
+                    self.inputs.code.computer.get_scheduler(),
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                self.report(f"Invalid initial SCF resources: {exc}")
+                return self.exit_codes.ERROR_INVALID_SCF_RESOURCES
         self.ctx.input_dict["GLOBAL"]["WALLTIME"] = max(
             600, self.ctx.options["max_wallclock_seconds"] - 600
         )
