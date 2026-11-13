@@ -243,10 +243,10 @@ def _runner_script():
                 return False
 
             import h5py
-            from irrep import readfiles as ir_readfiles
+            from irrep.parsers import espresso as espresso_parser
 
-            original_parse_header = ir_readfiles.ParserEspresso.parse_header
-            original_parse_kpoint = ir_readfiles.ParserEspresso.parse_kpoint
+            original_parse_header = espresso_parser.ParserEspresso.parse_header
+            original_parse_kpoint = espresso_parser.ParserEspresso.parse_kpoint
 
             def _normalized_slice(nbands):
                 start = 0 if ib_start is None else int(ib_start)
@@ -274,10 +274,12 @@ def _runner_script():
                 )
                 return spinpol, ecut0, ef, nkpoints, stop - start
 
-            def parse_kpoint(self, ik, verbosity=0):
+            def parse_kpoint(self, ik, verbosity=0, getE=True, getWF=True):
                 band_slice = getattr(self, "_aiida_band_slice", None)
                 if band_slice is None:
-                    return original_parse_kpoint(self, ik, verbosity=verbosity)
+                    return original_parse_kpoint(
+                        self, ik, verbosity=verbosity, getE=getE, getWF=getWF
+                    )
 
                 kptxml = self.bandstr.findall("ks_energies")[ik]
                 if self.spinpol:
@@ -298,11 +300,14 @@ def _runner_script():
                         f"header={original_nbands}, k-point={nbands}"
                     )
 
-                energy_values = np.array(
-                    kptxml.find("eigenvalues").text.split(), dtype=float
-                )
-                energy = energy_values[nb_skip + start:nb_skip + stop]
-                energy *= ir_readfiles.Hartree_eV
+                if getE:
+                    energy_values = np.array(
+                        kptxml.find("eigenvalues").text.split(), dtype=float
+                    )
+                    energy = energy_values[nb_skip + start:nb_skip + stop]
+                    energy *= espresso_parser.Hartree_eV
+                else:
+                    energy = None
                 npw = int(kptxml.find("npw").text)
                 nspinor = 2 if self.spinor else 1
 
@@ -320,6 +325,11 @@ def _runner_script():
                                 f"wavefunction files only, got {filename}"
                             )
                         with h5py.File(filename, "r") as handle:
+                            if handle.attrs["ik"] != ik + 1:
+                                raise RuntimeError(
+                                    f"Wavefunction k-point index in {filename} "
+                                    f"does not match requested index {ik + 1}"
+                                )
                             xk = handle.attrs["xk"]
                             kpt = np.array(xk)
                             miller_indices = handle["MillerIndices"]
@@ -328,14 +338,23 @@ def _runner_script():
                             )
                             kg = np.array(miller_indices[::])
                             kpt = kpt.dot(np.linalg.inv(b_matrix))
-                            evc = np.asarray(handle["evc"][start:stop, :], dtype=float)
-                        wf = evc[:, 0::2] + 1.0j * evc[:, 1::2]
-                        wf = wf.reshape((stop - start, npw, nspinor), order="F")
+                            if not np.allclose(kpt, self.get_kpt_coord(ik)):
+                                raise RuntimeError(
+                                    f"Wavefunction k-point coordinates in {filename} "
+                                    "do not match the QE XML"
+                                )
+                            if getWF:
+                                evc = np.asarray(handle["evc"][start:stop, :], dtype=float)
+                        if getWF:
+                            wf = evc[:, 0::2] + 1.0j * evc[:, 1::2]
+                            wf = wf.reshape((stop - start, npw, nspinor), order="F")
+                        else:
+                            wf = None
                         return wf, energy, kg, kpt
                 raise RuntimeError(f"Wavefunction file not found. Tried files: {checked_files}")
 
-            ir_readfiles.ParserEspresso.parse_header = parse_header
-            ir_readfiles.ParserEspresso.parse_kpoint = parse_kpoint
+            espresso_parser.ParserEspresso.parse_header = parse_header
+            espresso_parser.ParserEspresso.parse_kpoint = parse_kpoint
             return True
 
 
