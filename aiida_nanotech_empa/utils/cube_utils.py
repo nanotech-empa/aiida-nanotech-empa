@@ -54,15 +54,17 @@ def crop_cube(cube, x_crop=None, y_crop=None, z_crop=None):
             c_p1[i] = min(c_p1[i], i_p1[i])
 
     # crop indexes
-    crop_s = ((c_p0 - i_p0) / dv).astype(int)
-    crop_e = cube.data.shape - ((i_p1 - c_p1) / dv).astype(int)
+    # Bounds are already snapped to the grid. Round their recovered indices:
+    # truncation can turn e.g. 55.99999999999999 into the preceding voxel.
+    crop_s = np.rint((c_p0 - i_p0) / dv).astype(int)
+    crop_e = cube.data.shape - np.rint((i_p1 - c_p1) / dv).astype(int)
 
     # Update the cube
     cube.data = cube.data[
         crop_s[0] : crop_e[0], crop_s[1] : crop_e[1], crop_s[2] : crop_e[2]
     ]
 
-    cube.origin = c_p0
+    cube.origin = i_p0 + crop_s * dv
     cube.cell = (np.atleast_2d(cube.data.shape).T * np.diag(dv)) * ANG_TO_BOHR
     cube.ase_atoms.positions = cube.ase_atoms.positions - cube.origin
 
