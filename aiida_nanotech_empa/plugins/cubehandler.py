@@ -48,6 +48,16 @@ class CubeHandlerCalculation(engine.CalcJob):
             help="Parent folders containing original cube files.",
         )
         spec.input("metadata.options.withmpi", valid_type=bool, default=False)
+        spec.input(
+            "metadata.options.parser_name",
+            valid_type=str,
+            default="nanotech_empa.cubehandler",
+        )
+        spec.exit_code(
+            300,
+            "ERROR_RENDER_OUTPUT",
+            message="A requested rendered image is missing, corrupt or has unexpected dimensions/format.",
+        )
 
     def prepare_for_submission(self, folder):
         """Create the input files from the input nodes passed to this instance of the `CalcJob`."""
