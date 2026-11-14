@@ -50,6 +50,7 @@ dev = [
 ]
 
 [project.entry-points."aiida.parsers"]
+"nanotech_empa.cubehandler" = "aiida_nanotech_empa.parsers.cubehandler_parser:CubeHandlerParser"
 "nanotech_empa.pp" = "aiida_nanotech_empa.parsers:PpParser"
 "nanotech_empa.cp2k_gw_parser" = "aiida_nanotech_empa.parsers:Cp2kGwParser"
 "nanotech_empa.cp2k_neb_parser" = "aiida_nanotech_empa.parsers:Cp2kNebParser"
