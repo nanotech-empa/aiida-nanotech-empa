@@ -247,6 +247,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.code = self.inputs.code
             cp2k_utils.set_restart_policy(self.inputs, builder)
+            builder.handler_overrides = orm.Dict(
+                {"restart_incomplete_calculation": {"enabled": True}}
+            )
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"
 
             # restart wfn in case of fragment 'all'
@@ -341,6 +344,9 @@ class Cp2kFragmentSeparationWorkChain(engine.WorkChain):
             builder = Cp2kBaseWorkChain.get_builder()
             builder.cp2k.code = self.inputs.code
             cp2k_utils.set_restart_policy(self.inputs, builder)
+            builder.handler_overrides = orm.Dict(
+                {"restart_incomplete_calculation": {"enabled": True}}
+            )
             builder.cp2k.metadata.options = self.inputs.options[fragment]
             builder.cp2k.file = self.ctx.file
             builder.cp2k.metadata.options.parser_name = "cp2k_advanced_parser"

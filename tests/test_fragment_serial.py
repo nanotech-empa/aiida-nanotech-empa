@@ -91,6 +91,11 @@ class SyntheticSubmissions:
                 "cell": atoms.cell.tolist(),
                 "pbc": atoms.pbc.tolist(),
                 "max_iterations": builder.max_iterations.value,
+                "handler_overrides": builder.handler_overrides.get_dict()
+                if builder.handler_overrides is not None
+                else {},
+                "on_unhandled_failure": builder.on_unhandled_failure.value,
+                "pause_on_max_iterations": builder.pause_on_max_iterations.value,
                 "restart_path": cp.parent_calc_folder.get_remote_path()
                 if cp.parent_calc_folder is not None
                 else None,
