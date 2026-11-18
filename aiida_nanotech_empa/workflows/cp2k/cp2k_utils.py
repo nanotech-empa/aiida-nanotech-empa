@@ -12,6 +12,8 @@ import yaml
 from aiida import common, orm
 from aiida.engine.processes.workchains.restart import validate_on_unhandled_failure
 
+from ...utils.wfn import available_wfn_folder
+
 
 def add_restart_policy_inputs(spec):
     """Expose the BaseRestartWorkChain restart policy as workchain inputs."""
@@ -665,6 +667,8 @@ def structure_available_wfn(
     current_hostname=None,
     return_path=True,
     dft_params=None,
+    selected_computer=None,
+    reporter=None,
 ):
     """
     Checks availability of .wfn file corresponding to a structure and returns the remote path.
@@ -676,6 +680,9 @@ def structure_available_wfn(
     :param dft_params: dictionary with dft parameters needed to check if restart with UKS is possible
     :return: remote path or folder
     """
+
+    if selected_computer is not None:
+        current_hostname = selected_computer.hostname
 
     struc_node = node
     generating_workchain = find_first_workchain(struc_node)
@@ -747,42 +754,35 @@ def structure_available_wfn(
         # use the standard name
         wfn_name = "aiida-RESTART.wfn"
         create_a_copy = False
-
-    wfn_exists = False
-    try:
-        wfn_search_path = (
-            generating_workchain.outputs.remote_folder.get_remote_path()
-            + "/"
-            + wfn_name
-        )
-
-        wfn_exists = remote_file_exists(
-            generating_workchain.inputs.code.computer, wfn_search_path
-        )
-    except common.NotExistentAttributeError:
-        pass
-
-    if not wfn_exists:
+    else:
         return None
 
-    if create_a_copy:
-        # if the wfn from which I want to restart has a name different from aiida-RESTART.wfn I need to create a copy
-        copy_wfn(
-            computer=generating_workchain.inputs.code.computer,
-            wfn_search_path=wfn_search_path,
-            wfn_name=generating_workchain.outputs.remote_folder.get_remote_path()
-            + "/"
-            + "aiida-RESTART.wfn",
-        )
+    try:
+        source_folder = generating_workchain.outputs.remote_folder
+    except common.NotExistentAttributeError:
+        return None
+
+    folder = available_wfn_folder(
+        source_folder,
+        wfn_name,
+        selected_computer=selected_computer,
+        copy_to="aiida-RESTART.wfn" if create_a_copy else None,
+        reporter=reporter,
+    )
+    if folder is None:
+        return None
 
     if return_path:
-        return wfn_search_path
-    else:
-        return generating_workchain.outputs.remote_folder
+        return folder.get_remote_path() + "/" + wfn_name
+    return folder
 
 
 def mk_wfn_cp_commands(
-    nreplicas=None, replica_nodes=None, selected_computer=None, dft_params=None
+    nreplicas=None,
+    replica_nodes=None,
+    selected_computer=None,
+    dft_params=None,
+    reporter=None,
 ):
     available_wfn_paths = []
     list_wfn_available = []
@@ -794,8 +794,9 @@ def mk_wfn_cp_commands(
         avail_wfn = structure_available_wfn(
             node=node,
             relative_replica_id=relative_replica_id,
-            current_hostname=selected_computer.hostname,
+            selected_computer=selected_computer,
             dft_params=dft_params,
+            reporter=reporter,
         )
 
         if avail_wfn:

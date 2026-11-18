@@ -161,10 +161,12 @@ class Cp2kNebWorkChain(engine.WorkChain):
                 replica_nodes=all_replica_nodes,
                 selected_computer=self.inputs.code.computer,
                 dft_params=dft_params,
+                reporter=self.report,
             )
 
         if len(self.ctx.wfn_cp_commands) == 0:
             self.ctx.should_run_scf = True
+            self.report("No accessible compatible WFN found; running the initial SCF.")
 
         # Replica files with tags must be after structure_with_tags.
         self.ctx.input_dict["MOTION"]["BAND"]["REPLICA"] = []
