@@ -1,5 +1,5 @@
 # Exact versions for combined modern-release validation.
-# Runtime support remains Python >=3.12 / AiiDA >=2.8,<3.
+# Runtime support remains Python >=3.12 / AiiDA >=2.9.4,<3.
 # Published releases replace the temporary CP2K and aiida-pseudo source pins.
 aiida-pseudo==1.11.0
 aiida-cp2k==2.2.1
