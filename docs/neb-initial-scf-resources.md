@@ -56,5 +56,22 @@ storage. It exercises both WFN branches, the fifteen GUI resource layouts,
 additional integral/fractional multi-node cases and invalid inputs. It never runs
 CP2K. Actual GUI/native evidence remains a separate qualification step.
 
+### Automatic WFN lookup with imported structures
+
+When no explicit restart input is supplied, NEB automatically searches the
+endpoint provenance for compatible WFN files. File access uses the computer and
+account selected for the new calculation. An imported computer's UUID or missing
+authentication does not establish whether its old scratch files are accessible.
+The workflow checks the files through the selected account, leaves the original
+computer/data unchanged, and reports unavailable candidates. If no compatible,
+readable WFN remains, it runs the initial SCF with the allocation described above.
+Destination connection/configuration failures remain errors; they are not
+reported as missing files. Explicit restart inputs retain their existing meaning.
+
+Isolated regressions exercise two imported endpoint structures, an unconfigured
+original computer and fifteen requested replicas through the actual setup and
+child builders. Both accessible-WFN reuse and fresh-SCF fallback are covered,
+without submitting native jobs.
+
 References: [CP2K BAND input](https://manual.cp2k.org/cp2k-2023_1-branch/CP2K_INPUT/MOTION/BAND.html)
 and [current interpolation description](https://manual.cp2k.org/trunk/CP2K_INPUT/MOTION/BAND.html).

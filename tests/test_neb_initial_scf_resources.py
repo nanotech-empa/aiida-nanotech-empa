@@ -83,18 +83,22 @@ def process_factory(aiida_profile_tmp, aiida_localhost, monkeypatch):
     )
     monkeypatch.setattr(engine, "submit", forbidden_submit)
 
-    def make(count, resources, nproc, reuse=False, protocol="standard"):
-        images = [
-            orm.StructureData(
-                ase=Atoms(
-                    "H2",
-                    positions=[[6, 6, 6], [6, 6, 6.74 + i * 0.01]],
-                    cell=[12] * 3,
-                    pbc=True,
-                )
-            ).store()
-            for i in range(count)
-        ]
+    def make(count, resources, nproc, reuse=False, protocol="standard", images=None):
+        images = (
+            images
+            if images is not None
+            else [
+                orm.StructureData(
+                    ase=Atoms(
+                        "H2",
+                        positions=[[6, 6, 6], [6, 6, 6.74 + i * 0.01]],
+                        cell=[12] * 3,
+                        pbc=True,
+                    )
+                ).store()
+                for i in range(count)
+            ]
+        )
         scientific = {
             "periodic": "XYZ",
             "poisson_solver": "PERIODIC",
@@ -157,6 +161,94 @@ def process_factory(aiida_profile_tmp, aiida_localhost, monkeypatch):
     yield make
     for process in processes:
         process.close()
+
+
+@pytest.mark.parametrize("available", [False, True])
+def test_imported_endpoints_reach_correct_child_builder(
+    process_factory, aiida_localhost, tmp_path, available, monkeypatch
+):
+    """Exercise setup/SCF/BAND through the real provenance and file lookup."""
+    imported = orm.Computer(
+        label="imported-endpoint-host",
+        hostname=aiida_localhost.hostname,
+        transport_type="core.local",
+        scheduler_type="core.direct",
+        workdir=str(tmp_path),
+    ).store()
+    source_code = orm.InstalledCode(
+        computer=imported,
+        filepath_executable="/bin/false",
+        default_calc_job_plugin="cp2k",
+    ).store()
+    images = []
+    parents = []
+    for index in range(2):
+        directory = tmp_path / str(index)
+        directory.mkdir()
+        if available:
+            (directory / "aiida-RESTART.wfn").write_bytes(b"existing endpoint WFN")
+        parent = orm.WorkChainNode(label="CP2K_GeoOpt")
+        parent.base.links.add_incoming(source_code, LinkType.INPUT_WORK, "code")
+        parent.base.links.add_incoming(
+            orm.Dict({"uks": False, "charge": 0}).store(),
+            LinkType.INPUT_WORK,
+            "dft_params",
+        )
+        parent.store()
+        calculation = orm.CalcJobNode(computer=imported)
+        calculation.base.links.add_incoming(parent, LinkType.CALL_CALC, "cp2k")
+        calculation.store()
+        image = orm.StructureData(
+            ase=Atoms(
+                "H2",
+                positions=[[6, 6, 6], [6, 6, 6.74 + index * 0.01]],
+                cell=[12] * 3,
+                pbc=True,
+            )
+        )
+        image.base.links.add_incoming(calculation, LinkType.CREATE, "output_structure")
+        image.store()
+        remote = orm.RemoteData(computer=imported, remote_path=str(directory))
+        remote.base.links.add_incoming(calculation, LinkType.CREATE, "remote_folder")
+        remote.store()
+        remote.base.links.add_incoming(parent, LinkType.RETURN, "remote_folder")
+        images.append(image)
+        parents.append((parent.uuid, image.base.attributes.all, remote.uuid))
+
+    real_transport = orm.Computer.get_transport
+
+    def destination_only(computer, *args, **kwargs):
+        assert computer.uuid == aiida_localhost.uuid
+        return real_transport(computer, *args, **kwargs)
+
+    monkeypatch.setattr(orm.Computer, "get_transport", destination_only)
+    case = process_factory(
+        15,
+        {"num_machines": 2, "num_mpiprocs_per_machine": 64, "num_cores_per_mpiproc": 1},
+        64,
+        images=images,
+    )
+    process = case.process
+    process.setup()
+    assert process.should_run_scf() is (not available)
+    if not available:
+        process.first_scf()
+        scf = case.captured[-1]
+        assert scf.metadata.options.resources["num_machines"] == 1
+        assert scf.metadata.options.resources["num_mpiprocs_per_machine"] == 64
+        assert "parent_calc_folder" not in scf
+    process.submit_neb()
+    band = case.captured[-1]
+    assert band.parameters["MOTION"]["BAND"]["NUMBER_OF_REPLICA"] == 15
+    assert band.metadata.options.resources == case.original["resources"]
+    assert len(case.captured) == (1 if available else 2)
+    assert not imported.is_user_configured(orm.User.collection.get_default())
+    assert [image.base.attributes.all for image in images] == [p[1] for p in parents]
+    if available:
+        for index in range(2):
+            assert (tmp_path / str(index) / "aiida-RESTART.wfn").read_bytes() == (
+                b"existing endpoint WFN"
+            )
 
 
 @pytest.mark.parametrize("reuse", [False, True], ids=["missing-wfn", "reused-wfn"])
